@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Naron Codex // Main Hub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <script src="https://unpkg.com/@waxio/waxjs/dist-web/waxjs.js"></script>
+
+    <style>
+        /* --- GLOBAL THEME --- */
+        :root {
+            --theme-color: #00ffcc; 
+            --theme-shadow: 0 0 15px rgba(0, 255, 204, 0.4); 
+            --theme-dark: #051a15;        
+            --theme-hover: #0a332a;       
+            --theme-border: 1px solid #0f4d40;
+        }
+
+        body { 
+            cursor: crosshair; 
+            background-color: #050510; 
+            background-image: radial-gradient(circle at 50% 50%, var(--theme-dark) 0%, #050510 80%);
+            color: #d0d0d0; 
+            font-family: 'Courier New', Courier, monospace; 
+            margin: 0; padding: 0; min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* STARFIELD BACKGROUND */
+        body::before { content: " "; position: fixed; top: 0; left: 0; width: 1px; height: 1px; z-index: -1; box-shadow: 10vw 10vh #FFF, 85vw 5vh #FFF, 45vw 15vh rgba(255,255,255,0.6), 70vw 25vh #FFF, 30vw 50vh #FFF, 60vw 65vh rgba(255,255,255,0.7); opacity: 0.8; }
+        body::after { content: " "; position: fixed; top: 0; left: 0; width: 2px; height: 2px; z-index: -1; background: transparent; box-shadow: 15vw 20vh #FFF, 40vw 60vh #FFF, 70vw 30vh #FFF, 90vw 80vh #FFF; opacity: 0.5; }
+
+        /* --- GLOBAL HEADER BAR --- */
+        .global-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #020a08; border-bottom: 2px solid var(--theme-color);
+            padding: 15px 30px; position: sticky; top: 0; z-index: 2000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.9);
+        }
+        .logo-section h1 {
+            color: var(--theme-color); margin: 0; font-size: 1.8em; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 0 10px var(--theme-color);
+        }
+        .nav-links { display: flex; gap: 10px; }
+        .nav-btn {
+            background: transparent; color: #888; border: 1px solid transparent;
+            padding: 8px 16px; font-family: monospace; font-weight: bold; font-size: 0.9em;
+            text-decoration: none; cursor: pointer; transition: all 0.3s; text-transform: uppercase;
+        }
+        .nav-btn:hover { color: var(--theme-color); border-color: var(--theme-color); }
+        .nav-btn.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); box-shadow: var(--theme-shadow); }
+        
+        .wallet-btn {
+            background: #111; color: var(--theme-color); border: 1px dashed var(--theme-color);
+            padding: 10px 20px; font-family: monospace; font-weight: bold; cursor: pointer;
+            transition: all 0.3s;
+        }
+        .wallet-btn:hover { background: var(--theme-hover); box-shadow: var(--theme-shadow); }
+        .wallet-btn.logged-in { background: var(--theme-color); color: #000; border: 1px solid #fff; }
+
+        /* --- HUB CONTENT (2-COLUMN LAYOUT) --- */
+        .hub-container { max-width: 1400px; margin: 50px auto; padding: 0 20px; flex: 1; width: 100%; box-sizing: border-box; }
+        
+        .phases-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+
+        .phase-header { 
+            border-bottom: 1px solid var(--theme-color); color: #fff; font-size: 1.4em; 
+            margin-bottom: 5px; padding-bottom: 10px; letter-spacing: 2px; font-weight: bold; text-transform: uppercase;
+        }
+        .phase-subheader { color: var(--theme-color); font-size: 0.9em; margin-bottom: 20px; font-family: monospace; letter-spacing: 1px; }
+        
+        .module-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 50px; }
+        
+        /* --- CARD FAN UI --- */
+        .module-card {
+            background: rgba(0,0,0,0.6); border: 1px solid #333; padding: 20px;
+            transition: all 0.3s; text-decoration: none; display: flex; justify-content: space-between; align-items: center; position: relative; overflow: hidden;
+        }
+        .module-card::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent);
+            transform: skewX(-20deg); transition: 0.5s;
+        }
+        .module-card:hover { border-color: var(--theme-color); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.8); }
+        .module-card:hover::before { left: 200%; }
+        
+        .card-text-wrapper { position: relative; z-index: 10; max-width: 60%; pointer-events: none; }
+        .card-title { color: #fff; font-size: 1.4em; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
+        .card-schema { color: #666; font-family: monospace; font-size: 0.85em; margin-bottom: 15px; display: block; }
+        .module-card:hover .card-title { color: var(--theme-color); text-shadow: 0 0 8px var(--theme-color); }
+        .card-status { font-size: 0.75em; padding: 4px 8px; display: inline-block; font-weight: bold; border-radius: 3px; margin-top: 10px; }
+        
+        .status-live { background: #004d00; color: #00ff00; border: 1px solid #00ff00; }
+        .status-dev { background: #4d3300; color: #ffaa00; border: 1px solid #ffaa00; }
+        .status-locked { background: #333; color: #888; border: 1px solid #555; }
+        .module-card.locked { pointer-events: none; opacity: 0.6; }
+
+        /* FAN MECHANICS */
+        .card-fan {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            width: 100px; height: 80px; pointer-events: none; opacity: 0.7;
+            transition: all 0.3s ease-out;
+        }
+        .module-card:hover .card-fan { opacity: 1; right: 20px; }
+        
+        .fan-img {
+            position: absolute; width: 45px; height: auto; bottom: 0; left: 25px;
+            transform-origin: bottom center; border: 1.5px solid #444; border-radius: 4px;
+            box-shadow: -2px 5px 10px rgba(0,0,0,0.8); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: #000;
+        }
+        
+        /* Position Spreads */
+        .fan-img:nth-child(1) { transform: rotate(-30deg) translate(-15px, 0); z-index: 1; }
+        .fan-img:nth-child(2) { transform: rotate(-15deg) translate(-7px, 5px); z-index: 2; }
+        .fan-img:nth-child(3) { transform: rotate(0deg) translate(0, 0px); z-index: 3; }
+        .fan-img:nth-child(4) { transform: rotate(15deg) translate(7px, 5px); z-index: 4; }
+        .fan-img:nth-child(5) { transform: rotate(30deg) translate(15px, 0); z-index: 5; }
+
+        /* Hover Expansions */
+        .module-card:hover .fan-img:nth-child(1) { transform: rotate(-45deg) translate(-25px, -5px); }
+        .module-card:hover .fan-img:nth-child(2) { transform: rotate(-22deg) translate(-12px, 0px); }
+        .module-card:hover .fan-img:nth-child(4) { transform: rotate(22deg) translate(12px, 0px); }
+        .module-card:hover .fan-img:nth-child(5) { transform: rotate(45deg) translate(25px, -5px); }
+
+        /* RARITY BORDERS (Crew: Abundant -> Legendary) */
+        .fan-crew .fan-img:nth-child(1) { border-color: #555; }   /* Abundant */
+        .fan-crew .fan-img:nth-child(2) { border-color: #aaa; }   /* Common */
+        .fan-crew .fan-img:nth-child(3) { border-color: #0088ff; } /* Rare */
+        .fan-crew .fan-img:nth-child(4) { border-color: #bc13fe; } /* Epic */
+        .fan-crew .fan-img:nth-child(5) { border-color: #ffaa00; } /* Legendary */
+
+        /* RARITY BORDERS (Standard: Common -> Mythical) */
+        .fan-standard .fan-img:nth-child(1) { border-color: #aaa; }    /* Common */
+        .fan-standard .fan-img:nth-child(2) { border-color: #0088ff; } /* Rare */
+        .fan-standard .fan-img:nth-child(3) { border-color: #bc13fe; } /* Epic */
+        .fan-standard .fan-img:nth-child(4) { border-color: #ffaa00; } /* Legendary */
+        .fan-standard .fan-img:nth-child(5) { border-color: #ff0055; } /* Mythical */
+
+        @media screen and (max-width: 500px) { .card-fan { opacity: 0.2; } }
+
+        /* --- SOCIALS FOOTER --- */
+        .socials-footer { background: #020a08; border-top: 2px solid var(--theme-color); padding: 30px 20px; margin-top: auto; }
+        .socials-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
+        .project-social { display: flex; flex-direction: column; align-items: center; gap: 10px; background: rgba(0,0,0,0.5); padding: 15px; border: 1px solid #222; border-radius: 8px; transition: border-color 0.3s; }
+        .project-social:hover { border-color: #444; }
+        .site-link { display: flex; flex-direction: column; align-items: center; gap: 10px; text-decoration: none; transition: transform 0.2s; }
+        .site-link:hover { transform: translateY(-3px); }
+        .project-logo { width: 50px; height: 50px; border-radius: 8px; border: 1px solid #333; object-fit: contain; background: #000; padding: 5px; transition: all 0.3s; }
+        .site-link:hover .project-logo { border-color: var(--theme-color); box-shadow: 0 0 10px var(--theme-color); }
+        .social-name { color: #ccc; font-family: monospace; font-weight: bold; font-size: 0.9em; transition: color 0.3s; text-align: center; }
+        .site-link:hover .social-name { color: var(--theme-color); }
+        .discord-link { display: flex; align-items: center; gap: 5px; text-decoration: none; color: #5865F2; font-family: monospace; font-size: 0.8em; font-weight: bold; background: #111; padding: 4px 10px; border-radius: 4px; border: 1px solid #222; transition: all 0.2s; }
+        .discord-link:hover { background: #5865F2; color: #fff; border-color: #5865F2; box-shadow: 0 0 10px rgba(88, 101, 242, 0.5); }
+        .discord-icon { width: 16px; height: 16px; fill: currentColor; }
+
+        @media screen and (max-width: 900px) {
+            .phases-wrapper { grid-template-columns: 1fr; gap: 20px; }
+            .global-header { flex-direction: column; gap: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="global-header">
+        <div class="logo-section">
+            <h1>NARON CODEX</h1>
+        </div>
+        
+        <nav class="nav-links">
+            <a href="index.html" class="nav-btn active">HUB</a>
+            <a href="crew.worlds.html" class="nav-btn">CREW</a>
+            <a href="arms.worlds.html" class="nav-btn">ARMS</a>
+        </nav>
+
+        <div class="wallet-section">
+            <button id="wallet-connect-btn" class="wallet-btn" onclick="toggleWallet()">[ CONNECT WAX WALLET ]</button>
+        </div>
+    </header>
+
+    <div class="hub-container">
+        
+        <div class="phases-wrapper">
+            
+            <div class="phase-column">
+                <div class="phase-header">DATABASES</div>
+                <div class="phase-subheader">Explore Alien Worlds Metaverse Templates:</div>
+                
+                <div class="module-grid">
+                    
+                    <a href="crew.worlds.html" class="module-card">
+                        <div class="card-text-wrapper">
+                            <div class="card-title">CREW</div>
+                            <span class="card-schema">schema: crew.worlds</span>
+                            <div class="card-status status-live">SYSTEM LIVE</div>
+                        </div>
+                        <div class="card-fan fan-crew">
+                            <img src="https://ipfs.io/ipfs/QmVXsVEkT5fuASSexrcMQuuXWZFFSuGRSyRkLGghq1yhpW" class="fan-img"> <img src="https://ipfs.io/ipfs/QmSEZR4YEoudRvJTCK8XZy3TMGG4PYEjmmPKA1YPCT5Zod" class="fan-img"> <img src="https://ipfs.io/ipfs/QmNxjDDSCWA2CpbUvrYVCfz4fixAy2Le35gw1pRoSGYKYd" class="fan-img"> <img src="https://ipfs.io/ipfs/QmcgerxREiHk5Sg5y6KHERjaTDorWFaCZfqTPKFySZCuKA" class="fan-img"> <img src="https://ipfs.io/ipfs/QmZBdDixC1wFiPh8b9ozn1k9Ge4wDqA7PzweNHYKpjtDea" class="fan-img"> </div>
+                    </a>
+
+                    <a href="arms.worlds.html" class="module-card">
+                        <div class="card-text-wrapper">
+                            <div class="card-title">ARMS</div>
+                            <span class="card-schema">schema: arms.worlds</span>
+                            <div class="card-status status-live">SYSTEM LIVE</div>
+                        </div>
+                        <div class="card-fan fan-standard">
+                            <img src="https://ipfs.io/ipfs/QmPXDcGLNPyJP3vH34w45dvyqNNsRyhDFiq6oz85uuT4WE" class="fan-img"> 
+                            <img src="https://ipfs.io/ipfs/QmVTtT1L5AKmZjLomg5kzBGbRY8WiUgER5SEdkYGKDqCHs" class="fan-img"> 
+                            <img src="https://ipfs.io/ipfs/QmVhQkDRKkWUivn34niz7LThbaBujTRALCZ6zLqJQVTuKT" class="fan-img"> 
+                            <img src="https://ipfs.io/ipfs/QmdbFLcNJk6ZqBNN2ZSdoPyVQdjzha51p41AZptBo9CMXz" class="fan-img"> 
+                            <img src="https://ipfs.io/ipfs/QmacyEM8Kq3Uen5eEMh7D5Edw889MMKT89hcKzoW839ZEJ" class="fan-img"> 
+                        </div>
+                    </a>
+
+                    <a href="#" class="module-card locked">
+                        <div class="card-text-wrapper">
+                            <div class="card-title">TOOLS</div>
+                            <span class="card-schema">schema: tools.worlds</span>
+                            <div class="card-status status-dev">IN DEVELOPMENT</div>
+                        </div>
+                        <div class="card-fan fan-standard">
+                            <img src="https://ipfs.io/ipfs/QmavhvWjoU7YYAstpqBD76QSicPTJWWyN468UVw4vDH7pR" class="fan-img"> <img src="https://ipfs.io/ipfs/QmcMrXA5mRn1Yg3qHix6AFGjaWvmMpqJPxojAmeshzwrzc" class="fan-img"> <img src="https://ipfs.io/ipfs/QmZ3U2h88UcZKqkVuuMQcrZZ2jAKWeNzM3DpBhCsVYWTzp" class="fan-img"> <img src="https://ipfs.io/ipfs/QmbSiZThecTkMuNuY1JzX8nx8PrRxufibXT7jhKp7k2FbF" class="fan-img"> <img src="https://ipfs.io/ipfs/QmY7CehWYJYw3xwPHFXbkqdYDHjK5sWJdHbkXv78wzyi7F" class="fan-img"> </div>
+                    </a>
+
+                    <a href="#" class="module-card locked">
+                        <div class="card-text-wrapper">
+                            <div class="card-title">FACES</div>
+                            <span class="card-schema">schema: faces.worlds</span>
+                            <div class="card-status status-dev">IN DEVELOPMENT</div>
+                        </div>
+                        <div class="card-fan fan-standard">
+                            <img src="https://ipfs.io/ipfs/QmSUWgba8zsZ4iG3xTAY5Byopk1ihgbsgYPfeLY9Lk21qj" class="fan-img"> <img src="https://ipfs.io/ipfs/QmaokVaofHgBGmu1MZi2PEy6WLWEkcRm66wUB2z7XYdeph" class="fan-img"> <img src="https://ipfs.io/ipfs/QmW3PZQyBA4WL91N3bbeqq2S8883UtZRHQyeJ2YMH7dXL5" class="fan-img"> <img src="https://ipfs.io/ipfs/QmQpCVK7F7P7LV9dwZvKEwhHKoU5UtvezT4ny83xJUSj6n" class="fan-img"> <img src="https://ipfs.io/ipfs/QmRMMQCGCdGhvW6m7tbUpRr5qp8pmpWFjKKDxjGvuuntjG" class="fan-img"> </div>
+                    </a>
+
+                    <a href="#" class="module-card locked">
+                        <div class="card-text-wrapper">
+                            <div class="card-title">LAND</div>
+                            <span class="card-schema">schema: land.worlds</span>
+                            <div class="card-status status-dev">IN DEVELOPMENT</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+<div class="phase-column">
+    <div class="phase-header" id="roadmap-toggle" onclick="toggleRoadmap()" style="cursor:pointer; user-select:none;">
+        PHASE 2 // PLANETARY DEFENSE
+        <span id="roadmap-arrow" style="float:right; transition: transform 0.3s;">▼</span>
+    </div>
+    <div class="phase-subheader">More coming soon: Planetary Defense Army Builder</div>
+
+    <div id="roadmap-teaser" style="border: 1px dashed #333; padding: 20px; text-align:center; color: #555; font-family: monospace; margin-top: 10px;">
+        [ CLASSIFIED // AUTHORIZATION PENDING ]<br>
+        <span style="font-size:0.8em; color: #444;">Click header to preview incoming systems</span>
+    </div>
+
+    <div id="roadmap-content" style="max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.5s ease-out, opacity 0.4s ease;">
+        <div class="module-grid">
+            <a href="#" class="module-card locked">
+                <div class="card-title">PD ARMY BUILDER</div>
+                <span class="card-schema">Utility: PD Strategic Builder</span>
+                <div class="card-status status-locked">AWAITING AUTHORIZATION</div>
+            </a>
+            
+            <a href="#" class="module-card locked">
+                <div class="card-title">PD MERCENARY SCOUTER</div>
+                <span class="card-schema">Utility: Wallet Reconnaissance</span>
+                <div class="card-status status-locked">AWAITING AUTHORIZATION</div>
+            </a>
+
+            <a href="#" class="module-card locked">
+                <div class="card-title">PD MATERIALS & BLENDS</div>
+                <span class="card-schema">Utility: Inventory Tracking</span>
+                <div class="card-status status-locked">AWAITING AUTHORIZATION</div>
+            </a>
+
+            <a href="#" class="module-card locked">
+                <div class="card-title">SECRET PROJECT</div>
+                <span class="card-schema">Utility: ????</span>
+                <div class="card-status status-locked">AWAITING AUTHORIZATION</div>
+            </a>
+        </div>
+    </div>
+</div>
+            
+
+        </div>
+    </div>
+
+    <footer class="socials-footer">
+        <div class="socials-container">
+           
+            <div class="project-social">
+                <a href="https://play.alienworlds.io/" target="_blank" class="site-link">
+                    <img src="https://www.google.com/s2/favicons?domain=alienworlds.io&sz=128" alt="Alien Worlds" class="project-logo">
+                    <span class="social-name">ALIEN WORLDS</span>
+                </a>
+                <a href="https://discord.gg/wswdNGKwXQ" target="_blank" class="discord-link">
+                    <svg class="discord-icon" viewBox="0 0 127.14 96.36"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.3,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+                    JOIN DISCORD
+                </a>
+            </div>
+
+
+            <div class="project-social">
+                <a href="https://waxmissioncontrol.io/" target="_blank" class="site-link">
+                    <img src="https://www.google.com/s2/favicons?domain=waxmissioncontrol.io&sz=128" alt="Mission Control" class="project-logo">
+                    <span class="social-name">MISSION CONTROL</span>
+                </a>
+                <a href="https://discord.com/invite/EmpMt7NDsV" target="_blank" class="discord-link">
+                    <svg class="discord-icon" viewBox="0 0 127.14 96.36"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.3,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+                    JOIN DISCORD
+                </a>
+            </div>
+
+
+            <div class="project-social">
+                <a href="https://discord.com/invite/fVt2h8MwNM" target="_blank" class="site-link">
+                    <img src="https://cdn.discordapp.com/icons/1343022104877994134/33e4ea758a99fac9e67cb1f5d52e9096.webp?size=128" alt="Naron Events" class="project-logo" style="background: #111;">
+                    <span class="social-name">NARON EVENTS</span>
+                </a>
+                <a href="https://discord.com/invite/fVt2h8MwNM" target="_blank" class="discord-link">
+                    <svg class="discord-icon" viewBox="0 0 127.14 96.36"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.3,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+                    JOIN DISCORD
+                </a>
+            </div>
+
+
+            <div class="project-social">
+                <a href="https://www.planetarydefense.io/" target="_blank" class="site-link">
+                    <img src="https://www.google.com/s2/favicons?domain=planetarydefense.io&sz=128" alt="Planetary Defense" class="project-logo">
+                    <span class="social-name">PLANETARY DEFENSE</span>
+                </a>
+                <a href="https://discord.com/invite/rhHWe6hDNP" target="_blank" class="discord-link">
+                    <svg class="discord-icon" viewBox="0 0 127.14 96.36"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.3,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+                    JOIN DISCORD
+                </a>
+            </div>
+
+
+            <div class="project-social">
+                <a href="https://larucheaw.online/" target="_blank" class="site-link">
+                    <img src="https://cdn.discordapp.com/icons/1047099545408000001/427365f548291190b3bae963d8457f36.webp?size=60" alt="La Ruche" class="project-logo">
+                    <span class="social-name">LA RUCHE</span>
+                </a>
+                <a href="https://discord.com/invite/cDddActr72" target="_blank" class="discord-link">
+                    <svg class="discord-icon" viewBox="0 0 127.14 96.36"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.3,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+                    JOIN DISCORD
+                </a>
+            </div>
+
+
+            <div class="project-social">
+                <a href="https://cpurent.havenhq.online/" target="_blank" class="site-link">
+                    <img src="https://cdn.discordapp.com/icons/1398016921135223026/2cb876cdf575ed361c1362e14b10b7c3.webp?size=60" alt="Safe Haven" class="project-logo">
+                    <span class="social-name">SAFE HAVEN</span>
+                </a>
+                <a href="https://discord.gg/wATzAArxWh" target="_blank" class="discord-link">
+                    <svg class="discord-icon" viewBox="0 0 127.14 96.36"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.68,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.3,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+                    JOIN DISCORD
+                </a>
+            </div>
+
+
+        </div>
+    </footer>
+
+    <script>
+
+        function toggleRoadmap() {
+    const content = document.getElementById("roadmap-content");
+    const arrow = document.getElementById("roadmap-arrow");
+    const teaser = document.getElementById("roadmap-teaser");
+    const isOpen = content.style.maxHeight !== "0px" && content.style.maxHeight !== "";
+
+    if (isOpen) {
+        content.style.maxHeight = "0";
+        content.style.opacity = "0";
+        arrow.style.transform = "rotate(0deg)";
+        teaser.style.display = "block";
+    } else {
+        content.style.maxHeight = "600px";
+        content.style.opacity = "1";
+        arrow.style.transform = "rotate(180deg)";
+        teaser.style.display = "none";
+    }
+}
+
+        document.addEventListener("DOMContentLoaded", () => {
+            checkWalletState();
+        });
+
+        function checkWalletState() {
+            const savedWallet = localStorage.getItem("naron_wallet");
+            const btn = document.getElementById("wallet-connect-btn");
+            
+            if(savedWallet) {
+                btn.innerText = `[ ${savedWallet} ]`;
+                btn.classList.add("logged-in");
+            } else {
+                btn.innerText = "[ CONNECT WAX WALLET ]";
+                btn.classList.remove("logged-in");
+            }
+        }
+
+        const wax = new waxjs.WaxJS({
+    rpcEndpoint: 'https://wax.greymass.com'
+});
+
+async function toggleWallet() {
+    const currentWallet = localStorage.getItem("naron_wallet");
+    
+    if (currentWallet) {
+        localStorage.removeItem("naron_wallet");
+        checkWalletState();
+    } else {
+        try {
+            const userAccount = await wax.login();
+            localStorage.setItem("naron_wallet", userAccount);
+            checkWalletState();
+        } catch(e) {
+            console.error("WAX login failed:", e);
+        }
+    }
+}
+    </script>
+</body>
+</html>
