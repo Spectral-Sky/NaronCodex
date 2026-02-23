@@ -538,60 +538,71 @@ Made by Shade
 
         async function fetchRowPrices(id, cellLow, cellLast, cellSugg) {
             const deckFloor = document.getElementById("intel-floor");
-            const deckLast = document.getElementById("intel-last");
             const deckSugg = document.getElementById("intel-sugg");
             const header = document.getElementById("intel-header");
             
             if(cardData[id]) header.innerText = `MARKET INTEL: ${cardData[id].name} [${cardData[id].shine}]`.toUpperCase();
             
-            cellLow.innerText = "..."; deckFloor.innerText = "SCANNING...";
-
-            // RESET STYLES
-            deckFloor.style.color = "#fff"; cellLow.style.textShadow = "none";
+            cellLow.innerText = "..."; 
+            deckFloor.innerText = "SCANNING...";
+            deckFloor.style.color = "#fff"; 
+            cellLow.style.textShadow = "none";
             
+            // Wipe out Last Sold to save bandwidth as requested
+            if (cellLast) cellLast.innerText = "-"; 
+            document.getElementById("intel-last").innerText = "---";
+            if (cellSugg) cellSugg.innerText = "-"; 
+            deckSugg.innerText = "---";
+
+            // Using the ultra-reliable EOSUSA node with the v1 templates endpoint you found
+            const API_URL = `https://wax.eosusa.io/atomicmarket/v1/sales/templates?symbol=WAX&state=1&template_id=${id}`;
+
             try {
-                const floorRes = await fetch(`${API_PRICES}/sales?state=1&template_id=${id}&page=1&limit=1&order=asc&sort=price`);
-                const floorData = await floorRes.json();
-                
-                let floorValNum = 0;
-                let suggValNum = 0;
+                const res = await fetch(API_URL);
+                const floorData = await res.json();
 
-                if (floorData.data && floorData.data.length > 0) {
-                    const price = floorData.data[0].price;
-                    floorValNum = parseInt(price.amount) / Math.pow(10, price.token_precision);
+                if (floorData.success && floorData.data && floorData.data.length > 0) {
+                    const sale = floorData.data[0];
+                    const price = sale.price;
                     
-                    cellLow.innerText = floorValNum.toFixed(2); cellLow.style.color = "#00ff00";
+                    // 1. GET TRUE LOWEST PRICE
+                    let floorValNum = parseInt(price.amount) / Math.pow(10, price.token_precision);
+                    
+                    cellLow.innerText = floorValNum.toFixed(2); 
+                    cellLow.style.color = "#00ff00";
                     deckFloor.innerText = floorValNum.toFixed(2) + " WAX";
-                    
-                    try { 
-                         let s = floorData.data[0].assets[0].prices[0].suggested_median;
-                         if(s) {
-                             suggValNum = parseInt(s)/100000000;
-                             let sDisplay = suggValNum.toFixed(2);
-                             cellSugg.innerText = sDisplay; deckSugg.innerText = sDisplay + " WAX";
-                         }
-                    } catch(e){}
-                } else { cellLow.innerText = "-"; deckFloor.innerText = "NONE"; }
-                
-                // --- PROFIT HUNTER LOGIC ---
-                // If Lowest is 20% cheaper than Suggested, highlighting DEAL!
-                if(floorValNum > 0 && suggValNum > 0) {
-                    if (floorValNum < (suggValNum * 0.80)) {
-                         deckFloor.innerHTML += " <span style='color:#00ff00; font-weight:bold; animation:pulse 1s infinite'>[ DEAL! ]</span>";
-                         cellLow.style.textShadow = "0 0 10px #00ff00";
-                    }
-                }
 
-                const soldRes = await fetch(`${API_PRICES}/sales?state=3&template_id=${id}&page=1&limit=1&order=desc&sort=updated`);
-                const soldData = await soldRes.json();
-                if (soldData.data && soldData.data.length > 0) {
-                    const price = soldData.data[0].price;
-                    let val = parseInt(price.amount) / Math.pow(10, price.token_precision);
-                    cellLast.innerText = val.toFixed(2); cellLast.style.color = "#ffff00";
-                    deckLast.innerText = val.toFixed(2) + " WAX";
-                } else { cellLast.innerText = "-"; deckLast.innerText = "NONE"; }
+                    // 2. GET SUGGESTED MEDIAN (It's hidden inside the assets array in the same JSON!)
+                    let suggValNum = 0;
+                    try {
+                        if (sale.assets && sale.assets.length > 0 && sale.assets[0].prices && sale.assets[0].prices.length > 0) {
+                            let s = sale.assets[0].prices[0].suggested_median;
+                            if (s) {
+                                suggValNum = parseInt(s) / Math.pow(10, price.token_precision);
+                                if (cellSugg) cellSugg.innerText = suggValNum.toFixed(2);
+                                deckSugg.innerText = suggValNum.toFixed(2) + " WAX";
+                            }
+                        }
+                    } catch(e) {}
+
+                    // 3. DEAL DETECTOR
+                    if(floorValNum > 0 && suggValNum > 0) {
+                        if (floorValNum < (suggValNum * 0.80)) {
+                             deckFloor.innerHTML += " <span style='color:#00ff00; font-weight:bold; animation:pulse 1s infinite'>[ DEAL! ]</span>";
+                             cellLow.style.textShadow = "0 0 10px #00ff00";
+                        }
+                    }
+
+                } else { 
+                    cellLow.innerText = "-"; 
+                    deckFloor.innerText = "NONE"; 
+                }
                 
-            } catch (e) { cellLow.innerText = "Err"; }
+            } catch (e) { 
+                console.error("API Error:", e);
+                cellLow.innerText = "Err"; 
+                deckFloor.innerText = "ERROR";
+            }
         }
 
         function toggleDeck() {
