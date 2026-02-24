@@ -270,7 +270,11 @@ Made by Shade
         const API_SALES = "https://wax.eosusa.io/atomicmarket/v1/sales/templates";
         const API_HISTORY = "https://wax.api.atomicassets.io/atomicmarket/v2/sales"; 
         
-        const rarityWeights = { "Abundant": 1, "Common": 2, "Rare": 3, "Epic": 4, "Legendary": 5, "Mythical": 6 };
+        // Custom hierarchical weights for Rarity and Shine
+        const sortWeights = { 
+            "abundant": 1, "common": 2, "rare": 3, "epic": 4, "legendary": 5, "mythical": 6,
+            "stone": 1, "gold": 2, "stardust": 3, "antimatter": 4, "xdimension": 5
+        };
         
         const BASE_URLS = {
             atomic: "https://wax.atomichub.io/market?collection_name=alien.worlds&order=asc&sort=price&symbol=WAX&template_id=",
@@ -309,7 +313,7 @@ Made by Shade
             });
             table.querySelectorAll(".row-headers-background, .column-headers-background").forEach(e => e.style.display = 'none');
 
-            // 1. FIND THE HEADER ROW (Using textContent to bypass visibility:hidden)
+            // 1. FIND THE HEADER ROW
             let headerRow = null;
             for(let i = 0; i < Math.min(10, allRows.length); i++) {
                 if(allRows[i].textContent.toLowerCase().includes("template id")) { 
@@ -357,8 +361,6 @@ Made by Shade
                 if(cells.length === 0) return;
 
                 let idCell = cells[0];
-                
-                // Get textContent and strip anything that isn't a digit
                 let templateId = idCell.textContent.replace(/\D/g, '').trim();
                 if(!templateId) return; 
 
@@ -380,7 +382,7 @@ Made by Shade
                     if(highResImg && highResImg.includes("http")) {
                         let newImg = document.createElement("img");
                         
-                        newImg.src = highResImg; // Raw URL allows IPFS natively 
+                        newImg.src = highResImg; 
                         newImg.loading = "lazy"; 
                         newImg.style.height = "52px"; 
                         newImg.style.width = "auto"; 
@@ -429,6 +431,14 @@ Made by Shade
                 cells.forEach((cell, idx) => {
                     let text = cell.textContent.trim().toLowerCase();
 
+                    // --- THE BLANK STAT FIX ---
+                    // If we are looking at columns 6, 7, 8, or 9 (the stat columns) and it's empty
+                    if (text === "" && idx >= 6 && idx <= 9) {
+                        cell.textContent = "0";
+                        text = "0";
+                        cell.style.color = "#666"; // Grays out the injected zero slightly
+                    }
+
                     // HUD TAGGING
                     if (text === "stone") cell.className += " tag-stone";
                     else if (text === "gold") cell.className += " tag-gold";
@@ -448,7 +458,9 @@ Made by Shade
                     else if (text === "explosive") cell.className += " tag-explosive";
                     else if (text === "exotool") cell.className += " tag-exotool";
                     
-                    cell.style.backgroundColor = "transparent";
+                    if (!cell.style.color) { // Only force transparent bg if we didn't just color it #666
+                        cell.style.backgroundColor = "transparent";
+                    }
                 });
             });
             
@@ -630,6 +642,7 @@ Made by Shade
             const rows = Array.from(tbody.querySelectorAll("tr"));
             const dataRows = rows.filter(r => r.hasAttribute("data-id"));
             const otherRows = rows.filter(r => !r.hasAttribute("data-id"));
+            
             let dir = sortDirection[colIndex] === 'asc' ? 'desc' : 'asc';
             sortDirection[colIndex] = dir;
             
@@ -639,15 +652,40 @@ Made by Shade
                 let valA = cellsA[colIndex] ? cellsA[colIndex].textContent.replace(/,/g,'').trim() : "";
                 let valB = cellsB[colIndex] ? cellsB[colIndex].textContent.replace(/,/g,'').trim() : "";
                 
-                if (rarityWeights[valA] !== undefined) {
-                    let weightA = rarityWeights[valA] || 0; let weightB = rarityWeights[valB] || 0;
+                let keyA = valA.toLowerCase();
+                let keyB = valB.toLowerCase();
+                
+                // 1. Rarity & Shine Hierarchical Sort
+                if (sortWeights[keyA] !== undefined || sortWeights[keyB] !== undefined) {
+                    let weightA = sortWeights[keyA] || 0; 
+                    let weightB = sortWeights[keyB] || 0;
                     return dir === 'asc' ? weightA - weightB : weightB - weightA;
                 }
-                let numA = parseFloat(valA); let numB = parseFloat(valB);
-                if (!isNaN(numA) && !isNaN(numB) && valA!=="" && valB!=="") { return dir === 'asc' ? numA - numB : numB - numA; }
+                
+                // 2. Numeric Sort (Safely ignoring "-", "Err", "...", or empty cells)
+                let isBlankA = (valA === "" || valA === "-" || valA === "Err" || valA === "...");
+                let isBlankB = (valB === "" || valB === "-" || valB === "Err" || valB === "...");
+                
+                let numA = parseFloat(valA);
+                let numB = parseFloat(valB);
+                
+                let isNumA = !isBlankA && !isNaN(numA);
+                let isNumB = !isBlankB && !isNaN(numB);
+
+                if (isNumA && isNumB) {
+                    return dir === 'asc' ? numA - numB : numB - numA;
+                } else if (isNumA && !isNumB) {
+                    return dir === 'asc' ? -1 : 1; // Put numbers above blanks
+                } else if (!isNumA && isNumB) {
+                    return dir === 'asc' ? 1 : -1;
+                }
+                
+                // 3. Alphabetical Sort Fallback (Names, Types)
                 return dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
             });
-            otherRows.forEach(r => tbody.appendChild(r)); dataRows.forEach(r => tbody.appendChild(r));
+            
+            otherRows.forEach(r => tbody.appendChild(r)); 
+            dataRows.forEach(r => tbody.appendChild(r));
         }
 
         function toggleThemePanel() { document.getElementById("theme-panel").style.display = document.getElementById("theme-panel").style.display === "grid" ? "none" : "grid"; }
