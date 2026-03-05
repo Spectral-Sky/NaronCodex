@@ -344,7 +344,7 @@
         </nav>
 
         <div class="wallet-section">
-            <button id="wallet-connect-btn" class="wallet-btn disabled" style="color: #555; border-color: #333; cursor: not-allowed; background: transparent; box-shadow: none;" onclick="return false;">[ WAX LOGIN COMING SOON ]</button>
+            <button id="wallet-btn" class="cyber-btn" style="border-color: #0088ff; color: #0088ff;" onclick="toggleWallet()">[ WAX LOGIN ]</button>
         </div>
     </header>
 
@@ -402,7 +402,7 @@
             <div class="footer-text">// THIS SITE WAS MADE POSSIBLE BY NARON UNION //</div>
             <div class="footer-actions" style="margin-top: 10px; max-width: 600px;">
             <div id="codex-disclaimer" style="font-size: 0.8em; color: #666; font-family: monospace; line-height: 1.5; text-align: left; border: 1px dashed #333; padding: 15px; margin: 15px 0; max-width: 800px; box-sizing:border-box;">
-                <strong>NOTICE:</strong> Naron Codex is an informational fan resource and aggregator. This protocol is <strong>NOT</strong> affiliated with Dacoco GmbH, Alien Worlds, or WAX.io. Data provided (including pricing, stats, and multipliers) is for educational/fan purposes only and should **NOT** be considered financial advice.
+                <strong>NOTICE:</strong> Naron Codex is an informational fan resource and aggregator. This protocol is <strong>NOT</strong> affiliated with Dacoco GmbH, Alien Worlds, or WAX.io. Data provided (including pricing, stats, and multipliers) is for educational/fan purposes only and should <strong>NOT</strong> be considered financial advice.
                 <br><br>
                 This protocol links to external, independent third-party marketplaces. Naron Codex does not process transactions and is not responsible for any financial losses or damages incurred on external platforms. Use of external links and data is entirely at your own risk.
                 <br><br>
@@ -1006,9 +1006,67 @@
             });
         }
 
-        const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
-        function checkWalletState() { /* Disabled for now */ }
-        async function toggleWallet() { /* Disabled for now */ }
+        // 1. INITIALIZE WAXJS
+        // We use Greymass as it is one of the most reliable public WAX RPC endpoints.
+        const wax = new waxjs.WaxJS({
+            rpcEndpoint: 'https://wax.greymass.com',
+            tryAutoLogin: false 
+        });
+
+        // 2. THE LOGIN/LOGOUT TOGGLE
+        async function toggleWallet() {
+            const btn = document.getElementById("wallet-btn");
+            
+            if (wax.userAccount) {
+                // If logged in, execute Logout
+                wax.userAccount = '';
+                localStorage.removeItem("naron_wallet");
+                btn.innerText = "[ WAX LOGIN ]";
+                btn.style.color = "#0088ff";
+                btn.style.borderColor = "#0088ff";
+            } else {
+                // If logged out, execute Login
+                try {
+                    btn.innerText = "[ AUTHENTICATING... ]";
+                    const userAccount = await wax.login();
+                    localStorage.setItem("naron_wallet", userAccount);
+                    updateWalletUI(userAccount);
+                } catch (e) {
+                    console.error("Login Error:", e.message);
+                    btn.innerText = "[ WAX LOGIN ]";
+                }
+            }
+        }
+
+        // 3. UI UPDATE FUNCTION
+        function updateWalletUI(accountName) {
+            const btn = document.getElementById("wallet-btn");
+            btn.innerText = `[ DISCONNECT: ${accountName} ]`;
+            btn.style.color = "#00ff00"; // Turns green to indicate active connection
+            btn.style.borderColor = "#00ff00";
+        }
+
+        // 4. SESSION RESTORATION ON PAGE LOAD
+        async function checkWalletState() {
+            const savedWallet = localStorage.getItem("naron_wallet");
+            if (savedWallet) {
+                try {
+                    // Silently check if the browser session is still valid
+                    let isAutoLoginAvailable = await wax.isAutoLoginAvailable();
+                    if (isAutoLoginAvailable) {
+                        updateWalletUI(wax.userAccount);
+                    } else {
+                        // Session expired, clear local memory
+                        localStorage.removeItem("naron_wallet");
+                    }
+                } catch(e) {
+                    console.error("Auto-login check failed.");
+                }
+            }
+        }
+
+        // Execute session check immediately when the DOM loads
+        document.addEventListener("DOMContentLoaded", checkWalletState);
 
 
         async function sendTip() {
