@@ -1042,8 +1042,17 @@
                 else row.element.style.display = "none";
             });
         }
-        // 1. SEE ABOVE
-        // 2. THE LOGIN/LOGOUT TOGGLE
+        // 1. CHECK LOCAL MEMORY FIRST
+        const savedWallet = localStorage.getItem("naron_wallet");
+
+        // 2. INITIALIZE WAXJS (Injecting the saved wallet directly)
+        const wax = new waxjs.WaxJS({
+            rpcEndpoint: 'https://wax.greymass.com',
+            userAccount: savedWallet || '', // Automatically restores state
+            tryAutoLogin: false 
+        });
+
+        // 3. THE LOGIN/LOGOUT TOGGLE
         async function toggleWallet() {
             const btn = document.getElementById("wallet-btn");
             
@@ -1052,8 +1061,8 @@
                 wax.userAccount = '';
                 localStorage.removeItem("naron_wallet");
                 btn.innerText = "[ WAX LOGIN ]";
-                btn.style.color = "#0088ff";
-                btn.style.borderColor = "#0088ff";
+                btn.style.color = "var(--theme-color)";
+                btn.style.borderColor = "var(--theme-color)";
             } else {
                 // If logged out, execute Login
                 try {
@@ -1068,45 +1077,26 @@
             }
         }
 
-        // 3. UI UPDATE FUNCTION
+        // 4. UI UPDATE FUNCTION
         function updateWalletUI(accountName) {
             const btn = document.getElementById("wallet-btn");
-            btn.innerText = `[ DISCONNECT: ${accountName} ]`;
-            btn.style.color = "#00ff00"; // Turns green to indicate active connection
-            btn.style.borderColor = "#00ff00";
-        }
-
-        // 4. SESSION RESTORATION ON PAGE LOAD
-        async function checkWalletState() {
-            const savedWallet = localStorage.getItem("naron_wallet");
-            
-            if (savedWallet) {
-                // 1. Instantly update the UI so it doesn't flicker or look lost
-                updateWalletUI(savedWallet);
-                
-                // 2. Manually inject the account name back into the fresh wax variable
-                wax.userAccount = savedWallet; 
-                
-                try {
-                    // 3. Silently verify the true session with the WAX Cloud server
-                    let isAutoLoginAvailable = await wax.isAutoLoginAvailable();
-                    
-                    if (!isAutoLoginAvailable) {
-                        // If the Cloud Wallet session actually expired, revert the UI
-                        wax.userAccount = '';
-                        localStorage.removeItem("naron_wallet");
-                        const btn = document.getElementById("wallet-btn");
-                        if (btn) {
-                            btn.innerText = "[ WAX LOGIN ]";
-                            btn.style.color = "#0088ff";
-                            btn.style.borderColor = "#0088ff";
-                        }
-                    }
-                } catch(e) {
-                    console.error("Auto-login check failed.");
-                }
+            if (btn) {
+                btn.innerText = `[ DISCONNECT: ${accountName} ]`;
+                btn.style.color = "#00ff00"; 
+                btn.style.borderColor = "#00ff00";
             }
         }
+
+        // 5. INSTANT SESSION RESTORATION
+        function checkWalletState() {
+            // No server check required; we trust the constructor injection.
+            if (wax.userAccount) {
+                updateWalletUI(wax.userAccount);
+            }
+        }
+
+        // Execute UI update immediately when the DOM loads
+        document.addEventListener("DOMContentLoaded", checkWalletState);
 
         // Execute session check immediately when the DOM loads
         document.addEventListener("DOMContentLoaded", checkWalletState);
