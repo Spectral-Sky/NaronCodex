@@ -409,6 +409,12 @@
     </div>
 
 <script>
+    // 1. INITIALIZE WAXJS
+        // We use Greymass as it is one of the most reliable public WAX RPC endpoints.
+    const wax = new waxjs.WaxJS({
+        rpcEndpoint: 'https://wax.greymass.com',
+        tryAutoLogin: false 
+    });
         // --- CONFIGURATION ---
         const API_STATS = "https://aa.wax.blacklusion.io/atomicassets/v1"; 
         const API_SALES = "https://wax.eosusa.io/atomicmarket/v1/sales/templates";
@@ -991,10 +997,110 @@
                 else row.element.style.display = "none";
             });
         }
+        // 1. SEE ABOVE
+        // 2. THE LOGIN/LOGOUT TOGGLE
+        async function toggleWallet() {
+            const btn = document.getElementById("wallet-btn");
+            
+            if (wax.userAccount) {
+                // If logged in, execute Logout
+                wax.userAccount = '';
+                localStorage.removeItem("naron_wallet");
+                btn.innerText = "[ WAX LOGIN ]";
+                btn.style.color = "#0088ff";
+                btn.style.borderColor = "#0088ff";
+            } else {
+                // If logged out, execute Login
+                try {
+                    btn.innerText = "[ AUTHENTICATING... ]";
+                    const userAccount = await wax.login();
+                    localStorage.setItem("naron_wallet", userAccount);
+                    updateWalletUI(userAccount);
+                } catch (e) {
+                    console.error("Login Error:", e.message);
+                    btn.innerText = "[ WAX LOGIN ]";
+                }
+            }
+        }
 
-        const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com' });
-        function checkWalletState() { /* Disabled for now */ }
-        async function toggleWallet() { /* Disabled for now */ }
+        // 3. UI UPDATE FUNCTION
+        function updateWalletUI(accountName) {
+            const btn = document.getElementById("wallet-btn");
+            btn.innerText = `[ DISCONNECT: ${accountName} ]`;
+            btn.style.color = "#00ff00"; // Turns green to indicate active connection
+            btn.style.borderColor = "#00ff00";
+        }
+
+        // 4. SESSION RESTORATION ON PAGE LOAD
+        async function checkWalletState() {
+            const savedWallet = localStorage.getItem("naron_wallet");
+            if (savedWallet) {
+                try {
+                    // Silently check if the browser session is still valid
+                    let isAutoLoginAvailable = await wax.isAutoLoginAvailable();
+                    if (isAutoLoginAvailable) {
+                        updateWalletUI(wax.userAccount);
+                    } else {
+                        // Session expired, clear local memory
+                        localStorage.removeItem("naron_wallet");
+                    }
+                } catch(e) {
+                    console.error("Auto-login check failed.");
+                }
+            }
+        }
+
+        // Execute session check immediately when the DOM loads
+        document.addEventListener("DOMContentLoaded", checkWalletState);
+
+
+        async function sendTip() {
+            // 1. Ensure WaxJS is initialized and the user is logged in
+            if (!wax.userAccount) {
+                try {
+                    await wax.login();
+                    localStorage.setItem("naron_wallet", wax.userAccount);
+                    checkWalletState();
+                } catch (e) {
+                    alert("Wallet connection required to transmit funds.");
+                    return;
+                }
+            }
+
+            const tipAmount = document.getElementById("tip-amount").value;
+            const receiverAddress = "1x1ci.wam"; //
+
+            try {
+                // 2. Construct and push the transaction payload
+                const result = await wax.api.transact({
+                    actions: [{
+                        account: 'alien.worlds',
+                        name: 'transfer',
+                        authorization: [{
+                            actor: wax.userAccount,
+                            permission: 'active',
+                        }],
+                        data: {
+                            from: wax.userAccount,
+                            to: receiverAddress,
+                            quantity: tipAmount,
+                            memo: 'Naron Codex Tip'
+                        },
+                    }]
+                }, {
+                    blocksBehind: 3,
+                    expireSeconds: 30
+                });
+
+                // 3. Success State
+                alert(`TRANSMISSION SUCCESSFUL.\n\nThank you for supporting Naron Codex! \nTransaction ID: ${result.transaction_id}`);
+                
+            } catch (e) {
+                // 4. Error State (e.g., user rejected the popup, or insufficient funds)
+                console.error(e);
+                alert(`TRANSMISSION FAILED.\n\nError: ${e.message}`);
+            }
+        }
     </script>
 </body>
 </html>
