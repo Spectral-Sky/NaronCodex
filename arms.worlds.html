@@ -445,12 +445,6 @@
     </div>
 
 <script>
-    // 1. INITIALIZE WAXJS
-        // We use Greymass as it is one of the most reliable public WAX RPC endpoints.
-    const wax = new waxjs.WaxJS({
-        rpcEndpoint: 'https://wax.greymass.com',
-        tryAutoLogin: false 
-    });
         // --- CONFIGURATION ---
         const API_STATS = "https://aa.wax.blacklusion.io/atomicassets/v1"; 
         const API_SALES = "https://wax.eosusa.io/atomicmarket/v1/sales/templates";
@@ -1095,12 +1089,8 @@
             }
         }
 
-        // Execute UI update immediately when the DOM loads
-        document.addEventListener("DOMContentLoaded", checkWalletState);
-
         // Execute session check immediately when the DOM loads
         document.addEventListener("DOMContentLoaded", checkWalletState);
-
 
         async function sendTip() {
             // 1. Ensure WaxJS is initialized and the user is logged in
