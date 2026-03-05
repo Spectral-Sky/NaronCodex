@@ -422,6 +422,14 @@
     </div>
 
 <script>
+    // 1. INITIALIZE WAXJS
+        // We use Greymass as it is one of the most reliable public WAX RPC endpoints.
+    const wax = new waxjs.WaxJS({
+        rpcEndpoint: 'https://wax.greymass.com',
+        tryAutoLogin: false 
+    });
+        
+        
         // --- CONFIGURATION ---
         const API_STATS = "https://aa.wax.blacklusion.io/atomicassets/v1"; 
         const API_SALES = "https://wax.eosusa.io/atomicmarket/v1/sales/templates";
@@ -1005,14 +1013,7 @@
                 else row.element.style.display = "none";
             });
         }
-
-        // 1. INITIALIZE WAXJS
-        // We use Greymass as it is one of the most reliable public WAX RPC endpoints.
-        const wax = new waxjs.WaxJS({
-            rpcEndpoint: 'https://wax.greymass.com',
-            tryAutoLogin: false 
-        });
-
+        // 1. SEE ABOVE
         // 2. THE LOGIN/LOGOUT TOGGLE
         async function toggleWallet() {
             const btn = document.getElementById("wallet-btn");
