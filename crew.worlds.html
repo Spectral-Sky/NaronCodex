@@ -443,6 +443,11 @@
                     <option value="50.0000 TLM">50 TLM</option>
                     <option value="100.0000 TLM">100 TLM</option>
                 </select>
+                <label style="color:var(--theme-color); font-family:'Courier New'; font-size:0.8em; letter-spacing:1px; white-space:nowrap;">MARKET API NODE:</label>
+                <select id="endpointSelect" class="cyber-btn" onchange="setEndpoint(this.value)" style="background:#111; color:var(--theme-color); border-color:var(--theme-color); cursor:pointer; outline:none; padding:9px 10px;">
+                    <option value="https://wax.eosusa.io/atomicmarket/v1/sales/templates">eosusa.io</option>
+                    <option value="https://wax.api.atomicassets.io/atomicmarket/v1/sales/templates">atomicassets.io</option>
+                </select>
                 <button class="cyber-btn" style="color: #ffaa00; border-color: #ffaa00;" onclick="sendTip()">[ TRANSMIT TIP ]</button>
             </div>
         </div>
@@ -461,7 +466,11 @@
                 
         // --- CONFIGURATION ---
         const API_STATS = "https://aa.wax.blacklusion.io/atomicassets/v1"; 
-        const API_SALES = "https://wax.eosusa.io/atomicmarket/v1/sales/templates";
+        const SALES_ENDPOINTS = [
+            { label: "eosusa.io",       url: "https://wax.eosusa.io/atomicmarket/v1/sales/templates" },
+            { label: "atomicassets.io", url: "https://wax.api.atomicassets.io/atomicmarket/v1/sales/templates" },
+        ];
+        let API_SALES = SALES_ENDPOINTS[0].url;
         const API_HISTORY = "https://wax.api.atomicassets.io/atomicmarket/v2/sales"; 
         
         // Custom hierarchical weights for Rarity and Shine
@@ -765,6 +774,24 @@
             h.onclick = () => fastSort(idx);
         }
 
+        async function fetchSalesWithFallback(templateId) {
+            const toTry = [API_SALES, ...SALES_ENDPOINTS.map(e => e.url).filter(u => u !== API_SALES)];
+            for (const ep of toTry) {
+                try {
+                    const res = await fetch(`${ep}?symbol=WAX&state=1&template_id=${templateId}&_ts=${Date.now()}`, { cache: 'no-store' });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    if (data.success !== false) {
+                        if (ep !== API_SALES) { API_SALES = ep; updateEndpointSelector(); }
+                        return data;
+                    }
+                } catch(e) { continue; }
+            }
+            return null;
+        }
+        function setEndpoint(url) { API_SALES = url; }
+        function updateEndpointSelector() { const s = document.getElementById("endpointSelect"); if (s) s.value = API_SALES; }
+
         async function fetchRowPrices(id, cellLow, cellLast, cellSugg) {
             const deckFloor = document.getElementById("intel-floor"); const deckLast = document.getElementById("intel-last");
             const deckSugg = document.getElementById("intel-sugg"); const header = document.getElementById("intel-header");
@@ -775,9 +802,8 @@
             if (cellLast) cellLast.innerText = "..."; deckLast.innerText = "SCANNING...";
             if (cellSugg) cellSugg.innerText = "-"; deckSugg.innerText = "---";
 
-            const urlFloor = `${API_SALES}?symbol=WAX&state=1&template_id=${id}&_ts=${Date.now()}`;
             try {
-                const res = await fetch(urlFloor, { cache: 'no-store' }); const floorData = await res.json();
+                const floorData = await fetchSalesWithFallback(id);
                 if (floorData.success && floorData.data && floorData.data.length > 0) {
                     const sale = floorData.data[0]; const price = sale.price;
                     let floorValNum = parseInt(price.amount) / Math.pow(10, price.token_precision);
