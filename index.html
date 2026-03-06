@@ -202,7 +202,16 @@
             padding: 20px 30px; margin-bottom: 40px;
             box-shadow: 0 0 20px rgba(0,255,204,0.08);
         }
-        .welcome-logo { width: 90px; height: 90px; object-fit: contain; }
+        .welcome-logo { width: 90px; height: 90px; object-fit: contain; cursor: pointer; }
+
+        /* --- CURSOR AURA (toggleable outer ring) --- */
+        @keyframes rgb-aura-spin { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }
+        #cursor-aura {
+            position: fixed; pointer-events: none; z-index: 9997;
+            width: 340px; height: 340px; border-radius: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0; transition: opacity 0.6s;
+        }
         .welcome-title { color: var(--theme-color); font-size: 1.4em; font-weight: bold; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 10px var(--theme-color); margin-bottom: 6px; }
         .welcome-sub { color: #888; font-family: monospace; font-size: 0.9em; letter-spacing: 1px; }
 
@@ -214,6 +223,7 @@
 </head>
 <body>
     <div id="cursor-glow"></div>
+    <div id="cursor-aura"></div>
 
     <header class="global-header">
         <div class="logo-section">
@@ -236,7 +246,7 @@
     <div class="hub-container">
 
         <div class="welcome-box">
-            <img src="NCLogo512.png" alt="Naron Codex Logo" class="welcome-logo">
+            <img src="NCLogo512.png" alt="Naron Codex Logo" class="welcome-logo" id="nc-logo">
             <div>
                 <div class="welcome-title">Welcome to Naron Codex!</div>
                 <div class="welcome-sub">Your gateway to Alien Worlds metaverse data — browse templates, track prices, and explore the archive.</div>
@@ -506,13 +516,59 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             checkWalletState();
+
             const glow = document.getElementById("cursor-glow");
+            const aura = document.getElementById("cursor-aura");
+
+            // Aura color cycle — last entry triggers RGB animation
+            const AURA_COLORS = [
+                [0, 255, 204],    // cyan (theme)
+                [255, 0, 60],     // red
+                [255, 170, 0],    // gold
+                [188, 19, 254],   // purple
+                [0, 136, 255],    // blue
+                'rgb'             // rainbow cycle (final)
+            ];
+            let auraOn = false;
+            let auraIdx = 0;
+
+            function applyAuraColor() {
+                const c = AURA_COLORS[auraIdx % AURA_COLORS.length];
+                if (c === 'rgb') {
+                    aura.style.background = `radial-gradient(circle, transparent 25%, rgba(255,0,0,0.18) 38%, transparent 50%)`;
+                    aura.style.animation  = 'rgb-aura-spin 2s linear infinite';
+                } else {
+                    aura.style.animation  = '';
+                    aura.style.filter     = '';
+                    aura.style.background = `radial-gradient(circle, transparent 25%, rgba(${c[0]},${c[1]},${c[2]},0.18) 38%, transparent 50%)`;
+                }
+            }
+
+            document.getElementById("nc-logo").addEventListener("click", () => {
+                if (auraOn) {
+                    aura.style.opacity   = "0";
+                    aura.style.animation = "";
+                    auraOn = false;
+                } else {
+                    applyAuraColor();
+                    aura.style.opacity = "1";
+                    auraIdx++;
+                    auraOn = true;
+                }
+            });
+
             document.addEventListener("mousemove", e => {
-                glow.style.left = e.clientX + "px";
-                glow.style.top = e.clientY + "px";
+                glow.style.left = aura.style.left = e.clientX + "px";
+                glow.style.top  = aura.style.top  = e.clientY + "px";
                 glow.style.opacity = "1";
             });
-            document.addEventListener("mouseleave", () => { glow.style.opacity = "0"; });
+            document.addEventListener("mouseleave", () => {
+                glow.style.opacity = "0";
+                if (auraOn) aura.style.opacity = "0";
+            });
+            document.addEventListener("mouseenter", () => {
+                if (auraOn) aura.style.opacity = "1";
+            });
         });
 
         function checkWalletState() {
