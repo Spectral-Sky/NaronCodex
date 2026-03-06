@@ -221,6 +221,25 @@
             z-index: 2147483647; box-shadow: 0 0 10px var(--theme-color);
         }
         @keyframes clickPulse { 0% { transform: translate(-50%,-50%) scale(0.2); opacity: 1; border-width: 5px; } 100% { transform: translate(-50%,-50%) scale(2.5); opacity: 0; border-width: 0px; } }
+
+        /* --- CURSOR EDGE GLOW RING --- */
+        #cursor-glow { box-shadow: 0 0 0 1.5px rgba(0,255,204,0.35), 0 0 14px 5px rgba(0,255,204,0.12); }
+
+        /* --- FULL-PAGE RGB RIPPLE --- */
+        @keyframes fullPageRipple { 0% { transform:translate(-50%,-50%) scale(0); opacity:0.8; } 100% { transform:translate(-50%,-50%) scale(300); opacity:0; } }
+        .full-ripple { position:fixed; pointer-events:none; z-index:9990; width:10px; height:10px; border-radius:50%; border:3px solid #f00; animation:fullPageRipple 2s ease-out forwards; }
+        @keyframes rgb-ripple-hue { 0% { filter:hue-rotate(0deg); } 100% { filter:hue-rotate(360deg); } }
+
+        /* --- CONFETTI --- */
+        @keyframes confetti-fall { 0% { transform:translateY(-10px) rotate(0deg); opacity:1; } 100% { transform:translateY(110vh) rotate(720deg); opacity:0; } }
+        .confetti-piece { position:fixed; pointer-events:none; z-index:99998; animation:confetti-fall linear forwards; }
+
+        /* --- PARTY BANNER --- */
+        @keyframes partyBanner { 0%{opacity:0;transform:translate(-50%,-50%) scale(0.5);} 15%{opacity:1;transform:translate(-50%,-50%) scale(1.05);} 80%{opacity:1;} 100%{opacity:0;} }
+        .party-banner { position:fixed; top:50%; left:50%; font-family:monospace; font-size:2.2em; font-weight:bold; color:#fff; letter-spacing:4px; text-shadow:0 0 20px #ff0,0 0 40px #f0f,0 0 60px #0ff; animation:partyBanner 3.5s ease-in-out forwards; pointer-events:none; z-index:999999; white-space:nowrap; }
+
+        /* --- LOGO CLICK COUNTER --- */
+        #logo-counter { position:fixed; bottom:15px; right:15px; color:var(--theme-color); font-family:monospace; font-size:0.72em; opacity:0.35; pointer-events:none; z-index:1000; display:none; letter-spacing:1px; }
         .welcome-title { color: var(--theme-color); font-size: 1.4em; font-weight: bold; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 10px var(--theme-color); margin-bottom: 6px; }
         .welcome-sub { color: #888; font-family: monospace; font-size: 0.9em; letter-spacing: 1px; }
 
@@ -233,6 +252,7 @@
 <body>
     <div id="cursor-glow"></div>
     <div id="cursor-aura"></div>
+    <div id="logo-counter">&#x25C8; <span id="logo-count-num">0</span></div>
 
     <header class="global-header">
         <div class="logo-section">
@@ -526,21 +546,28 @@
         document.addEventListener("DOMContentLoaded", () => {
             checkWalletState();
 
-            const glow = document.getElementById("cursor-glow");
-            const aura = document.getElementById("cursor-aura");
+            const glow        = document.getElementById("cursor-glow");
+            const aura        = document.getElementById("cursor-aura");
+            const counter     = document.getElementById("logo-counter");
+            const counterNum  = document.getElementById("logo-count-num");
 
             const AURA_COLORS = [
-                [0, 255, 204],    // cyan (theme)
-                [255, 0, 60],     // red
-                [255, 170, 0],    // gold
-                [188, 19, 254],   // purple
-                [0, 136, 255],    // blue
-                'rgb'             // rainbow cycle (final)
+                [0, 255, 204],  // cyan
+                [255, 0, 60],   // red
+                [255, 170, 0],  // gold
+                [188, 19, 254], // purple
+                [0, 136, 255],  // blue
+                'rgb'           // rainbow (final)
             ];
-            let glowEnabled = false;
-            let auraOn = false;
-            let auraIdx = 0;
+            const CONFETTI_COLORS = ['#00ffcc','#ff003c','#ffaa00','#bc13fe','#0088ff','#ff69b4','#00ff00','#ff6600','#ffffff'];
 
+            let glowEnabled  = false;
+            let auraOn       = false;
+            let auraIdx      = 0;
+            let logoClicks   = 0;
+            let partyActive  = false;
+
+            // ---- helpers ----
             function applyAuraColor() {
                 const c = AURA_COLORS[auraIdx % AURA_COLORS.length];
                 if (c === 'rgb') {
@@ -553,7 +580,54 @@
                 }
             }
 
+            function triggerFullPageRipple() {
+                const logo = document.getElementById("nc-logo");
+                const r    = logo.getBoundingClientRect();
+                const el   = document.createElement('div');
+                el.className = 'full-ripple';
+                el.style.left = (r.left + r.width  / 2) + 'px';
+                el.style.top  = (r.top  + r.height / 2) + 'px';
+                el.style.animation = 'fullPageRipple 2s ease-out forwards, rgb-ripple-hue 2s linear forwards';
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 2100);
+            }
+
+            function spawnConfettiBurst() {
+                for (let i = 0; i < 7; i++) {
+                    const p   = document.createElement('div');
+                    p.className = 'confetti-piece';
+                    const size = (Math.random() * 7 + 5) + 'px';
+                    p.style.cssText = `left:${Math.random()*100}vw; top:-12px; width:${size}; height:${size};
+                        background:${CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)]};
+                        border-radius:${Math.random()>0.5?'50%':'2px'};
+                        animation-duration:${(Math.random()*2+2).toFixed(2)}s;`;
+                    document.body.appendChild(p);
+                    setTimeout(() => p.remove(), 4200);
+                }
+            }
+
+            function triggerParty() {
+                if (partyActive) return;
+                partyActive = true;
+                const banner = document.createElement('div');
+                banner.className = 'party-banner';
+                banner.textContent = '[ PARTY MODE ACTIVATED ]';
+                document.body.appendChild(banner);
+                setTimeout(() => banner.remove(), 3500);
+                let ticks = 0;
+                const interval = setInterval(() => {
+                    spawnConfettiBurst();
+                    if (++ticks >= 65) clearInterval(interval);
+                }, 200);
+            }
+
+            // ---- logo click ----
             document.getElementById("nc-logo").addEventListener("click", () => {
+                logoClicks++;
+                counterNum.textContent = logoClicks;
+                if (logoClicks === 12) counter.style.display = 'block';
+                if (logoClicks >= 100 && !partyActive) triggerParty();
+
                 if (!glowEnabled) {
                     glowEnabled = true;
                     glow.style.opacity = "1";
@@ -562,13 +636,16 @@
                     aura.style.animation = "";
                     auraOn = false;
                 } else {
+                    const colorIdx = auraIdx % AURA_COLORS.length;
                     applyAuraColor();
                     aura.style.opacity = "1";
+                    if (colorIdx === AURA_COLORS.length - 1) triggerFullPageRipple();
                     auraIdx++;
                     auraOn = true;
                 }
             });
 
+            // ---- mouse tracking ----
             document.addEventListener("mousemove", e => {
                 glow.style.left = aura.style.left = e.clientX + "px";
                 glow.style.top  = aura.style.top  = e.clientY + "px";
@@ -583,7 +660,7 @@
                 if (auraOn) aura.style.opacity = "1";
             });
 
-            // --- CLICK RIPPLE ---
+            // ---- click ripple ----
             document.addEventListener('click', e => {
                 const el = document.createElement('div');
                 el.className = 'click-effect';
