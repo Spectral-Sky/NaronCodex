@@ -291,6 +291,39 @@
         </div>
     </div>
 
+    <!-- ABOUT / DISCLAIMER ACCORDION -->
+    <div style="max-width: 1400px; margin: 0 auto 0 auto; padding: 0 20px; width: 100%; box-sizing: border-box;">
+        <div id="about-toggle" onclick="toggleAbout()" style="
+            cursor: pointer; user-select: none;
+            border-top: 1px solid #1a1a1a; border-bottom: 1px solid #1a1a1a;
+            padding: 14px 0; display: flex; justify-content: space-between; align-items: center;
+            color: #444; font-family: monospace; font-size: 0.8em; letter-spacing: 2px;
+            transition: color 0.3s;
+        " onmouseover="this.style.color='var(--theme-color)'" onmouseout="this.style.color='#444'">
+            <span>ABOUT // NARON CODEX</span>
+            <span id="about-arrow" style="transition: transform 0.3s; font-size: 0.9em; color: var(--theme-color);">▼</span>
+        </div>
+
+        <div id="about-content" style="max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.5s ease-out, opacity 0.4s ease;">
+            <div style="
+                padding: 25px 0 30px 0;
+                display: grid; grid-template-columns: 1fr 1fr; gap: 40px;
+                font-family: monospace; font-size: 0.85em; color: #888; line-height: 1.7;
+            ">
+                <div>
+                    <div style="color: var(--theme-color); font-weight: bold; letter-spacing: 2px; margin-bottom: 12px; text-transform: uppercase;">What is Naron Codex?</div>
+                    <p style="margin: 0 0 12px 0;">Naron Codex is an independent fan-built database and toolkit for the Alien Worlds metaverse. It aggregates template data, live market pricing, mint/burn stats, and strategic references across the Arms, Crew, Tools, and Faces schemas.</p>
+                    <p style="margin: 0;">Built by players, for players — with no affiliation to Dacoco GmbH, Alien Worlds, or WAX.io.</p>
+                </div>
+                <div>
+                    <div style="color: var(--theme-color); font-weight: bold; letter-spacing: 2px; margin-bottom: 12px; text-transform: uppercase;">Disclaimer</div>
+                    <p style="margin: 0 0 12px 0;">All data provided — including pricing, stats, and multipliers — is for <strong style="color: #aaa;">educational and fan purposes only</strong> and should <strong style="color: #aaa;">not</strong> be considered financial advice.</p>
+                    <p style="margin: 0;">Market data is fetched live from AtomicHub and related WAX APIs. Accuracy is not guaranteed. Always verify on-chain before making decisions.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer class="socials-footer">
         <div class="socials-container">
            
@@ -377,6 +410,21 @@
 
     <script>
 
+        function toggleAbout() {
+            const content = document.getElementById("about-content");
+            const arrow = document.getElementById("about-arrow");
+            const isOpen = content.style.maxHeight !== "0px" && content.style.maxHeight !== "";
+            if (isOpen) {
+                content.style.maxHeight = "0";
+                content.style.opacity = "0";
+                arrow.style.transform = "rotate(0deg)";
+            } else {
+                content.style.maxHeight = "400px";
+                content.style.opacity = "1";
+                arrow.style.transform = "rotate(180deg)";
+            }
+        }
+
         function toggleRoadmap() {
     const content = document.getElementById("roadmap-content");
     const arrow = document.getElementById("roadmap-arrow");
@@ -437,9 +485,3 @@ async function toggleWallet() {
 </body>
 
 </html>
-
-
-
-
-
-
