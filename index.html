@@ -174,7 +174,7 @@
             transition: opacity 0.4s;
             opacity: 0;
         }
-        /* swirling accretion disk */
+        /* swirling accretion disk with transparent crosshair hole at centre */
         #cursor-glow::before {
             content: ''; position: absolute; inset: 0; border-radius: 50%;
             background: conic-gradient(
@@ -186,13 +186,9 @@
                 rgba(0,18,14,0.4)  300deg,
                 rgba(0,0,0,0.95)  360deg
             );
+            -webkit-mask: radial-gradient(circle at 50% 50%, transparent 9px, black 13px);
+            mask:         radial-gradient(circle at 50% 50%, transparent 9px, black 13px);
             animation: blackhole-spin 2s linear infinite;
-        }
-        /* solid event horizon core */
-        #cursor-glow::after {
-            content: ''; position: absolute; inset: 28%; border-radius: 50%;
-            background: #000;
-            box-shadow: 0 0 8px 4px rgba(0,0,0,0.9);
         }
 
         /* --- WELCOME BOX --- */
@@ -223,7 +219,7 @@
         @keyframes clickPulse { 0% { transform: translate(-50%,-50%) scale(0.2); opacity: 1; border-width: 5px; } 100% { transform: translate(-50%,-50%) scale(2.5); opacity: 0; border-width: 0px; } }
 
         /* --- CURSOR EDGE GLOW RING --- */
-        #cursor-glow { box-shadow: 0 0 0 1.5px rgba(0,255,204,0.35), 0 0 14px 5px rgba(0,255,204,0.12); }
+        #cursor-glow { box-shadow: 0 0 0 1.5px rgba(0,255,204,0.35), 0 0 7px 2px rgba(0,255,204,0.18); }
 
         /* --- FULL-PAGE RGB RIPPLE --- */
         @keyframes fullPageRipple { 0% { transform:translate(-50%,-50%) scale(0); opacity:0.8; } 100% { transform:translate(-50%,-50%) scale(300); opacity:0; } }
