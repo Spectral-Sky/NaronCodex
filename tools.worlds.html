@@ -694,7 +694,29 @@
             });
             
             document.getElementById("status").innerText = `READY: ${dataRows.length} ASSETS`;
-            document.querySelector("table").classList.add("system-ready"); 
+            document.querySelector("table").classList.add("system-ready");
+
+            // JS-forced row hover to bypass CSS specificity issues
+            const _table = document.querySelector("table");
+            const _headerRow = _table.querySelector("tr");
+            _table.addEventListener('mouseover', function(e) {
+                const row = e.target.closest('tr');
+                if (!row || row === _headerRow) return;
+                Array.from(row.querySelectorAll('td')).forEach(c => {
+                    c.style.setProperty('background-color', 'var(--theme-hover)', 'important');
+                    c.style.setProperty('color', '#fff', 'important');
+                });
+            });
+            _table.addEventListener('mouseout', function(e) {
+                const row = e.target.closest('tr');
+                if (!row || row === _headerRow) return;
+                if (row !== (e.relatedTarget && e.relatedTarget.closest('tr'))) {
+                    Array.from(row.querySelectorAll('td')).forEach(c => {
+                        c.style.removeProperty('background-color');
+                        c.style.removeProperty('color');
+                    });
+                }
+            });
         });
 
         function closeDeckMobile() {
