@@ -147,6 +147,47 @@
 
         @media screen and (max-width: 500px) { .card-fan { opacity: 0.2; } }
 
+        /* --- PLANETARY DEFENSE SECTION --- */
+        .pd-section { max-width: 1400px; margin: 40px auto 0 auto; padding: 0 20px; width: 100%; box-sizing: border-box; }
+        .pd-banner { width: 100%; max-height: 200px; object-fit: cover; object-position: center; display: block; border: 1px solid #1a3a5c; margin-bottom: 20px; filter: brightness(0.9); }
+        .pd-header { color: #5badff; font-weight: bold; letter-spacing: 4px; font-size: 1.3em; text-transform: uppercase; text-shadow: 0 0 10px rgba(91,173,255,0.5); margin-bottom: 5px; font-family: 'Courier New', monospace; }
+        .pd-subheader { color: #3a6a8a; font-family: monospace; font-size: 0.85em; margin-bottom: 20px; letter-spacing: 1px; }
+        /* PD UNITS fan — portrait card ratio (playing card style), same size as AW fans */
+        .fan-pd .fan-img { width: 45px; height: 64px; object-fit: cover; }
+        .fan-pd .fan-img:nth-child(1) { border-color: #aaa; }
+        .fan-pd .fan-img:nth-child(2) { border-color: #4cbb6e; }
+        .fan-pd .fan-img:nth-child(3) { border-color: #bc13fe; }
+        .fan-pd .fan-img:nth-child(4) { border-color: #ffaa00; }
+        .fan-pd .fan-img:nth-child(5) { border-color: #ff0055; }
+
+        /* PD MATERIALS fan — starts fanned, hover slides left and flattens to horizontal line */
+        .fan-pd-mats { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 180px; height: 100px; pointer-events: none; opacity: 0.7; transition: all 0.4s ease-out; }
+        .module-card:hover .fan-pd-mats { opacity: 1; right: 60px; }
+        .fan-pd-mats .fan-img {
+            position: absolute; width: 45px; height: 45px; object-fit: cover;
+            bottom: 10px; left: 65px; border-radius: 4px;
+            border: 1.5px solid #444;
+            box-shadow: -2px 4px 10px rgba(0,0,0,0.8);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: #000; transform-origin: bottom center;
+        }
+        .fan-pd-mats .fan-img:nth-child(1) { transform: rotate(-30deg) translate(-15px, 0); z-index: 1; border-color: #aaa; }
+        .fan-pd-mats .fan-img:nth-child(2) { transform: rotate(-15deg) translate(-7px, 5px); z-index: 2; border-color: #0088ff; }
+        .fan-pd-mats .fan-img:nth-child(3) { transform: rotate(0deg); z-index: 3; border-color: #bc13fe; }
+        .fan-pd-mats .fan-img:nth-child(4) { transform: rotate(15deg) translate(7px, 5px); z-index: 4; border-color: #ffaa00; }
+        .fan-pd-mats .fan-img:nth-child(5) { transform: rotate(30deg) translate(15px, 0); z-index: 5; border-color: #ff0055; }
+        .module-card:hover .fan-pd-mats .fan-img:nth-child(1) { transform: translateX(-110px); }
+        .module-card:hover .fan-pd-mats .fan-img:nth-child(2) { transform: translateX(-55px); }
+        .module-card:hover .fan-pd-mats .fan-img:nth-child(3) { transform: translateX(0px); }
+        .module-card:hover .fan-pd-mats .fan-img:nth-child(4) { transform: translateX(55px); }
+        .module-card:hover .fan-pd-mats .fan-img:nth-child(5) { transform: translateX(110px); }
+        .pd-module-card { background: #050d18 !important; border-color: #1a3a5c !important; }
+        .pd-module-card:hover { border-color: #5badff !important; }
+        .pd-module-card .card-title { color: #5badff !important; }
+        .pd-module-card:hover .card-title { color: #5badff !important; text-shadow: 0 0 8px #5badff !important; }
+        .pd-module-card .card-schema { color: #2a4a6a !important; }
+        .pd-module-card::before { background: linear-gradient(90deg, transparent, rgba(91,173,255,0.12), transparent) !important; }
+
         /* --- SOCIALS FOOTER --- */
         .socials-footer { background: #020a08; border-top: 2px solid var(--theme-color); padding: 30px 20px; margin-top: auto; }
         .socials-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
@@ -312,10 +353,12 @@
         
         <nav class="nav-links">
             <a href="index.html" class="nav-btn active">HUB</a>
-            <a href="crew.worlds.html" class="nav-btn">CREW</a>
-            <a href="arms.worlds.html" class="nav-btn">ARMS</a>
-            <a href="tools.worlds.html" class="nav-btn">TOOLS</a>
-            <a href="faces.worlds.html" class="nav-btn">FACES</a>
+            <a href="crew.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">CREW</a>
+            <a href="arms.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">ARMS</a>
+            <a href="tools.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">TOOLS</a>
+            <a href="faces.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">FACES</a>
+            <a href="pd.worlds.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD UNITS</a>
+            <a href="pd.materials.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD MATS</a>
         </nav>
 
         <div class="wallet-section">
@@ -398,43 +441,47 @@
             </div>
 
 <div class="phase-column">
-    <div class="phase-header" id="roadmap-toggle" onclick="toggleRoadmap()" style="cursor:pointer; user-select:none;">
-        PHASE 2 // PLANETARY DEFENSE
-        <span id="roadmap-arrow" style="float:right; transition: transform 0.3s;">▼</span>
+    <div class="phase-header" style="border-color: #1a3a5c; color: #5badff; text-shadow: 0 0 8px rgba(91,173,255,0.4);">
+        PLANETARY DEFENSE
     </div>
-    <div class="phase-subheader">More coming soon: Planetary Defense Army Builder</div>
-
-    <div id="roadmap-teaser" style="border: 1px dashed #333; padding: 20px; text-align:center; color: #555; font-family: monospace; margin-top: 10px;">
-        [ CLASSIFIED // AUTHORIZATION PENDING ]<br>
-        <span style="font-size:0.8em; color: #444;">Click header to preview incoming systems</span>
-    </div>
-
-    <div id="roadmap-content" style="max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.5s ease-out, opacity 0.4s ease;">
-        <div class="module-grid">
-            <a href="#" class="module-card locked">
+    <div class="phase-subheader" style="color: #3a6a8a;">schema: planetdefnft — Browse PD templates and crafting materials</div>
+    <img src="PDsplash.png" alt="Planetary Defense" style="width:100%; max-height:160px; object-fit:cover; object-position:center; display:block; border:1px solid #1a3a5c; margin-bottom:15px; filter:brightness(0.9);">
+    <div class="module-grid">
+        <a href="pd.worlds.html" class="module-card pd-module-card">
+            <div class="card-text-wrapper">
+                <div class="card-title">PD UNITS</div>
+                <span class="card-schema">Equipment · Creatures · Mercenaries · Warlords · Supplies</span>
+                <div class="card-status status-live">SYSTEM LIVE</div>
+            </div>
+            <div class="card-fan fan-pd">
+                <img src="https://ipfs.io/ipfs/QmS1Bj3aEHvLu36S46uJbSTnNDrLtmpvT9Qa2GpJcdFJ1c" class="fan-img">
+                <img src="https://ipfs.io/ipfs/QmYiRV8FZzut14TxMNnvcZfRL5htzESLWc9QsdqvHcRNqF" class="fan-img">
+                <img src="https://ipfs.io/ipfs/QmRuuF3Mar6Hk37tzVVrSzLyyYg7ZT2CTp68SNDi91MD9u" class="fan-img">
+                <img src="https://ipfs.io/ipfs/QmfLNKMT8rUKHuWfxHza5Nk91Yx6G9U2UgtmDinM9GC5Sm" class="fan-img">
+                <img src="https://ipfs.io/ipfs/QmXRLbuoo2MDTjmMpU7mpBG6v3VHRGiuPu8fPv1gVLp8F9" class="fan-img">
+            </div>
+        </a>
+        <a href="pd.materials.html" class="module-card pd-module-card">
+            <div class="card-text-wrapper">
+                <div class="card-title">PD MATERIALS</div>
+                <span class="card-schema">Crafting &amp; Upgrade Materials</span>
+                <div class="card-status status-live">SYSTEM LIVE</div>
+            </div>
+            <div class="fan-pd-mats">
+                <img src="https://i.imgur.com/tuYOBXw.png" class="fan-img">
+                <img src="https://i.imgur.com/EmTp6qi.png" class="fan-img">
+                <img src="https://i.imgur.com/NpTvUGx.png" class="fan-img">
+                <img src="https://i.imgur.com/AnYeEsE.png" class="fan-img">
+                <img src="https://i.imgur.com/4gxqdHH.png" class="fan-img">
+            </div>
+        </a>
+        <a href="#" class="module-card locked">
+            <div class="card-text-wrapper">
                 <div class="card-title">PD ARMY BUILDER</div>
-                <span class="card-schema">Utility: PD Strategic Builder</span>
+                <span class="card-schema">Utility: Strategic Builder</span>
                 <div class="card-status status-locked">AWAITING AUTHORIZATION</div>
-            </a>
-            
-            <a href="#" class="module-card locked">
-                <div class="card-title">PD MERCENARY SCOUTER</div>
-                <span class="card-schema">Utility: Wallet Reconnaissance</span>
-                <div class="card-status status-locked">AWAITING AUTHORIZATION</div>
-            </a>
-
-            <a href="#" class="module-card locked">
-                <div class="card-title">PD MATERIALS & BLENDS</div>
-                <span class="card-schema">Utility: Inventory Tracking</span>
-                <div class="card-status status-locked">AWAITING AUTHORIZATION</div>
-            </a>
-
-            <a href="#" class="module-card locked">
-                <div class="card-title">SECRET PROJECT</div>
-                <span class="card-schema">Utility: ????</span>
-                <div class="card-status status-locked">AWAITING AUTHORIZATION</div>
-            </a>
-        </div>
+            </div>
+        </a>
     </div>
 </div>
             
