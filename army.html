@@ -388,6 +388,64 @@
         .sort-btn.asc::after  { content: " ↑"; font-size: 0.8em; }
         .sort-btn.desc::after { content: " ↓"; font-size: 0.8em; }
 
+        /* ── Catalog / Show-All bar ────────────────────────────────────────── */
+        #catalog-bar {
+            display: none; flex-wrap: wrap; align-items: center; gap: 8px;
+            padding: 8px 16px; background: rgba(0,0,0,0.55);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-family: 'Courier New', monospace; font-size: 0.72em;
+        }
+        .cat-toggle {
+            padding: 3px 10px; border: 1px solid #333; background: transparent;
+            color: #555; font-family: monospace; font-size: 1em; letter-spacing: 1px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .cat-toggle.on      { color: var(--theme-color); border-color: var(--theme-color); background: rgba(255,170,0,0.05); }
+        .cat-toggle.pd.on   { color: #cc88ff; border-color: #cc88ff; background: rgba(204,136,255,0.05); }
+        .cat-toggle.aw.on   { color: #44bbff; border-color: #44bbff; background: rgba(68,187,255,0.05); }
+        .cat-sep { color: #2a2a2a; padding: 0 2px; }
+        /* Shine filter pills */
+        .sf-btn {
+            padding: 2px 8px; border: 1px solid #222; background: transparent;
+            font-family: monospace; font-size: 0.95em; letter-spacing: 1px; cursor: pointer; transition: all 0.15s;
+        }
+        #sf-stone      { color: #555; } #sf-stone.on      { color: #a0a0a0; border-color: #a0a0a0; background: rgba(160,160,160,0.06); }
+        #sf-gold       { color: #555; } #sf-gold.on       { color: #ffdf00; border-color: #ffdf00; background: rgba(255,223,0,0.06);    }
+        #sf-stardust   { color: #555; } #sf-stardust.on   { color: #e100ff; border-color: #e100ff; background: rgba(225,0,255,0.06);    }
+        #sf-antimatter { color: #555; } #sf-antimatter.on { color: #00ff95; border-color: #00ff95; background: rgba(0,255,149,0.06);    }
+        #sf-xdimension { color: #555; } #sf-xdimension.on { color: #7000ff; border-color: #7000ff; background: rgba(112,0,255,0.06);   }
+        .catalog-disclaimer { margin-left: auto; color: #383838; font-style: italic; }
+        #plan-count    { color: #ff44aa; letter-spacing: 1px; }
+        #reset-plan-btn { font-size: 0.9em; }
+
+        /* ── Catalog section divider ───────────────────────────────────────── */
+        .catalog-divider {
+            padding: 10px 16px 4px; color: #2a2a2a; font-size: 0.65em;
+            letter-spacing: 4px; border-top: 1px dashed #181818;
+            font-family: 'Courier New', monospace; text-align: center;
+        }
+        /* ── Catalog cards (not owned) ─────────────────────────────────────── */
+        .nft-card.catalog-card {
+            opacity: 0.35; border-style: dashed !important; cursor: pointer;
+        }
+        .nft-card.catalog-card:hover { opacity: 0.78; }
+        .catalog-marker {
+            position: absolute; top: 0; left: 0; right: 0; z-index: 4;
+            background: rgba(0,0,0,0.6); color: #2e2e2e; font-size: 0.58em;
+            letter-spacing: 3px; padding: 2px 0; text-align: center; font-weight: bold;
+        }
+        /* ── Plan cards (catalog cards clicked for planning) ───────────────── */
+        .nft-card.plan-card {
+            opacity: 1 !important; border-style: solid !important;
+            border-color: #ff44aa !important; box-shadow: 0 0 14px rgba(255,68,170,0.3) !important;
+        }
+        .nft-card.plan-card .catalog-marker { display: none; }
+        .plan-badge {
+            position: absolute; top: 4px; right: 4px; z-index: 5;
+            background: rgba(255,68,170,0.15); border: 1px solid #ff44aa66;
+            color: #ff44aa; font-size: 0.58em; letter-spacing: 2px; padding: 1px 5px; font-weight: bold;
+        }
+
         @media (max-width: 780px) {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .controls-bar input[type=text] { width: 100%; }
@@ -500,7 +558,27 @@
         <span id="forge-status" style="display:none; color:#00ff95; font-size:0.78em; letter-spacing:2px; border:1px solid #00ff9544; padding:4px 10px;">🔥 FORGE ACTIVE</span>
         <button class="cyber-btn" style="color:#888; border-color:#444;"
             onclick="expandAll()">[ EXPAND ALL ]</button>
+        <button id="showAllBtn" class="cyber-btn" style="color:#888; border-color:#444;"
+            onclick="toggleCatalog()">[ SHOW ALL ]</button>
         <span id="status-bar">// AWAITING SCAN //</span>
+    </div>
+
+    <!-- Catalog filter bar (hidden until Show All activated) -->
+    <div id="catalog-bar">
+        <span style="color:#444; letter-spacing:2px;">CATALOG:</span>
+        <button class="cat-toggle pd on" id="cat-pd" onclick="toggleCatCollection('pd')">PD</button>
+        <button class="cat-toggle aw on" id="cat-aw" onclick="toggleCatCollection('aw')">AW</button>
+        <span class="cat-sep">|</span>
+        <button class="sf-btn on" id="sf-stone"      onclick="toggleCatalogShine('stone')">S</button>
+        <button class="sf-btn on" id="sf-gold"        onclick="toggleCatalogShine('gold')">G</button>
+        <button class="sf-btn on" id="sf-stardust"    onclick="toggleCatalogShine('stardust')">SD</button>
+        <button class="sf-btn on" id="sf-antimatter"  onclick="toggleCatalogShine('antimatter')">AM</button>
+        <button class="sf-btn on" id="sf-xdimension"  onclick="toggleCatalogShine('xdimension')">XD</button>
+        <span class="cat-sep">|</span>
+        <span id="plan-count" style="display:none"></span>
+        <button id="reset-plan-btn" class="cyber-btn" style="color:#ff44aa; border-color:#ff44aa44; display:none;"
+            onclick="resetPlan()">[ ↺ RESET PLAN ]</button>
+        <span class="catalog-disclaimer">// CATALOG — FOR VIEWING &amp; PLANNING ONLY. CARDS BELOW ARE NOT OWNED. //</span>
     </div>
 
     <!-- Stat boxes -->
@@ -783,6 +861,14 @@ const BANNED_KEYWORDS = [
 // Desktop gets full-res/animated IPFS source; mobile gets wsrv.nl thumbnail
 const IS_MOBILE = window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches;
 
+// ── Catalog / Show-All state ────────────────────────────────────────────────
+let catalogActive  = false;
+let catalogShowPD  = true;
+let catalogShowAW  = true;
+let catalogShines  = new Set(['stone','gold','stardust','antimatter','xdimension']);
+const virtualRoster = new Map(); // key: templateId string → item object
+let _armyData = null; // last built army — used for re-renders when catalog filters change
+
 const EQUIPMENT_TEMPLATE_IDS = new Set([
     902055, 902056, 902057, 902058, 902059, 902060,  // Gadgets
     903762, 903763, 903764, 903765, 903766, 903767,  // Weapons
@@ -1013,23 +1099,92 @@ function processData(data) {
     document.getElementById('totalDef').innerText      = Math.floor(finalDef).toLocaleString();
     document.getElementById('totalMoveTime').innerText = `${moveH}h ${moveM}m`;
 
+    _armyData = { faces, crew, arms, creatures, supplies, equipment, forgeEnabled };
     render(faces, crew, arms, creatures, supplies, equipment, forgeEnabled);
 }
 
 // ── Render ──────────────────────────────────────────────────────────────────
+function getCatalogItems(categories) {
+    if (!catalogActive) return [];
+    return Object.entries(NFT_DATA)
+        .filter(([, d]) => {
+            if (!categories.includes(d.category)) return false;
+            if (d.collection === 'planetdefnft' && !catalogShowPD) return false;
+            if (d.collection !== 'planetdefnft'  && !catalogShowAW) return false;
+            // Shine filter only applies to AW (PD has no shine variants)
+            if (d.collection !== 'planetdefnft' && d.shine && !catalogShines.has(d.shine)) return false;
+            return true;
+        })
+        .map(([id, d]) => ({
+            templateId: parseInt(id),
+            name:   d.name,
+            rarity: d.rarity,
+            shine:  d.shine || 'stone',
+            isPD:   d.collection === 'planetdefnft',
+            atk:    d.atk  || 0,
+            def:    d.def  || 0,
+            moveCost:          d.movecost            || null,
+            moveCostReduction: d.move_cost_reduction || null,
+            slots:  d.crew_slots || 0,
+            img:    d.img,
+            qty:    1, active: false, isCatalog: true,
+        }));
+}
+
+function updatePlanUI() {
+    const count = virtualRoster.size;
+    const countEl = document.getElementById('plan-count');
+    const resetEl = document.getElementById('reset-plan-btn');
+    if (countEl) { countEl.style.display = count ? 'inline' : 'none'; countEl.textContent = `◆ ${count} IN PLAN`; }
+    if (resetEl) resetEl.style.display = count ? 'inline-block' : 'none';
+}
+
+function rerenderSections() {
+    const d = _armyData || { faces:[], crew:[], arms:[], creatures:[], supplies:[], equipment:[], forgeEnabled:false };
+    render(d.faces, d.crew, d.arms, d.creatures, d.supplies, d.equipment, d.forgeEnabled);
+}
+
+function toggleCatalog() {
+    catalogActive = !catalogActive;
+    document.getElementById('catalog-bar').style.display = catalogActive ? 'flex' : 'none';
+    const btn = document.getElementById('showAllBtn');
+    btn.textContent    = catalogActive ? '[ HIDE CATALOG ]' : '[ SHOW ALL ]';
+    btn.style.color    = catalogActive ? 'var(--theme-color)' : '#888';
+    btn.style.borderColor = catalogActive ? 'var(--theme-color)' : '#444';
+    rerenderSections();
+}
+
+function toggleCatCollection(col) {
+    if (col === 'pd') { catalogShowPD = !catalogShowPD; document.getElementById('cat-pd').classList.toggle('on', catalogShowPD); }
+    else              { catalogShowAW = !catalogShowAW; document.getElementById('cat-aw').classList.toggle('on', catalogShowAW); }
+    rerenderSections();
+}
+
+function toggleCatalogShine(shine) {
+    if (catalogShines.has(shine)) catalogShines.delete(shine); else catalogShines.add(shine);
+    document.getElementById('sf-' + shine).classList.toggle('on', catalogShines.has(shine));
+    rerenderSections();
+}
+
+function resetPlan() {
+    virtualRoster.clear();
+    updatePlanUI();
+    rerenderSections();
+}
+
 function render(faces, crew, arms, creatures, supplies, equipment, forgeEnabled) {
     const root = document.getElementById('results');
     root.innerHTML = "";
-    buildSection("LOGISTICS — FACES & WARLORDS",                 faces,     root, "always",                    "slots", false);
-    buildSection("ARMY — CREW & MERCENARIES",                      crew,      root, "partial",                   "stats", false);
+    buildSection("LOGISTICS — FACES & WARLORDS",  faces,  root, "always",  "slots",     false, getCatalogItems(['face','warlord']));
+    buildSection("ARMY — CREW & MERCENARIES",      crew,   root, "partial", "stats",     false, getCatalogItems(['crew']));
 
     // Merge equipment into arms — equipment active only when forge is on
     const equipTagged = equipment.map(e => ({ ...e, active: forgeEnabled }));
     const allArsenal = [...arms, ...equipTagged];
-    buildSection(`ARSENAL — ARMS & EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, allArsenal, root, "partial", "stats", false);
+    buildSection(`ARSENAL — ARMS & EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, allArsenal, root, "partial", "stats", false, getCatalogItems(['arms','equipment']));
 
-    buildSection("CREATURES — PLANETARY DEFENSE",                creatures, root, "always",                    "stats", false);
-    buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "reduction", false);
+    buildSection("CREATURES — PLANETARY DEFENSE", creatures, root, "always",  "stats",     false, getCatalogItems(['creature']));
+    buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "reduction", false, getCatalogItems(['supply']));
 }
 
 // ── Equipment locked subsection ──────────────────────────────────────────────
@@ -1110,8 +1265,8 @@ function buildEquipmentSection(equipment, root, forgeEnabled) {
     });
 }
 
-function buildSection(title, list, root, activeMode, type, showStatus = true) {
-    if (!list.length) return;
+function buildSection(title, list, root, activeMode, type, showStatus = true, catalogItems = []) {
+    if (!list.length && !catalogItems.length) return;
 
     // Group identical cards
     const groups = {};
@@ -1210,6 +1365,74 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
         return card;
     }
 
+    // ── Catalog card (not owned — viewing/planning only) ──────────────────
+    function makeCatalogCard(item) {
+        const key      = String(item.templateId);
+        const isPlanned = virtualRoster.has(key);
+
+        const barColor    = RARITY_COLORS[item.rarity]    || '#888';
+        const barGradient = RARITY_GRADIENTS[item.rarity] || 'linear-gradient(90deg,#333 0%,#666 50%,#333 100%)';
+        const barTextColor = item.rarity === 'abundant' ? '#111' : '#fff';
+
+        let subText = '';
+        if (type === 'slots') {
+            subText = `${Math.floor(item.slots || 0)} SLOTS`;
+        } else if (type === 'stats') {
+            subText = `<span style="color:#ff4444">⚔ ${Math.floor(item.atk)}</span> &nbsp;|&nbsp; <span style="color:#4488ff">🛡 ${Math.floor(item.def)}</span>`;
+            if (item.moveCost) subText += `<br><span class="card-move-cost">&gt;&gt; ${item.moveCost}</span>`;
+        } else if (type === 'reduction') {
+            subText = item.moveCostReduction ? `<span class="card-move-reduc">▼ -${item.moveCostReduction}</span>` : '';
+        }
+
+        const imgHash     = item.img;
+        const imgFallback = imgHash ? `https://ipfs.io/ipfs/${imgHash}` : null;
+        const imgSrc      = imgHash
+            ? (IS_MOBILE
+                ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=160&h=160&output=webp&fit=contain`
+                : `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=320&h=320&fit=contain&n=-1`)
+            : null;
+
+        const card = document.createElement('div');
+        card.className = `nft-card catalog-card${isPlanned ? ' plan-card' : ''}`;
+        card.style.borderTopColor = barColor;
+        card.style.borderTopWidth = '4px';
+        card.innerHTML = `
+            ${isPlanned ? `<div class="plan-badge">◆ PLAN</div>` : ''}
+            <div class="catalog-marker">CATALOG</div>
+            <div class="shine-bar" style="background:${barGradient};background-size:200% 100%;color:${barTextColor}">${item.rarity.toUpperCase()}</div>
+            ${imgSrc
+                ? `<img src="${imgSrc}" onerror="this.onerror=null;this.src='${imgFallback}'" loading="lazy" alt="${item.name}">`
+                : `<div class="no-img">NO IMAGE</div>`}
+            <div class="card-info">
+                <div class="card-subtext">${subText}</div>
+                <div class="card-name">${item.name}</div>
+                ${!item.isPD && item.shine ? `<div class="card-shine-label" style="color:var(--shine-${item.shine},#888)">${item.shine.toUpperCase()}</div>` : ''}
+            </div>`;
+
+        card.addEventListener('click', () => {
+            if (virtualRoster.has(key)) {
+                virtualRoster.delete(key);
+                card.classList.remove('plan-card');
+                card.querySelector('.plan-badge')?.remove();
+                const cm = card.querySelector('.catalog-marker');
+                if (cm) cm.style.display = '';
+            } else {
+                virtualRoster.set(key, item);
+                card.classList.add('plan-card');
+                if (!card.querySelector('.plan-badge')) {
+                    const badge = document.createElement('div');
+                    badge.className = 'plan-badge';
+                    badge.textContent = '◆ PLAN';
+                    card.prepend(badge);
+                }
+                const cm = card.querySelector('.catalog-marker');
+                if (cm) cm.style.display = 'none';
+            }
+            updatePlanUI();
+        });
+        return card;
+    }
+
     // ── Sort + re-render grid ─────────────────────────────────────────────
     function renderGrid() {
         grid.innerHTML = '';
@@ -1229,6 +1452,18 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
     }
 
     renderGrid();
+
+    // ── Catalog grid (appended below owned cards when Show All is active) ──
+    if (catalogItems.length) {
+        const divider = document.createElement('div');
+        divider.className = 'catalog-divider';
+        divider.textContent = '— — — CATALOG — FOR VIEWING & PLANNING ONLY — — —';
+        content.appendChild(divider);
+        const catGrid = document.createElement('div');
+        catGrid.className = 'card-grid';
+        catalogItems.forEach(ci => catGrid.appendChild(makeCatalogCard(ci)));
+        content.appendChild(catGrid);
+    }
 
     root.appendChild(header);
     root.appendChild(content);
