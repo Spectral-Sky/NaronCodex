@@ -237,7 +237,9 @@
             color: #333; font-size: 0.7em;
         }
         .card-info { padding: 9px 8px; }
-        .card-subtext { font-size: 0.8em; margin-bottom: 5px; font-weight: bold; color: var(--theme-color); }
+        .card-subtext { font-size: 0.8em; margin-bottom: 5px; font-weight: bold; color: var(--theme-color); line-height: 1.6; }
+        .card-move-cost { font-size: 0.88em; color: #aaa; font-weight: normal; letter-spacing: 1px; }
+        .card-minutes   { font-size: 0.88em; color: #aaa; font-weight: normal; }
         .card-name { font-weight: bold; font-size: 0.75em; height: 30px; overflow: hidden; color: #ccc; line-height: 1.4; }
         .card-status { font-size: 0.68em; margin-top: 5px; letter-spacing: 1px; }
         .s-active  { color: var(--shine-antimatter); }
@@ -702,8 +704,12 @@ const RARITY_BONUS = {
     "epic": 7, "rare": 3, "common": 1, "abundant": 1
 };
 const WARLORD_OVERRIDE = {
-    "Exo-Colonel": 6,
-    "Supremacy Warden": 47
+    "Tactician": 1, "Exo-Colonel": 6, "Warfare Architect": 14,
+    "Overlord": 24, "Supremacy Warden": 47, "Warmaster": 75
+};
+const RARITY_COLORS = {
+    "common": "#aaa", "uncommon": "#4cbb6e", "rare": "#0088ff",
+    "epic": "#bc13fe", "legendary": "#ffaa00", "mythic": "#ff0055", "mythical": "#ff0055"
 };
 const SUPPLY_KEYWORDS = ["decaffeinated", "boar", "ration", "battery", "stimpack", "coffee", "booster"];
 const BANNED_KEYWORDS = [
@@ -836,19 +842,27 @@ function processData(data) {
         // Name exclusions
         if (BANNED_KEYWORDS.some(kw => name.includes(kw))) return;
 
+        const isPD   = collection === "planetdefnft";
         const rarity = (d.rarity || td.rarity || "common").toLowerCase();
         const shine  = (d.shine  || td.shine  || "stone").toLowerCase();
         const mult   = SHINE_MULT[shine]   || 1;
         const bonus  = RARITY_BONUS[rarity] || 1;
 
+        // AW NFTs get rarity+shine formula; PD NFTs use raw stats as-is
+        const baseAtk = parseFloat(d.attack  ?? td.attack  ?? 0);
+        const baseDef = parseFloat(d.defense ?? td.defense ?? 0);
+        const atk = isPD ? baseAtk : (baseAtk + bonus) * mult;
+        const def = isPD ? baseDef : (baseDef + bonus) * mult;
+
         const obj = {
             name:     nft.name,
-            rarity, shine,
+            rarity, shine, isPD,
             img:      d.img || td.img || null,
             active:   false,
             asset_id: nft.asset_id,
-            atk: (parseFloat(d.attack   ?? td.attack   ?? 0) + bonus) * mult,
-            def: (parseFloat(d.defense  ?? td.defense  ?? 0) + bonus) * mult,
+            atk, def,
+            moveCost:     isPD  ? (parseFloat(d.move_cost     ?? td.move_cost     ?? 0) || null) : null,
+            minutesAdded: !isPD ? (parseFloat(d.ease_of_use   ?? td.ease_of_use   ?? 0) || null) : null,
         };
 
         // PD Equipment — forge-gated
@@ -876,7 +890,7 @@ function processData(data) {
             obj.active = true;
             faces.push(obj);
         } else {
-            if (obj.atk === bonus * mult && obj.def === bonus * mult) return; // zero base stats
+            if (!isPD && obj.atk === bonus * mult && obj.def === bonus * mult) return; // zero base AW stats
             if (schema.includes('arms')) arms.push(obj);
             else crew.push(obj);
         }
@@ -1002,7 +1016,7 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
     // Group identical cards
     const groups = {};
     list.forEach(item => {
-        const key = `${item.name}||${item.shine}||${Math.round(item.atk)}||${Math.round(item.def)}||${Math.round(item.slots || 0)}||${item.active}`;
+        const key = `${item.name}||${item.isPD ? item.rarity : item.shine}||${Math.round(item.atk)}||${Math.round(item.def)}||${Math.round(item.slots || 0)}||${item.active}`;
         if (!groups[key]) groups[key] = { ...item, qty: 0 };
         groups[key].qty++;
     });
@@ -1045,15 +1059,26 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
 
     // ── Card renderer ──────────────────────────────────────────────────────
     function makeCard(item) {
-        const isActive   = activeMode === "always" || (activeMode === "partial" && item.active) /* "never" = always inactive */;
-        const shineVar   = `var(--shine-${item.shine}, #888)`;
+        const isActive   = activeMode === "always" || (activeMode === "partial" && item.active);
         const statusClass = activeMode === "always" ? "s-always" : isActive ? "s-active" : "s-reserve";
         const statusText  = activeMode === "always" ? "◈ ACTIVE"  : isActive ? "◈ OPERATIONAL" : "○ RESERVE";
 
+        // PD cards: rarity bar + rarity colour; AW cards: shine bar + shine colour
+        const barColor = item.isPD
+            ? (RARITY_COLORS[item.rarity] || '#888')
+            : `var(--shine-${item.shine}, #888)`;
+        const barLabel = item.isPD ? item.rarity.toUpperCase() : item.shine;
+
         let subText = "";
-        if      (type === "slots") subText = `${Math.floor(item.slots || 0)} SLOTS`;
-        else if (type === "stats") subText = `⚔ ${Math.floor(item.atk)} &nbsp;|&nbsp; 🛡 ${Math.floor(item.def)}`;
-        else                       subText = "ITEM";
+        if (type === "slots") {
+            subText = `${Math.floor(item.slots || 0)} SLOTS`;
+        } else if (type === "stats") {
+            subText = `⚔ ${Math.floor(item.atk)} &nbsp;|&nbsp; 🛡 ${Math.floor(item.def)}`;
+            if (item.moveCost)     subText += `<br><span class="card-move-cost">&gt;&gt; ${item.moveCost}</span>`;
+            if (item.minutesAdded) subText += `<br><span class="card-minutes">⏱ +${item.minutesAdded}m</span>`;
+        } else {
+            subText = "ITEM";
+        }
 
         const imgHash    = item.img;
         const imgSrc     = imgHash ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=160&h=160&output=webp&fit=contain` : null;
@@ -1061,11 +1086,11 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
 
         const card = document.createElement('div');
         card.className = `nft-card${!isActive ? ' inactive' : ''}`;
-        card.style.borderTopColor = shineVar;
+        card.style.borderTopColor = barColor;
         card.style.borderTopWidth = '4px';
         card.innerHTML = `
             ${item.qty > 1 ? `<div class="qty-badge">×${item.qty}</div>` : ''}
-            <div class="shine-bar" style="background:${shineVar}">${item.shine}</div>
+            <div class="shine-bar" style="background:${barColor}">${barLabel}</div>
             ${imgSrc
                 ? `<img src="${imgSrc}" onerror="this.onerror=null;this.src='${imgFallback}'" loading="lazy" alt="${item.name}">`
                 : `<div class="no-img">NO IMAGE</div>`}
