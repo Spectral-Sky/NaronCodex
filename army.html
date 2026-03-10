@@ -241,6 +241,7 @@
         .card-move-cost { font-size: 0.88em; color: #aaa; font-weight: normal; letter-spacing: 1px; }
         .card-minutes   { font-size: 0.88em; color: #aaa; font-weight: normal; }
         .card-name { font-weight: bold; font-size: 0.75em; height: 30px; overflow: hidden; color: #ccc; line-height: 1.4; }
+        .card-shine-label { font-size: 0.68em; margin-top: 3px; letter-spacing: 2px; font-weight: bold; }
         .card-status { font-size: 0.68em; margin-top: 5px; letter-spacing: 1px; }
         .s-active  { color: var(--shine-antimatter); }
         .s-reserve { color: #ff4444; }
@@ -745,7 +746,7 @@ const WARLORD_OVERRIDE = {
     "Overlord": 24, "Supremacy Warden": 47, "Warmaster": 75
 };
 const RARITY_COLORS = {
-    "common": "#aaa", "uncommon": "#4cbb6e", "rare": "#0088ff",
+    "abundant": "#aaa", "common": "#aaa", "uncommon": "#4cbb6e", "rare": "#0088ff",
     "epic": "#bc13fe", "legendary": "#ffaa00", "mythic": "#ff0055", "mythical": "#ff0055"
 };
 const SUPPLY_KEYWORDS = ["decaffeinated", "boar", "ration", "battery", "stimpack", "coffee", "booster"];
@@ -962,7 +963,7 @@ function render(faces, crew, arms, creatures, supplies, equipment, forgeEnabled)
     const root = document.getElementById('results');
     root.innerHTML = "";
     buildSection("LOGISTICS — FACES & WARLORDS",                 faces,     root, "always",                    "slots", false);
-    buildSection("ARMY — CREW & MERCENARY",                      crew,      root, "partial",                   "stats", false);
+    buildSection("ARMY — CREW & MERCENARIES",                      crew,      root, "partial",                   "stats", false);
 
     // Merge equipment into arms — equipment active only when forge is on
     const equipTagged = equipment.map(e => ({ ...e, active: forgeEnabled }));
@@ -970,7 +971,7 @@ function render(faces, crew, arms, creatures, supplies, equipment, forgeEnabled)
     buildSection(`ARSENAL — ARMS & EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, allArsenal, root, "partial", "stats", false);
 
     buildSection("CREATURES — PLANETARY DEFENSE",                creatures, root, "always",                    "stats", false);
-    buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "none");
+    buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "none", false);
 }
 
 // ── Equipment locked subsection ──────────────────────────────────────────────
@@ -1100,11 +1101,9 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
         const statusClass = activeMode === "always" ? "s-always" : isActive ? "s-active" : "s-reserve";
         const statusText  = activeMode === "always" ? "◈ ACTIVE"  : isActive ? "◈ OPERATIONAL" : "○ RESERVE";
 
-        // PD cards: rarity bar + rarity colour; AW cards: shine bar + shine colour
-        const barColor = item.isPD
-            ? (RARITY_COLORS[item.rarity] || '#888')
-            : `var(--shine-${item.shine}, #888)`;
-        const barLabel = item.isPD ? item.rarity.toUpperCase() : item.shine;
+        // Both PD and AW: rarity bar at top; AW cards also show shine text below name
+        const barColor = RARITY_COLORS[item.rarity] || '#888';
+        const barLabel = item.rarity.toUpperCase();
 
         let subText = "";
         if (type === "slots") {
@@ -1134,6 +1133,7 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
             <div class="card-info">
                 <div class="card-subtext">${subText}</div>
                 <div class="card-name">${item.name}</div>
+                ${!item.isPD && item.shine ? `<div class="card-shine-label" style="color:var(--shine-${item.shine},#888)">${item.shine.toUpperCase()}</div>` : ''}
                 ${showStatus ? `<div class="card-status ${statusClass}">${statusText}</div>` : ''}
             </div>`;
         return card;
