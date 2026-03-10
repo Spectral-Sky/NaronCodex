@@ -173,7 +173,7 @@
 
         /* ── Stat boxes ── */
         .stats-grid {
-            display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px;
+            display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px;
         }
         .stat-box {
             background: rgba(15,10,0,0.85); padding: 14px;
@@ -189,6 +189,7 @@
         .val-arms   { color: #aa88ff; }
         .val-atk    { color: var(--color-atk); }
         .val-def    { color: var(--color-def); }
+        .val-move   { color: #ffd700; }
 
         /* ── Section collapsibles ── */
         .section-header {
@@ -238,8 +239,8 @@
         }
         .card-info { padding: 9px 8px; }
         .card-subtext { font-size: 0.8em; margin-bottom: 5px; font-weight: bold; color: var(--theme-color); line-height: 1.6; }
-        .card-move-cost { font-size: 0.88em; color: #aaa; font-weight: normal; letter-spacing: 1px; }
-        .card-minutes   { font-size: 0.88em; color: #aaa; font-weight: normal; }
+        .card-move-cost { font-size: 0.88em; color: #ffd700; font-weight: bold; letter-spacing: 1px; }
+        .card-move-reduc { font-size: 0.88em; color: #ffd700; font-weight: bold; letter-spacing: 1px; }
         .card-name { font-weight: bold; font-size: 0.75em; height: 30px; overflow: hidden; color: #ccc; line-height: 1.4; }
         .card-shine-label { font-size: 0.68em; margin-top: 3px; letter-spacing: 2px; font-weight: bold; }
         .card-status { font-size: 0.68em; margin-top: 5px; letter-spacing: 1px; }
@@ -500,6 +501,7 @@
         <div class="stat-box">ARMS EQUIPPED<span class="stat-val val-arms" id="armsCount">—</span></div>
         <div class="stat-box">TOTAL ATTACK<span class="stat-val val-atk" id="totalAtk">—</span></div>
         <div class="stat-box">TOTAL DEFENSE<span class="stat-val val-def" id="totalDef">—</span></div>
+        <div class="stat-box">EST. MOVE TIME<span class="stat-val val-move" id="totalMoveTime">—</span></div>
     </div>
 
     <!-- Results -->
@@ -899,8 +901,10 @@ function processData(data) {
             active:   false,
             asset_id: nft.asset_id,
             atk, def,
-            moveCost:     isPD  ? (parseFloat(d.move_cost     ?? td.move_cost     ?? 0) || null) : null,
-            minutesAdded: !isPD ? (parseFloat(d.ease_of_use   ?? td.ease_of_use   ?? 0) || null) : null,
+            moveCost: isPD
+                ? (parseFloat(d.movecost ?? td.movecost ?? 0) || null)
+                : (parseFloat(d['Move Cost'] ?? td['Move Cost'] ?? 0) || null),
+            moveCostReduction: parseFloat(d.move_cost_reduction ?? td.move_cost_reduction ?? 0) || null,
         };
 
         // PD Equipment — forge-gated
@@ -949,11 +953,20 @@ function processData(data) {
     const finalAtk = [...activeCrew, ...activeArms, ...creatures].reduce((s, x) => s + x.atk, 0);
     const finalDef = [...activeCrew, ...activeArms, ...creatures].reduce((s, x) => s + x.def, 0);
 
-    document.getElementById('totalSlots').innerText = Math.floor(totalSlots);
-    document.getElementById('crewCount').innerText  = activeCrew.length;
-    document.getElementById('armsCount').innerText  = activeArms.length;
-    document.getElementById('totalAtk').innerText   = Math.floor(finalAtk).toLocaleString();
-    document.getElementById('totalDef').innerText   = Math.floor(finalDef).toLocaleString();
+    // Move time: 3h base + (10s × each active crew moveCost) − (10s × each supply moveCostReduction)
+    const BASE_MOVE_SECS = 3 * 60 * 60;
+    const crewMoveSecs   = activeCrew.reduce((s, c) => s + (c.moveCost || 0) * 10, 0);
+    const supplyRedSecs  = forgeEnabled ? supplies.reduce((s, c) => s + (c.moveCostReduction || 0) * 10, 0) : 0;
+    const totalMoveSecs  = Math.max(0, BASE_MOVE_SECS + crewMoveSecs - supplyRedSecs);
+    const moveH = Math.floor(totalMoveSecs / 3600);
+    const moveM = Math.floor((totalMoveSecs % 3600) / 60);
+
+    document.getElementById('totalSlots').innerText    = Math.floor(totalSlots);
+    document.getElementById('crewCount').innerText     = activeCrew.length;
+    document.getElementById('armsCount').innerText     = activeArms.length;
+    document.getElementById('totalAtk').innerText      = Math.floor(finalAtk).toLocaleString();
+    document.getElementById('totalDef').innerText      = Math.floor(finalDef).toLocaleString();
+    document.getElementById('totalMoveTime').innerText = `${moveH}h ${moveM}m`;
 
     render(faces, crew, arms, creatures, supplies, equipment, forgeEnabled);
 }
@@ -971,7 +984,7 @@ function render(faces, crew, arms, creatures, supplies, equipment, forgeEnabled)
     buildSection(`ARSENAL — ARMS & EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, allArsenal, root, "partial", "stats", false);
 
     buildSection("CREATURES — PLANETARY DEFENSE",                creatures, root, "always",                    "stats", false);
-    buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "none", false);
+    buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "reduction", false);
 }
 
 // ── Equipment locked subsection ──────────────────────────────────────────────
@@ -1109,9 +1122,12 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
         if (type === "slots") {
             subText = `${Math.floor(item.slots || 0)} SLOTS`;
         } else if (type === "stats") {
-            subText = `⚔ ${Math.floor(item.atk)} &nbsp;|&nbsp; 🛡 ${Math.floor(item.def)}`;
-            if (item.moveCost)     subText += `<br><span class="card-move-cost">&gt;&gt; ${item.moveCost}</span>`;
-            if (item.minutesAdded) subText += `<br><span class="card-minutes">⏱ +${item.minutesAdded}m</span>`;
+            subText = `<span style="color:#ff4444">⚔ ${Math.floor(item.atk)}</span> &nbsp;|&nbsp; <span style="color:#4488ff">🛡 ${Math.floor(item.def)}</span>`;
+            if (item.moveCost) subText += `<br><span class="card-move-cost">&gt;&gt; ${item.moveCost}</span>`;
+        } else if (type === "reduction") {
+            subText = item.moveCostReduction
+                ? `<span class="card-move-reduc">▼ -${item.moveCostReduction}</span>`
+                : `<span style="color:#555">— NO REDUCTION —</span>`;
         } else {
             subText = "ITEM";
         }
