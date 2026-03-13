@@ -199,6 +199,7 @@
             color: #000;
             box-shadow: var(--theme-shadow);
         }
+        .market-btn-logo { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
 
         /* --- SIDEBAR TOGGLE TAB --- */
         #deck-toggle-tab {
@@ -272,6 +273,7 @@
         .waffle td:nth-of-type(2) { width: 60px !important; min-width: 60px !important; padding: 0 !important; text-align: center !important; }
 
         tr:hover td { background-color: var(--theme-hover) !important; color: #fff !important; transition: background-color 0.1s; }
+        tr:hover td.live-header { background-color: var(--theme-dark) !important; color: var(--theme-color) !important; }
         .live-cell { text-align: center; font-weight: bold; color: #666; font-family: monospace; }
         .waffle img { height: 52px !important; width: auto !important; display: block; margin: 0 auto; object-fit: contain !important; border: none !important; cursor: pointer; }
 
@@ -390,10 +392,10 @@
         <div class="intel-row"><span class="intel-label">SUGGESTED:</span><span id="intel-sugg" class="intel-val" style="color:var(--theme-color);">---</span></div>
         
         <div class="market-links">
-            <a id="lnk-atomic" target="_blank" class="market-link-btn">ATOMIC HUB</a>
-            <a id="lnk-nefty" target="_blank" class="market-link-btn">NEFTY BLOCKS</a>
-            <a id="lnk-hive" target="_blank" class="market-link-btn">NFT HIVE</a>
-            <a id="lnk-f12" target="_blank" class="market-link-btn">F12 KEY</a>
+            <a id="lnk-atomic" target="_blank" class="market-link-btn"><img src="atomicfavicon.ico" class="market-btn-logo" alt="">ATOMIC</a>
+            <a id="lnk-nefty" target="_blank" class="market-link-btn"><img src="https://resizer2.neftyblocks.com/?ipfs=https%3A%2F%2Fraw.githubusercontent.com%2Feoscafe%2Feos-airdrops%2Fmaster%2Flogos%2FNEFTY_296.png&width=100" class="market-btn-logo" alt="">NEFTY</a>
+            <a id="lnk-hive" target="_blank" class="market-link-btn"><img src="https://nfthive.io/favicon.ico" class="market-btn-logo" alt="">HIVE</a>
+            <a id="lnk-f12" target="_blank" class="market-link-btn"><img src="F12key_logoV2.png" class="market-btn-logo" alt="">F12 KEY</a>
         </div>
     </div>
 
