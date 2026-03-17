@@ -383,7 +383,9 @@ renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(window.devicePixelRatio);
 
 const scene  = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+// OrthographicCamera: no perspective distortion — spheres stay circular at all positions
+const FRUSTUM_H = 8; // world units visible vertically
+const camera = new THREE.OrthographicCamera(-1, 1, FRUSTUM_H / 2, -FRUSTUM_H / 2, 0.1, 100);
 camera.position.z = 8;
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
@@ -402,15 +404,17 @@ let   planets = [];
 // Wrapper.clientWidth is unaffected by renderer.setSize() so it's always correct.
 function applySize() {
     const w = wrapper.clientWidth;
-    camera.aspect = w / CANVAS_H;
+    const aspect = w / CANVAS_H;
+    camera.left   = -FRUSTUM_H * aspect / 2;
+    camera.right  =  FRUSTUM_H * aspect / 2;
+    camera.top    =  FRUSTUM_H / 2;
+    camera.bottom = -FRUSTUM_H / 2;
     camera.updateProjectionMatrix();
     renderer.setSize(w, CANVAS_H);
 }
 
 function computeSpacing() {
-    const vRad     = (camera.fov * Math.PI) / 180;
-    const visibleH = 2 * camera.position.z * Math.tan(vRad / 2);
-    const visibleW = visibleH * camera.aspect;
+    const visibleW = FRUSTUM_H * (wrapper.clientWidth / CANVAS_H);
     return (visibleW * 0.82) / (PLANET_NAMES.length - 1);
 }
 
@@ -492,9 +496,7 @@ function animate() {
     requestAnimationFrame(animate);
     // Sync renderer to actual display size every frame — fixes fullscreen stretch
     const w = wrapper.clientWidth;
-    if (w > 0 && (renderer.domElement.width !== Math.round(w * window.devicePixelRatio) || camera.aspect !== w / CANVAS_H)) {
-        camera.aspect = w / CANVAS_H;
-        camera.updateProjectionMatrix();
+    if (w > 0 && renderer.domElement.width !== Math.round(w * window.devicePixelRatio)) {
         renderer.setSize(w, CANVAS_H);
         placePlanets(computeSpacing());
     }
