@@ -187,7 +187,7 @@
             padding: 6px 10px !important; vertical-align: middle; max-width: 160px;
             white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis;
             font-family: 'Courier New', Courier, monospace !important; font-size: 0.9em !important;
-            color: #d0d0d0 !important; height: 64px;
+            color: #d0d0d0 !important;
         }
         td:first-of-type { border-left: var(--theme-border) !important; }
         tr:hover td { background-color: var(--theme-hover) !important; color: #fff !important; transition: background-color 0.1s; }
@@ -206,58 +206,6 @@
             display: inline-block; transition: all 0.2s; font-family: monospace; text-transform: uppercase;
         }
         .market-link-btn:hover { background: var(--theme-color); color: #000; box-shadow: var(--theme-shadow); }
-
-        /* --- EXPAND SUB-TABLE --- */
-        .expand-row > td { padding: 0 !important; border-bottom: none !important; border-right: none !important; border-left: none !important; }
-        .sub-table-wrap { display: none; border-left: 3px solid var(--theme-color); background: rgba(0,5,2,0.9); overflow-x: auto; }
-        .sub-table-wrap.open { display: block; }
-        .expand-btn { background: none; border: none; color: var(--theme-color); font-size: 1.1em; padding: 0 6px; line-height: 1; transition: transform 0.2s; cursor: crosshair !important; }
-        .expand-btn.open { transform: rotate(90deg); display: inline-block; }
-        .sub-table { width: 100%; border-collapse: collapse; }
-        .sub-header { background: rgba(0,0,0,0.9) !important; color: var(--theme-color) !important; border-bottom: 1px solid var(--theme-color) !important; border-right: 1px solid #0f2d1a !important; padding: 5px 10px !important; text-align: center !important; font-family: 'Courier New', monospace !important; font-size: 0.8em !important; text-transform: uppercase !important; letter-spacing: 1px !important; white-space: nowrap !important; user-select: none; cursor: crosshair !important; }
-        .sub-header:hover { background: #000 !important; }
-        .sub-header::after { content: ' ↕'; color: rgba(255,255,255,0.2); font-size: 0.8em; }
-        .sub-row td { border-bottom: 1px solid #091a0f !important; border-right: 1px solid #091a0f !important; padding: 4px 10px !important; font-family: 'Courier New', monospace !important; font-size: 0.82em !important; color: #aaa !important; white-space: nowrap !important; }
-        .sub-row td:first-child { border-left: none !important; }
-        .sub-row:hover td { background: rgba(0,60,30,0.4) !important; color: #ccc !important; }
-        .sub-loading { color: #335; text-align: center; padding: 20px; letter-spacing: 2px; font-family: 'Courier New', monospace; font-size: 0.8em; }
-
-        /* --- MARKET DECK --- */
-        body.deck-open .grid-container { grid-template-columns: minmax(320px, 1fr) auto minmax(20px, 1fr); }
-        #preview-frame {
-            position: fixed; top: 130px; left: 20px; width: 275px; height: 370px;
-            border: 2px solid var(--theme-color); background: var(--theme-dark);
-            box-shadow: var(--theme-shadow); z-index: 3000; box-sizing: border-box;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: transform 0.4s, opacity 0.4s; transform: translateX(0); opacity: 1; pointer-events: none;
-        }
-        #preview-frame.minimized { transform: translateX(-320px); opacity: 0; }
-        #preview-img { width: 90%; height: auto; max-height: 76%; object-fit: contain; border: 1px solid #1a3320; display: none; }
-        #preview-status { color: var(--theme-color); font-size: 0.78em; letter-spacing: 2px; opacity: 0.6; }
-        #preview-label { margin-top: 8px; color: #fff; font-weight: bold; font-size: 0.82em; text-align: center; letter-spacing: 1px; width: 90%; border-top: 1px dashed #1a3320; padding-top: 6px; }
-        #market-frame {
-            position: fixed; top: 514px; left: 20px; width: 275px;
-            border: 2px solid var(--theme-color); background: #000; box-sizing: border-box;
-            box-shadow: var(--theme-shadow); z-index: 3000; padding: 10px; display: none;
-            transition: transform 0.4s, opacity 0.4s;
-        }
-        #market-frame.minimized { transform: translateX(-320px); opacity: 0; }
-        .intel-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #1a2a1a; padding: 5px 0; font-size: 0.88em; }
-        .intel-label { color: #666; font-family: 'Courier New', monospace; }
-        .intel-val { color: var(--theme-color); font-weight: bold; font-family: monospace; }
-        #intel-header { color: var(--theme-color); font-weight: bold; border-bottom: 1px solid #1a3320; margin-bottom: 8px; text-transform: uppercase; font-size: 0.82em; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .market-links { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; border-top: 1px solid #1a2a1a; padding-top: 10px; pointer-events: auto; }
-        #deck-toggle-tab {
-            position: fixed; top: 295px; left: 285px; z-index: 3100;
-            background: #000; border: 2px solid var(--theme-color); color: var(--theme-color);
-            padding: 10px 5px; font-family: monospace; font-size: 1.1em; cursor: pointer;
-            transition: background 0.2s, color 0.2s, transform 0.4s; writing-mode: vertical-rl;
-            letter-spacing: 2px; font-size: 0.75em;
-        }
-        #deck-toggle-tab:hover { background: var(--theme-color); color: #000; }
-        #deck-toggle-tab.minimized { transform: translateX(-265px); }
-        .price-highlight { color: var(--theme-color) !important; font-weight: bold !important; }
-        @media (max-width: 800px) { #deck-toggle-tab { display: none !important; } #preview-frame, #market-frame { display: none !important; } }
 
         /* --- FOOTER --- */
         .codex-footer {
@@ -308,31 +256,6 @@
 
 <div id="cursor-glow"></div>
 
-<!-- ══ MARKET DECK ═══════════════════════════════════════════════════════════ -->
-<div id="deck-toggle-tab" onclick="toggleDeck()">◀ DECK</div>
-
-<div id="preview-frame">
-    <div id="preview-status">SELECT LAND</div>
-    <img id="preview-img" src="" alt="LAND PREVIEW">
-    <div id="preview-label">
-        <span id="label-name" style="display:block;">—</span>
-        <span id="label-id" style="font-size:0.7em;color:#666;display:block;"></span>
-    </div>
-</div>
-
-<div id="market-frame">
-    <div id="intel-header">MARKET INTEL</div>
-    <div class="intel-row"><span class="intel-label">FLOOR PRICE:</span><span id="intel-floor" class="intel-val">---</span></div>
-    <div class="intel-row"><span class="intel-label">LAST SOLD:</span><span id="intel-last" class="intel-val">---</span></div>
-    <div class="intel-row"><span class="intel-label">SUGGESTED:</span><span id="intel-sugg" class="intel-val">---</span></div>
-    <div class="market-links">
-        <a id="lnk-atomic" target="_blank" class="market-link-btn">ATOMIC</a>
-        <a id="lnk-nefty"  target="_blank" class="market-link-btn">NEFTY</a>
-        <a id="lnk-hive"   target="_blank" class="market-link-btn">HIVE</a>
-        <a id="lnk-f12"    target="_blank" class="market-link-btn">F12 KEY</a>
-    </div>
-</div>
-
 <!-- ══ TOP BUN ════════════════════════════════════════════════════════════════ -->
 
 <header class="global-header">
@@ -345,7 +268,7 @@
         <a href="/arms.worlds.html"  class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">ARMS</a>
         <a href="/tools.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">TOOLS</a>
         <a href="/faces.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">FACES</a>
-        <a href="/land.worlds.html"  class="nav-btn active"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">LAND</a>
+        <a href="/lands"  class="nav-btn active"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">LAND</a>
         <a href="/pd.worlds.html"    class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD UNITS</a>
         <a href="/pd.materials.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD MATS</a>
         <a href="/army.html" class="nav-btn">&#9876; ARMY</a>
@@ -360,7 +283,7 @@
     <a href="/arms.worlds.html"  class="nav-btn">ARMS</a>
     <a href="/tools.worlds.html" class="nav-btn">TOOLS</a>
     <a href="/faces.worlds.html" class="nav-btn">FACES</a>
-    <a href="/land.worlds.html"  class="nav-btn active">LAND</a>
+    <a href="/lands"  class="nav-btn active">LAND</a>
     <a href="/pd.worlds.html"    class="nav-btn">PD UNITS</a>
     <a href="/pd.materials.html" class="nav-btn">PD MATS</a>
     <a href="/army.html"         class="nav-btn">&#9876; ARMY</a>
@@ -374,7 +297,6 @@
             <button class="cyber-btn" onclick="adjustFont(1)">A+</button>
             <button class="cyber-btn" onclick="adjustFont(-1)">A-</button>
             <input type="text" id="searchInput" oninput="filterTable()" placeholder="SEARCH...">
-            <button class="cyber-btn" id="scan-btn" onclick="scanAllPrices(this)">[ SCAN PRICES ]</button>
         </div>
         <div id="theme-panel">
             <div class="theme-opt" style="background:#00cc66;" onclick="setTheme('#00cc66','#051a0d')" title="Alien Green"></div>
@@ -389,7 +311,7 @@
     </div>
     <div style="text-align:right;">
         <h1>LAND.WORLDS</h1>
-        <div id="status" style="font-size:0.7em;color:#666;margin-top:5px;">SCANNING...</div>
+        <div id="status" style="font-size:0.7em;color:#666;margin-top:5px;">CONNECT WALLET TO LOAD</div>
     </div>
 </div>
 
@@ -410,21 +332,19 @@
 <div class="grid-container">
     <table id="land-table" class="waffle" cellspacing="0" cellpadding="0">
         <thead><tr>
-            <th class="live-header" style="width:30px;padding:8px 4px!important;"></th>
-            <th class="live-header" onclick="sortBy('template_id')">TPL ID</th>
-            <th class="live-header">IMAGE</th>
+            <th class="live-header" onclick="sortBy('asset_id')">ASSET ID</th>
             <th class="live-header" onclick="sortBy('planet')">PLANET</th>
-            <th class="live-header" onclick="sortBy('terrain')">TYPE</th>
+            <th class="live-header" onclick="sortBy('name')">NAME</th>
+            <th class="live-header" onclick="sortBy('land_type')">TYPE</th>
             <th class="live-header" onclick="sortBy('rarity')">RARITY</th>
-            <th class="live-header" onclick="sortBy('ease')">EASE / MINE PWR</th>
-            <th class="live-header" onclick="sortBy('luck')">LUCK / NFT PTS</th>
-            <th class="live-header" onclick="sortBy('delay')">DELAY</th>
-            <th class="live-header" onclick="sortBy('issued')">ISSUED</th>
-            <th class="live-header" onclick="sortBy('floor')">FLOOR (WAX)</th>
-            <th class="live-header" onclick="sortBy('last')">LAST SALE</th>
+            <th class="live-header" onclick="sortBy('tlm')">TLM MULT</th>
+            <th class="live-header" onclick="sortBy('nft')">NFT MULT</th>
+            <th class="live-header" onclick="sortBy('comm')">COMM %</th>
+            <th class="live-header">COORDS</th>
+            <th class="live-header">MARKET</th>
         </tr></thead>
         <tbody id="land-tbody">
-            <tr><td colspan="12" style="text-align:center;color:#335;padding:50px;letter-spacing:2px;">SCANNING...</td></tr>
+            <tr><td colspan="10" style="text-align:center;color:#335;padding:50px;letter-spacing:2px;">CONNECT WALLET TO LOAD</td></tr>
         </tbody>
     </table>
 
@@ -463,9 +383,7 @@ renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(window.devicePixelRatio);
 
 const scene  = new THREE.Scene();
-// OrthographicCamera: no perspective distortion — spheres stay circular at all positions
-const FRUSTUM_H = 8; // world units visible vertically
-const camera = new THREE.OrthographicCamera(-1, 1, FRUSTUM_H / 2, -FRUSTUM_H / 2, 0.1, 100);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
 camera.position.z = 8;
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
@@ -484,17 +402,15 @@ let   planets = [];
 // Wrapper.clientWidth is unaffected by renderer.setSize() so it's always correct.
 function applySize() {
     const w = wrapper.clientWidth;
-    const aspect = w / CANVAS_H;
-    camera.left   = -FRUSTUM_H * aspect / 2;
-    camera.right  =  FRUSTUM_H * aspect / 2;
-    camera.top    =  FRUSTUM_H / 2;
-    camera.bottom = -FRUSTUM_H / 2;
+    camera.aspect = w / CANVAS_H;
     camera.updateProjectionMatrix();
     renderer.setSize(w, CANVAS_H);
 }
 
 function computeSpacing() {
-    const visibleW = FRUSTUM_H * (wrapper.clientWidth / CANVAS_H);
+    const vRad     = (camera.fov * Math.PI) / 180;
+    const visibleH = 2 * camera.position.z * Math.tan(vRad / 2);
+    const visibleW = visibleH * camera.aspect;
     return (visibleW * 0.82) / (PLANET_NAMES.length - 1);
 }
 
@@ -561,22 +477,20 @@ canvas.addEventListener('pointerdown', e => {
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObjects(planets);
     if (hits.length > 0) {
-        spinPlanet(hits[0].object);
+        const p = hits[0].object;
+        p.userData.clickCount++;
+        const boost = p.userData.clickCount > 8 ? 50 : BOOST_PER_CLICK;
+        p.userData.speedMultiplier = Math.min(p.userData.speedMultiplier + boost, MAX_MULTIPLIER);
+        togglePlanetFilter(p.name);
     }
 });
-
-function spinPlanet(p) {
-    p.userData.clickCount++;
-    const boost = p.userData.clickCount > 8 ? 50 : BOOST_PER_CLICK;
-    p.userData.speedMultiplier = Math.min(p.userData.speedMultiplier + boost, MAX_MULTIPLIER);
-}
 
 // ─── ANIMATION ───────────────────────────────────────────────────────────────
 function animate() {
     requestAnimationFrame(animate);
     // Sync renderer to actual display size every frame — fixes fullscreen stretch
     const w = wrapper.clientWidth;
-    if (w > 0 && renderer.domElement.width !== Math.round(w * window.devicePixelRatio)) {
+    if (w > 0 && (renderer.domElement.width !== Math.round(w * window.devicePixelRatio) || camera.aspect !== w / CANVAS_H)) {
         camera.aspect = w / CANVAS_H;
         camera.updateProjectionMatrix();
         renderer.setSize(w, CANVAS_H);
@@ -601,220 +515,29 @@ function togglePlanetFilter(name) {
     } else {
         activePlanets.add(name);   el?.classList.add('active');
     }
-    renderTemplateTable();
+    renderTable();
 }
 window.togglePlanetFilter = togglePlanetFilter;
-labelEls.forEach(el => el.addEventListener('click', () => {
-    const planet = planets.find(p => p.name === el.dataset.planet);
-    if (planet) spinPlanet(planet);
-    togglePlanetFilter(el.dataset.planet);
-}));
+labelEls.forEach(el => el.addEventListener('click', () => togglePlanetFilter(el.dataset.planet)));
 
 // ─── TABLE STATE ─────────────────────────────────────────────────────────────
-let allTemplates  = [];
-let tplSortCol    = 'planet';
-let tplSortDir    = 1;
-const RARITY_ORDER  = ['Abundant','Common','Rare','Epic','Legendary'];
-const PLANETS_LIST  = ['eyeke','kavian','magor','naron','neri','veles'];
-
-const assetCache     = new Map();
-const assetSortState = new Map();
-const priceCache     = new Map();  // template_id → { floor, last, sugg }
-const currentSubImg  = {};         // template_id → ipfs hash (for sub-row clicks)
-
-// ─── MARKET DECK CONFIG ───────────────────────────────────────────────────────
-const SALES_BASE    = 'https://wax.api.atomicassets.io/atomicmarket/v1/sales/templates';
-const HISTORY_BASE  = 'https://wax.api.atomicassets.io/atomicmarket/v2/sales';
-const MARKET_LINKS  = {
-    atomic: id => `https://wax.atomichub.io/market?collection_name=alien.worlds&order=asc&sort=price&symbol=WAX&template_id=${id}`,
-    nefty:  id => `https://neftyblocks.com/templates/alien.worlds/${id}`,
-    hive:   id => `https://nfthive.io/market?collection=alien.worlds&order=asc&sort=price&template_id=${id}`,
-    f12:    id => `https://f12key.eu/collection/alien.worlds/templates/${id}`,
-};
-const ASSET_LINKS = {
-    atomic: id => `https://wax.atomichub.io/explorer/asset/wax-mainnet/${id}`,
-    nefty:  id => `https://neftyblocks.com/assets/${id}`,
-    hive:   id => `https://nfthive.io/asset/${id}`,
-    f12:    id => `https://f12key.eu/asset/${id}`,
-};
-
-let isDeckOpen = false;
-
-window.toggleDeck = () => {
-    isDeckOpen = !isDeckOpen;
-    const tab = document.getElementById('deck-toggle-tab');
-    const pre = document.getElementById('preview-frame');
-    const mkt = document.getElementById('market-frame');
-    if (isDeckOpen) {
-        document.body.classList.add('deck-open');
-        pre.classList.remove('minimized');
-        if (mkt.dataset.shown === '1') mkt.classList.remove('minimized');
-        tab.textContent = '◀ DECK';
-    } else {
-        document.body.classList.remove('deck-open');
-        pre.classList.add('minimized');
-        mkt.classList.add('minimized');
-        tab.textContent = '▶ DECK';
-    }
-};
-
-function showPreview(imgHash, labelText, subLabel) {
-    const img   = document.getElementById('preview-img');
-    const stat  = document.getElementById('preview-status');
-    const name  = document.getElementById('label-name');
-    const idlbl = document.getElementById('label-id');
-    if (imgHash) {
-        img.src = `https://ipfs.io/ipfs/${imgHash}`;
-        img.style.display = 'block'; stat.style.display = 'none';
-    } else {
-        img.style.display = 'none'; stat.style.display = 'block'; stat.textContent = 'NO IMAGE';
-    }
-    name.textContent  = labelText  || '—';
-    idlbl.textContent = subLabel   || '';
-    if (!isDeckOpen) {
-        isDeckOpen = true;
-        document.body.classList.add('deck-open');
-        document.getElementById('preview-frame').classList.remove('minimized');
-        document.getElementById('deck-toggle-tab').textContent = '◀ DECK';
-    }
-}
-
-function updateMarketLinks(templateId) {
-    document.getElementById('lnk-atomic').href = MARKET_LINKS.atomic(templateId);
-    document.getElementById('lnk-nefty').href  = MARKET_LINKS.nefty(templateId);
-    document.getElementById('lnk-hive').href   = MARKET_LINKS.hive(templateId);
-    document.getElementById('lnk-f12').href    = MARKET_LINKS.f12(templateId);
-    const mkt = document.getElementById('market-frame');
-    mkt.classList.remove('minimized');
-    mkt.dataset.shown = '1';
-    mkt.style.display = 'block';
-}
-
-function updateAssetLinks(assetId) {
-    document.getElementById('lnk-atomic').href = ASSET_LINKS.atomic(assetId);
-    document.getElementById('lnk-nefty').href  = ASSET_LINKS.nefty(assetId);
-    document.getElementById('lnk-hive').href   = ASSET_LINKS.hive(assetId);
-    document.getElementById('lnk-f12').href    = ASSET_LINKS.f12(assetId);
-    const mkt = document.getElementById('market-frame');
-    mkt.classList.remove('minimized');
-    mkt.dataset.shown = '1';
-    mkt.style.display = 'block';
-}
-
-async function fetchTemplatePrice(templateId) {
-    if (priceCache.has(templateId)) {
-        refreshPriceCells(templateId);
-        return priceCache.get(templateId);
-    }
-    const floor$ = document.getElementById(`floor-${templateId}`);
-    const last$  = document.getElementById(`last-${templateId}`);
-    if (floor$) floor$.innerHTML = '<span style="color:#555">…</span>';
-    if (last$)  last$.innerHTML  = '<span style="color:#555">…</span>';
-
-    const intel = { floor: '—', last: '—', sugg: '—' };
-    try {
-        const r = await fetch(`${SALES_BASE}?symbol=WAX&state=1&template_id=${templateId}&limit=1&sort=price&order=asc`);
-        const d = await r.json();
-        if (d.success && d.data?.length) {
-            const p = d.data[0].price;
-            const v = parseInt(p.amount) / Math.pow(10, p.token_precision);
-            intel.floor = v.toFixed(2);
-            if (d.data[0].assets?.[0]?.prices?.[0]?.suggested_median) {
-                const s = parseInt(d.data[0].assets[0].prices[0].suggested_median) / Math.pow(10, p.token_precision);
-                intel.sugg = s.toFixed(2);
-            }
-        }
-    } catch(e) { intel.floor = 'ERR'; }
-    try {
-        const r = await fetch(`${HISTORY_BASE}?state=3&template_id=${templateId}&page=1&limit=1&order=desc&sort=updated&symbol=WAX`);
-        const d = await r.json();
-        if (d.data?.length) {
-            const p = d.data[0].price;
-            intel.last = (parseInt(p.amount) / Math.pow(10, p.token_precision)).toFixed(2);
-        }
-    } catch(e) {}
-    priceCache.set(templateId, intel);
-    refreshPriceCells(templateId);
-    return intel;
-}
-
-function refreshPriceCells(templateId) {
-    const intel = priceCache.get(templateId);
-    if (!intel) return;
-    const floor$ = document.getElementById(`floor-${templateId}`);
-    const last$  = document.getElementById(`last-${templateId}`);
-    if (floor$) floor$.innerHTML = intel.floor !== '—' ? `<span class="price-highlight">${intel.floor}</span>` : '<span style="color:#444">—</span>';
-    if (last$)  last$.innerHTML  = intel.last  !== '—' ? `<span class="price-highlight">${intel.last}</span>`  : '<span style="color:#444">—</span>';
-}
-
-function showIntelPanel(header, intel) {
-    document.getElementById('intel-header').textContent = header;
-    document.getElementById('intel-floor').textContent  = intel.floor !== '—' ? intel.floor + ' WAX' : 'NONE';
-    document.getElementById('intel-last').textContent   = intel.last  !== '—' ? intel.last  + ' WAX' : 'NONE';
-    document.getElementById('intel-sugg').textContent   = intel.sugg  !== '—' ? intel.sugg  + ' WAX' : '---';
-}
-
-window.scanAllPrices = async (btn) => {
-    if (btn) { btn.textContent = '[ SCANNING... ]'; btn.disabled = true; }
-    const uncached = allTemplates.filter(t => !priceCache.has(t.template_id));
-    const BATCH = 4;
-    for (let i = 0; i < uncached.length; i += BATCH) {
-        const batch = uncached.slice(i, i + BATCH);
-        await Promise.all(batch.map(t => fetchTemplatePrice(t.template_id)));
-        if (btn) btn.textContent = `[ SCANNING ${i + batch.length}/${uncached.length} ]`;
-    }
-    if (btn) { btn.textContent = '[ PRICES LOADED ]'; btn.disabled = false; }
-};
-
-window.onTplRowClick = async (e, templateId, imgHash, label) => {
-    if (e.target.closest('.expand-btn')) return;
-    currentSubImg[templateId] = imgHash;
-    showPreview(imgHash, label, `TPL #${templateId}`);
-    updateMarketLinks(templateId);
-    document.getElementById('intel-header').textContent = `FETCHING...`;
-    document.getElementById('intel-floor').textContent = '…';
-    document.getElementById('intel-last').textContent  = '…';
-    document.getElementById('intel-sugg').textContent  = '…';
-    const intel = await fetchTemplatePrice(templateId);
-    showIntelPanel(`LAND TPL ${templateId}`, intel);
-    // check deal
-    if (intel.floor !== '—' && intel.sugg !== '—' && parseFloat(intel.floor) < parseFloat(intel.sugg) * 0.80) {
-        document.getElementById('intel-floor').innerHTML =
-            intel.floor + ' WAX <span style="color:var(--theme-color);font-weight:bold">[ DEAL! ]</span>';
-    }
-};
-
-window.onAssetRowClick = async (assetId, imgHash, owner) => {
-    showPreview(imgHash, `ASSET #${assetId}`, owner !== '(burned)' ? `Owner: ${owner}` : '(burned)');
-    updateAssetLinks(assetId);
-    document.getElementById('intel-header').textContent = `ASSET ${assetId}`;
-    document.getElementById('intel-floor').textContent = 'CHECKING...';
-    document.getElementById('intel-last').textContent  = '—';
-    document.getElementById('intel-sugg').textContent  = '—';
-    // Check if asset currently listed
-    try {
-        const r = await fetch(`${HISTORY_BASE.replace('/v2/sales','/v2/sales')}?state=1&asset_id=${assetId}&symbol=WAX&limit=1`);
-        const d = await r.json();
-        if (d.data?.length) {
-            const p = d.data[0].price;
-            const v = (parseInt(p.amount) / Math.pow(10, p.token_precision)).toFixed(2);
-            document.getElementById('intel-floor').textContent = v + ' WAX (LISTED)';
-        } else { document.getElementById('intel-floor').textContent = 'NOT LISTED'; }
-    } catch(e) { document.getElementById('intel-floor').textContent = 'ERR'; }
-};
+let allLands   = [];
+let sortColumn = 'planet';
+let sortDir    = 1;
+const RARITY_ORDER = ['Abundant','Common','Rare','Epic','Legendary'];
 
 window.sortBy = col => {
-    tplSortDir = tplSortCol === col ? tplSortDir * -1 : 1;
-    tplSortCol = col;
-    renderTemplateTable();
+    sortDir = sortColumn === col ? sortDir * -1 : 1;
+    sortColumn = col;
+    renderTable();
 };
 window.clearFilters = () => {
     activePlanets.clear();
     labelEls.forEach(el => el.classList.remove('active'));
     document.getElementById('searchInput').value = '';
-    renderTemplateTable();
+    renderTable();
 };
-window.filterTable  = () => renderTemplateTable();
+window.filterTable  = () => renderTable();
 window.adjustFont   = delta => {
     const cells = document.querySelectorAll('td, th');
     let cur = parseFloat(cells[0]?.style.fontSize) || 0.9;
@@ -822,263 +545,124 @@ window.adjustFont   = delta => {
     cells.forEach(c => c.style.setProperty('font-size', cur + 'em', 'important'));
 };
 
-function getSortVal(t, col) {
-    if (col === 'rarity') return RARITY_ORDER.indexOf(t.rarity);
-    if (['ease','luck','delay','issued','template_id'].includes(col)) return parseFloat(t[col]) || 0;
-    return t[col] || '';
+function getSortVal(land, col) {
+    if (col === 'rarity') return RARITY_ORDER.indexOf(land.rarity);
+    if (['tlm','nft','comm'].includes(col)) return parseFloat(land[col]) || 0;
+    return land[col] || '';
 }
 
-// ─── TEMPLATE TABLE RENDER ────────────────────────────────────────────────────
-function renderTemplateTable() {
+// ─── TABLE RENDER ─────────────────────────────────────────────────────────────
+function renderTable() {
     const tbody  = document.getElementById('land-tbody');
     const search = document.getElementById('searchInput').value.toLowerCase();
-    let rows = allTemplates.filter(t => {
-        if (activePlanets.size > 0 && !activePlanets.has(t.planet)) return false;
-        if (search && !JSON.stringify(t).toLowerCase().includes(search)) return false;
+    let rows = allLands.filter(land => {
+        if (activePlanets.size > 0 && !activePlanets.has(land.planet)) return false;
+        if (search && !JSON.stringify(land).toLowerCase().includes(search)) return false;
         return true;
     });
     rows.sort((a, b) => {
-        const av = getSortVal(a, tplSortCol), bv = getSortVal(b, tplSortCol);
-        if (typeof av === 'number') return (av - bv) * tplSortDir;
-        return String(av).localeCompare(String(bv)) * tplSortDir;
+        const av = getSortVal(a, sortColumn), bv = getSortVal(b, sortColumn);
+        if (typeof av === 'number') return (av - bv) * sortDir;
+        return String(av).localeCompare(String(bv)) * sortDir;
     });
     if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:#335;padding:50px;letter-spacing:2px;">${allTemplates.length ? 'NO TEMPLATES MATCH FILTER' : 'SCANNING...'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#335;padding:50px;letter-spacing:2px;">${allLands.length ? 'NO LANDS MATCH FILTER' : 'CONNECT WALLET TO LOAD'}</td></tr>`;
         return;
     }
     const rar = r => r ? r.toLowerCase() : '';
-    tbody.innerHTML = rows.map(t => {
-        const pc = priceCache.get(t.template_id);
-        const floorCell = pc ? `<span class="price-highlight">${pc.floor}</span>` : '<span style="color:#444">—</span>';
-        const lastCell  = pc ? `<span class="price-highlight">${pc.last}</span>`  : '<span style="color:#444">—</span>';
-        return `
-        <tr class="tpl-row" style="cursor:pointer" onclick="onTplRowClick(event,'${t.template_id}','${t.img}','${(t.terrain+' on '+t.planet).replace(/'/g,"\\'")}')">
-            <td style="text-align:center;padding:4px!important" onclick="event.stopPropagation()"><button class="expand-btn" onclick="toggleExpand('${t.template_id}',this)">▶</button></td>
-            <td style="color:#557;font-size:0.8em!important">${t.template_id}</td>
-            <td style="text-align:center;padding:4px!important">${t.img ? `<img src="https://ipfs.io/ipfs/${t.img}" style="height:56px;width:auto;max-width:64px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
-            <td style="font-weight:bold;text-transform:uppercase;letter-spacing:1px">${t.planet}</td>
-            <td>${t.terrain || '—'}</td>
-            <td class="tag-${rar(t.rarity)}">${t.rarity || '—'}</td>
-            <td style="text-align:right">${t.ease ?? '—'}</td>
-            <td style="text-align:right">${t.luck ?? '—'}</td>
-            <td style="text-align:right">${t.delay ?? '—'}</td>
-            <td style="text-align:right">${t.issued.toLocaleString()}</td>
-            <td style="text-align:right" id="floor-${t.template_id}">${floorCell}</td>
-            <td style="text-align:right" id="last-${t.template_id}">${lastCell}</td>
-        </tr>
-        <tr class="expand-row">
-            <td colspan="12"><div class="sub-table-wrap" id="sub-${t.template_id}"></div></td>
-        </tr>`;
-    }).join('');
+    tbody.innerHTML = rows.map(land => `<tr>
+        <td style="color:#557;font-size:0.8em!important">${land.asset_id}</td>
+        <td style="font-weight:bold;text-transform:uppercase;letter-spacing:1px">${land.planet}</td>
+        <td>${land.name || '—'}</td>
+        <td>${land.land_type || '—'}</td>
+        <td class="tag-${rar(land.rarity)}">${land.rarity || '—'}</td>
+        <td style="text-align:right">${land.tlm ?? '—'}</td>
+        <td style="text-align:right">${land.nft ?? '—'}</td>
+        <td style="text-align:right">${land.comm ?? '—'}</td>
+        <td style="color:#557;font-size:0.8em!important">${land.x !== undefined ? land.x+', '+land.y : '—'}</td>
+        <td><a class="market-link-btn" href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${land.asset_id}" target="_blank">ATH</a></td>
+    </tr>`).join('');
     document.getElementById('land-table').classList.add('system-ready');
 }
 
-// ─── TEMPLATE DATA FETCH ──────────────────────────────────────────────────────
-async function fetchTemplates() {
+// ─── DATA FETCH ───────────────────────────────────────────────────────────────
+async function fetchAllLands(account) {
     const status = document.getElementById('status');
-    const BASE   = 'https://wax.api.atomicassets.io/atomicassets/v1/templates';
+    const BASE   = 'https://wax.api.atomicassets.io/atomicassets/v1/assets';
     let page = 1, all = [];
     while (true) {
-        status.textContent = `LOADING TEMPLATES... (${all.length})`;
+        status.textContent = `LOADING... PAGE ${page}`;
         try {
-            const res  = await fetch(`${BASE}?collection_name=alien.worlds&schema_name=land.worlds&page=${page}&limit=100&order=asc&sort=created`);
+            const res  = await fetch(`${BASE}?owner=${encodeURIComponent(account)}&collection_name=alien.worlds&schema_name=land.worlds&limit=1000&page=${page}&_ts=${Date.now()}`);
             const json = await res.json();
             if (!json.success || !json.data?.length) break;
             all = all.concat(json.data);
-            if (json.data.length < 100) break;
+            if (json.data.length < 1000) break;
             page++;
         } catch(e) { status.textContent = `FETCH ERROR — ${e.message}`; console.error(e); break; }
     }
-    allTemplates = all.map(t => {
-        const imm = t.immutable_data || {};
-        const rawName = String(imm.name || '');
-        let planet = 'unknown', terrain = rawName;
-        for (const p of PLANETS_LIST) {
-            if (rawName.toLowerCase().includes(p)) {
-                planet = p;
-                terrain = rawName.replace(new RegExp(' on ' + p, 'i'), '').trim();
-                break;
-            }
-        }
+    // AW land immutable_data — note the typo "multilpler1/2" is in the original contract
+    allLands = all.map(asset => {
+        const d = Object.assign({}, asset.immutable_data || {}, asset.mutable_data || {});
         return {
-            template_id: t.template_id,
-            planet, terrain,
-            rarity: imm.rarity || '',
-            ease:   imm.ease   ?? '',
-            luck:   imm.luck   ?? '',
-            delay:  imm.delay  ?? '',
-            issued: Number(t.issued_supply || 0),
-            img:    imm.img || '',
+            asset_id:  asset.asset_id,
+            name:      asset.name || d.name || '',
+            planet:    (d.planet_name || '').toLowerCase(),
+            land_type: d.land_type || d.type || '',
+            rarity:    d.rarity || '',
+            tlm:       d.multilpler1 ?? d.multiplier1 ?? d.trm_multiplier  ?? undefined,
+            nft:       d.multilpler2 ?? d.multiplier2 ?? d.nft_multiplier  ?? undefined,
+            comm:      d.comm_rate   ?? d.commission  ?? undefined,
+            x: d.x, y: d.y,
         };
     });
-    status.textContent = `${allTemplates.length} LAND TEMPLATES`;
-    renderTemplateTable();
+    const n = allLands.length;
+    status.textContent = `${n} LAND${n !== 1 ? 'S' : ''} LOADED — ${account.toUpperCase()}`;
+    renderTable();
 }
-
-// ─── PER-TEMPLATE ASSET FETCH ─────────────────────────────────────────────────
-async function fetchAssetsForTemplate(templateId) {
-    if (assetCache.has(templateId)) return assetCache.get(templateId);
-    const BASE = 'https://wax.api.atomicassets.io/atomicassets/v1/assets';
-    let all = [];
-    for (const burned of [false, true]) {
-        let page = 1;
-        while (true) {
-            try {
-                const res  = await fetch(`${BASE}?collection_name=alien.worlds&template_id=${templateId}&burned=${burned}&page=${page}&limit=1000&order=asc&sort=asset_id`);
-                const json = await res.json();
-                if (!json.success || !json.data?.length) break;
-                all = all.concat(json.data);
-                if (json.data.length < 1000) break;
-                page++;
-            } catch(e) { break; }
-        }
-    }
-    const assets = all.map(asset => {
-        const unified = asset.data           || {};
-        const mut     = asset.mutable_data   || {};
-        const imm     = asset.immutable_data || {};
-        const tplImm  = asset.template?.immutable_data || {};
-        const rawRating = unified.landrating ?? mut.landrating;
-        return {
-            asset_id:    asset.asset_id,
-            owner:       asset.owner || '(burned)',
-            ease:        unified.ease       ?? tplImm.ease       ?? '—',
-            luck:        unified.luck       ?? tplImm.luck       ?? '—',
-            delay:       unified.delay      ?? tplImm.delay      ?? '—',
-            commission:  unified.commission ?? mut.commission     ?? '—',
-            x:           unified.x          ?? imm.x             ?? '—',
-            y:           unified.y          ?? imm.y             ?? '—',
-            open_slots:  unified.openslots  ?? mut.openslots     ?? '—',
-            land_rating: rawRating != null ? Math.round(Number(rawRating) / 10000) : null,
-            usedBoosts:  unified.UsedBoostsDay    ?? mut.UsedBoostsDay    ?? '—',
-            boostLast:   unified.BoostLastUsedDay ?? mut.BoostLastUsedDay ?? '—',
-        };
-    });
-    assetCache.set(templateId, assets);
-    return assets;
-}
-
-// ─── SUB-TABLE RENDER ─────────────────────────────────────────────────────────
-function renderSubTable(templateId, assets) {
-    const state = assetSortState.get(templateId) || { col: 'asset_id', dir: 1 };
-    const sorted = [...assets].sort((a, b) => {
-        let av = a[state.col] ?? '', bv = b[state.col] ?? '';
-        if (av === '—') av = state.dir > 0 ? Infinity : -Infinity;
-        if (bv === '—') bv = state.dir > 0 ? Infinity : -Infinity;
-        if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * state.dir;
-        return String(av).localeCompare(String(bv)) * state.dir;
-    });
-    const cols = [
-        { key: 'asset_id',    label: 'ASSET ID' },
-        { key: 'owner',       label: 'OWNER' },
-        { key: 'ease',        label: 'EASE' },
-        { key: 'luck',        label: 'LUCK' },
-        { key: 'delay',       label: 'DELAY' },
-        { key: 'commission',  label: 'COMM %' },
-        { key: 'x',           label: 'X' },
-        { key: 'y',           label: 'Y' },
-        { key: 'open_slots',  label: 'OPEN SLOTS' },
-        { key: 'land_rating', label: 'LAND RATING' },
-        { key: 'usedBoosts',  label: 'USED BOOSTS' },
-        { key: 'boostLast',   label: 'BOOST LAST' },
-    ];
-    const heads = cols.map(c =>
-        `<th class="sub-header" onclick="sortSubTable('${templateId}','${c.key}')">${c.label}</th>`
-    ).join('') + '<th class="sub-header">MARKET</th>';
-    const dataRows = sorted.map(a => {
-        const ownerCell = a.owner === '(burned)'
-            ? `<span style="color:#444">(burned)</span>`
-            : `<a href="https://wax.atomichub.io/explorer/account/${a.owner}" target="_blank" style="color:var(--theme-color);text-decoration:none" onclick="event.stopPropagation()">${a.owner}</a>`;
-        const ratingCell = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
-        const tplImg = currentSubImg[templateId] || '';
-        return `<tr class="sub-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${tplImg}','${a.owner}')">
-            <td style="color:#446;font-size:0.78em!important">${a.asset_id}</td>
-            <td>${ownerCell}</td>
-            <td style="text-align:right">${a.ease}</td>
-            <td style="text-align:right">${a.luck}</td>
-            <td style="text-align:right">${a.delay}</td>
-            <td style="text-align:right">${a.commission}</td>
-            <td style="text-align:right">${a.x}</td>
-            <td style="text-align:right">${a.y}</td>
-            <td style="text-align:right">${a.open_slots}</td>
-            <td style="text-align:right">${ratingCell}</td>
-            <td style="text-align:right">${a.usedBoosts}</td>
-            <td style="text-align:right">${a.boostLast}</td>
-            <td onclick="event.stopPropagation()"><a class="market-link-btn" href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${a.asset_id}" target="_blank">ATH</a></td>
-        </tr>`;
-    }).join('') || `<tr><td colspan="13" class="sub-loading">NO ASSETS FOUND</td></tr>`;
-    return `<table class="sub-table system-ready"><thead><tr>${heads}</tr></thead><tbody>${dataRows}</tbody></table>`;
-}
-
-window.sortSubTable = (templateId, col) => {
-    const state = assetSortState.get(templateId) || { col: 'asset_id', dir: 1 };
-    assetSortState.set(templateId, { col, dir: state.col === col ? state.dir * -1 : 1 });
-    const wrap = document.getElementById(`sub-${templateId}`);
-    if (wrap && assetCache.has(templateId)) wrap.innerHTML = renderSubTable(templateId, assetCache.get(templateId));
-};
-
-window.toggleExpand = async (templateId, btn) => {
-    const wrap = document.getElementById(`sub-${templateId}`);
-    if (wrap.classList.contains('open')) {
-        wrap.classList.remove('open'); btn.classList.remove('open'); return;
-    }
-    wrap.classList.add('open'); btn.classList.add('open');
-    // Ensure img hash is available for sub-row deck clicks
-    if (!currentSubImg[templateId]) {
-        const tpl = allTemplates.find(t => t.template_id === templateId);
-        if (tpl) currentSubImg[templateId] = tpl.img;
-    }
-    if (!assetCache.has(templateId)) {
-        wrap.innerHTML = `<div class="sub-loading">FETCHING ASSETS...</div>`;
-        const assets = await fetchAssetsForTemplate(templateId);
-        wrap.innerHTML = renderSubTable(templateId, assets);
-    } else {
-        wrap.innerHTML = renderSubTable(templateId, assetCache.get(templateId));
-    }
-};
 
 // ─── WALLET ───────────────────────────────────────────────────────────────────
-// Track wallet account separately — wax.userAccount is read-only in newer WaxJS
-let currentAccount = '';
-const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
+const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: '', tryAutoLogin: false });
 
 window.toggleWallet = async () => {
     const btn = document.getElementById('wallet-btn');
-    if (currentAccount) {
-        currentAccount = ''; localStorage.removeItem('naron_wallet');
+    if (wax.userAccount || localStorage.getItem('naron_wallet')) {
+        wax.userAccount = ''; localStorage.removeItem('naron_wallet');
         btn.innerText = '[ WAX LOGIN ]';
         btn.style.color = 'var(--theme-color)'; btn.style.borderColor = 'var(--theme-color)';
+        allLands = []; renderTable();
+        document.getElementById('status').textContent = 'CONNECT WALLET TO LOAD';
         return;
     }
     try {
         btn.innerText = '[ AUTHENTICATING... ]';
         const account = await wax.login();
-        currentAccount = account;
         localStorage.setItem('naron_wallet', account);
         updateWalletUI(account);
+        await fetchAllLands(account);
     } catch(e) { console.error(e); btn.innerText = '[ WAX LOGIN ]'; }
 };
 
 function updateWalletUI(accountName) {
     const btn = document.getElementById('wallet-btn');
-    if (btn) { btn.innerText = `[ ${accountName} ]`; btn.style.color = '#00ff00'; btn.style.borderColor = '#00ff00'; }
+    if (btn) { btn.innerText = `[ DISCONNECT: ${accountName} ]`; btn.style.color = '#00ff00'; btn.style.borderColor = '#00ff00'; }
 }
 function checkWalletState() {
     const saved = localStorage.getItem('naron_wallet');
-    if (saved) { currentAccount = saved; updateWalletUI(saved); }
+    if (saved) { wax.userAccount = saved; updateWalletUI(saved); fetchAllLands(saved); }
 }
 
 // ─── TIP ─────────────────────────────────────────────────────────────────────
 window.sendTip = async () => {
-    if (!currentAccount) {
-        try { const acct = await wax.login(); currentAccount = acct; localStorage.setItem('naron_wallet', acct); updateWalletUI(acct); }
+    if (!wax.userAccount) {
+        try { await wax.login(); localStorage.setItem('naron_wallet', wax.userAccount); checkWalletState(); }
         catch(e) { alert('Wallet connection required.'); return; }
     }
     try {
         const result = await wax.api.transact({
             actions: [{ account: 'alien.worlds', name: 'transfer',
-                authorization: [{ actor: currentAccount, permission: 'active' }],
-                data: { from: currentAccount, to: '1x1ci.wam', quantity: document.getElementById('tip-amount').value, memo: 'Naron Codex Tip' }
+                authorization: [{ actor: wax.userAccount, permission: 'active' }],
+                data: { from: wax.userAccount, to: '1x1ci.wam', quantity: document.getElementById('tip-amount').value, memo: 'Naron Codex Tip' }
             }]
         }, { blocksBehind: 3, expireSeconds: 30 });
         alert(`TRANSMISSION SUCCESSFUL.\n\nThank you for supporting Naron Codex!\nTransaction ID: ${result.transaction_id}`);
@@ -1142,7 +726,6 @@ document.getElementById('chest-modal-backdrop').addEventListener('click', functi
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     checkWalletState();
-    fetchTemplates();
     // Restore saved theme from localStorage (shared across all Naron Codex pages)
     const savedColor = localStorage.getItem('naron_theme_color');
     const savedDark  = localStorage.getItem('naron_theme_dark');
