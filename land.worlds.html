@@ -283,7 +283,7 @@
         <a href="/arms.worlds.html"  class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">ARMS</a>
         <a href="/tools.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">TOOLS</a>
         <a href="/faces.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">FACES</a>
-        <a href="/lands"  class="nav-btn active"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">LAND</a>
+        <a href="/land.worlds.html"  class="nav-btn active"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">LAND</a>
         <a href="/pd.worlds.html"    class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD UNITS</a>
         <a href="/pd.materials.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD MATS</a>
         <a href="/army.html" class="nav-btn">&#9876; ARMY</a>
@@ -298,7 +298,7 @@
     <a href="/arms.worlds.html"  class="nav-btn">ARMS</a>
     <a href="/tools.worlds.html" class="nav-btn">TOOLS</a>
     <a href="/faces.worlds.html" class="nav-btn">FACES</a>
-    <a href="/lands"  class="nav-btn active">LAND</a>
+    <a href="/land.worlds.html"  class="nav-btn active">LAND</a>
     <a href="/pd.worlds.html"    class="nav-btn">PD UNITS</a>
     <a href="/pd.materials.html" class="nav-btn">PD MATS</a>
     <a href="/army.html"         class="nav-btn">&#9876; ARMY</a>
@@ -512,6 +512,8 @@ function animate() {
     // Sync renderer to actual display size every frame — fixes fullscreen stretch
     const w = wrapper.clientWidth;
     if (w > 0 && renderer.domElement.width !== Math.round(w * window.devicePixelRatio)) {
+        camera.aspect = w / CANVAS_H;
+        camera.updateProjectionMatrix();
         renderer.setSize(w, CANVAS_H);
         placePlanets(computeSpacing());
     }
@@ -549,6 +551,7 @@ let tplSortCol    = 'planet';
 let tplSortDir    = 1;
 const RARITY_ORDER  = ['Abundant','Common','Rare','Epic','Legendary'];
 const PLANETS_LIST  = ['eyeke','kavian','magor','naron','neri','veles'];
+
 const assetCache     = new Map();
 const assetSortState = new Map();
 
@@ -598,15 +601,15 @@ function renderTemplateTable() {
     const rar = r => r ? r.toLowerCase() : '';
     tbody.innerHTML = rows.map(t => `
         <tr class="tpl-row">
-            <td style="text-align:center;padding:4px!important"><button class="expand-btn" onclick="toggleExpand('${t.template_id}',this)">&#9658;</button></td>
+            <td style="text-align:center;padding:4px!important"><button class="expand-btn" onclick="toggleExpand('${t.template_id}',this)">▶</button></td>
             <td style="color:#557;font-size:0.8em!important">${t.template_id}</td>
-            <td style="text-align:center;padding:4px!important">${t.img ? `<img src="https://ipfs.io/ipfs/${t.img}" style="width:38px;height:38px;object-fit:cover;border:1px solid #1a3320;" loading="lazy">` : '&mdash;'}</td>
+            <td style="text-align:center;padding:4px!important">${t.img ? `<img src="https://ipfs.io/ipfs/${t.img}" style="width:38px;height:38px;object-fit:cover;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
             <td style="font-weight:bold;text-transform:uppercase;letter-spacing:1px">${t.planet}</td>
-            <td>${t.terrain || '&mdash;'}</td>
-            <td class="tag-${rar(t.rarity)}">${t.rarity || '&mdash;'}</td>
-            <td style="text-align:right">${t.ease !== '' ? t.ease : '&mdash;'}</td>
-            <td style="text-align:right">${t.luck !== '' ? t.luck : '&mdash;'}</td>
-            <td style="text-align:right">${t.delay !== '' ? t.delay : '&mdash;'}</td>
+            <td>${t.terrain || '—'}</td>
+            <td class="tag-${rar(t.rarity)}">${t.rarity || '—'}</td>
+            <td style="text-align:right">${t.ease ?? '—'}</td>
+            <td style="text-align:right">${t.luck ?? '—'}</td>
+            <td style="text-align:right">${t.delay ?? '—'}</td>
             <td style="text-align:right">${t.issued.toLocaleString()}</td>
         </tr>
         <tr class="expand-row">
@@ -629,7 +632,7 @@ async function fetchTemplates() {
             all = all.concat(json.data);
             if (json.data.length < 100) break;
             page++;
-        } catch(e) { status.textContent = `FETCH ERROR &mdash; ${e.message}`; console.error(e); break; }
+        } catch(e) { status.textContent = `FETCH ERROR — ${e.message}`; console.error(e); break; }
     }
     allTemplates = all.map(t => {
         const imm = t.immutable_data || {};
@@ -684,16 +687,16 @@ async function fetchAssetsForTemplate(templateId) {
         return {
             asset_id:    asset.asset_id,
             owner:       asset.owner || '(burned)',
-            ease:        unified.ease       ?? tplImm.ease       ?? '&mdash;',
-            luck:        unified.luck       ?? tplImm.luck       ?? '&mdash;',
-            delay:       unified.delay      ?? tplImm.delay      ?? '&mdash;',
-            commission:  unified.commission ?? mut.commission     ?? '&mdash;',
-            x:           unified.x          ?? imm.x             ?? '&mdash;',
-            y:           unified.y          ?? imm.y             ?? '&mdash;',
-            open_slots:  unified.openslots  ?? mut.openslots     ?? '&mdash;',
+            ease:        unified.ease       ?? tplImm.ease       ?? '—',
+            luck:        unified.luck       ?? tplImm.luck       ?? '—',
+            delay:       unified.delay      ?? tplImm.delay      ?? '—',
+            commission:  unified.commission ?? mut.commission     ?? '—',
+            x:           unified.x          ?? imm.x             ?? '—',
+            y:           unified.y          ?? imm.y             ?? '—',
+            open_slots:  unified.openslots  ?? mut.openslots     ?? '—',
             land_rating: rawRating != null ? Math.round(Number(rawRating) / 10000) : null,
-            usedBoosts:  unified.UsedBoostsDay    ?? mut.UsedBoostsDay    ?? '&mdash;',
-            boostLast:   unified.BoostLastUsedDay ?? mut.BoostLastUsedDay ?? '&mdash;',
+            usedBoosts:  unified.UsedBoostsDay    ?? mut.UsedBoostsDay    ?? '—',
+            boostLast:   unified.BoostLastUsedDay ?? mut.BoostLastUsedDay ?? '—',
         };
     });
     assetCache.set(templateId, assets);
@@ -705,6 +708,8 @@ function renderSubTable(templateId, assets) {
     const state = assetSortState.get(templateId) || { col: 'asset_id', dir: 1 };
     const sorted = [...assets].sort((a, b) => {
         let av = a[state.col] ?? '', bv = b[state.col] ?? '';
+        if (av === '—') av = state.dir > 0 ? Infinity : -Infinity;
+        if (bv === '—') bv = state.dir > 0 ? Infinity : -Infinity;
         if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * state.dir;
         return String(av).localeCompare(String(bv)) * state.dir;
     });
@@ -729,7 +734,7 @@ function renderSubTable(templateId, assets) {
         const ownerCell = a.owner === '(burned)'
             ? `<span style="color:#444">(burned)</span>`
             : `<a href="https://wax.atomichub.io/explorer/account/${a.owner}" target="_blank" style="color:var(--theme-color);text-decoration:none">${a.owner}</a>`;
-        const ratingCell = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '&mdash;';
+        const ratingCell = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
         return `<tr class="sub-row">
             <td style="color:#446;font-size:0.78em!important">${a.asset_id}</td>
             <td>${ownerCell}</td>
@@ -772,12 +777,14 @@ window.toggleExpand = async (templateId, btn) => {
 };
 
 // ─── WALLET ───────────────────────────────────────────────────────────────────
-const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: '', tryAutoLogin: false });
+// Track wallet account separately — wax.userAccount is read-only in newer WaxJS
+let currentAccount = '';
+const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
 
 window.toggleWallet = async () => {
     const btn = document.getElementById('wallet-btn');
-    if (wax.userAccount || localStorage.getItem('naron_wallet')) {
-        wax.userAccount = ''; localStorage.removeItem('naron_wallet');
+    if (currentAccount) {
+        currentAccount = ''; localStorage.removeItem('naron_wallet');
         btn.innerText = '[ WAX LOGIN ]';
         btn.style.color = 'var(--theme-color)'; btn.style.borderColor = 'var(--theme-color)';
         return;
@@ -785,6 +792,7 @@ window.toggleWallet = async () => {
     try {
         btn.innerText = '[ AUTHENTICATING... ]';
         const account = await wax.login();
+        currentAccount = account;
         localStorage.setItem('naron_wallet', account);
         updateWalletUI(account);
     } catch(e) { console.error(e); btn.innerText = '[ WAX LOGIN ]'; }
@@ -796,20 +804,20 @@ function updateWalletUI(accountName) {
 }
 function checkWalletState() {
     const saved = localStorage.getItem('naron_wallet');
-    if (saved) { wax.userAccount = saved; updateWalletUI(saved); }
+    if (saved) { currentAccount = saved; updateWalletUI(saved); }
 }
 
 // ─── TIP ─────────────────────────────────────────────────────────────────────
 window.sendTip = async () => {
-    if (!wax.userAccount) {
-        try { await wax.login(); localStorage.setItem('naron_wallet', wax.userAccount); checkWalletState(); }
+    if (!currentAccount) {
+        try { const acct = await wax.login(); currentAccount = acct; localStorage.setItem('naron_wallet', acct); updateWalletUI(acct); }
         catch(e) { alert('Wallet connection required.'); return; }
     }
     try {
         const result = await wax.api.transact({
             actions: [{ account: 'alien.worlds', name: 'transfer',
-                authorization: [{ actor: wax.userAccount, permission: 'active' }],
-                data: { from: wax.userAccount, to: '1x1ci.wam', quantity: document.getElementById('tip-amount').value, memo: 'Naron Codex Tip' }
+                authorization: [{ actor: currentAccount, permission: 'active' }],
+                data: { from: currentAccount, to: '1x1ci.wam', quantity: document.getElementById('tip-amount').value, memo: 'Naron Codex Tip' }
             }]
         }, { blocksBehind: 3, expireSeconds: 30 });
         alert(`TRANSMISSION SUCCESSFUL.\n\nThank you for supporting Naron Codex!\nTransaction ID: ${result.transaction_id}`);
