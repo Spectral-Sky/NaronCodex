@@ -142,7 +142,7 @@
             position: relative; width: 100%;
             border-bottom: 2px solid var(--theme-color);
         }
-        #planet-canvas { display: block; width: 100%; height: 300px; }
+        #planet-canvas { display: block; width: 100%; height: 220px; }
         #planet-labels {
             position: relative; height: 44px;
             background: rgba(0,0,0,0.6);
@@ -223,41 +223,51 @@
         .sub-loading { color: #335; text-align: center; padding: 20px; letter-spacing: 2px; font-family: 'Courier New', monospace; font-size: 0.8em; }
 
         /* --- MARKET DECK --- */
+        /* When deck open, planet-bar + grid both shift right so deck doesn't overlap */
+        body.deck-open #planet-bar { margin-left: 305px; width: calc(100% - 305px); }
         body.deck-open .grid-container { grid-template-columns: minmax(320px, 1fr) auto minmax(20px, 1fr); }
         #preview-frame {
-            position: fixed; top: 130px; left: 20px; width: 275px; height: 370px;
+            position: fixed; top: 66px; left: 10px; width: 285px; height: 370px;
             border: 2px solid var(--theme-color); background: var(--theme-dark);
             box-shadow: var(--theme-shadow); z-index: 3000; box-sizing: border-box;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: transform 0.4s, opacity 0.4s; transform: translateX(0); opacity: 1; pointer-events: none;
+            transition: transform 0.4s, opacity 0.4s; transform: translateX(-320px); opacity: 0; pointer-events: none;
         }
-        #preview-frame.minimized { transform: translateX(-320px); opacity: 0; }
+        #preview-frame.open { transform: translateX(0); opacity: 1; }
         #preview-img { width: 90%; height: auto; max-height: 76%; object-fit: contain; border: 1px solid #1a3320; display: none; }
         #preview-status { color: var(--theme-color); font-size: 0.78em; letter-spacing: 2px; opacity: 0.6; }
         #preview-label { margin-top: 8px; color: #fff; font-weight: bold; font-size: 0.82em; text-align: center; letter-spacing: 1px; width: 90%; border-top: 1px dashed #1a3320; padding-top: 6px; }
         #market-frame {
-            position: fixed; top: 514px; left: 20px; width: 275px;
+            position: fixed; top: 446px; left: 10px; width: 285px;
             border: 2px solid var(--theme-color); background: #000; box-sizing: border-box;
             box-shadow: var(--theme-shadow); z-index: 3000; padding: 10px; display: none;
-            transition: transform 0.4s, opacity 0.4s;
+            transition: transform 0.4s, opacity 0.4s; transform: translateX(-320px); opacity: 0;
         }
-        #market-frame.minimized { transform: translateX(-320px); opacity: 0; }
+        #market-frame.open { transform: translateX(0); opacity: 1; }
         .intel-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #1a2a1a; padding: 5px 0; font-size: 0.88em; }
         .intel-label { color: #666; font-family: 'Courier New', monospace; }
         .intel-val { color: var(--theme-color); font-weight: bold; font-family: monospace; }
         #intel-header { color: var(--theme-color); font-weight: bold; border-bottom: 1px solid #1a3320; margin-bottom: 8px; text-transform: uppercase; font-size: 0.82em; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .market-links { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; border-top: 1px solid #1a2a1a; padding-top: 10px; pointer-events: auto; }
         #deck-toggle-tab {
-            position: fixed; top: 295px; left: 285px; z-index: 3100;
+            position: fixed; top: 66px; left: 10px; z-index: 3100;
             background: #000; border: 2px solid var(--theme-color); color: var(--theme-color);
-            padding: 10px 5px; font-family: monospace; font-size: 1.1em; cursor: pointer;
-            transition: background 0.2s, color 0.2s, transform 0.4s; writing-mode: vertical-rl;
+            padding: 10px 5px; font-family: monospace; cursor: pointer;
+            transition: background 0.2s, color 0.2s, left 0.4s; writing-mode: vertical-rl;
             letter-spacing: 2px; font-size: 0.75em;
         }
+        body.deck-open #deck-toggle-tab { left: 295px; }
         #deck-toggle-tab:hover { background: var(--theme-color); color: #000; }
-        #deck-toggle-tab.minimized { transform: translateX(-265px); }
         .price-highlight { color: var(--theme-color) !important; font-weight: bold !important; }
-        @media (max-width: 800px) { #deck-toggle-tab { display: none !important; } #preview-frame, #market-frame { display: none !important; } }
+        /* Listing indicators in sub-table */
+        .listed-yes { color: #00cc66 !important; font-size: 1.1em; }
+        .listed-no  { color: #444    !important; font-size: 1.1em; }
+        /* Asset-view table */
+        #asset-view { display: none; }
+        #asset-view.active { display: block; }
+        #tpl-view.hidden { display: none; }
+        @media (max-width: 800px) { #deck-toggle-tab { display: none !important; } #preview-frame, #market-frame { display: none !important; }
+            body.deck-open #planet-bar { margin-left: 0; width: 100%; } }
 
         /* --- FOOTER --- */
         .codex-footer {
@@ -326,10 +336,10 @@
     <div class="intel-row"><span class="intel-label">LAST SOLD:</span><span id="intel-last" class="intel-val">---</span></div>
     <div class="intel-row"><span class="intel-label">SUGGESTED:</span><span id="intel-sugg" class="intel-val">---</span></div>
     <div class="market-links">
-        <a id="lnk-atomic" target="_blank" class="market-link-btn">ATOMIC</a>
-        <a id="lnk-nefty"  target="_blank" class="market-link-btn">NEFTY</a>
-        <a id="lnk-hive"   target="_blank" class="market-link-btn">HIVE</a>
-        <a id="lnk-f12"    target="_blank" class="market-link-btn">F12 KEY</a>
+        <a id="lnk-atomic" target="_blank" class="market-link-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://atomichub.io&size=64" style="height:13px;vertical-align:middle;margin-right:4px;border-radius:2px;" onerror="this.style.display='none'">ATOMIC</a>
+        <a id="lnk-nefty"  target="_blank" class="market-link-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://neftyblocks.com&size=64" style="height:13px;vertical-align:middle;margin-right:4px;border-radius:2px;" onerror="this.style.display='none'">NEFTY</a>
+        <a id="lnk-hive"   target="_blank" class="market-link-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://nfthive.io&size=64" style="height:13px;vertical-align:middle;margin-right:4px;border-radius:2px;" onerror="this.style.display='none'">HIVE</a>
+        <a id="lnk-f12"    target="_blank" class="market-link-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://f12key.eu&size=64" style="height:13px;vertical-align:middle;margin-right:4px;border-radius:2px;" onerror="this.style.display='none'">F12 KEY</a>
     </div>
 </div>
 
@@ -375,6 +385,7 @@
             <button class="cyber-btn" onclick="adjustFont(-1)">A-</button>
             <input type="text" id="searchInput" oninput="filterTable()" placeholder="SEARCH...">
             <button class="cyber-btn" id="scan-btn" onclick="scanAllPrices(this)">[ SCAN PRICES ]</button>
+            <button class="cyber-btn" id="view-toggle-btn" onclick="toggleView()">[ ALL ASSETS VIEW ]</button>
         </div>
         <div id="theme-panel">
             <div class="theme-opt" style="background:#00cc66;" onclick="setTheme('#00cc66','#051a0d')" title="Alien Green"></div>
@@ -408,7 +419,8 @@
 
 <!-- ══ TABLE ══════════════════════════════════════════════════════════════════ -->
 <div class="grid-container">
-    <table id="land-table" class="waffle" cellspacing="0" cellpadding="0">
+  <div id="tpl-view" style="grid-column:2;">
+    <table id="land-table" class="waffle" cellspacing="0" cellpadding="0" style="width:auto">
         <thead><tr>
             <th class="live-header" style="width:30px;padding:8px 4px!important;"></th>
             <th class="live-header" onclick="sortBy('template_id')">TPL ID</th>
@@ -427,6 +439,33 @@
             <tr><td colspan="12" style="text-align:center;color:#335;padding:50px;letter-spacing:2px;">SCANNING...</td></tr>
         </tbody>
     </table>
+  </div>
+  <div id="asset-view" style="grid-column:2;">
+    <table id="asset-table" class="waffle" cellspacing="0" cellpadding="0" style="width:auto">
+        <thead><tr>
+            <th class="live-header" onclick="sortAsset('asset_id')">ASSET ID</th>
+            <th class="live-header">IMAGE</th>
+            <th class="live-header" onclick="sortAsset('planet')">PLANET</th>
+            <th class="live-header" onclick="sortAsset('terrain')">TYPE</th>
+            <th class="live-header" onclick="sortAsset('rarity')">RARITY</th>
+            <th class="live-header" onclick="sortAsset('owner')">OWNER</th>
+            <th class="live-header" onclick="sortAsset('ease')">EASE / MINE PWR</th>
+            <th class="live-header" onclick="sortAsset('luck')">LUCK / NFT PTS</th>
+            <th class="live-header" onclick="sortAsset('delay')">DELAY</th>
+            <th class="live-header" onclick="sortAsset('commission')">COMM %</th>
+            <th class="live-header" onclick="sortAsset('x')">X</th>
+            <th class="live-header" onclick="sortAsset('y')">Y</th>
+            <th class="live-header" onclick="sortAsset('open_slots')">OPEN SLOTS</th>
+            <th class="live-header" onclick="sortAsset('land_rating')">LAND RATING</th>
+            <th class="live-header" onclick="sortAsset('usedBoosts')">USED BOOSTS</th>
+            <th class="live-header" onclick="sortAsset('boostLast')">BOOST LAST</th>
+            <th class="live-header" onclick="sortAsset('listed')">LISTED</th>
+        </tr></thead>
+        <tbody id="asset-tbody">
+            <tr><td colspan="17" style="text-align:center;color:#335;padding:50px;letter-spacing:2px;">SWITCH TO ASSET VIEW TO LOAD</td></tr>
+        </tbody>
+    </table>
+  </div>
 
     <!-- ══ BOTTOM BUN ════════════════════════════════════════════════════════ -->
     <div class="codex-footer">
@@ -455,7 +494,7 @@ import * as THREE from 'three';
 // ─── PLANET SCENE ────────────────────────────────────────────────────────────
 const canvas  = document.getElementById('planet-canvas');
 const wrapper = document.getElementById('planet-bar');
-const CANVAS_H = 300;
+const CANVAS_H = 220;
 
 // alpha:true = transparent canvas — CSS starfield from body::before/after shows through
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -601,7 +640,8 @@ function togglePlanetFilter(name) {
     } else {
         activePlanets.add(name);   el?.classList.add('active');
     }
-    renderTemplateTable();
+    if (assetViewActive) renderAssetTable();
+    else renderTemplateTable();
 }
 window.togglePlanetFilter = togglePlanetFilter;
 labelEls.forEach(el => el.addEventListener('click', () => {
@@ -620,6 +660,7 @@ const PLANETS_LIST  = ['eyeke','kavian','magor','naron','neri','veles'];
 const assetCache     = new Map();
 const assetSortState = new Map();
 const priceCache     = new Map();  // template_id → { floor, last, sugg }
+const listingCache   = new Map();  // template_id → Set of listed asset_ids
 const currentSubImg  = {};         // template_id → ipfs hash (for sub-row clicks)
 
 // ─── MARKET DECK CONFIG ───────────────────────────────────────────────────────
@@ -647,13 +688,13 @@ window.toggleDeck = () => {
     const mkt = document.getElementById('market-frame');
     if (isDeckOpen) {
         document.body.classList.add('deck-open');
-        pre.classList.remove('minimized');
-        if (mkt.dataset.shown === '1') mkt.classList.remove('minimized');
+        pre.classList.add('open');
+        if (mkt.dataset.shown === '1') { mkt.style.display = 'block'; mkt.classList.add('open'); }
         tab.textContent = '◀ DECK';
     } else {
         document.body.classList.remove('deck-open');
-        pre.classList.add('minimized');
-        mkt.classList.add('minimized');
+        pre.classList.remove('open');
+        mkt.classList.remove('open');
         tab.textContent = '▶ DECK';
     }
 };
@@ -674,9 +715,16 @@ function showPreview(imgHash, labelText, subLabel) {
     if (!isDeckOpen) {
         isDeckOpen = true;
         document.body.classList.add('deck-open');
-        document.getElementById('preview-frame').classList.remove('minimized');
+        document.getElementById('preview-frame').classList.add('open');
         document.getElementById('deck-toggle-tab').textContent = '◀ DECK';
     }
+}
+
+function showMarket() {
+    const mkt = document.getElementById('market-frame');
+    mkt.style.display = 'block';
+    mkt.dataset.shown = '1';
+    setTimeout(() => mkt.classList.add('open'), 10);
 }
 
 function updateMarketLinks(templateId) {
@@ -684,10 +732,7 @@ function updateMarketLinks(templateId) {
     document.getElementById('lnk-nefty').href  = MARKET_LINKS.nefty(templateId);
     document.getElementById('lnk-hive').href   = MARKET_LINKS.hive(templateId);
     document.getElementById('lnk-f12').href    = MARKET_LINKS.f12(templateId);
-    const mkt = document.getElementById('market-frame');
-    mkt.classList.remove('minimized');
-    mkt.dataset.shown = '1';
-    mkt.style.display = 'block';
+    showMarket();
 }
 
 function updateAssetLinks(assetId) {
@@ -695,10 +740,7 @@ function updateAssetLinks(assetId) {
     document.getElementById('lnk-nefty').href  = ASSET_LINKS.nefty(assetId);
     document.getElementById('lnk-hive').href   = ASSET_LINKS.hive(assetId);
     document.getElementById('lnk-f12').href    = ASSET_LINKS.f12(assetId);
-    const mkt = document.getElementById('market-frame');
-    mkt.classList.remove('minimized');
-    mkt.dataset.shown = '1';
-    mkt.style.display = 'block';
+    showMarket();
 }
 
 async function fetchTemplatePrice(templateId) {
@@ -766,6 +808,119 @@ window.scanAllPrices = async (btn) => {
     if (btn) { btn.textContent = '[ PRICES LOADED ]'; btn.disabled = false; }
 };
 
+// ─── ASSET ALL-ASSETS VIEW ────────────────────────────────────────────────────
+let assetViewActive  = false;
+let assetViewLoaded  = false;
+let assetViewSortCol = 'asset_id';
+let assetViewSortDir = 1;
+
+window.toggleView = () => {
+    assetViewActive = !assetViewActive;
+    const btn       = document.getElementById('view-toggle-btn');
+    const tplView   = document.getElementById('tpl-view');
+    const assetView = document.getElementById('asset-view');
+    if (assetViewActive) {
+        tplView.classList.add('hidden');
+        assetView.classList.add('active');
+        btn.textContent = '[ TEMPLATE VIEW ]';
+        if (!assetViewLoaded) loadAllAssets();
+        else renderAssetTable();
+    } else {
+        assetView.classList.remove('active');
+        tplView.classList.remove('hidden');
+        btn.textContent = '[ ALL ASSETS VIEW ]';
+    }
+};
+
+window.sortAsset = col => {
+    assetViewSortDir = assetViewSortCol === col ? assetViewSortDir * -1 : 1;
+    assetViewSortCol = col;
+    renderAssetTable();
+};
+
+async function loadAllAssets() {
+    const tbody  = document.getElementById('asset-tbody');
+    const status = document.getElementById('status');
+    const tpls   = allTemplates.filter(t => activePlanets.size === 0 || activePlanets.has(t.planet));
+    tbody.innerHTML = `<tr><td colspan="17" class="sub-loading">LOADING ALL ASSETS — 0/${tpls.length} TEMPLATES…</td></tr>`;
+    document.getElementById('asset-table').classList.add('system-ready');
+    const BATCH = 3;
+    for (let i = 0; i < tpls.length; i += BATCH) {
+        const batch = tpls.slice(i, i + BATCH);
+        await Promise.all(batch.map(t => {
+            const tasks = [fetchAssetsForTemplate(t.template_id)];
+            if (!listingCache.has(t.template_id)) tasks.push(fetchListingsForTemplate(t.template_id));
+            return Promise.all(tasks);
+        }));
+        const done = Math.min(i + BATCH, tpls.length);
+        tbody.innerHTML = `<tr><td colspan="17" class="sub-loading">LOADING — ${done}/${tpls.length} TEMPLATES…</td></tr>`;
+    }
+    assetViewLoaded = true;
+    status.textContent = 'ASSET VIEW READY';
+    renderAssetTable();
+}
+
+function renderAssetTable() {
+    const tbody  = document.getElementById('asset-tbody');
+    const table  = document.getElementById('asset-table');
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const tpls   = allTemplates.filter(t => activePlanets.size === 0 || activePlanets.has(t.planet));
+    let allAssets = [];
+    tpls.forEach(t => {
+        const assets = assetCache.get(t.template_id) || [];
+        const listed = listingCache.get(t.template_id) || new Set();
+        assets.forEach(a => {
+            allAssets.push({
+                ...a,
+                planet:  t.planet,
+                terrain: t.terrain,
+                rarity:  t.rarity,
+                img:     t.img,
+                tpl_id:  t.template_id,
+                listed:  listed.has(a.asset_id) ? 1 : 0,
+            });
+        });
+    });
+    if (search) {
+        allAssets = allAssets.filter(a => JSON.stringify(a).toLowerCase().includes(search));
+    }
+    allAssets.sort((a, b) => {
+        let av = a[assetViewSortCol] ?? '', bv = b[assetViewSortCol] ?? '';
+        if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * assetViewSortDir;
+        if (av === '—') av = '';
+        if (bv === '—') bv = '';
+        return String(av).localeCompare(String(bv)) * assetViewSortDir;
+    });
+    const rar = r => r ? r.toLowerCase() : '';
+    tbody.innerHTML = allAssets.map(a => {
+        const ownerCell = a.owner === '(burned)'
+            ? `<span style="color:#444">(burned)</span>`
+            : `<a href="https://wax.atomichub.io/explorer/account/${a.owner}" target="_blank" style="color:var(--theme-color);text-decoration:none" onclick="event.stopPropagation()">${a.owner}</a>`;
+        const ratingCell = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
+        const listedCell = a.listed ? '<span class="listed-yes">✓</span>' : '<span class="listed-no">✗</span>';
+        return `<tr class="tpl-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${a.img}','${a.owner.replace(/'/g,"\\'")}')">
+            <td style="text-align:center;color:#446;font-size:0.8em!important">${a.asset_id}</td>
+            <td style="text-align:center;padding:4px!important">${a.img ? `<img src="https://ipfs.io/ipfs/${a.img}" style="height:52px;width:auto;max-width:58px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
+            <td style="text-align:center;font-weight:bold;text-transform:uppercase">${a.planet}</td>
+            <td style="text-align:center">${a.terrain || '—'}</td>
+            <td class="tag-${rar(a.rarity)}">${a.rarity || '—'}</td>
+            <td>${ownerCell}</td>
+            <td style="text-align:center">${a.ease}</td>
+            <td style="text-align:center">${a.luck}</td>
+            <td style="text-align:center">${a.delay}</td>
+            <td style="text-align:center">${a.commission}</td>
+            <td style="text-align:center">${a.x}</td>
+            <td style="text-align:center">${a.y}</td>
+            <td style="text-align:center">${a.open_slots}</td>
+            <td style="text-align:center">${ratingCell}</td>
+            <td style="text-align:center">${a.usedBoosts}</td>
+            <td style="text-align:center">${a.boostLast}</td>
+            <td style="text-align:center">${listedCell}</td>
+        </tr>`;
+    }).join('') || `<tr><td colspan="17" class="sub-loading">NO ASSETS LOADED YET</td></tr>`;
+    table.classList.add('system-ready');
+}
+
 window.onTplRowClick = async (e, templateId, imgHash, label) => {
     if (e.target.closest('.expand-btn')) return;
     currentSubImg[templateId] = imgHash;
@@ -812,9 +967,9 @@ window.clearFilters = () => {
     activePlanets.clear();
     labelEls.forEach(el => el.classList.remove('active'));
     document.getElementById('searchInput').value = '';
-    renderTemplateTable();
+    if (assetViewActive) renderAssetTable(); else renderTemplateTable();
 };
-window.filterTable  = () => renderTemplateTable();
+window.filterTable  = () => { if (assetViewActive) renderAssetTable(); else renderTemplateTable(); };
 window.adjustFont   = delta => {
     const cells = document.querySelectorAll('td, th');
     let cur = parseFloat(cells[0]?.style.fontSize) || 0.9;
@@ -825,6 +980,8 @@ window.adjustFont   = delta => {
 function getSortVal(t, col) {
     if (col === 'rarity') return RARITY_ORDER.indexOf(t.rarity);
     if (['ease','luck','delay','issued','template_id'].includes(col)) return parseFloat(t[col]) || 0;
+    if (col === 'floor') { const pc = priceCache.get(t.template_id); return parseFloat(pc?.floor) || 0; }
+    if (col === 'last')  { const pc = priceCache.get(t.template_id); return parseFloat(pc?.last)  || 0; }
     return t[col] || '';
 }
 
@@ -856,15 +1013,15 @@ function renderTemplateTable() {
             <td style="text-align:center;padding:4px!important" onclick="event.stopPropagation()"><button class="expand-btn" onclick="toggleExpand('${t.template_id}',this)">▶</button></td>
             <td style="color:#557;font-size:0.8em!important">${t.template_id}</td>
             <td style="text-align:center;padding:4px!important">${t.img ? `<img src="https://ipfs.io/ipfs/${t.img}" style="height:56px;width:auto;max-width:64px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
-            <td style="font-weight:bold;text-transform:uppercase;letter-spacing:1px">${t.planet}</td>
-            <td>${t.terrain || '—'}</td>
+            <td style="text-align:center;font-weight:bold;text-transform:uppercase;letter-spacing:1px">${t.planet}</td>
+            <td style="text-align:center">${t.terrain || '—'}</td>
             <td class="tag-${rar(t.rarity)}">${t.rarity || '—'}</td>
-            <td style="text-align:right">${t.ease ?? '—'}</td>
-            <td style="text-align:right">${t.luck ?? '—'}</td>
-            <td style="text-align:right">${t.delay ?? '—'}</td>
-            <td style="text-align:right">${t.issued.toLocaleString()}</td>
-            <td style="text-align:right" id="floor-${t.template_id}">${floorCell}</td>
-            <td style="text-align:right" id="last-${t.template_id}">${lastCell}</td>
+            <td style="text-align:center">${t.ease ?? '—'}</td>
+            <td style="text-align:center">${t.luck ?? '—'}</td>
+            <td style="text-align:center">${t.delay ?? '—'}</td>
+            <td style="text-align:center">${t.issued.toLocaleString()}</td>
+            <td style="text-align:center" id="floor-${t.template_id}">${floorCell}</td>
+            <td style="text-align:center" id="last-${t.template_id}">${lastCell}</td>
         </tr>
         <tr class="expand-row">
             <td colspan="12"><div class="sub-table-wrap" id="sub-${t.template_id}"></div></td>
@@ -958,10 +1115,26 @@ async function fetchAssetsForTemplate(templateId) {
     return assets;
 }
 
+// ─── LISTING FETCH ────────────────────────────────────────────────────────────
+async function fetchListingsForTemplate(templateId) {
+    if (listingCache.has(templateId)) return listingCache.get(templateId);
+    const listed = new Set();
+    try {
+        const r = await fetch(`https://wax.api.atomicassets.io/atomicmarket/v2/sales?state=1&collection_name=alien.worlds&template_id=${templateId}&limit=1000&symbol=WAX`);
+        const d = await r.json();
+        if (d.success && d.data) {
+            d.data.forEach(sale => sale.assets?.forEach(a => listed.add(a.asset_id)));
+        }
+    } catch(e) {}
+    listingCache.set(templateId, listed);
+    return listed;
+}
+
 // ─── SUB-TABLE RENDER ─────────────────────────────────────────────────────────
 function renderSubTable(templateId, assets) {
-    const state = assetSortState.get(templateId) || { col: 'asset_id', dir: 1 };
-    const sorted = [...assets].sort((a, b) => {
+    const state   = assetSortState.get(templateId) || { col: 'asset_id', dir: 1 };
+    const listed  = listingCache.get(templateId) || null;
+    const sorted  = [...assets].sort((a, b) => {
         let av = a[state.col] ?? '', bv = b[state.col] ?? '';
         if (av === '—') av = state.dir > 0 ? Infinity : -Infinity;
         if (bv === '—') bv = state.dir > 0 ? Infinity : -Infinity;
@@ -969,42 +1142,46 @@ function renderSubTable(templateId, assets) {
         return String(av).localeCompare(String(bv)) * state.dir;
     });
     const cols = [
-        { key: 'asset_id',    label: 'ASSET ID' },
-        { key: 'owner',       label: 'OWNER' },
-        { key: 'ease',        label: 'EASE' },
-        { key: 'luck',        label: 'LUCK' },
-        { key: 'delay',       label: 'DELAY' },
-        { key: 'commission',  label: 'COMM %' },
-        { key: 'x',           label: 'X' },
-        { key: 'y',           label: 'Y' },
-        { key: 'open_slots',  label: 'OPEN SLOTS' },
-        { key: 'land_rating', label: 'LAND RATING' },
-        { key: 'usedBoosts',  label: 'USED BOOSTS' },
-        { key: 'boostLast',   label: 'BOOST LAST' },
+        { key: 'asset_id',    label: 'ASSET ID',    align: 'center' },
+        { key: 'owner',       label: 'OWNER',       align: 'left'   },
+        { key: 'ease',        label: 'EASE / MINE PWR', align: 'center' },
+        { key: 'luck',        label: 'LUCK / NFT PTS',  align: 'center' },
+        { key: 'delay',       label: 'DELAY',       align: 'center' },
+        { key: 'commission',  label: 'COMM %',      align: 'center' },
+        { key: 'x',           label: 'X',           align: 'center' },
+        { key: 'y',           label: 'Y',           align: 'center' },
+        { key: 'open_slots',  label: 'OPEN SLOTS',  align: 'center' },
+        { key: 'land_rating', label: 'LAND RATING', align: 'center' },
+        { key: 'usedBoosts',  label: 'USED BOOSTS', align: 'center' },
+        { key: 'boostLast',   label: 'BOOST LAST',  align: 'center' },
+        { key: 'listed',      label: 'LISTED',      align: 'center' },
     ];
     const heads = cols.map(c =>
         `<th class="sub-header" onclick="sortSubTable('${templateId}','${c.key}')">${c.label}</th>`
-    ).join('') + '<th class="sub-header">MARKET</th>';
+    ).join('');
     const dataRows = sorted.map(a => {
         const ownerCell = a.owner === '(burned)'
             ? `<span style="color:#444">(burned)</span>`
             : `<a href="https://wax.atomichub.io/explorer/account/${a.owner}" target="_blank" style="color:var(--theme-color);text-decoration:none" onclick="event.stopPropagation()">${a.owner}</a>`;
-        const ratingCell = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
-        const tplImg = currentSubImg[templateId] || '';
-        return `<tr class="sub-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${tplImg}','${a.owner}')">
-            <td style="color:#446;font-size:0.78em!important">${a.asset_id}</td>
+        const ratingCell  = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
+        const tplImg      = currentSubImg[templateId] || '';
+        const listedCell  = listed === null
+            ? '<span style="color:#444">?</span>'
+            : (listed.has(a.asset_id) ? '<span class="listed-yes">✓</span>' : '<span class="listed-no">✗</span>');
+        return `<tr class="sub-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${tplImg}','${a.owner.replace(/'/g,"\\'")}')">
+            <td style="text-align:center;color:#446;font-size:0.78em!important">${a.asset_id}</td>
             <td>${ownerCell}</td>
-            <td style="text-align:right">${a.ease}</td>
-            <td style="text-align:right">${a.luck}</td>
-            <td style="text-align:right">${a.delay}</td>
-            <td style="text-align:right">${a.commission}</td>
-            <td style="text-align:right">${a.x}</td>
-            <td style="text-align:right">${a.y}</td>
-            <td style="text-align:right">${a.open_slots}</td>
-            <td style="text-align:right">${ratingCell}</td>
-            <td style="text-align:right">${a.usedBoosts}</td>
-            <td style="text-align:right">${a.boostLast}</td>
-            <td onclick="event.stopPropagation()"><a class="market-link-btn" href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${a.asset_id}" target="_blank">ATH</a></td>
+            <td style="text-align:center">${a.ease}</td>
+            <td style="text-align:center">${a.luck}</td>
+            <td style="text-align:center">${a.delay}</td>
+            <td style="text-align:center">${a.commission}</td>
+            <td style="text-align:center">${a.x}</td>
+            <td style="text-align:center">${a.y}</td>
+            <td style="text-align:center">${a.open_slots}</td>
+            <td style="text-align:center">${ratingCell}</td>
+            <td style="text-align:center">${a.usedBoosts}</td>
+            <td style="text-align:center">${a.boostLast}</td>
+            <td style="text-align:center">${listedCell}</td>
         </tr>`;
     }).join('') || `<tr><td colspan="13" class="sub-loading">NO ASSETS FOUND</td></tr>`;
     return `<table class="sub-table system-ready"><thead><tr>${heads}</tr></thead><tbody>${dataRows}</tbody></table>`;
@@ -1030,9 +1207,18 @@ window.toggleExpand = async (templateId, btn) => {
     }
     if (!assetCache.has(templateId)) {
         wrap.innerHTML = `<div class="sub-loading">FETCHING ASSETS...</div>`;
-        const assets = await fetchAssetsForTemplate(templateId);
+        const [assets] = await Promise.all([
+            fetchAssetsForTemplate(templateId),
+            fetchListingsForTemplate(templateId),
+        ]);
         wrap.innerHTML = renderSubTable(templateId, assets);
     } else {
+        // Listings may not be cached yet if expand happened without prior price scan
+        if (!listingCache.has(templateId)) {
+            fetchListingsForTemplate(templateId).then(() => {
+                wrap.innerHTML = renderSubTable(templateId, assetCache.get(templateId));
+            });
+        }
         wrap.innerHTML = renderSubTable(templateId, assetCache.get(templateId));
     }
 };
