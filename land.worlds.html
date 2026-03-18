@@ -680,6 +680,49 @@ const ASSET_LINKS = {
 };
 
 let isDeckOpen = false;
+const hiddenTypes = new Set(); // terrain types unchecked by user
+
+window.toggleTypeDropdown = () => {
+    const dd = document.getElementById('type-dropdown');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+};
+document.addEventListener('click', e => {
+    const wrap = document.getElementById('type-filter-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+        const dd = document.getElementById('type-dropdown');
+        if (dd) dd.style.display = 'none';
+    }
+});
+function buildTypeDropdown() {
+    const types = [...new Set(allTemplates.map(t => t.terrain).filter(Boolean))].sort();
+    const container = document.getElementById('type-options');
+    if (!container) return;
+    container.innerHTML = types.map(t =>
+        `<label class="type-opt"><input type="checkbox" checked onchange="toggleType('${t.replace(/'/g,"\\'")}',this.checked)">${t}</label>`
+    ).join('');
+}
+window.toggleType = (type, checked) => {
+    if (!checked) hiddenTypes.add(type); else hiddenTypes.delete(type);
+    updateTypeBtn();
+    if (assetViewActive) renderAssetTable(); else renderTemplateTable();
+};
+window.selectAllTypes = () => {
+    hiddenTypes.clear();
+    document.querySelectorAll('#type-options input').forEach(c => c.checked = true);
+    updateTypeBtn();
+    if (assetViewActive) renderAssetTable(); else renderTemplateTable();
+};
+window.clearAllTypes = () => {
+    const types = [...new Set(allTemplates.map(t => t.terrain).filter(Boolean))];
+    types.forEach(t => hiddenTypes.add(t));
+    document.querySelectorAll('#type-options input').forEach(c => c.checked = false);
+    updateTypeBtn();
+    if (assetViewActive) renderAssetTable(); else renderTemplateTable();
+};
+function updateTypeBtn() {
+    const btn = document.getElementById('type-filter-btn');
+    if (btn) btn.textContent = hiddenTypes.size > 0 ? `[ TYPE (${hiddenTypes.size} hidden) ▾ ]` : '[ TYPE ▾ ]';
+}
 
 window.toggleDeck = () => {
     isDeckOpen = !isDeckOpen;
@@ -864,7 +907,7 @@ function renderAssetTable() {
     const tbody  = document.getElementById('asset-tbody');
     const table  = document.getElementById('asset-table');
     const search = document.getElementById('searchInput').value.toLowerCase();
-    const tpls   = allTemplates.filter(t => (activePlanets.size === 0 || activePlanets.has(t.planet)) && !hiddenTypes.has(t.terrain));
+    const tpls   = allTemplates.filter(t => activePlanets.size === 0 || activePlanets.has(t.planet));
     let allAssets = [];
     tpls.forEach(t => {
         const assets = assetCache.get(t.template_id) || [];
@@ -991,6 +1034,7 @@ function renderTemplateTable() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     let rows = allTemplates.filter(t => {
         if (activePlanets.size > 0 && !activePlanets.has(t.planet)) return false;
+        if (hiddenTypes.has(t.terrain)) return false;
         if (search && !JSON.stringify(t).toLowerCase().includes(search)) return false;
         return true;
     });
@@ -1069,7 +1113,6 @@ async function fetchTemplates() {
         };
     });
     status.textContent = `${allTemplates.length} LAND TEMPLATES`;
-    buildTypeDropdown();
     renderTemplateTable();
 }
 
