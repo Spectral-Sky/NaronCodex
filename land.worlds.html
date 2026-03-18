@@ -138,6 +138,19 @@
            canvas.clientWidth after renderer.setSize() since that call writes fixed
            inline px values that override width:100%. Instead we always read from the
            wrapper div via ResizeObserver. */
+        #planet-bar {
+            position: sticky; top: 135px;
+            z-index: 2500; width: 100%;
+            border-bottom: 2px solid var(--theme-color);
+            background: #050510;
+        }
+        #planet-canvas { display: block; width: 100%; height: 180px; }
+        #planet-labels {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 44px;
+            background: rgba(0,0,0,0.6); border-top: 1px solid #0f4d28;
+            pointer-events: none;
+        }
+        .planet-label { pointer-events: auto; }
         .planet-label {
             position: absolute; top: 50%; transform: translate(-50%, -50%);
             background: transparent; border: 1px solid transparent;
@@ -146,6 +159,8 @@
             text-transform: uppercase; padding: 5px 10px; transition: all 0.2s;
             white-space: nowrap;
         }
+        .planet-label:hover { color: var(--theme-color); border-color: var(--theme-color); }
+        .planet-label.active { color: #000 !important; background: var(--theme-color) !important; border-color: var(--theme-color) !important; box-shadow: var(--theme-shadow); }
 
         /* --- TABLE --- */
         .grid-container {
@@ -195,10 +210,8 @@
         }
         .market-link-btn:hover { background: var(--theme-color); color: #000; box-shadow: var(--theme-shadow); }
 
-        /* --- EXPAND SUB-TABLE  --- */
-        .expand-row { display: none; } /* Completely hides the row when closed */
-        .expand-row.open { display: table-row; } /* Restores it when clicked */
-        .expand-row > td { padding: 0 !important; border: none !important; height: 0 !important; }
+        /* --- EXPAND SUB-TABLE --- */
+        .expand-row > td { padding: 0 !important; border-bottom: none !important; border-right: none !important; border-left: none !important; }
         .sub-table-wrap { display: none; border-left: 3px solid var(--theme-color); background: rgba(0,5,2,0.9); overflow-x: auto; }
         .sub-table-wrap.open { display: block; }
         .expand-btn { background: none; border: none; color: var(--theme-color); font-size: 1.1em; padding: 0 6px; line-height: 1; transition: transform 0.2s; cursor: crosshair !important; }
@@ -212,25 +225,10 @@
         .sub-row:hover td { background: rgba(0,60,30,0.4) !important; color: #ccc !important; }
         .sub-loading { color: #335; text-align: center; padding: 20px; letter-spacing: 2px; font-family: 'Courier New', monospace; font-size: 0.8em; }
 
-        /* --- PLANET BAR --- */
-        #planet-bar {
-            position: sticky; top: 135px;
-            z-index: 2500;
-            background: #050510; border-bottom: 2px solid var(--theme-color);
-        }
-        #planet-canvas { display: block; width: 100%; height: 180px; }
-        #planet-labels {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 44px;
-            background: rgba(0,0,0,0.6); border-top: 1px solid #0f4d28;
-            pointer-events: none;
-        }
-        .planet-label { pointer-events: auto; }
-        .planet-label:hover { color: var(--theme-color); border-color: var(--theme-color); }
-        .planet-label.active { color: #000 !important; background: var(--theme-color) !important; border-color: var(--theme-color) !important; box-shadow: var(--theme-shadow); }
-
-        /* --- MARKET DECK (Fixes the Positioning) --- */
+        /* --- MARKET DECK --- */
+        /* Planet bar sits in normal flow; give it a stacking context above the fixed deck (z:3000)
+           so it covers the deck while visible. Once the user scrolls past it the deck is revealed. */
         body.deck-open .grid-container { grid-template-columns: minmax(320px, 1fr) auto minmax(20px, 1fr); }
-        
         #preview-frame {
             position: fixed; top: 266px; left: 10px; width: 285px; height: 370px;
             border: 2px solid var(--theme-color); background: var(--theme-dark);
@@ -242,7 +240,6 @@
         #preview-img { width: 90%; height: auto; max-height: 76%; object-fit: contain; border: 1px solid #1a3320; display: none; }
         #preview-status { color: var(--theme-color); font-size: 0.78em; letter-spacing: 2px; opacity: 0.6; }
         #preview-label { margin-top: 8px; color: #fff; font-weight: bold; font-size: 0.82em; text-align: center; letter-spacing: 1px; width: 90%; border-top: 1px dashed #1a3320; padding-top: 6px; }
-        
         #market-frame {
             position: fixed; top: 646px; left: 10px; width: 285px;
             border: 2px solid var(--theme-color); background: #000; box-sizing: border-box;
@@ -274,7 +271,6 @@
         #asset-view .live-header { animation: headerPulse 2.5s ease-in-out infinite; }
         @keyframes headerPulse { 0%,100% { box-shadow: 0 0 10px var(--theme-color) !important; } 50% { box-shadow: 0 0 28px var(--theme-color), 0 0 50px var(--theme-color) !important; } }
         #tpl-view.hidden { display: none; }
-        /* Type dropdown */
         .type-opt { display: block; padding: 4px 2px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 0.8em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
         .type-opt:hover { color: var(--theme-color); }
         .type-opt input { margin-right: 7px; accent-color: var(--theme-color); }
@@ -517,12 +513,24 @@ const canvas  = document.getElementById('planet-canvas');
 const wrapper = document.getElementById('planet-bar');
 const CANVAS_H = 180;
 
+// alpha:true = transparent canvas — CSS starfield from body::before/after shows through
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-// ... [keep existing lights and camera] ...
+renderer.setClearColor(0x000000, 0);
+renderer.setPixelRatio(window.devicePixelRatio);
+
+const scene  = new THREE.Scene();
+// OrthographicCamera: no perspective distortion — spheres stay circular at all positions
+const FRUSTUM_H = 8; // world units visible vertically
+const camera = new THREE.OrthographicCamera(-1, 1, FRUSTUM_H / 2, -FRUSTUM_H / 2, 0.1, 100);
+camera.position.z = 8;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+sun.position.set(5, 5, 5);
+scene.add(sun);
 
 const PLANET_NAMES = ['eyeke','kavian','magor','naron','neri','veles'];
-// Increased radius from 1.55 to 1.95 (approx 25% larger)
-const geo    = new THREE.SphereGeometry(1.95, 80, 80);
+const geo    = new THREE.SphereGeometry(1.25, 64, 64);
 const loader = new THREE.TextureLoader();
 let   planets = [];
 
@@ -669,7 +677,7 @@ const PLANETS_LIST  = ['eyeke','kavian','magor','naron','neri','veles'];
 const assetCache     = new Map();
 const assetSortState = new Map();
 const priceCache     = new Map();  // template_id → { floor, last, sugg }
-const listingCache   = new Map();  // template_id → Map of asset_id → price string
+const listingCache   = new Map();  // template_id → Set of listed asset_ids
 const currentSubImg  = {};         // template_id → ipfs hash (for sub-row clicks)
 
 // ─── MARKET DECK CONFIG ───────────────────────────────────────────────────────
@@ -916,7 +924,7 @@ function renderAssetTable() {
     const tbody  = document.getElementById('asset-tbody');
     const table  = document.getElementById('asset-table');
     const search = document.getElementById('searchInput').value.toLowerCase();
-    const tpls   = allTemplates.filter(t => (activePlanets.size === 0 || activePlanets.has(t.planet)) && !hiddenTypes.has(t.terrain));
+    const tpls   = allTemplates.filter(t => activePlanets.size === 0 || activePlanets.has(t.planet));
     let allAssets = [];
     tpls.forEach(t => {
         const assets = assetCache.get(t.template_id) || [];
@@ -1046,11 +1054,6 @@ function renderTemplateTable() {
         if (hiddenTypes.has(t.terrain)) return false;
         if (search && !JSON.stringify(t).toLowerCase().includes(search)) return false;
         return true;
-        <tr class="tpl-row" style="cursor:pointer" onclick="onTplRowClick(event,'${t.template_id}','${t.img}','${(t.terrain+' on '+t.planet).replace(/'/g,"\\'")}')">
-            </tr>
-        <tr class="expand-row" id="expand-tr-${t.template_id}">
-            <td colspan="12"><div class="sub-table-wrap" id="sub-${t.template_id}"></div></td>
-        </tr>`;
     });
     rows.sort((a, b) => {
         const av = getSortVal(a, tplSortCol), bv = getSortVal(b, tplSortCol);
