@@ -1330,11 +1330,18 @@ function renderSubTable(templateId, assets) {
         { key: 'land_rating', label: 'LAND RATING', align: 'center' },
         { key: 'usedBoosts',  label: 'USED BOOSTS', align: 'center' },
         { key: 'boostLast',   label: 'BOOST LAST',  align: 'center' },
-        { key: 'eff_wax',     label: 'NORM PRICE', align: 'center',
-          tip: 'Normalised floor price = floor ÷ (rating_factor × slot_factor).\nrating_factor = land_rating ÷ 100  (base land = 100, unboosted).\nslot_factor = 1 + max(0, open_slots − 3) × 0.2  (each slot above 3 adds 20%).\nLower = better value. TLM rated = estimated boost TLM spent to reach this rating (64 TLM ≈ +2200 raw pts).' },
+        { key: 'eff_wax',     label: 'TLM VAL~ ?', align: 'center',
+          tip: 'ESTIMATE ONLY — actual costs vary; boost rating decays over time without re-boosting.\n\nRating TLM est.: each boost costs 64 TLM and multiplies raw rating ×1.0021 (+0.21%). Boosts needed = log(raw / 100) / log(1.0021). Raw rating = displayed rating × 10,000. Ratings start at 100 (displayed) and can reach ~570 at cap.\n\nSlot TLM (cumulative unlock cost): slot 1 free, +160, +260, +420, +680, +1100, +1800, +2800, +4600, +7400, +12000, +18000, +30000, +50000, +80000 TLM.\n\nTLM → WAX at 0.28 TLM/WAX (typical mid-range; actual rate 0.23–0.32).\n\nGreen = floor below TLM build cost (deal). Red = floor above (premium).' },
     ];
+    // Slot unlock cumulative TLM cost (index = number of slots, slot 1 is free)
+    const SLOT_TLM_CUM = [0, 0, 160, 420, 840, 1520, 2620, 4420, 7220, 11820, 19220, 31220, 49220, 79220, 129220, 209220];
+    const TLM_PER_WAX   = 0.28;
+    const BASE_RAW      = 100;   // base displayed rating (raw/10000); min land rating
+    const BOOST_MULT    = 1.0021;
+    const TLM_PER_BOOST = 64;
+
     const heads = cols.map(c =>
-        `<th class="sub-header" onclick="sortSubTable('${templateId}','${c.key}')"${c.tip ? ` title="${c.tip}"` : ''}>${c.label}${c.tip ? ' ?' : ''}</th>`
+        `<th class="sub-header" onclick="sortSubTable('${templateId}','${c.key}')"${c.tip ? ` title="${c.tip}"` : ''}>${c.label}</th>`
     ).join('');
     const dataRows = sorted.map(a => {
         const ownerCell = a.owner === '(burned)'
@@ -1342,20 +1349,24 @@ function renderSubTable(templateId, assets) {
             : `<a href="https://wax.atomichub.io/explorer/account/${a.owner}" target="_blank" style="color:var(--theme-color);text-decoration:none" onclick="event.stopPropagation()">${a.owner}</a>`;
         const ratingCell  = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
         const tplImg      = currentSubImg[templateId] || '';
-        // NORM PRICE: floor WAX normalised by rating and slot productivity
-        const pc           = priceCache.get(templateId);
-        const floorWAX     = (pc && pc.floor !== '—') ? parseFloat(pc.floor) : null;
-        const ratingFactor = (typeof a.land_rating === 'number' && a.land_rating > 0) ? (a.land_rating / 100) : 1;
-        const slotFactor   = 1 + Math.max(0, (parseInt(a.open_slots) || 3) - 3) * 0.2;
-        const effWAX       = floorWAX != null ? (floorWAX / (ratingFactor * slotFactor)).toFixed(2) : '—';
-        const boostTLM     = (typeof a.land_rating === 'number' && a.land_rating > 100)
-            ? Math.round((a.land_rating - 100) * 10000 * 0.0292) : 0;
-        const tdTitle      = effWAX !== '—'
-            ? `floor ${floorWAX} WAX ÷ (rating ${ratingFactor.toFixed(2)} × slots ${slotFactor.toFixed(1)}) = ${effWAX} WAX${boostTLM > 0 ? `\n~${boostTLM.toLocaleString()} TLM invested in rating boosts` : ''}`
-            : 'No floor price loaded';
-        const effCell      = effWAX !== '—'
-            ? `<span class="price-highlight">${effWAX} WAX</span>${boostTLM > 0 ? `<br><span style="color:#555;font-size:0.82em">~${boostTLM.toLocaleString()} TLM rated</span>` : ''}`
-            : '<span style="color:#444">—</span>';
+        // TLM VALUE: estimate WAX-equivalent TLM invested in rating boosts + slots
+        const pc          = priceCache.get(templateId);
+        const floorWAX    = (pc && pc.floor !== '—') ? parseFloat(pc.floor) : null;
+        const rawRating   = (typeof a.land_rating === 'number' && a.land_rating > 0) ? a.land_rating : BASE_RAW;
+        const numBoosts   = rawRating > BASE_RAW ? Math.log(rawRating / BASE_RAW) / Math.log(BOOST_MULT) : 0;
+        const ratingTLM   = Math.round(numBoosts * TLM_PER_BOOST);
+        const slots       = Math.min(parseInt(a.open_slots) || 1, 15);
+        const slotTLM     = SLOT_TLM_CUM[slots] ?? 0;
+        const totalTLM    = ratingTLM + slotTLM;
+        const tlmValueWAX = Math.round(totalTLM / TLM_PER_WAX);
+        const delta       = floorWAX != null ? Math.round(tlmValueWAX - floorWAX) : null;
+        const deltaStr    = delta != null
+            ? (delta >= 0
+                ? `<span style="color:#00cc66;font-size:0.82em">+${delta.toLocaleString()} WAX deal</span>`
+                : `<span style="color:#cc4444;font-size:0.82em">${delta.toLocaleString()} WAX prem.</span>`)
+            : '';
+        const tdTitle = `Rating boosts: ~${ratingTLM.toLocaleString()} TLM (${Math.round(numBoosts)} boosts from base)\nSlot unlocks: ~${slotTLM.toLocaleString()} TLM (${slots} slots)\nTotal: ~${totalTLM.toLocaleString()} TLM ≈ ${tlmValueWAX.toLocaleString()} WAX${floorWAX != null ? `\nFloor: ${floorWAX} WAX  →  ${delta >= 0 ? 'deal by' : 'premium of'} ${Math.abs(delta).toLocaleString()} WAX` : ''}`;
+        const effCell = `<span class="price-highlight">~${tlmValueWAX.toLocaleString()} WAX</span><br><span style="color:#555;font-size:0.82em">~${totalTLM.toLocaleString()} TLM</span>${deltaStr ? '<br>' + deltaStr : ''}`;
         return `<tr class="sub-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${tplImg}','${a.owner.replace(/'/g,"\\'")}')">
             <td style="text-align:center;color:#446;font-size:0.78em!important">${a.asset_id}</td>
             <td>${ownerCell}</td>
@@ -1369,7 +1380,7 @@ function renderSubTable(templateId, assets) {
             <td style="text-align:center">${ratingCell}</td>
             <td style="text-align:center">${a.usedBoosts}</td>
             <td style="text-align:center">${a.boostLast}</td>
-            <td style="text-align:center;font-size:0.85em;line-height:1.4" title="${tdTitle}">${effCell}</td>
+            <td style="text-align:center;font-size:0.85em;line-height:1.5" title="${tdTitle}">${effCell}</td>
         </tr>`;
     }).join('') || `<tr><td colspan="13" class="sub-loading">NO ASSETS FOUND</td></tr>`;
     return `<table class="sub-table system-ready"><thead><tr>${heads}</tr></thead><tbody>${dataRows}</tbody></table>`;
