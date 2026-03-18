@@ -1086,7 +1086,7 @@ function renderTemplateTable() {
             <td style="text-align:center" id="floor-${t.template_id}">${floorCell}</td>
             <td style="text-align:center" id="last-${t.template_id}">${lastCell}</td>
         </tr>
-        <tr class="expand-row">
+        <tr class="expand-row" id="expand-tr-${t.template_id}">
             <td colspan="12"><div class="sub-table-wrap" id="sub-${t.template_id}"></div></td>
         </tr>`;
     }).join('');
@@ -1262,7 +1262,7 @@ window.sortSubTable = (templateId, col) => {
 
 window.toggleExpand = async (templateId, btn) => {
     const wrap = document.getElementById(`sub-${templateId}`);
-    const row  = wrap.closest('tr');
+    const row  = document.getElementById(`expand-tr-${templateId}`);
     if (wrap.classList.contains('open')) {
         wrap.classList.remove('open'); btn.classList.remove('open'); row?.classList.remove('open'); return;
     }
