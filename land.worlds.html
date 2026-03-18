@@ -864,7 +864,7 @@ function renderAssetTable() {
     const tbody  = document.getElementById('asset-tbody');
     const table  = document.getElementById('asset-table');
     const search = document.getElementById('searchInput').value.toLowerCase();
-    const tpls   = allTemplates.filter(t => activePlanets.size === 0 || activePlanets.has(t.planet));
+    const tpls   = allTemplates.filter(t => (activePlanets.size === 0 || activePlanets.has(t.planet)) && !hiddenTypes.has(t.terrain));
     let allAssets = [];
     tpls.forEach(t => {
         const assets = assetCache.get(t.template_id) || [];
@@ -1069,6 +1069,7 @@ async function fetchTemplates() {
         };
     });
     status.textContent = `${allTemplates.length} LAND TEMPLATES`;
+    buildTypeDropdown();
     renderTemplateTable();
 }
 
