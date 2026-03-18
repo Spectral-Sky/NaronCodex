@@ -418,8 +418,7 @@
                 <button class="cyber-btn" id="type-filter-btn" onclick="toggleTypeDropdown()">[ TYPE ▾ ]</button>
                 <div id="type-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:9000;background:#050510;border:2px solid var(--theme-color);min-width:220px;max-height:280px;overflow-y:auto;padding:8px;margin-top:2px;box-shadow:0 8px 24px rgba(0,0,0,0.9);">
                     <div style="display:flex;gap:6px;margin-bottom:8px;border-bottom:1px solid #1a3320;padding-bottom:6px;">
-                        <button onclick="selectAllTypes()" class="cyber-btn" style="flex:1;padding:3px 6px;font-size:0.72em">ALL</button>
-                        <button onclick="clearAllTypes()" class="cyber-btn" style="flex:1;padding:3px 6px;font-size:0.72em">NONE</button>
+                        <button onclick="selectAllTypes()" class="cyber-btn" style="padding:3px 6px;font-size:0.72em">ALL</button>
                     </div>
                     <div id="type-options"></div>
                 </div>
@@ -464,7 +463,7 @@
             <th class="live-header" onclick="sortBy('template_id')">TPL ID</th>
             <th class="live-header">IMAGE</th>
             <th class="live-header" onclick="sortBy('planet')">PLANET</th>
-            <th class="live-header" onclick="sortBy('terrain')">TYPE</th>
+            <th class="live-header" onclick="sortBy('type')">TYPE</th>
             <th class="live-header" onclick="sortBy('rarity')">RARITY</th>
             <th class="live-header" onclick="sortBy('ease')">EASE / MINE PWR</th>
             <th class="live-header" onclick="sortBy('luck')">LUCK / NFT PTS</th>
@@ -484,7 +483,7 @@
             <th class="live-header" onclick="sortAsset('asset_id')">ASSET ID</th>
             <th class="live-header">IMAGE</th>
             <th class="live-header" onclick="sortAsset('planet')">PLANET</th>
-            <th class="live-header" onclick="sortAsset('terrain')">TYPE</th>
+            <th class="live-header" onclick="sortAsset('type')">TYPE</th>
             <th class="live-header" onclick="sortAsset('rarity')">RARITY</th>
             <th class="live-header" onclick="sortAsset('owner')">OWNER</th>
             <th class="live-header" onclick="sortAsset('ease')">EASE / MINE PWR</th>
@@ -717,7 +716,7 @@ const ASSET_LINKS = {
 };
 
 let isDeckOpen = false;
-const hiddenTypes = new Set(); // terrain types unchecked by user
+const hiddenTypes = new Set();
 
 window.toggleTypeDropdown = () => {
     const dd = document.getElementById('type-dropdown');
@@ -731,7 +730,7 @@ document.addEventListener('click', e => {
     }
 });
 function buildTypeDropdown() {
-    const types = [...new Set(allTemplates.map(t => t.terrain).filter(Boolean))].sort();
+    const types = [...new Set(allTemplates.map(t => t.type).filter(Boolean))].sort();
     const container = document.getElementById('type-options');
     if (!container) return;
     container.innerHTML = types.map(t =>
@@ -750,7 +749,7 @@ window.selectAllTypes = () => {
     if (assetViewActive) renderAssetTable(); else renderTemplateTable();
 };
 window.clearAllTypes = () => {
-    const types = [...new Set(allTemplates.map(t => t.terrain).filter(Boolean))];
+    const types = [...new Set(allTemplates.map(t => t.type).filter(Boolean))];
     types.forEach(t => hiddenTypes.add(t));
     document.querySelectorAll('#type-options input').forEach(c => c.checked = false);
     updateTypeBtn();
@@ -957,7 +956,7 @@ function renderAssetTable() {
             allAssets.push({
                 ...a,
                 planet:  t.planet,
-                terrain: t.terrain,
+                type:    t.type,
                 rarity:  t.rarity,
                 img:     t.img,
                 tpl_id:  t.template_id,
@@ -985,7 +984,7 @@ function renderAssetTable() {
             <td style="text-align:center;color:#446;font-size:0.8em!important">${a.asset_id}</td>
             <td style="text-align:center;padding:4px!important">${a.img ? `<img src="https://ipfs.io/ipfs/${a.img}" style="height:52px;width:auto;max-width:58px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
             <td style="text-align:center;font-weight:bold;text-transform:uppercase">${a.planet}</td>
-            <td style="text-align:center">${a.terrain || '—'}</td>
+            <td style="text-align:center">${a.type || '—'}</td>
             <td class="tag-${rar(a.rarity)}">${a.rarity || '—'}</td>
             <td>${ownerCell}</td>
             <td style="text-align:center">${a.ease}</td>
@@ -1073,7 +1072,7 @@ function renderTemplateTable() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     let rows = allTemplates.filter(t => {
         if (activePlanets.size > 0 && !activePlanets.has(t.planet)) return false;
-        if (hiddenTypes.has(t.terrain)) return false;
+        if (hiddenTypes.has(t.type)) return false;
         if (search && !JSON.stringify(t).toLowerCase().includes(search)) return false;
         return true;
     });
@@ -1092,12 +1091,12 @@ function renderTemplateTable() {
         const floorCell = pc ? `<span class="price-highlight">${pc.floor}</span>` : '<span style="color:#444">—</span>';
         const lastCell  = pc ? `<span class="price-highlight">${pc.last}</span>`  : '<span style="color:#444">—</span>';
         return `
-        <tr class="tpl-row" style="cursor:pointer" onclick="onTplRowClick(event,'${t.template_id}','${t.img}','${(t.terrain+' on '+t.planet).replace(/'/g,"\\'")}')">
+        <tr class="tpl-row" style="cursor:pointer" onclick="onTplRowClick(event,'${t.template_id}','${t.img}','${(t.type+' on '+t.planet).replace(/'/g,"\\'")}')">
             <td style="text-align:center;padding:4px!important" onclick="event.stopPropagation()"><button class="expand-btn" onclick="toggleExpand('${t.template_id}',this)">▶</button></td>
             <td style="color:#557;font-size:0.8em!important">${t.template_id}</td>
             <td style="text-align:center;padding:4px!important">${t.img ? `<img src="https://ipfs.io/ipfs/${t.img}" style="height:56px;width:auto;max-width:64px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
             <td style="text-align:center;font-weight:bold;text-transform:uppercase;letter-spacing:1px">${t.planet}</td>
-            <td style="text-align:center">${t.terrain || '—'}</td>
+            <td style="text-align:center">${t.type || '—'}</td>
             <td class="tag-${rar(t.rarity)}">${t.rarity || '—'}</td>
             <td style="text-align:center">${t.ease ?? '—'}</td>
             <td style="text-align:center">${t.luck ?? '—'}</td>
@@ -1132,17 +1131,17 @@ async function fetchTemplates() {
     allTemplates = all.map(t => {
         const imm = t.immutable_data || {};
         const rawName = String(imm.name || '');
-        let planet = 'unknown', terrain = rawName;
+        let planet = 'unknown', type = rawName;
         for (const p of PLANETS_LIST) {
             if (rawName.toLowerCase().includes(p)) {
                 planet = p;
-                terrain = rawName.replace(new RegExp(' on ' + p, 'i'), '').trim();
+                type = rawName.replace(new RegExp(' on ' + p, 'i'), '').trim();
                 break;
             }
         }
         return {
             template_id: t.template_id,
-            planet, terrain,
+            planet, type,
             rarity: imm.rarity || '',
             ease:   imm.ease   ?? '',
             luck:   imm.luck   ?? '',
@@ -1152,6 +1151,7 @@ async function fetchTemplates() {
         };
     });
     status.textContent = `${allTemplates.length} LAND TEMPLATES`;
+    buildTypeDropdown();
     renderTemplateTable();
 }
 
