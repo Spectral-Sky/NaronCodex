@@ -184,7 +184,6 @@
         }
         .live-header:hover { z-index: 2000 !important; background-color: #000 !important; }
         .live-header:first-of-type { border-left: 2px solid var(--theme-color) !important; border-top-left-radius: 4px; }
-        .live-header::after { content: ' ↕'; color: rgba(255,255,255,0.2); font-size: 0.8em; }
         td {
             border-bottom: var(--theme-border) !important; border-right: var(--theme-border) !important;
             padding: 6px 10px !important; vertical-align: middle; max-width: 160px;
@@ -221,18 +220,15 @@
         .sub-table { width: 100%; border-collapse: collapse; }
         .sub-header { background: rgba(0,0,0,0.9) !important; color: var(--theme-color) !important; border-bottom: 1px solid var(--theme-color) !important; border-right: 1px solid #0f2d1a !important; padding: 8px 6px !important; text-align: center !important; font-family: 'Courier New', monospace !important; font-size: 0.8em !important; text-transform: uppercase !important; letter-spacing: 1px !important; white-space: normal !important; line-height: 1.3 !important; user-select: none; cursor: crosshair !important; min-width: 50px; }
         .sub-header:hover { background: #000 !important; }
-        .sub-header::after { content: ' ↕'; color: rgba(255,255,255,0.2); font-size: 0.8em; }
         .sub-row td { border-bottom: 1px solid #091a0f !important; border-right: 1px solid #091a0f !important; padding: 4px 10px !important; font-family: 'Courier New', monospace !important; font-size: 0.82em !important; color: #aaa !important; white-space: nowrap !important; }
         .sub-row td:first-child { border-left: none !important; }
         .sub-row:hover td { background: rgba(0,60,30,0.4) !important; color: #ccc !important; }
         .sub-loading { color: #335; text-align: center; padding: 20px; letter-spacing: 2px; font-family: 'Courier New', monospace; font-size: 0.8em; }
 
         /* --- MARKET DECK --- */
-        /* Planet bar sits in normal flow; give it a stacking context above the fixed deck (z:3000)
-           so it covers the deck while visible. Once the user scrolls past it the deck is revealed. */
         body.deck-open .grid-container { grid-template-columns: minmax(320px, 1fr) auto minmax(20px, 1fr); }
         #preview-frame {
-            position: fixed; top: 266px; left: 10px; width: 285px; height: 370px;
+            position: fixed; top: 360px; left: 10px; width: 285px; height: 370px;
             border: 2px solid var(--theme-color); background: var(--theme-dark);
             box-shadow: var(--theme-shadow); z-index: 3000; box-sizing: border-box;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -243,7 +239,7 @@
         #preview-status { color: var(--theme-color); font-size: 0.78em; letter-spacing: 2px; opacity: 0.6; }
         #preview-label { margin-top: 8px; color: #fff; font-weight: bold; font-size: 0.82em; text-align: center; letter-spacing: 1px; width: 90%; border-top: 1px dashed #1a3320; padding-top: 6px; }
         #market-frame {
-            position: fixed; top: 646px; left: 10px; width: 285px;
+            position: fixed; top: 740px; left: 10px; width: 285px;
             border: 2px solid var(--theme-color); background: #000; box-sizing: border-box;
             box-shadow: var(--theme-shadow); z-index: 3000; padding: 10px; display: none;
             transition: transform 0.4s, opacity 0.4s; transform: translateX(-320px); opacity: 0;
@@ -254,14 +250,17 @@
         .intel-val { color: var(--theme-color); font-weight: bold; font-family: monospace; }
         #intel-header { color: var(--theme-color); font-weight: bold; border-bottom: 1px solid #1a3320; margin-bottom: 8px; text-transform: uppercase; font-size: 0.82em; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .market-links { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; border-top: 1px solid #1a2a1a; padding-top: 10px; pointer-events: auto; }
+        /* Crew-style sidebar tab — slides with the deck */
         #deck-toggle-tab {
-            position: fixed; top: 266px; left: 10px; z-index: 3100;
-            background: #000; border: 2px solid var(--theme-color); color: var(--theme-color);
-            padding: 10px 5px; font-family: monospace; cursor: pointer;
-            transition: background 0.2s, color 0.2s, left 0.4s; writing-mode: vertical-rl;
-            letter-spacing: 2px; font-size: 0.75em;
+            position: fixed; top: 360px; left: 293px; width: 30px; height: 370px;
+            background: var(--theme-dark); border: 2px solid var(--theme-color); border-left: none;
+            color: var(--theme-color); display: flex; align-items: center; justify-content: center;
+            font-size: 1.3em; cursor: pointer; z-index: 3005; pointer-events: auto !important;
+            transition: transform 0.4s ease-out, background 0.2s, color 0.2s;
+            border-radius: 0 8px 8px 0; box-shadow: 5px 0 15px rgba(0,0,0,0.8);
+            transform: translateX(-305px); /* hidden by default — slides with the closed frame */
         }
-        body.deck-open #deck-toggle-tab { left: 295px; }
+        #deck-toggle-tab.open { transform: translateX(0); }
         #deck-toggle-tab:hover { background: var(--theme-color); color: #000; }
         .price-highlight { color: var(--theme-color) !important; font-weight: bold !important; }
         /* Listing indicators in sub-table */
@@ -276,6 +275,17 @@
         .type-opt { display: block; padding: 4px 2px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 0.8em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
         .type-opt:hover { color: var(--theme-color); }
         .type-opt input { margin-right: 7px; accent-color: var(--theme-color); }
+        /* View-toggle button: constant independent RGB cycling glow */
+        @keyframes rgb-glow {
+            0%   { box-shadow: 0 0 8px #ff0044, 0 0 20px #ff004466; border-color: #ff0044; color: #ff0044; }
+            16%  { box-shadow: 0 0 8px #ff8800, 0 0 20px #ff880066; border-color: #ff8800; color: #ff8800; }
+            33%  { box-shadow: 0 0 8px #ffe000, 0 0 20px #ffe00066; border-color: #ffe000; color: #ffe000; }
+            50%  { box-shadow: 0 0 8px #00ff88, 0 0 20px #00ff8866; border-color: #00ff88; color: #00ff88; }
+            66%  { box-shadow: 0 0 8px #00aaff, 0 0 20px #00aaff66; border-color: #00aaff; color: #00aaff; }
+            83%  { box-shadow: 0 0 8px #cc00ff, 0 0 20px #cc00ff66; border-color: #cc00ff; color: #cc00ff; }
+            100% { box-shadow: 0 0 8px #ff0044, 0 0 20px #ff004466; border-color: #ff0044; color: #ff0044; }
+        }
+        #view-toggle-btn { animation: rgb-glow 4s linear infinite; }
         @media (max-width: 800px) { #deck-toggle-tab { display: none !important; } #preview-frame, #market-frame { display: none !important; } }
 
         /* --- FOOTER --- */
@@ -328,7 +338,7 @@
 <div id="cursor-glow"></div>
 
 <!-- ══ MARKET DECK ═══════════════════════════════════════════════════════════ -->
-<div id="deck-toggle-tab" onclick="toggleDeck()">◀ DECK</div>
+<div id="deck-toggle-tab" onclick="toggleDeck()">▶</div>
 
 <div id="preview-frame">
     <div id="preview-status">SELECT LAND</div>
@@ -750,13 +760,15 @@ window.toggleDeck = () => {
     if (isDeckOpen) {
         document.body.classList.add('deck-open');
         pre.classList.add('open');
+        tab.classList.add('open');
+        tab.textContent = '◀';
         if (mkt.dataset.shown === '1') { mkt.style.display = 'block'; mkt.classList.add('open'); }
-        tab.textContent = '◀ DECK';
     } else {
         document.body.classList.remove('deck-open');
         pre.classList.remove('open');
         mkt.classList.remove('open');
-        tab.textContent = '▶ DECK';
+        tab.classList.remove('open');
+        tab.textContent = '▶';
     }
 };
 
@@ -777,7 +789,9 @@ function showPreview(imgHash, labelText, subLabel) {
         isDeckOpen = true;
         document.body.classList.add('deck-open');
         document.getElementById('preview-frame').classList.add('open');
-        document.getElementById('deck-toggle-tab').textContent = '◀ DECK';
+        const tab = document.getElementById('deck-toggle-tab');
+        tab.classList.add('open');
+        tab.textContent = '◀';
     }
 }
 
