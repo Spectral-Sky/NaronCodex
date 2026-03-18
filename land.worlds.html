@@ -593,6 +593,7 @@ function buildPlanets(spacing) {
         mesh.name = name;
         mesh.userData.speedMultiplier = 1;
         mesh.userData.clickCount = 0;
+        mesh.userData.targetScale = 1;
         scene.add(mesh);
         planets.push(mesh);
     });
@@ -661,6 +662,8 @@ function animate() {
     planets.forEach(p => {
         p.userData.speedMultiplier = THREE.MathUtils.lerp(p.userData.speedMultiplier, 1, DECAY_RATE);
         p.rotation.y += BASE_SPEED * p.userData.speedMultiplier;
+        const s = THREE.MathUtils.lerp(p.scale.x, p.userData.targetScale, 0.06);
+        p.scale.setScalar(s);
     });
     updateLabelPositions();
     renderer.render(scene, camera);
@@ -685,8 +688,13 @@ labelEls.forEach(el => el.addEventListener('click', () => {
     const planet = planets.find(p => p.name === el.dataset.planet);
     const activating = !activePlanets.has(el.dataset.planet);
     if (planet) {
-        if (activating) planet.userData.speedMultiplier = 300;
-        else spinPlanet(planet);
+        if (activating) {
+            planet.userData.speedMultiplier = 300;
+            planet.userData.targetScale = 1.45;
+        } else {
+            spinPlanet(planet);
+            planet.userData.targetScale = 1;
+        }
     }
     togglePlanetFilter(el.dataset.planet);
 }));
