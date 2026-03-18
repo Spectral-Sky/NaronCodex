@@ -228,7 +228,7 @@
         #planet-bar { z-index: 4000; background: #050510; }
         body.deck-open .grid-container { grid-template-columns: minmax(320px, 1fr) auto minmax(20px, 1fr); }
         #preview-frame {
-            position: fixed; top: 66px; left: 10px; width: 285px; height: 370px;
+            position: fixed; top: 266px; left: 10px; width: 285px; height: 370px;
             border: 2px solid var(--theme-color); background: var(--theme-dark);
             box-shadow: var(--theme-shadow); z-index: 3000; box-sizing: border-box;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -239,7 +239,7 @@
         #preview-status { color: var(--theme-color); font-size: 0.78em; letter-spacing: 2px; opacity: 0.6; }
         #preview-label { margin-top: 8px; color: #fff; font-weight: bold; font-size: 0.82em; text-align: center; letter-spacing: 1px; width: 90%; border-top: 1px dashed #1a3320; padding-top: 6px; }
         #market-frame {
-            position: fixed; top: 446px; left: 10px; width: 285px;
+            position: fixed; top: 646px; left: 10px; width: 285px;
             border: 2px solid var(--theme-color); background: #000; box-sizing: border-box;
             box-shadow: var(--theme-shadow); z-index: 3000; padding: 10px; display: none;
             transition: transform 0.4s, opacity 0.4s; transform: translateX(-320px); opacity: 0;
@@ -251,7 +251,7 @@
         #intel-header { color: var(--theme-color); font-weight: bold; border-bottom: 1px solid #1a3320; margin-bottom: 8px; text-transform: uppercase; font-size: 0.82em; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .market-links { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; border-top: 1px solid #1a2a1a; padding-top: 10px; pointer-events: auto; }
         #deck-toggle-tab {
-            position: fixed; top: 66px; left: 10px; z-index: 3100;
+            position: fixed; top: 266px; left: 10px; z-index: 3100;
             background: #000; border: 2px solid var(--theme-color); color: var(--theme-color);
             padding: 10px 5px; font-family: monospace; cursor: pointer;
             transition: background 0.2s, color 0.2s, left 0.4s; writing-mode: vertical-rl;
@@ -660,7 +660,7 @@ const PLANETS_LIST  = ['eyeke','kavian','magor','naron','neri','veles'];
 const assetCache     = new Map();
 const assetSortState = new Map();
 const priceCache     = new Map();  // template_id → { floor, last, sugg }
-const listingCache   = new Map();  // template_id → Set of listed asset_ids
+const listingCache   = new Map();  // template_id → Map of asset_id → price string
 const currentSubImg  = {};         // template_id → ipfs hash (for sub-row clicks)
 
 // ─── MARKET DECK CONFIG ───────────────────────────────────────────────────────
@@ -907,11 +907,11 @@ function renderAssetTable() {
     const tbody  = document.getElementById('asset-tbody');
     const table  = document.getElementById('asset-table');
     const search = document.getElementById('searchInput').value.toLowerCase();
-    const tpls   = allTemplates.filter(t => activePlanets.size === 0 || activePlanets.has(t.planet));
+    const tpls   = allTemplates.filter(t => (activePlanets.size === 0 || activePlanets.has(t.planet)) && !hiddenTypes.has(t.terrain));
     let allAssets = [];
     tpls.forEach(t => {
         const assets = assetCache.get(t.template_id) || [];
-        const listed = listingCache.get(t.template_id) || new Set();
+        const listed = listingCache.get(t.template_id) || new Map();
         assets.forEach(a => {
             allAssets.push({
                 ...a,
@@ -920,7 +920,7 @@ function renderAssetTable() {
                 rarity:  t.rarity,
                 img:     t.img,
                 tpl_id:  t.template_id,
-                listed:  listed.has(a.asset_id) ? 1 : 0,
+                listed:  listed.get(String(a.asset_id)) ?? null,
             });
         });
     });
@@ -940,7 +940,7 @@ function renderAssetTable() {
             ? `<span style="color:#444">(burned)</span>`
             : `<a href="https://wax.atomichub.io/explorer/account/${a.owner}" target="_blank" style="color:var(--theme-color);text-decoration:none" onclick="event.stopPropagation()">${a.owner}</a>`;
         const ratingCell = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
-        const listedCell = a.listed ? '<span class="listed-yes">✓</span>' : '<span class="listed-no" style="opacity:0.3">✗</span>';
+        const listedCell = a.listed != null ? `<span class="listed-yes">${a.listed} WAX</span>` : '';
         return `<tr class="tpl-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${a.img}','${a.owner.replace(/'/g,"\\'")}')">
             <td style="text-align:center;color:#446;font-size:0.8em!important">${a.asset_id}</td>
             <td style="text-align:center;padding:4px!important">${a.img ? `<img src="https://ipfs.io/ipfs/${a.img}" style="height:52px;width:auto;max-width:58px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
@@ -1162,12 +1162,16 @@ async function fetchAssetsForTemplate(templateId) {
 // ─── LISTING FETCH ────────────────────────────────────────────────────────────
 async function fetchListingsForTemplate(templateId) {
     if (listingCache.has(templateId)) return listingCache.get(templateId);
-    const listed = new Set();
+    const listed = new Map(); // asset_id → price string
     try {
         const r = await fetch(`https://wax.api.atomicassets.io/atomicmarket/v2/sales?state=1&collection_name=alien.worlds&template_id=${templateId}&limit=1000&symbol=WAX`);
         const d = await r.json();
         if (d.success && d.data) {
-            d.data.forEach(sale => sale.assets?.forEach(a => listed.add(String(a.asset_id))));
+            d.data.forEach(sale => {
+                const p = sale.price;
+                const price = p ? (parseInt(p.amount) / Math.pow(10, p.token_precision)).toFixed(2) : null;
+                sale.assets?.forEach(a => listed.set(String(a.asset_id), price));
+            });
         }
     } catch(e) {}
     listingCache.set(templateId, listed);
@@ -1209,9 +1213,8 @@ function renderSubTable(templateId, assets) {
             : `<a href="https://wax.atomichub.io/explorer/account/${a.owner}" target="_blank" style="color:var(--theme-color);text-decoration:none" onclick="event.stopPropagation()">${a.owner}</a>`;
         const ratingCell  = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
         const tplImg      = currentSubImg[templateId] || '';
-        const listedCell  = listed === null
-            ? ''
-            : (listed.has(String(a.asset_id)) ? '<span class="listed-yes">✓</span>' : '<span class="listed-no" style="opacity:0.3">✗</span>');
+        const listPrice   = listed ? listed.get(String(a.asset_id)) : undefined;
+        const listedCell  = listPrice != null ? `<span class="listed-yes">${listPrice} WAX</span>` : '';
         return `<tr class="sub-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${tplImg}','${a.owner.replace(/'/g,"\\'")}')">
             <td style="text-align:center;color:#446;font-size:0.78em!important">${a.asset_id}</td>
             <td>${ownerCell}</td>
