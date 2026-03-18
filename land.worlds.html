@@ -683,7 +683,11 @@ function togglePlanetFilter(name) {
 window.togglePlanetFilter = togglePlanetFilter;
 labelEls.forEach(el => el.addEventListener('click', () => {
     const planet = planets.find(p => p.name === el.dataset.planet);
-    if (planet) spinPlanet(planet);
+    const activating = !activePlanets.has(el.dataset.planet);
+    if (planet) {
+        if (activating) planet.userData.speedMultiplier = 300;
+        else spinPlanet(planet);
+    }
     togglePlanetFilter(el.dataset.planet);
 }));
 
