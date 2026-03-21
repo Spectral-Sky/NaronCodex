@@ -14,6 +14,33 @@
     <link rel="icon" type="image/png" href="NCico.png">
     
     <script src="waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@0.8';
+        import WebRenderer from 'https://esm.sh/@wharfkit/web-renderer@0.3';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@0.3';
+        import { WalletPluginWAX } from 'https://esm.sh/@wharfkit/wallet-plugin-wax@0.2';
+
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor(), new WalletPluginWAX()],
+        });
+
+        window.walletKit = kit;
+        window.WalletPluginAnchor = WalletPluginAnchor;
+        window.WalletPluginWAX = WalletPluginWAX;
+
+        // Restore any saved session on page load
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+                if (typeof checkWalletState === 'function') checkWalletState();
+            }
+        } catch(e) {}
+    </script>
 
     <style>
         /* --- GLOBAL THEME --- */
@@ -263,6 +290,22 @@
         .request-feature-btn:hover img { opacity: 1; }
         .welcome-logo { width: 90px; height: 90px; object-fit: contain; cursor: pointer; }
 
+        /* --- WALLET PICKER --- */
+        .wallet-section { position: relative; }
+        #wallet-picker {
+            display: none; position: absolute; right: 0; top: calc(100% + 6px);
+            background: #020a08; border: 1px solid var(--theme-color);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.9); z-index: 3000; min-width: 210px;
+        }
+        .wallet-picker-opt {
+            display: block; width: 100%; background: transparent; color: #aaa;
+            border: none; border-bottom: 1px solid #0f2a22; padding: 12px 18px;
+            font-family: monospace; font-size: 0.9em; font-weight: bold; text-align: left;
+            cursor: pointer; transition: all 0.2s; letter-spacing: 1px;
+        }
+        .wallet-picker-opt:last-child { border-bottom: none; }
+        .wallet-picker-opt:hover { background: var(--theme-hover); color: var(--theme-color); }
+
         /* --- CURSOR AURA (toggleable outer ring) --- */
         @keyframes rgb-aura-spin { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }
         #cursor-aura {
@@ -418,11 +461,16 @@
             <a href="faces.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">FACES</a>
             <a href="pd.worlds.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD UNITS</a>
             <a href="pd.materials.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD MATS</a>
+            <a href="land.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">LAND</a>
             <a href="army.html" class="nav-btn">⚔ ARMY</a>
         </nav>
 
         <div class="wallet-section">
-            <button id="wallet-connect-btn" class="wallet-btn" onclick="toggleWallet()">[ CONNECT WAX WALLET ]</button>
+            <button id="wallet-connect-btn" class="wallet-btn" onclick="handleWalletClick()">[ CONNECT WALLET ]</button>
+            <div id="wallet-picker">
+                <button class="wallet-picker-opt" onclick="loginWithAnchor()">⚓ Anchor</button>
+                <button class="wallet-picker-opt" onclick="loginWithWCC()">☁ Wax Cloud Wallet</button>
+            </div>
         </div>
         <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
     </header>
@@ -434,6 +482,7 @@
     <a href="faces.worlds.html" class="nav-btn">FACES</a>
     <a href="pd.worlds.html" class="nav-btn">PD UNITS</a>
     <a href="pd.materials.html" class="nav-btn">PD MATS</a>
+    <a href="land.worlds.html" class="nav-btn">LAND</a>
     <a href="army.html" class="nav-btn">&#9876; ARMY</a>
 </nav>
 
@@ -507,11 +556,11 @@
                             <img src="https://ipfs.io/ipfs/QmSUWgba8zsZ4iG3xTAY5Byopk1ihgbsgYPfeLY9Lk21qj" class="fan-img"> <img src="https://ipfs.io/ipfs/QmaokVaofHgBGmu1MZi2PEy6WLWEkcRm66wUB2z7XYdeph" class="fan-img"> <img src="https://ipfs.io/ipfs/QmW3PZQyBA4WL91N3bbeqq2S8883UtZRHQyeJ2YMH7dXL5" class="fan-img"> <img src="https://ipfs.io/ipfs/QmQpCVK7F7P7LV9dwZvKEwhHKoU5UtvezT4ny83xJUSj6n" class="fan-img"> <img src="https://ipfs.io/ipfs/QmRMMQCGCdGhvW6m7tbUpRr5qp8pmpWFjKKDxjGvuuntjG" class="fan-img"> </div>
                     </a>
 
-                    <a href="#" class="module-card locked">
+                    <a href="land.worlds.html" class="module-card">
                         <div class="card-text-wrapper">
                             <div class="card-title">LAND</div>
                             <span class="card-schema">schema: land.worlds</span>
-                            <div class="card-status status-dev">IN DEVELOPMENT</div>
+                            <div class="card-status status-live">BETA SYSTEM LIVE</div>
                         </div>
                     </a>
                 </div>
@@ -749,6 +798,7 @@
 
             const glow   = document.getElementById("cursor-glow");
             const planet = document.getElementById("cursor-planet");
+            planet.style.opacity = "1";
             const CONFETTI_COLORS = ['#00ffcc','#ff003c','#ffaa00','#bc13fe','#0088ff','#ff69b4','#00ff00','#ff6600','#ffffff'];
 
             let cursorX = window.innerWidth / 2;
@@ -896,11 +946,11 @@
             });
             document.addEventListener("mouseleave", () => {
                 if (partyActive) glow.style.opacity = "0";
-                if (logoClicks >= 1) planet.style.opacity = "0";
+                planet.style.opacity = "0";
             });
             document.addEventListener("mouseenter", () => {
                 if (partyActive) glow.style.opacity = "1";
-                if (logoClicks >= 1) planet.style.opacity = "1";
+                planet.style.opacity = "1";
             });
 
             // ---- click ripple ----
@@ -917,36 +967,60 @@
         function checkWalletState() {
             const savedWallet = localStorage.getItem("naron_wallet");
             const btn = document.getElementById("wallet-connect-btn");
-            
-            if(savedWallet) {
+            if (savedWallet) {
                 btn.innerText = `[ ${savedWallet} ]`;
                 btn.classList.add("logged-in");
             } else {
-                btn.innerText = "[ CONNECT WAX WALLET ]";
+                btn.innerText = "[ CONNECT WALLET ]";
                 btn.classList.remove("logged-in");
             }
         }
 
-        const wax = new waxjs.WaxJS({
-    rpcEndpoint: 'https://wax.greymass.com'
-});
-
-async function toggleWallet() {
-    const currentWallet = localStorage.getItem("naron_wallet");
-    
-    if (currentWallet) {
-        localStorage.removeItem("naron_wallet");
-        checkWalletState();
-    } else {
-        try {
-            const userAccount = await wax.login();
-            localStorage.setItem("naron_wallet", userAccount);
-            checkWalletState();
-        } catch(e) {
-            console.error("WAX login failed:", e);
+        function handleWalletClick() {
+            if (localStorage.getItem("naron_wallet")) {
+                disconnectWallet();
+            } else {
+                const picker = document.getElementById("wallet-picker");
+                picker.style.display = picker.style.display === 'block' ? 'none' : 'block';
+            }
         }
-    }
-}
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.wallet-section')) {
+                document.getElementById("wallet-picker").style.display = 'none';
+            }
+        });
+
+        async function loginWithAnchor() {
+            document.getElementById("wallet-picker").style.display = 'none';
+            if (!window.walletKit) { console.error("WharfKit not loaded yet"); return; }
+            try {
+                const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginAnchor() });
+                window.walletSession = session;
+                localStorage.setItem("naron_wallet", String(session.actor));
+                checkWalletState();
+            } catch(e) { console.error("Anchor login failed:", e); }
+        }
+
+        async function loginWithWCC() {
+            document.getElementById("wallet-picker").style.display = 'none';
+            if (!window.walletKit) { console.error("WharfKit not loaded yet"); return; }
+            try {
+                const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginWAX() });
+                window.walletSession = session;
+                localStorage.setItem("naron_wallet", String(session.actor));
+                checkWalletState();
+            } catch(e) { console.error("WAX Cloud Wallet login failed:", e); }
+        }
+
+        function disconnectWallet() {
+            if (window.walletKit && window.walletSession) {
+                window.walletKit.logout(window.walletSession).catch(() => {});
+                window.walletSession = null;
+            }
+            localStorage.removeItem("naron_wallet");
+            checkWalletState();
+        }
 
     // ── Chest system ────────────────────────────────────────────────────────
     const CHEST_WORKER_URL = "https://naron-chests.YOUR-SUBDOMAIN.workers.dev";
