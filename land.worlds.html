@@ -12,6 +12,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/NCico.png">
     <script src="/waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        import { WalletPluginWAX } from 'https://esm.sh/@wharfkit/wallet-plugin-wax';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor(), new WalletPluginWAX()],
+        });
+        window.walletKit = kit;
+        window.WalletPluginAnchor = WalletPluginAnchor;
+        window.WalletPluginWAX = WalletPluginWAX;
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+                if (typeof checkWalletState === 'function') checkWalletState();
+            }
+        } catch(e) {}
+    </script>
 
     <!-- Three.js loaded as an ES module from CDN — no build step needed.
          NOTE: Three.js TextureLoader uses XHR internally, which browsers block
@@ -96,6 +119,21 @@
         .wallet-btn { background: #111; color: var(--theme-color); border: 1px dashed var(--theme-color); padding: 10px 20px; font-family: monospace; font-weight: bold; cursor: pointer; transition: all 0.3s; }
         .wallet-btn:hover { background: var(--theme-hover); box-shadow: var(--theme-shadow); }
         .wallet-btn.logged-in { background: var(--theme-color); color: #000; border: 1px solid #fff; }
+
+        .wallet-section { position: relative; }
+        #wallet-picker {
+            display: none; position: absolute; right: 0; top: calc(100% + 6px);
+            background: #020a08; border: 1px solid var(--theme-color);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.9); z-index: 3000; min-width: 210px;
+        }
+        .wallet-picker-opt {
+            display: block; width: 100%; background: transparent; color: #aaa;
+            border: none; border-bottom: 1px solid #0f2a22; padding: 12px 18px;
+            font-family: monospace; font-size: 0.9em; font-weight: bold; text-align: left;
+            cursor: pointer; transition: all 0.2s; letter-spacing: 1px;
+        }
+        .wallet-picker-opt:last-child { border-bottom: none; }
+        .wallet-picker-opt:hover { background: var(--theme-hover); color: var(--theme-color); }
 
         /* --- CURSOR BACK-GLOW --- */
         #cursor-glow {
@@ -391,7 +429,13 @@
         <a href="/pd.materials.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD MATS</a>
         <a href="/army.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">ARMY BUILDER</a>
     </nav>
-    <button id="wallet-btn" class="cyber-btn" style="border-color:var(--theme-color);color:var(--theme-color);" onclick="toggleWallet()">[ WAX LOGIN ]</button>
+    <div class="wallet-section">
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="handleWalletClick()">[ CONNECT WALLET ]</button>
+        <div id="wallet-picker">
+            <button class="wallet-picker-opt" onclick="loginWithAnchor()">⚓ Anchor</button>
+            <button class="wallet-picker-opt" onclick="loginWithWCC()">☁ Wax Cloud Wallet</button>
+        </div>
+    </div>
     <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
 </header>
 
@@ -1487,30 +1531,72 @@ window.toggleExpand = async (templateId, btn) => {
 let currentAccount = '';
 const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
 
-window.toggleWallet = async () => {
-    const btn = document.getElementById('wallet-btn');
-    if (currentAccount) {
-        currentAccount = ''; localStorage.removeItem('naron_wallet');
-        btn.innerText = '[ WAX LOGIN ]';
-        btn.style.color = 'var(--theme-color)'; btn.style.borderColor = 'var(--theme-color)';
-        return;
-    }
-    try {
-        btn.innerText = '[ AUTHENTICATING... ]';
-        const account = await wax.login();
-        currentAccount = account;
-        localStorage.setItem('naron_wallet', account);
-        updateWalletUI(account);
-    } catch(e) { console.error(e); btn.innerText = '[ WAX LOGIN ]'; }
-};
-
-function updateWalletUI(accountName) {
-    const btn = document.getElementById('wallet-btn');
-    if (btn) { btn.innerText = `[ ${accountName} ]`; btn.style.color = '#00ff00'; btn.style.borderColor = '#00ff00'; }
-}
 function checkWalletState() {
     const saved = localStorage.getItem('naron_wallet');
-    if (saved) { currentAccount = saved; updateWalletUI(saved); }
+    if (saved) currentAccount = saved;
+    updateWalletUI(saved || null);
+}
+function handleWalletClick() {
+    if (localStorage.getItem('naron_wallet')) {
+        disconnectWallet();
+    } else {
+        const picker = document.getElementById('wallet-picker');
+        picker.style.display = picker.style.display === 'block' ? 'none' : 'block';
+    }
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.wallet-section')) {
+        const p = document.getElementById('wallet-picker');
+        if(p) p.style.display = 'none';
+    }
+});
+async function loginWithAnchor() {
+    document.getElementById('wallet-picker').style.display = 'none';
+    if (!window.walletKit) { return; }
+    try {
+        const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginAnchor() });
+        window.walletSession = session;
+        const account = String(session.actor);
+        currentAccount = account;
+        localStorage.setItem('naron_wallet', account);
+        if(window.wax) wax.userAccount = account;
+        checkWalletState();
+    } catch(e) { console.error('Anchor login failed:', e); }
+}
+async function loginWithWCC() {
+    document.getElementById('wallet-picker').style.display = 'none';
+    if (!window.walletKit) { return; }
+    try {
+        const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginWAX() });
+        window.walletSession = session;
+        const account = String(session.actor);
+        currentAccount = account;
+        localStorage.setItem('naron_wallet', account);
+        if(window.wax) wax.userAccount = account;
+        checkWalletState();
+    } catch(e) { console.error('WAX login failed:', e); }
+}
+function disconnectWallet() {
+    if (window.walletKit && window.walletSession) {
+        window.walletKit.logout(window.walletSession).catch(() => {});
+        window.walletSession = null;
+    }
+    currentAccount = '';
+    localStorage.removeItem('naron_wallet');
+    if(window.wax) wax.userAccount = '';
+    checkWalletState();
+}
+
+function updateWalletUI(accountName) {
+    const btn = document.getElementById('wallet-connect-btn');
+    if(!btn) return;
+    if(accountName) {
+        btn.innerText = `[ ${accountName} ]`;
+        btn.classList.add('logged-in');
+    } else {
+        btn.innerText = '[ CONNECT WALLET ]';
+        btn.classList.remove('logged-in');
+    }
 }
 
 // ─── TIP ─────────────────────────────────────────────────────────────────────

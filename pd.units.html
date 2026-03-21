@@ -12,6 +12,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="NCico.png">
     <script src="waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        import { WalletPluginWAX } from 'https://esm.sh/@wharfkit/wallet-plugin-wax';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor(), new WalletPluginWAX()],
+        });
+        window.walletKit = kit;
+        window.WalletPluginAnchor = WalletPluginAnchor;
+        window.WalletPluginWAX = WalletPluginWAX;
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+                if (typeof checkWalletState === 'function') checkWalletState();
+            }
+        } catch(e) {}
+    </script>
     <style>
         /* --- FOUC PREVENTION --- */
         table { opacity: 0; visibility: hidden; transition: opacity 0.6s ease-in; background-color: transparent !important; }
@@ -90,6 +113,21 @@
         .wallet-btn:hover { background: var(--theme-hover); box-shadow: var(--theme-shadow); }
         .wallet-btn.logged-in { background: var(--theme-color); color: #000; border: 1px solid #fff; }
 
+        .wallet-section { position: relative; }
+        #wallet-picker {
+            display: none; position: absolute; right: 0; top: calc(100% + 6px);
+            background: #020a08; border: 1px solid var(--theme-color);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.9); z-index: 3000; min-width: 210px;
+        }
+        .wallet-picker-opt {
+            display: block; width: 100%; background: transparent; color: #aaa;
+            border: none; border-bottom: 1px solid #0f2a22; padding: 12px 18px;
+            font-family: monospace; font-size: 0.9em; font-weight: bold; text-align: left;
+            cursor: pointer; transition: all 0.2s; letter-spacing: 1px;
+        }
+        .wallet-picker-opt:last-child { border-bottom: none; }
+        .wallet-picker-opt:hover { background: var(--theme-hover); color: var(--theme-color); }
+
         /* --- UI BAR --- */
         .top-bar {
             display: flex; justify-content: space-between; align-items: flex-start;
@@ -165,7 +203,7 @@
 
         /* --- SIDEBAR TOGGLE --- */
         #deck-toggle-tab {
-            position: fixed; top: 240px; left: 298px; width: 30px; height: 400px;
+            position: fixed; top: 440px; left: 298px; width: 30px; height: 400px;
             box-sizing: border-box; background: var(--theme-dark); border: 2px solid var(--theme-color); border-left: none;
             color: var(--theme-color); display: flex; align-items: center; justify-content: center;
             font-size: 1.2em; font-weight: bold; cursor: pointer; z-index: 3005; pointer-events: auto !important;
@@ -279,6 +317,58 @@
         .stat-burned { color: #ff4444 !important; font-weight: bold !important; text-align: center !important; }
         .stat-price  { color: #ffd700 !important; font-weight: bold !important; text-align: center !important; }
         .scan-trigger { cursor: pointer; color: #000 !important; background: var(--theme-color); padding: 2px 8px; font-size: 0.8em; display: inline-block; animation: pulse 2s infinite; }
+
+        /* RGB glow for Combine View button */
+        @keyframes rgb-glow {
+            0%   { box-shadow: 0 0 8px #ff0044, 0 0 20px #ff004466; border-color: #ff0044; color: #ff0044; }
+            16%  { box-shadow: 0 0 8px #ff8800, 0 0 20px #ff880066; border-color: #ff8800; color: #ff8800; }
+            33%  { box-shadow: 0 0 8px #ffe000, 0 0 20px #ffe00066; border-color: #ffe000; color: #ffe000; }
+            50%  { box-shadow: 0 0 8px #00ff88, 0 0 20px #00ff8866; border-color: #00ff88; color: #00ff88; }
+            66%  { box-shadow: 0 0 8px #00aaff, 0 0 20px #00aaff66; border-color: #00aaff; color: #00aaff; }
+            83%  { box-shadow: 0 0 8px #cc00ff, 0 0 20px #cc00ff66; border-color: #cc00ff; color: #cc00ff; }
+            100% { box-shadow: 0 0 8px #ff0044, 0 0 20px #ff004466; border-color: #ff0044; color: #ff0044; }
+        }
+        #view-toggle-btn { animation: rgb-glow 4s linear infinite; }
+
+        /* Silver shimmer for unscanned scan buttons */
+        @keyframes shimmer-silver {
+            0%   { background-position: 150% 50%; }
+            100% { background-position: -150% 50%; }
+        }
+        .scan-shimmer {
+            background: linear-gradient(90deg,
+                var(--theme-color) 0%, var(--theme-color) 20%,
+                rgba(220,235,255,0.95) 38%, rgba(255,255,255,1) 50%,
+                rgba(220,235,255,0.95) 62%, var(--theme-color) 80%,
+                var(--theme-color) 100%) !important;
+            background-size: 400% 100% !important;
+            animation: shimmer-silver 3s ease-in-out infinite !important;
+            color: #000 !important;
+        }
+        #scan-all-btn.scan-shimmer {
+            background: linear-gradient(90deg,
+                transparent 0%, transparent 20%,
+                rgba(200,220,255,0.12) 38%, rgba(255,255,255,0.22) 50%,
+                rgba(200,220,255,0.12) 62%, transparent 80%,
+                transparent 100%) !important;
+            background-size: 400% 100% !important;
+            animation: shimmer-silver 3s ease-in-out 0.8s infinite !important;
+            color: var(--theme-color) !important;
+        }
+
+        /* Simon Says ping animation */
+        @keyframes simon-ping {
+            0%   { transform: scale(1); }
+            35%  { transform: scale(2.8); box-shadow: 0 0 30px var(--dot-color), 0 0 60px var(--dot-color); border-color: #fff; }
+            70%  { transform: scale(1.8); box-shadow: 0 0 12px var(--dot-color); }
+            100% { transform: scale(1); }
+        }
+        @keyframes simon-fail-flash {
+            0%   { box-shadow: 0 0 20px #ff0000; border-color: #ff0000; transform: scale(1.4); }
+            100% { box-shadow: none; border-color: #333; transform: scale(1); }
+        }
+        .simon-pinging { animation: simon-ping 0.65s ease-out forwards !important; }
+        .simon-fail    { animation: simon-fail-flash 0.6s ease-out forwards !important; }
         .buy-cell { display: flex; gap: 5px; align-items: center; justify-content: center; flex-wrap: wrap; }
         .mkt-logo { width: 18px; height: 18px; object-fit: contain; opacity: 0.55; border-radius: 3px; transition: opacity 0.2s, transform 0.2s; vertical-align: middle; }
         .mkt-logo:hover { opacity: 1; transform: scale(1.25); }
@@ -374,7 +464,11 @@
         <a href="army.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">ARMY BUILDER</a>
     </nav>
     <div class="wallet-section">
-        <button id="wallet-btn" class="cyber-btn" style="border-color: #5badff; color: #5badff;" onclick="toggleWallet()">[ WAX LOGIN ]</button>
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="handleWalletClick()">[ CONNECT WALLET ]</button>
+        <div id="wallet-picker">
+            <button class="wallet-picker-opt" onclick="loginWithAnchor()">⚓ Anchor</button>
+            <button class="wallet-picker-opt" onclick="loginWithWCC()">☁ Wax Cloud Wallet</button>
+        </div>
     </div>
     <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
 </header>
@@ -392,14 +486,13 @@
 
 <div class="top-bar">
     <div style="flex-grow: 1;">
-        <div style="display:flex; align-items:center; gap: 10px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap: 8px; flex-wrap:wrap;">
             <a href="index.html" class="nav-btn">BACK</a>
             <button id="reset-btn" class="cyber-btn" onclick="resetSort()">[ RESET ]</button>
             <button class="cyber-btn" onclick="adjustFont(1)">A+</button>
             <button class="cyber-btn" onclick="adjustFont(-1)">A-</button>
             <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="SEARCH...">
-        </div>
-        <div style="margin-top: 8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <span style="color:#1a3a5c; font-size:1em;">|</span>
             <div style="position:relative;display:inline-block;">
                 <button id="sections-filter-btn" class="cyber-btn" onclick="toggleSectionsDropdown()">[ SECTIONS ▾ ]</button>
                 <div id="sections-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:9000;background:#050510;border:2px solid var(--theme-color);min-width:180px;padding:8px;margin-top:2px;box-shadow:0 8px 24px rgba(0,0,0,0.9);">
@@ -411,7 +504,6 @@
                     <label class="section-check"><input type="checkbox" id="chk-services" checked onchange="filterSection('services')"> SERVICES</label>
                 </div>
             </div>
-            <span style="color:#1a3a5c; font-size:1em;">|</span>
             <button id="view-toggle-btn" class="cyber-btn" onclick="toggleView()">[ COMBINE VIEW ]</button>
             <button id="scan-all-btn" class="cyber-btn" onclick="scanAll()">[ SCAN ALL ]</button>
         </div>
@@ -420,13 +512,13 @@
             <div style="background:#111;height:4px;width:200px;margin-top:3px;"><div id="scan-bar" style="background:var(--theme-color);height:4px;width:0%;transition:width 0.3s;"></div></div>
         </div>
         <div id="theme-panel">
-            <div class="theme-opt" style="background:#ff4d4d;" onclick="setTheme('#ff4d4d','#1a0505')" title="Crimson Red"></div>
-            <div class="theme-opt" style="background:#ff9900;" onclick="setTheme('#ff9900','#1a1005')" title="Safety Orange"></div>
-            <div class="theme-opt" style="background:#ffd700;" onclick="setTheme('#ffd700','#1a1a05')" title="Gold"></div>
-            <div class="theme-opt" style="background:#00ff41;" onclick="setTheme('#00ff41','#051a05')" title="Matrix Green"></div>
-            <div class="theme-opt" style="background:#5badff;" onclick="setTheme('#5badff','#050d18')" title="PD Blue"></div>
-            <div class="theme-opt" style="background:#bf00ff;" onclick="setTheme('#bf00ff','#12051a')" title="Neon Purple"></div>
-            <div id="secret-rainbow-dot" class="theme-opt" style="display:none;" onclick="setTheme('rainbow','#050510')" title="RGB MODE"></div>
+            <div id="simon-dot-0" class="theme-opt" style="background:#ff4d4d;--dot-color:#ff4d4d" onclick="simonDotClick(this,'#ff4d4d','#1a0505')" title="Crimson Red"></div>
+            <div id="simon-dot-1" class="theme-opt" style="background:#ff9900;--dot-color:#ff9900" onclick="simonDotClick(this,'#ff9900','#1a1005')" title="Safety Orange"></div>
+            <div id="simon-dot-2" class="theme-opt" style="background:#ffd700;--dot-color:#ffd700" onclick="simonDotClick(this,'#ffd700','#1a1a05')" title="Gold"></div>
+            <div id="simon-dot-3" class="theme-opt" style="background:#00ff41;--dot-color:#00ff41" onclick="simonDotClick(this,'#00ff41','#051a05')" title="Matrix Green"></div>
+            <div id="simon-dot-4" class="theme-opt" style="background:#5badff;--dot-color:#5badff" onclick="simonDotClick(this,'#5badff','#050d18')" title="PD Blue"></div>
+            <div id="simon-dot-5" class="theme-opt" style="background:#bf00ff;--dot-color:#bf00ff" onclick="simonDotClick(this,'#bf00ff','#12051a')" title="Neon Purple"></div>
+            <div id="secret-rainbow-dot" class="theme-opt" style="display:none;--dot-color:#ffffff" onclick="simonDotClick(this,'rainbow','#050510')" title="RGB MODE"></div>
         </div>
     </div>
     <div style="text-align:right;">
@@ -634,6 +726,8 @@
         const el = document.createElement("div"); el.className = "click-effect";
         el.style.left = e.clientX + "px"; el.style.top = e.clientY + "px";
         document.body.appendChild(el); setTimeout(() => el.remove(), 400);
+        simonClickTotal++;
+        simonMaybeStart();
     });
 
     // ─── CONSTANTS ─────────────────────────────────────────────────────────────
@@ -692,6 +786,11 @@
         // Default sort equipment and mercenaries by rarity (col 3, ascending = Common→Mythic)
         fastSort("equipment", 3);
         fastSort("mercenaries", 3);
+
+        // Initialize shimmer on unscanned scan buttons
+        const sab = document.getElementById('scan-all-btn');
+        if (sab) sab.classList.add('scan-shimmer');
+        document.querySelectorAll('.scan-trigger').forEach(t => t.classList.add('scan-shimmer'));
 
         // Populate desc in cardData from data-desc attributes
         document.querySelectorAll("tr[data-id]").forEach(row => {
@@ -1166,7 +1265,7 @@
     async function scanRow(btnEl, id) {
         if(btnEl) { btnEl.textContent = '...'; btnEl.style.pointerEvents = 'none'; }
         await fetchRowPrices(id, document.querySelector(`tr[data-id="${id}"] .c-low`), document.querySelector(`tr[data-id="${id}"] .c-last`), document.querySelector(`tr[data-id="${id}"] .c-sugg`));
-        if(btnEl) { btnEl.textContent = '✓'; setTimeout(() => { btnEl.textContent = 'SCAN'; btnEl.style.pointerEvents = ''; }, 2000); }
+        if(btnEl) { btnEl.classList.remove('scan-shimmer'); btnEl.textContent = '✓'; setTimeout(() => { btnEl.textContent = 'SCAN'; btnEl.style.pointerEvents = ''; }, 2000); }
     }
 
     async function scanAll() {
@@ -1188,6 +1287,8 @@
         if(statusText) statusText.textContent = 'COMPLETE';
         btn.textContent = '[ SCAN ALL ]';
         btn.disabled = false;
+        btn.classList.remove('scan-shimmer');
+        document.querySelectorAll('.scan-trigger').forEach(t => t.classList.remove('scan-shimmer'));
     }
 
     // ─── THEME ENGINE ──────────────────────────────────────────────────────────
@@ -1241,31 +1342,68 @@
     // ─── WALLET ────────────────────────────────────────────────────────────────
     const wax = new waxjs.WaxJS({ rpcEndpoint: "https://wax.greymass.com", userAccount: "", tryAutoLogin: false });
 
-    async function toggleWallet() {
-        const btn = document.getElementById("wallet-btn");
-        if(wax.userAccount || localStorage.getItem("naron_wallet")) {
-            wax.userAccount = "";
-            localStorage.removeItem("naron_wallet");
-            btn.innerText = "[ WAX LOGIN ]";
-            btn.style.color = "var(--theme-color)"; btn.style.borderColor = "var(--theme-color)";
+    function checkWalletState() {
+        const saved = localStorage.getItem("naron_wallet");
+        updateWalletUI(saved || null);
+    }
+    function handleWalletClick() {
+        if (localStorage.getItem("naron_wallet")) {
+            disconnectWallet();
         } else {
-            try {
-                btn.innerText = "[ AUTHENTICATING... ]";
-                const account = await wax.login();
-                localStorage.setItem("naron_wallet", account);
-                updateWalletUI(account);
-            } catch(e) { btn.innerText = "[ WAX LOGIN ]"; }
+            const picker = document.getElementById("wallet-picker");
+            picker.style.display = picker.style.display === 'block' ? 'none' : 'block';
         }
+    }
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.wallet-section')) {
+            const p = document.getElementById("wallet-picker");
+            if(p) p.style.display = 'none';
+        }
+    });
+    async function loginWithAnchor() {
+        document.getElementById("wallet-picker").style.display = 'none';
+        if (!window.walletKit) { return; }
+        try {
+            const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginAnchor() });
+            window.walletSession = session;
+            const account = String(session.actor);
+            localStorage.setItem("naron_wallet", account);
+            if(window.wax) wax.userAccount = account;
+            checkWalletState();
+        } catch(e) { console.error("Anchor login failed:", e); }
+    }
+    async function loginWithWCC() {
+        document.getElementById("wallet-picker").style.display = 'none';
+        if (!window.walletKit) { return; }
+        try {
+            const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginWAX() });
+            window.walletSession = session;
+            const account = String(session.actor);
+            localStorage.setItem("naron_wallet", account);
+            if(window.wax) wax.userAccount = account;
+            checkWalletState();
+        } catch(e) { console.error("WAX login failed:", e); }
+    }
+    function disconnectWallet() {
+        if (window.walletKit && window.walletSession) {
+            window.walletKit.logout(window.walletSession).catch(() => {});
+            window.walletSession = null;
+        }
+        localStorage.removeItem("naron_wallet");
+        if(window.wax) wax.userAccount = '';
+        checkWalletState();
     }
 
     function updateWalletUI(accountName) {
-        const btn = document.getElementById("wallet-btn");
-        if(btn) { btn.innerText = `[ DISCONNECT: ${accountName} ]`; btn.style.color = "#00ff00"; btn.style.borderColor = "#00ff00"; }
-    }
-
-    function checkWalletState() {
-        const saved = localStorage.getItem("naron_wallet");
-        if(saved) { wax.userAccount = saved; updateWalletUI(saved); }
+        const btn = document.getElementById("wallet-connect-btn");
+        if(!btn) return;
+        if(accountName) {
+            btn.innerText = `[ ${accountName} ]`;
+            btn.classList.add("logged-in");
+        } else {
+            btn.innerText = "[ CONNECT WALLET ]";
+            btn.classList.remove("logged-in");
+        }
     }
 
     async function sendTip() {
@@ -1338,6 +1476,136 @@
             sdd.style.display = 'none';
         }
     });
+
+    // ─── SIMON SAYS EASTER EGG ──────────────────────────────────────────────────
+    var simonClickTotal = 0;
+    var simonTimeElapsed = false;
+    var simonTriggered = false;
+
+    const simon = {
+        active: false, showing: false,
+        sequence: [], userStep: 0, round: 0, dots: null,
+    };
+
+    setTimeout(function() { simonTimeElapsed = true; simonMaybeStart(); }, 20000);
+
+    function simonMaybeStart() {
+        if (simonTriggered || simon.active) return;
+        if (simonClickTotal >= 3 && simonTimeElapsed && window.walletSession) {
+            simonTriggered = true;
+            setTimeout(simonBegin, 1200);
+        }
+    }
+
+    function simonDotClick(el, color, dark) {
+        simonClickTotal++;
+        simonMaybeStart();
+        if (simon.active && !simon.showing) {
+            simonHandleInput(el);
+        } else if (!simon.active) {
+            setTheme(color, dark);
+        }
+    }
+
+    function simonBegin() {
+        simon.active = true;
+        simon.sequence = [];
+        simon.userStep = 0;
+        simon.round = 0;
+        simon.dots = [];
+        for (var i = 0; i < 6; i++) {
+            var d = document.getElementById('simon-dot-' + i);
+            if (d) simon.dots.push(d);
+        }
+        simonNextRound();
+    }
+
+    function simonNextRound() {
+        simon.round++;
+        if (simon.round > 6) { simonComplete(); return; }
+        simon.sequence.push(Math.floor(Math.random() * 6));
+        simon.userStep = 0;
+        simon.showing = true;
+        setTimeout(function() {
+            simonPlaySequence(0);
+        }, 500);
+    }
+
+    function simonPlaySequence(idx) {
+        if (idx >= simon.sequence.length) {
+            simon.showing = false;
+            return;
+        }
+        simonPingDot(simon.sequence[idx], function() {
+            setTimeout(function() { simonPlaySequence(idx + 1); }, 250);
+        });
+    }
+
+    function simonPingDot(idx, cb) {
+        var dot = simon.dots[idx];
+        if (!dot) { if (cb) cb(); return; }
+        dot.classList.add('simon-pinging');
+        setTimeout(function() {
+            dot.classList.remove('simon-pinging');
+            if (cb) cb();
+        }, 700);
+    }
+
+    function simonHandleInput(el) {
+        var idx = parseInt(el.id.replace('simon-dot-', ''));
+        if (isNaN(idx) || idx < 0 || idx > 5) return;
+        var expected = simon.sequence[simon.userStep];
+        if (idx === expected) {
+            simon.userStep++;
+            simonPingDot(idx, null);
+            if (simon.userStep >= simon.sequence.length) {
+                setTimeout(function() { simonNextRound(); }, 800);
+            }
+        } else {
+            simonFail();
+        }
+    }
+
+    function simonFail() {
+        simon.showing = true;
+        simon.dots.forEach(function(d) {
+            d.classList.add('simon-fail');
+            setTimeout(function() { d.classList.remove('simon-fail'); }, 700);
+        });
+        setTimeout(function() {
+            simon.sequence = [];
+            simon.userStep = 0;
+            simon.round = 0;
+            simon.showing = false;
+            simonNextRound();
+        }, 1800);
+    }
+
+    function simonComplete() {
+        simon.active = false;
+        var rainbow = document.getElementById('secret-rainbow-dot');
+        if (rainbow) {
+            rainbow.style.display = 'block';
+            rainbow.onclick = simonWin;
+        }
+    }
+
+    function simonWin() {
+        var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        var code = 'NARON-';
+        for (var i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;';
+        overlay.innerHTML = '<div style="background:#050510;border:2px solid var(--theme-color);padding:50px 60px;text-align:center;font-family:monospace;color:var(--theme-color);box-shadow:0 0 80px rgba(0,0,0,0.9),0 0 40px rgba(91,173,255,0.2);max-width:90vw;">' +
+            '<div style="font-size:1.4em;letter-spacing:4px;margin-bottom:20px;">// SEQUENCE COMPLETE //</div>' +
+            '<div style="color:#555;font-size:0.8em;letter-spacing:2px;margin-bottom:10px;">YOUR UNLOCK CODE</div>' +
+            '<div style="font-size:2.2em;letter-spacing:8px;color:#fff;background:#0a0a1a;padding:20px 40px;border:1px solid var(--theme-color);margin-bottom:20px;">' + code + '</div>' +
+            '<div style="color:#333;font-size:0.7em;letter-spacing:1px;margin-bottom:24px;">RECORD THIS CODE — ONE TIME ONLY</div>' +
+            '<button onclick="this.closest(\'[style*=fixed]\').remove()" class="cyber-btn">[ ACKNOWLEDGE ]</button>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        setTheme('rainbow', '#050510');
+    }
 </script>
 
 <div id="chest-modal-backdrop">
