@@ -108,6 +108,9 @@
         .cyber-btn:hover { background: var(--theme-color); color: #000; box-shadow: var(--theme-shadow); }
         .cyber-btn.active-section { background: var(--theme-color); color: #000; }
         .cyber-btn.disabled-btn { opacity: 0.35; cursor: not-allowed !important; pointer-events: none; }
+        .section-check { display: flex; align-items: center; gap: 8px; padding: 6px 4px; color: #d0d0d0; font-family: 'Courier New', monospace; font-size: 0.85em; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; border-bottom: 1px solid #1a1a1a; white-space: nowrap; }
+        .section-check:last-child { border-bottom: none; }
+        .section-check input[type=checkbox] { accent-color: var(--theme-color); width: 14px; height: 14px; cursor: pointer; }
 
         /* --- TERMINAL OVERRIDE GLOW --- */
         .glow-alert { border-color: #00ff00 !important; color: #00ff00 !important; animation: terminalPulse 1s infinite; box-shadow: 0 0 15px #00ff00 !important; }
@@ -131,7 +134,7 @@
 
         /* --- PREVIEW DECK --- */
         #preview-frame {
-            position: fixed; top: 240px; left: 20px; width: 280px; height: 400px;
+            position: fixed; top: 440px; left: 20px; width: 280px; height: 400px;
             right: auto !important; border: 2px solid var(--theme-color); background: var(--theme-dark);
             box-shadow: var(--theme-shadow); z-index: 3000; box-sizing: border-box;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -146,7 +149,7 @@
 
         /* --- MARKET FRAME --- */
         #market-frame {
-            position: fixed; top: 655px; left: 20px; width: 280px; height: auto;
+            position: fixed; top: 820px; left: 20px; width: 280px; height: auto;
             border: 2px solid var(--theme-color); background: #000; box-sizing: border-box;
             box-shadow: var(--theme-shadow); z-index: 3000; padding: 10px; display: none;
             transition: transform 0.4s, opacity 0.4s; transform: translateX(0); opacity: 1;
@@ -397,15 +400,19 @@
             <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="SEARCH...">
         </div>
         <div style="margin-top: 8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-            <span style="color:#666; font-size:0.75em; letter-spacing:1px;">SECTIONS:</span>
-            <button id="tab-equipment"   class="cyber-btn active-section" onclick="filterSection('equipment')">[ EQUIPMENT ]</button>
-            <button id="tab-creatures"   class="cyber-btn active-section" onclick="filterSection('creatures')">[ CREATURES ]</button>
-            <button id="tab-mercenaries" class="cyber-btn active-section" onclick="filterSection('mercenaries')">[ MERCENARIES ]</button>
-            <button id="tab-warlords"    class="cyber-btn active-section" onclick="filterSection('warlords')">[ WARLORDS ]</button>
-            <button id="tab-supplies"    class="cyber-btn active-section" onclick="filterSection('supplies')">[ SUPPLIES ]</button>
-            <button id="tab-services"    class="cyber-btn active-section" onclick="filterSection('services')">[ SERVICES ]</button>
+            <div style="position:relative;display:inline-block;">
+                <button id="sections-filter-btn" class="cyber-btn" onclick="toggleSectionsDropdown()">[ SECTIONS ▾ ]</button>
+                <div id="sections-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:9000;background:#050510;border:2px solid var(--theme-color);min-width:180px;padding:8px;margin-top:2px;box-shadow:0 8px 24px rgba(0,0,0,0.9);">
+                    <label class="section-check"><input type="checkbox" id="chk-equipment" checked onchange="filterSection('equipment')"> EQUIPMENT</label>
+                    <label class="section-check"><input type="checkbox" id="chk-creatures" checked onchange="filterSection('creatures')"> CREATURES</label>
+                    <label class="section-check"><input type="checkbox" id="chk-mercenaries" checked onchange="filterSection('mercenaries')"> MERCENARIES</label>
+                    <label class="section-check"><input type="checkbox" id="chk-warlords" checked onchange="filterSection('warlords')"> WARLORDS</label>
+                    <label class="section-check"><input type="checkbox" id="chk-supplies" checked onchange="filterSection('supplies')"> SUPPLIES</label>
+                    <label class="section-check"><input type="checkbox" id="chk-services" checked onchange="filterSection('services')"> SERVICES</label>
+                </div>
+            </div>
             <span style="color:#1a3a5c; font-size:1em;">|</span>
-            <button id="view-toggle-btn" class="cyber-btn" onclick="toggleView()">[ SPLIT VIEW ]</button>
+            <button id="view-toggle-btn" class="cyber-btn" onclick="toggleView()">[ COMBINE VIEW ]</button>
             <button id="scan-all-btn" class="cyber-btn" onclick="scanAll()">[ SCAN ALL ]</button>
         </div>
         <div id="scan-status-bar" style="display:none; margin-top:6px;">
@@ -913,29 +920,24 @@
     // ─── VIEW TOGGLE ───────────────────────────────────────────────────────────
     function toggleView() {
         const btn = document.getElementById("view-toggle-btn");
-        const sectionTabs = ["tab-equipment","tab-creatures","tab-mercenaries","tab-warlords","tab-supplies","tab-services"];
+        const sectionsBtn = document.getElementById("sections-filter-btn");
 
         if(currentView === "split") {
             currentView = "combine";
-            btn.innerText = "[ COMBINE VIEW ]";
+            btn.innerText = "[ SPLIT VIEW ]";
             btn.classList.add("active-section");
-            // Hide all split sections
             ["equipment","creatures","mercenaries","warlords","supplies","services"].forEach(s => {
                 document.getElementById("section-" + s).style.display = "none";
             });
-            // Show combined
             document.getElementById("combined-section").style.display = "block";
-            // Disable section tabs
-            sectionTabs.forEach(t => document.getElementById(t).classList.add("disabled-btn"));
-            // Show combined table
+            if(sectionsBtn) sectionsBtn.classList.add("disabled-btn");
             document.getElementById("table-combined").classList.add("system-ready");
         } else {
             currentView = "split";
-            btn.innerText = "[ SPLIT VIEW ]";
+            btn.innerText = "[ COMBINE VIEW ]";
             btn.classList.remove("active-section");
             document.getElementById("combined-section").style.display = "none";
-            sectionTabs.forEach(t => document.getElementById(t).classList.remove("disabled-btn"));
-            // Restore visible sections
+            if(sectionsBtn) sectionsBtn.classList.remove("disabled-btn");
             ["equipment","creatures","mercenaries","warlords","supplies","services"].forEach(s => {
                 const wrapper = document.getElementById("section-" + s);
                 if(visibleSections.has(s)) wrapper.style.display = "block";
@@ -944,19 +946,24 @@
         }
     }
 
+    function toggleSectionsDropdown() {
+        const dd = document.getElementById("sections-dropdown");
+        dd.style.display = dd.style.display === "none" ? "block" : "none";
+    }
+
     // ─── SECTION FILTER TABS ───────────────────────────────────────────────────
     function filterSection(section) {
         if(currentView === "combine") return;
-        const btn = document.getElementById("tab-" + section);
+        const chk = document.getElementById("chk-" + section);
         const wrapper = document.getElementById("section-" + section);
 
         if(visibleSections.has(section)) {
             visibleSections.delete(section);
-            btn.classList.remove("active-section");
+            if(chk) chk.checked = false;
             wrapper.style.display = "none";
         } else {
             visibleSections.add(section);
-            btn.classList.add("active-section");
+            if(chk) chk.checked = true;
             wrapper.style.display = "block";
         }
     }
@@ -1324,6 +1331,11 @@
         const btn = document.getElementById('hamburger-btn');
         if (dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) {
             dd.classList.remove('open');
+        }
+        const sdd = document.getElementById('sections-dropdown');
+        const sbtn = document.getElementById('sections-filter-btn');
+        if (sdd && sbtn && !sbtn.contains(e.target) && !sdd.contains(e.target)) {
+            sdd.style.display = 'none';
         }
     });
 </script>
