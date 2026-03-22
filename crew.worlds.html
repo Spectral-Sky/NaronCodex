@@ -1357,7 +1357,7 @@
             } catch(e) { log.textContent += `> CONNECTION FAILED — try again later\n`; }
         }
         function closeChestModal() { document.getElementById("chest-modal-backdrop").classList.remove("active"); }
-        document.getElementById("chest-modal-backdrop").addEventListener("click", function(e) { if(e.target === this) closeChestModal(); });
+        var _cmb = document.getElementById("chest-modal-backdrop"); if (_cmb) _cmb.addEventListener("click", function(e) { if(e.target === this) closeChestModal(); });
         function toggleHamburger() {
             const dd = document.getElementById('nav-dropdown');
             if (dd) dd.classList.toggle('open');
