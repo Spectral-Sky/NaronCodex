@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-48CCMEYHXG');
+    </script>
+    <title>STASH // Naron Codex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="NCico.png">
+    <script src="waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        import { WalletPluginWAX } from 'https://esm.sh/@wharfkit/wallet-plugin-wax';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor(), new WalletPluginWAX()],
+        });
+        window.walletKit = kit;
+        window.WalletPluginAnchor = WalletPluginAnchor;
+        window.WalletPluginWAX = WalletPluginWAX;
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+                if (typeof checkWalletState === 'function') checkWalletState();
+            }
+        } catch(e) {}
+    </script>
+    <style>
+        :root {
+            --theme-color: #ffaa00;
+            --theme-shadow: 0 0 15px rgba(255,170,0,0.4);
+            --theme-dark: #1a1005;
+            --theme-hover: rgba(255,170,0,0.1);
+            --theme-border: 1px solid rgba(255,170,0,0.3);
+        }
+        body {
+            cursor: crosshair;
+            background-color: #03030e;
+            color: #d0d0d0;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0; padding: 0; min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* NEBULA BACKDROP */
+        .nebula-bg {
+            position: fixed; inset: 0; z-index: -2; pointer-events: none;
+            background:
+                radial-gradient(ellipse 900px 600px at 15% 25%, rgba(130,0,255,0.18) 0%, transparent 65%),
+                radial-gradient(ellipse 700px 900px at 82% 55%, rgba(255,60,0,0.12) 0%, transparent 65%),
+                radial-gradient(ellipse 1100px 700px at 50% 85%, rgba(0,60,220,0.14) 0%, transparent 65%),
+                radial-gradient(ellipse 500px 500px at 72% 12%, rgba(0,220,160,0.10) 0%, transparent 65%),
+                radial-gradient(ellipse 400px 400px at 30% 70%, rgba(220,0,120,0.08) 0%, transparent 65%);
+            filter: blur(30px);
+        }
+        body::before { content:" "; position:fixed; top:0; left:0; width:1px; height:1px; z-index:-1;
+            box-shadow:5vw 8vh #fff,18vw 22vh rgba(255,255,255,0.7),33vw 5vh #fff,47vw 18vh rgba(255,255,255,0.5),62vw 7vh #fff,75vw 31vh rgba(255,255,255,0.6),88vw 14vh #fff,
+            12vw 44vh rgba(255,255,255,0.5),26vw 58vh #fff,40vw 72vh rgba(255,255,255,0.4),55vw 88vh #fff,70vw 52vh rgba(255,255,255,0.6),84vw 66vh rgba(255,255,255,0.7),
+            7vw 80vh rgba(255,255,255,0.5),93vw 40vh #fff,50vw 36vh rgba(255,255,255,0.4),20vw 90vh rgba(255,255,255,0.3); opacity:0.9; }
+
+        /* GLOBAL HEADER */
+        .global-header { display:flex; justify-content:space-between; align-items:center; background:rgba(2,10,8,0.95); border-bottom:2px solid var(--theme-color); padding:15px 30px; position:sticky; top:0; z-index:2000; box-shadow:0 5px 20px rgba(0,0,0,0.9); backdrop-filter:blur(8px); }
+        #header-planet-canvas { width:36px; height:36px; border-radius:50%; cursor:pointer; vertical-align:middle; margin-right:8px; flex-shrink:0; }
+        @keyframes hp-fadeout { 0%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
+        .logo-section { display:flex; align-items:center; }
+        .logo-section h1 { color:var(--theme-color); margin:0; font-size:1.8em; letter-spacing:4px; text-transform:uppercase; text-shadow:0 0 10px var(--theme-color); }
+        .nav-links { display:flex; gap:10px; }
+        .nav-btn { background:transparent; color:#888; border:1px solid transparent; padding:8px 16px; font-family:monospace; font-weight:bold; font-size:0.9em; text-decoration:none; cursor:pointer; transition:all 0.3s; text-transform:uppercase; border-radius:6px; }
+        .nav-btn:hover { color:var(--theme-color); border-color:var(--theme-color); }
+        .nav-btn.active { color:#000; background:var(--theme-color); border-color:var(--theme-color); box-shadow:var(--theme-shadow); }
+        .wallet-section { position:relative; }
+        .wallet-btn { background:#0a0a14; color:var(--theme-color); border:1px dashed var(--theme-color); padding:10px 20px; font-family:monospace; font-weight:bold; cursor:pointer; transition:all 0.3s; }
+        .wallet-btn:hover { background:var(--theme-hover); box-shadow:var(--theme-shadow); }
+        .wallet-btn.logged-in { background:var(--theme-color); color:#000; border:1px solid #fff; }
+        #hamburger-btn { display:none; background:transparent; border:1px solid #444; color:#aaa; font-size:1.2em; padding:6px 10px; cursor:pointer; border-radius:4px; }
+        #nav-dropdown { display:none; flex-direction:column; background:rgba(2,10,8,0.97); border-bottom:1px solid var(--theme-color); padding:10px 20px; gap:6px; }
+        #nav-dropdown.open { display:flex; }
+
+        /* TOP BAR */
+        .top-bar { display:flex; justify-content:space-between; align-items:flex-start; max-width:1400px; margin:0 auto; width:100%; padding:10px 20px 0 20px; box-sizing:border-box; }
+        #theme-panel { display:flex; gap:6px; margin-top:6px; }
+        .theme-opt { width:18px; height:18px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:all 0.2s; flex-shrink:0; }
+        .theme-opt:hover { border-color:#fff; transform:scale(1.2); }
+        @keyframes simon-flash { 0%{transform:scale(1);filter:brightness(1);} 30%{transform:scale(1.5);filter:brightness(3);} 100%{transform:scale(1);filter:brightness(1);} }
+        @keyframes simon-fail  { 0%{} 25%{transform:scale(1.4) rotate(-15deg);filter:brightness(3);} 50%{transform:scale(1.4) rotate(15deg);filter:brightness(3);} 75%{transform:scale(1.4) rotate(-8deg);filter:brightness(2);} 100%{} }
+        @keyframes simon-beacon { 0%{box-shadow:0 0 0 0 var(--dot-color,#fff);} 50%{box-shadow:0 0 12px 8px var(--dot-color,#fff);} 100%{box-shadow:0 0 0 0 var(--dot-color,#fff);} }
+        .simon-pinging { animation:simon-flash 0.5s ease-out; }
+        .simon-fail    { animation:simon-fail 0.7s ease-in-out; }
+
+        /* MARKET INTEL PANEL */
+        #market-frame {
+            position:fixed; right:-280px; top:80px; width:260px; z-index:1500;
+            background:rgba(3,3,16,0.96); border:1px solid var(--theme-color);
+            border-right:none; padding:16px; font-family:monospace;
+            box-shadow:-4px 0 20px rgba(0,0,0,0.8);
+            transition:right 0.3s ease; backdrop-filter:blur(6px);
+        }
+        #market-frame.open { right:0; }
+        #intel-header { color:var(--theme-color); font-size:0.75em; letter-spacing:3px; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #1a1a2e; text-transform:uppercase; }
+        #intel-name { color:#aaa; font-size:0.72em; letter-spacing:1px; margin-bottom:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .intel-row { display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.78em; }
+        .intel-label { color:#444; letter-spacing:1px; }
+        .intel-val { color:var(--theme-color); font-weight:bold; }
+        .market-links { display:flex; flex-direction:column; gap:5px; margin-top:12px; border-top:1px solid #1a1a2e; padding-top:10px; }
+        .market-link-btn { background:#0a0a14; color:var(--theme-color); border:1px solid #1a1a2e; padding:6px 10px; font-family:monospace; font-size:0.72em; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:6px; transition:all 0.2s; letter-spacing:1px; }
+        .market-link-btn:hover { border-color:var(--theme-color); }
+        .market-btn-logo { width:14px; height:14px; object-fit:contain; }
+        #intel-close { float:right; background:transparent; border:none; color:#555; cursor:pointer; font-family:monospace; font-size:0.85em; margin-top:-2px; }
+        #intel-close:hover { color:#aaa; }
+
+        /* STASH MAIN */
+        .stash-main { max-width:1400px; margin:0 auto; width:100%; padding:20px; box-sizing:border-box; flex:1; }
+        .stash-title { font-size:1.8em; letter-spacing:6px; color:var(--theme-color); text-shadow:0 0 20px var(--theme-color); }
+        .stash-subtitle { font-size:0.75em; color:#444; letter-spacing:2px; margin-top:4px; }
+
+        /* TABS */
+        .tab-bar { display:flex; gap:0; border-bottom:2px solid var(--theme-color); margin-bottom:14px; flex-wrap:wrap; }
+        .tab-btn { background:transparent; color:#555; border:none; padding:10px 14px; font-family:monospace; font-size:0.8em; font-weight:bold; cursor:pointer; text-transform:uppercase; letter-spacing:1.5px; transition:all 0.2s; outline:none; }
+        .tab-btn:hover { color:var(--theme-color); background:rgba(255,170,0,0.04); }
+        .tab-btn.active { color:#000; background:var(--theme-color); }
+        .tab-count { display:inline-block; font-size:0.7em; margin-left:4px; background:rgba(0,0,0,0.4); padding:1px 5px; border-radius:8px; color:#888; min-width:14px; text-align:center; }
+        .tab-btn.active .tab-count { background:rgba(0,0,0,0.25); color:#000; }
+
+        /* ACTION BAR */
+        .stash-action-bar { display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+        .cyber-btn { background:transparent; color:var(--theme-color); border:1px solid #1a1a2e; padding:6px 14px; font-family:monospace; font-size:0.8em; cursor:pointer; transition:all 0.2s; text-transform:uppercase; letter-spacing:1px; }
+        .cyber-btn:hover { border-color:var(--theme-color); box-shadow:var(--theme-shadow); }
+        .cyber-btn:disabled { opacity:0.3; cursor:not-allowed; }
+        #stash-search { background:#07070f; color:#ccc; border:1px solid #1a1a2e; padding:6px 12px; font-family:monospace; font-size:0.82em; outline:none; width:180px; }
+        #stash-search:focus { border-color:var(--theme-color); }
+
+        /* SCAN BAR */
+        .scan-bar-wrap { margin-bottom:8px; display:none; }
+        .scan-bar-wrap.vis { display:block; }
+        .scan-bar-label { font-size:0.7em; color:#555; letter-spacing:1px; margin-bottom:3px; }
+        .scan-bar-track { background:#0a0a1a; height:3px; width:220px; }
+        .scan-bar-fill { background:var(--theme-color); height:3px; width:0%; transition:width 0.25s; }
+
+        /* CONTENT */
+        .connect-prompt { text-align:center; padding:80px 20px; color:#2a2a3a; font-size:0.95em; letter-spacing:3px; line-height:2; }
+        .cp-btn { margin-top:20px; background:transparent; color:var(--theme-color); border:1px dashed var(--theme-color); padding:12px 28px; font-family:monospace; font-size:0.9em; cursor:pointer; transition:all 0.2s; text-transform:uppercase; letter-spacing:2px; display:inline-block; }
+        .cp-btn:hover { background:var(--theme-hover); }
+        @keyframes blink { 0%,100%{opacity:0.3;} 50%{opacity:1;} }
+        .stash-loading { text-align:center; padding:60px 20px; color:#2a2a3a; font-size:0.85em; letter-spacing:3px; }
+        .loading-dots::after { content:'...'; animation:blink 1.2s infinite; }
+
+        /* TABLE */
+        .stash-table-wrap { overflow-x:auto; }
+        .stash-table { border-collapse:collapse; width:100%; font-size:0.82em; }
+        .stash-table th { background:rgba(2,8,6,0.9); color:var(--theme-color); border-bottom:2px solid var(--theme-color); border-right:1px solid #0f0f1e; padding:7px 10px; text-align:left; white-space:nowrap; font-weight:bold; letter-spacing:1px; cursor:pointer; user-select:none; }
+        .stash-table th:hover { background:rgba(4,12,10,0.9); }
+        .stash-table td { border-bottom:1px solid #0a0a18; border-right:1px solid #0c0c1c; padding:5px 10px; vertical-align:middle; white-space:nowrap; }
+        .stash-table tbody tr { cursor:pointer; }
+        .stash-table tbody tr:hover td { background:rgba(255,170,0,0.05); }
+        .stash-table tbody tr.selected td { background:rgba(255,170,0,0.1); border-left:2px solid var(--theme-color); }
+        .stash-table td img { width:40px; height:40px; object-fit:contain; border-radius:4px; display:block; background:#0a0a1a; }
+        .img-cell { width:50px; padding:4px 6px !important; }
+        .floor-cell { color:var(--theme-color); }
+        .floor-pending { color:#2a2a2a; }
+
+        /* RARITY / SHINE COLORS */
+        .sh-xd     { color:#ff44ff; font-weight:bold; }
+        .sh-anti   { color:#aa44ff; }
+        .sh-star   { color:#ffaa44; }
+        .sh-gold   { color:#ffdd00; }
+        .rar-myth  { color:#ff44ff; font-weight:bold; }
+        .rar-leg   { color:#ff9900; font-weight:bold; }
+        .rar-epic  { color:#aa44ff; }
+        .rar-rare  { color:#4488ff; }
+        .rar-comm  { color:#666; }
+        .rar-abund { color:#555; }
+        .rar-uncommon { color:#55cc88; }
+
+        /* WALLET MODAL */
+        .wallet-picker-opt { background:#0a0a18; color:var(--theme-color); border:1px solid #1a2a3a; padding:12px 16px; font-family:monospace; cursor:pointer; transition:all 0.2s; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:10px; }
+        .wallet-picker-opt:hover { border-color:var(--theme-color); background:var(--theme-hover); }
+
+        /* CHEST MODAL */
+        #chest-modal-backdrop { display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.88); align-items:center; justify-content:center; }
+        #chest-modal-backdrop.active { display:flex; }
+        #chest-modal { background:#050510; border:1px solid var(--theme-color); padding:32px 40px; min-width:320px; max-width:90vw; font-family:monospace; }
+        #chest-modal-close { float:right; background:transparent; color:#888; border:none; cursor:pointer; font-family:monospace; }
+        #chest-modal-log { white-space:pre; color:#666; font-size:0.85em; margin:20px 0 10px; min-height:60px; }
+        #chest-modal-link-wrap { display:none; text-align:center; margin-top:10px; }
+        #chest-modal-link { color:var(--theme-color); border:1px solid var(--theme-color); padding:8px 20px; text-decoration:none; font-weight:bold; letter-spacing:2px; }
+        #chest-modal-empty { color:#555; font-size:0.8em; text-align:center; }
+
+        /* MISC */
+        #cursor-glow { pointer-events:none; position:fixed; width:20px; height:20px; border-radius:50%; background:radial-gradient(circle,rgba(255,170,0,0.1),transparent 70%); z-index:99990; transform:translate(-50%,-50%); }
+        .star-target { position:fixed; font-size:1.5em; cursor:pointer; z-index:50000; color:var(--theme-color); animation:blink 0.8s infinite; text-shadow:0 0 8px var(--theme-color); }
+
+        @media(max-width:900px) {
+            .global-header { padding:8px 15px; }
+            .logo-section h1 { font-size:1.1em; }
+            .nav-links { display:none !important; }
+            #hamburger-btn { display:inline-block; }
+            .stash-main { padding:12px; }
+            #market-frame { top:auto; bottom:0; right:0; width:100%; border-right:1px solid var(--theme-color); border-top:1px solid var(--theme-color); transform:translateY(100%); transition:transform 0.3s ease; }
+            #market-frame.open { transform:translateY(0); right:0; }
+        }
+    </style>
+</head>
+<body>
+<div class="nebula-bg"></div>
+
+<div id="star-hud" style="display:none;position:fixed;bottom:15px;left:15px;z-index:50000;font-family:monospace;font-size:0.75em;color:#ffe066;opacity:0.6;letter-spacing:1px;pointer-events:none;">&#9733; <span id="star-score-num">0</span></div>
+<div id="cursor-glow"></div>
+
+<!-- MARKET INTEL PANEL -->
+<div id="market-frame">
+    <div id="intel-header">MARKET INTEL <button id="intel-close" onclick="closeIntel()">[ X ]</button></div>
+    <div id="intel-name">—</div>
+    <div class="intel-row"><span class="intel-label">LOWEST PRICE:</span><span id="intel-floor" class="intel-val">—</span></div>
+    <div class="intel-row"><span class="intel-label">LAST SOLD:</span><span id="intel-last" class="intel-val">—</span></div>
+    <div class="intel-row"><span class="intel-label">SUGGESTED:</span><span id="intel-sugg" class="intel-val">—</span></div>
+    <div class="market-links">
+        <a id="lnk-atomic" href="#" target="_blank" class="market-link-btn"><img src="atomicfavicon.ico" class="market-btn-logo" alt="" onerror="this.style.display='none'"> ATOMICHUB</a>
+        <a id="lnk-nefty" href="#" target="_blank" class="market-link-btn"><img src="https://resizer2.neftyblocks.com/?ipfs=https%3A%2F%2Fraw.githubusercontent.com%2Feoscafe%2Feos-airdrops%2Fmaster%2Flogos%2FNEFTY_296.png&width=100" class="market-btn-logo" alt=""> NEFTY</a>
+        <a id="lnk-nfthive" href="#" target="_blank" class="market-link-btn"><img src="https://nfthive.io/favicon.ico" class="market-btn-logo" alt="" onerror="this.style.display='none'"> NFTHIVE</a>
+    </div>
+</div>
+
+<header class="global-header">
+    <div class="logo-section">
+        <canvas id="header-planet-canvas" width="36" height="36"></canvas>
+        <h1>NARON CODEX</h1>
+    </div>
+    <nav class="nav-links">
+        <a href="index.html" class="nav-btn"><img src="NCico.png" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">HUB</a>
+        <a href="crew.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">CREW</a>
+        <a href="arms.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">ARMS</a>
+        <a href="tools.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">TOOLS</a>
+        <a href="faces.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">FACES</a>
+        <a href="land.worlds.html" class="nav-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">LAND</a>
+        <a href="pd.units.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD UNITS</a>
+        <a href="pd.materials.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD MATS</a>
+        <a href="army.html" class="nav-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">ARMY BUILDER</a>
+        <a href="stash.html" class="nav-btn active">&#11041; STASH</a>
+    </nav>
+    <div class="wallet-section">
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="handleWalletClick()">[ CONNECT WALLET ]</button>
+    </div>
+    <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
+</header>
+<nav id="nav-dropdown">
+    <a href="index.html" class="nav-btn">HUB</a>
+    <a href="crew.worlds.html" class="nav-btn">CREW</a>
+    <a href="arms.worlds.html" class="nav-btn">ARMS</a>
+    <a href="tools.worlds.html" class="nav-btn">TOOLS</a>
+    <a href="faces.worlds.html" class="nav-btn">FACES</a>
+    <a href="land.worlds.html" class="nav-btn">LAND</a>
+    <a href="pd.units.html" class="nav-btn">PD UNITS</a>
+    <a href="pd.materials.html" class="nav-btn">PD MATS</a>
+    <a href="army.html" class="nav-btn">ARMY BUILDER</a>
+    <a href="stash.html" class="nav-btn active">STASH</a>
+</nav>
+
+<div class="top-bar">
+    <div>
+        <div id="theme-panel">
+            <div id="simon-dot-0" class="theme-opt" style="background:#ff4d4d;--dot-color:#ff4d4d" onclick="simonDotClick(this,'#ff4d4d','#1a0505')" title="Crimson Red"></div>
+            <div id="simon-dot-1" class="theme-opt" style="background:#ff9900;--dot-color:#ff9900" onclick="simonDotClick(this,'#ff9900','#1a1005')" title="Safety Orange"></div>
+            <div id="simon-dot-2" class="theme-opt" style="background:#ffd700;--dot-color:#ffd700" onclick="simonDotClick(this,'#ffd700','#1a1a05')" title="Gold"></div>
+            <div id="simon-dot-3" class="theme-opt" style="background:#00ff41;--dot-color:#00ff41" onclick="simonDotClick(this,'#00ff41','#051a05')" title="Matrix Green"></div>
+            <div id="simon-dot-4" class="theme-opt" style="background:#5badff;--dot-color:#5badff" onclick="simonDotClick(this,'#5badff','#050d18')" title="PD Blue"></div>
+            <div id="simon-dot-5" class="theme-opt" style="background:#bf00ff;--dot-color:#bf00ff" onclick="simonDotClick(this,'#bf00ff','#12051a')" title="Neon Purple"></div>
+            <div id="secret-rainbow-dot" class="theme-opt" style="display:none;--dot-color:#ffffff" onclick="simonDotClick(this,'rainbow','#050510')" title="RGB MODE"></div>
+        </div>
+    </div>
+    <div style="text-align:right;">
+        <div class="stash-title">STASH</div>
+        <div class="stash-subtitle" id="stash-subtitle">CONNECT WALLET TO VIEW YOUR ASSETS</div>
+    </div>
+</div>
+
+<div class="stash-main">
+    <div class="tab-bar">
+        <button class="tab-btn active" id="tab-crew"     onclick="switchTab('crew')"    >CREW     <span class="tab-count" id="cnt-crew">—</span></button>
+        <button class="tab-btn"        id="tab-tools"    onclick="switchTab('tools')"   >TOOLS    <span class="tab-count" id="cnt-tools">—</span></button>
+        <button class="tab-btn"        id="tab-land"     onclick="switchTab('land')"    >LAND     <span class="tab-count" id="cnt-land">—</span></button>
+        <button class="tab-btn"        id="tab-arms"     onclick="switchTab('arms')"    >ARMS     <span class="tab-count" id="cnt-arms">—</span></button>
+        <button class="tab-btn"        id="tab-faces"    onclick="switchTab('faces')"   >FACES    <span class="tab-count" id="cnt-faces">—</span></button>
+        <button class="tab-btn"        id="tab-pd-units" onclick="switchTab('pd-units')">PD UNITS <span class="tab-count" id="cnt-pd-units">—</span></button>
+        <button class="tab-btn"        id="tab-pd-mats"  onclick="switchTab('pd-mats')" >PD MATS  <span class="tab-count" id="cnt-pd-mats">—</span></button>
+    </div>
+
+    <div class="stash-action-bar">
+        <button class="cyber-btn" onclick="refreshTab()">[ REFRESH ]</button>
+        <button class="cyber-btn" id="scan-prices-btn" onclick="scanPrices()">[ SCAN PRICES ]</button>
+        <input type="text" id="stash-search" placeholder="SEARCH..." oninput="filterStash()">
+        <span id="stash-status" style="font-size:0.72em;color:#333;letter-spacing:1px;"></span>
+    </div>
+    <div class="scan-bar-wrap" id="scan-bar-wrap">
+        <div class="scan-bar-label" id="scan-bar-label">SCANNING...</div>
+        <div class="scan-bar-track"><div class="scan-bar-fill" id="scan-bar-fill"></div></div>
+    </div>
+
+    <div id="stash-content">
+        <div class="connect-prompt">
+            <div>// CONNECT YOUR WALLET TO VIEW YOUR STASH //</div>
+            <div style="font-size:0.78em;margin-top:8px;color:#252535;">YOUR NFT HOLDINGS &middot; LIVE FROM CHAIN</div>
+            <button class="cp-btn" onclick="handleWalletClick()">[ CONNECT WALLET ]</button>
+        </div>
+    </div>
+</div>
+
+<div id="chest-modal-backdrop">
+    <div id="chest-modal">
+        <button id="chest-modal-close" onclick="closeChestModal()">[ X ]</button>
+        <div id="chest-modal-log"></div>
+        <div id="chest-modal-link-wrap"><a id="chest-modal-link" href="#" target="_blank">[ OPEN CACHE ]</a></div>
+        <div id="chest-modal-empty"></div>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('mousemove', function(e) {
+        var g = document.getElementById('cursor-glow');
+        if (g) { g.style.left = e.clientX+'px'; g.style.top = e.clientY+'px'; }
+    });
+
+    // ─── WALLET ────────────────────────────────────────────────────────────────
+    var wax = new waxjs.WaxJS({ rpcEndpoint: "https://wax.greymass.com", userAccount: "", tryAutoLogin: false });
+
+    function checkWalletState() {
+        var saved = localStorage.getItem("naron_wallet");
+        updateWalletUI(saved || null);
+        if (saved) {
+            document.getElementById('stash-subtitle').textContent = 'WALLET: ' + saved.toUpperCase();
+            loadTab(_activeTab, saved);
+        } else {
+            document.getElementById('stash-subtitle').textContent = 'CONNECT WALLET TO VIEW YOUR ASSETS';
+            showConnectPrompt();
+        }
+    }
+    function handleWalletClick() { if (localStorage.getItem("naron_wallet")) disconnectWallet(); else doWalletLogin(); }
+    async function doWalletLogin() {
+        if (!window.walletKit) return;
+        try {
+            var r = await window.walletKit.login();
+            window.walletSession = r.session;
+            localStorage.setItem("naron_wallet", String(r.session.actor));
+            checkWalletState();
+        } catch(e) { console.error(e); }
+    }
+    function disconnectWallet() {
+        if (window.walletKit && window.walletSession) { window.walletKit.logout(window.walletSession).catch(function(){}); window.walletSession=null; }
+        localStorage.removeItem("naron_wallet"); _assetCache={}; _pdAllCache={};
+        ['crew','tools','land','arms','faces','pd-units','pd-mats'].forEach(function(t){ var el=document.getElementById('cnt-'+t); if(el) el.textContent='—'; });
+        checkWalletState();
+    }
+    function updateWalletUI(name) {
+        var btn=document.getElementById("wallet-connect-btn"); if(!btn) return;
+        if (name) { btn.innerHTML='[ '+name+' ]'; btn.classList.add("logged-in"); }
+        else { btn.innerHTML='[ CONNECT WALLET &#9875;<img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:11px;vertical-align:middle;margin:0 2px;border-radius:2px;" onerror="this.style.display=\'none\'"> ]'; btn.classList.remove("logged-in"); }
+    }
+
+    // ─── HAMBURGER ─────────────────────────────────────────────────────────────
+    function toggleHamburger() { var dd=document.getElementById('nav-dropdown'); if(dd) dd.classList.toggle('open'); }
+    document.addEventListener('click', function(e) {
+        var dd=document.getElementById('nav-dropdown'),btn=document.getElementById('hamburger-btn');
+        if(dd&&btn&&!btn.contains(e.target)&&!dd.contains(e.target)) dd.classList.remove('open');
+    });
+
+    // ─── CHEST ─────────────────────────────────────────────────────────────────
+    const CHEST_WORKER_URL = "https://naron-chests.YOUR-SUBDOMAIN.workers.dev";
+    var _cmb=document.getElementById("chest-modal-backdrop");
+    if(_cmb) _cmb.addEventListener("click",function(e){if(e.target===this)closeChestModal();});
+    function closeChestModal(){var el=document.getElementById("chest-modal-backdrop");if(el)el.classList.remove("active");}
+
+    // ─── THEME ENGINE ──────────────────────────────────────────────────────────
+    var rainbowInterval=null, unlockedColors=new Set();
+    function setTheme(color,dark){
+        localStorage.setItem("naron_theme_color",color); localStorage.setItem("naron_theme_dark",dark);
+        if(rainbowInterval){clearInterval(rainbowInterval);rainbowInterval=null;}
+        if(color==="rainbow"){
+            var hue=0; document.documentElement.style.setProperty("--theme-dark",dark);
+            rainbowInterval=setInterval(function(){hue=(hue+2)%360;document.documentElement.style.setProperty("--theme-color","hsl("+hue+",100%,50%)");document.documentElement.style.setProperty("--theme-shadow","0 0 15px hsla("+hue+",100%,50%,0.4)");document.documentElement.style.setProperty("--theme-border","1px solid hsla("+hue+",100%,50%,0.3)");document.documentElement.style.setProperty("--theme-hover","hsla("+hue+",100%,50%,0.1)");},40); return;
+        }
+        document.documentElement.style.setProperty("--theme-color",color);
+        document.documentElement.style.setProperty("--theme-dark",dark);
+        document.documentElement.style.setProperty("--theme-hover",hexToRgba(color,0.1));
+        document.documentElement.style.setProperty("--theme-shadow","0 0 15px "+hexToRgba(color,0.4));
+        document.documentElement.style.setProperty("--theme-border","1px solid "+hexToRgba(color,0.3));
+        if(color!=="rainbow") unlockedColors.add(color);
+    }
+    function hexToRgba(hex,alpha){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return"rgba("+r+","+g+","+b+","+alpha+")";}
+    (function(){var c=localStorage.getItem("naron_theme_color"),d=localStorage.getItem("naron_theme_dark");if(c&&d)setTheme(c,d);if(localStorage.getItem('naron_magic_unlocked')==='true'){var rb=document.getElementById('secret-rainbow-dot');if(rb)rb.style.display='block';}})();
+
+    // ─── SIMON SAYS ────────────────────────────────────────────────────────────
+    var simonDotsClicked=new Set(),simonTriggered=false;
+    var simon={active:false,showing:false,sequence:[],userStep:0,round:0,dots:null};
+    function simonMaybeStart(){if(simonTriggered||simon.active)return;if(simonDotsClicked.size>=6&&window.walletSession){simonTriggered=true;setTimeout(simonBegin,800);}}
+    function simonDotClick(el,color,dark){setTheme(color,dark);if(simon.active&&!simon.showing){simonHandleInput(el);}else if(!simon.active){var idx=parseInt(el.id.replace('simon-dot-',''));if(!isNaN(idx))simonDotsClicked.add(idx);simonMaybeStart();}}
+    function simonBegin(){simon.active=true;simon.sequence=[];simon.userStep=0;simon.round=0;simon.dots=[];for(var i=0;i<6;i++){var d=document.getElementById('simon-dot-'+i);if(d)simon.dots.push(d);}simonNextRound();}
+    function simonNextRound(){simon.round++;if(simon.round>6){simonComplete();return;}simon.sequence.push(Math.floor(Math.random()*6));simon.userStep=0;simon.showing=true;setTimeout(function(){simonPlaySequence(0);},500);}
+    function simonPlaySequence(idx){if(idx>=simon.sequence.length){simon.showing=false;return;}var dot=simon.dots[simon.sequence[idx]];if(dot){dot.classList.add('simon-pinging');setTimeout(function(){dot.classList.remove('simon-pinging');},500);}setTimeout(function(){simonPlaySequence(idx+1);},700);}
+    function simonHandleInput(el){var idx=parseInt(el.id.replace('simon-dot-',''));if(isNaN(idx))return;if(idx===simon.sequence[simon.userStep]){simon.userStep++;if(simon.userStep>=simon.sequence.length)setTimeout(simonNextRound,400);}else simonFail();}
+    function simonFail(){simon.showing=true;simon.dots.forEach(function(d){d.classList.add('simon-fail');setTimeout(function(){d.classList.remove('simon-fail');},700);});setTimeout(function(){simon.sequence=[];simon.userStep=0;simon.round=0;simon.showing=false;simonNextRound();},1800);}
+    function simonReset(){simon.active=false;simon.showing=false;simon.sequence=[];simon.userStep=0;simon.round=0;simonTriggered=false;simonDotsClicked=new Set();var rb=document.getElementById('secret-rainbow-dot');if(rb)rb.style.display='none';if(simon.dots)simon.dots.forEach(function(d){d.classList.remove('simon-pinging','simon-fail');});}
+    function simonComplete(){simon.active=false;localStorage.setItem('naron_magic_unlocked','true');var rb=document.getElementById('secret-rainbow-dot');if(rb){rb.style.display='block';var a=rb.animate([{transform:'scale(0)'},{transform:'scale(2)'},{transform:'scale(1)'}],{duration:500,easing:'cubic-bezier(0.175,0.885,0.32,1.275)'});a.onfinish=function(){rb.style.animation='simon-beacon 0.7s ease-in-out infinite';};rb.title='🎉 CLICK HERE TO CLAIM YOUR CODE!';rb.onclick=simonWin;}}
+    function simonWin(){var _rb=document.getElementById('secret-rainbow-dot');if(_rb)_rb.style.animation='';(function(){var _c=['#00ffcc','#ff003c','#ffaa00','#bc13fe','#0088ff','#ff69b4','#ffffff'];for(var _i=0;_i<80;_i++){(function(){var _p=document.createElement('div'),_sz=(Math.random()*8+4)+'px';_p.style.cssText='position:fixed;pointer-events:none;z-index:99998;border-radius:'+(Math.random()>0.5?'50%':'2px')+';width:'+_sz+';height:'+_sz+';';_p.style.background=_c[Math.floor(Math.random()*_c.length)];_p.style.left=(Math.random()*100)+'vw';_p.style.top='-20px';document.body.appendChild(_p);var _tx=(Math.random()-0.5)*400,_ty=(Math.random()*window.innerHeight+300),_rot=Math.random()*720;_p.animate([{transform:'translate(0,0) rotate(0deg)',opacity:1},{transform:'translate('+_tx+'px,'+_ty+'px) rotate('+_rot+'deg)',opacity:0}],{duration:1500+Math.random()*1500,easing:'cubic-bezier(0.25,0.46,0.45,0.94)',delay:Math.random()*400}).onfinish=function(){_p.remove();};})();}})();
+    var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',code='NARON-';for(var i=0;i<8;i++)code+=chars[Math.floor(Math.random()*chars.length)];localStorage.setItem('naron_simon_code',code);var wallet=localStorage.getItem('naron_wallet')||'???';var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;';ov.innerHTML='<div style="background:#050510;border:2px solid var(--theme-color);padding:48px 56px;text-align:center;font-family:monospace;color:var(--theme-color);max-width:520px;width:90vw;"><div style="font-size:1.5em;letter-spacing:5px;margin-bottom:6px;">// SEQUENCE COMPLETE //</div><div style="color:#444;font-size:0.75em;letter-spacing:2px;margin-bottom:24px;border-bottom:1px solid #1a2a3a;padding-bottom:16px;">NARON CODEX</div><div style="color:#666;font-size:0.75em;letter-spacing:2px;margin-bottom:6px;">WALLET</div><div style="font-size:1.1em;letter-spacing:3px;color:#aad4ff;margin-bottom:24px;">'+wallet+'</div><div style="color:#666;font-size:0.75em;letter-spacing:2px;margin-bottom:8px;">YOUR UNLOCK CODE</div><div style="font-size:2em;letter-spacing:8px;color:#fff;background:#0a0a1a;padding:18px 36px;border:1px solid var(--theme-color);margin-bottom:22px;">'+code+'</div><div style="color:#777;font-size:0.78em;line-height:1.6;margin-bottom:28px;">Take a screenshot and share in any AW Discord — tag<br><span style="color:var(--theme-color);letter-spacing:2px;">@spectral.sky</span><br><span style="color:#444;font-size:0.9em;">(Alien Worlds · Mission Control · Naron Events<br>Planetary Defense · La Ruche · Safe Haven)</span></div><button onclick="this.closest(\'[style*=fixed]\').remove()" class="cyber-btn">[ ACKNOWLEDGE ]</button></div>';document.body.appendChild(ov);setTheme('rainbow','#050510');}
+
+    // ─── STASH CORE ────────────────────────────────────────────────────────────
+    var _activeTab = 'crew';
+    var _assetCache = {}, _pdAllCache = {}, _floorCache = {};
+    var API_AA       = 'https://wax.api.atomicassets.io/atomicassets/v1/assets';
+    var API_SALES    = 'https://wax.eosusa.io/atomicmarket/v1/sales/templates';
+    var API_SALES_FB = 'https://wax.api.atomicassets.io/atomicmarket/v1/sales/templates';
+    var API_HISTORY  = 'https://wax.api.atomicassets.io/atomicmarket/v2/sales';
+    var IPFS_GW      = 'https://atomichub-ipfs.com/ipfs/';
+    var IPFS_FB      = 'https://ipfs.io/ipfs/';
+
+    // ─── TABLE DEFINITIONS ─────────────────────────────────────────────────────
+    var TAB_CFG = {
+        'crew':     {col:'alien.worlds', schema:'crew.worlds',  heads:['IMAGE','ASSET ID','NAME','SHINE','RARITY','ELEMENT','RACE','ATTACK','DEFENSE','MOVE COST','TEMPLATE','FLOOR (WAX)'], row:rowCrew},
+        'tools':    {col:'alien.worlds', schema:'tool.worlds',  heads:['IMAGE','ASSET ID','NAME','SHINE','RARITY','TYPE','EASE','LUCK','DELAY','TEMPLATE','FLOOR (WAX)'],                   row:rowTool},
+        'land':     {col:'alien.worlds', schema:'land.worlds',  heads:['IMAGE','ASSET ID','NAME','PLANET','TYPE','RARITY','EASE','LUCK','DELAY','COMM%','X','Y','SLOTS','RATING','FLOOR (WAX)'], row:rowLand},
+        'arms':     {col:'alien.worlds', schema:'arms.worlds',  heads:['IMAGE','ASSET ID','NAME','SHINE','RARITY','ELEMENT','ATTACK','DEFENSE','TEMPLATE','FLOOR (WAX)'],                   row:rowArms},
+        'faces':    {col:'alien.worlds', schema:'faces.worlds', heads:['IMAGE','ASSET ID','NAME','SHINE','RARITY','RACE','TYPE','TEMPLATE','FLOOR (WAX)'],                                  row:rowFaces},
+        'pd-units': {col:'planetdefnft', schema:null,           heads:['IMAGE','ASSET ID','NAME','TYPE','RARITY','ELEMENT','ATK','DEF','SCHEMA','TEMPLATE','FLOOR (WAX)'],                  row:rowPDUnit, pdAll:true, pdSide:'unit'},
+        'pd-mats':  {col:'planetdefnft', schema:null,           heads:['IMAGE','ASSET ID','NAME','TYPE','RARITY','TEMPLATE','FLOOR (WAX)'],                                                 row:rowPDMat,  pdAll:true, pdSide:'mat'},
+    };
+
+    // ─── IMAGE HELPER ──────────────────────────────────────────────────────────
+    function imgCell(raw) {
+        if (!raw || raw === '—') return '<td class="img-cell" style="color:#333;font-size:0.6em;">N/A</td>';
+        var url = raw.startsWith('http') ? raw : (IPFS_GW + raw);
+        var fb  = raw.startsWith('http') ? raw : (IPFS_FB + raw);
+        return '<td class="img-cell"><img src="'+url+'" loading="lazy" onerror="if(this.src!==\''+fb+'\')this.src=\''+fb+'\';else this.style.opacity=0.1;"></td>';
+    }
+    function dv(a, key) {
+        var v = (a.data && a.data[key] != null) ? a.data[key] : null;
+        if (v == null) v = (a.immutable_data && a.immutable_data[key] != null) ? a.immutable_data[key] : null;
+        return v != null ? String(v) : '—';
+    }
+    function dv2(a, k1, k2) { var v=dv(a,k1); return v!=='—'?v:dv(a,k2); }
+    function shClass(s){if(!s||s==='—')return'';var l=s.toLowerCase();if(l.includes('xdim'))return'sh-xd';if(l.includes('anti'))return'sh-anti';if(l.includes('star'))return'sh-star';if(l.includes('gold'))return'sh-gold';return'';}
+    function rarClass(r){if(!r||r==='—')return'';var l=r.toLowerCase();if(l.includes('myth'))return'rar-myth';if(l.includes('legend'))return'rar-leg';if(l.includes('epic'))return'rar-epic';if(l.includes('rare'))return'rar-rare';if(l.includes('uncommon'))return'rar-uncommon';if(l.includes('common'))return'rar-comm';if(l.includes('abund'))return'rar-abund';return'';}
+    function floorTd(t){if(!t||t==='—')return'<td>—</td>';var f=_floorCache[t];if(f===undefined)return'<td class="floor-pending" data-tmpl="'+t+'">—</td>';return'<td class="floor-cell">'+(f==='NONE'||f==='ERR'?'—':f+' WAX')+'</td>';}
+
+    // ─── ROW RENDERERS ─────────────────────────────────────────────────────────
+    function rowCrew(a) {
+        var t=a.template?a.template.template_id:'—', sh=dv(a,'shine'), rar=dv(a,'rarity');
+        var mc=dv2(a,'movecost','Move Cost');
+        return imgCell(dv(a,'img'))+'<td>'+a.asset_id+'</td><td>'+dv(a,'name')+'</td>'
+            +'<td class="'+shClass(sh)+'">'+sh+'</td><td class="'+rarClass(rar)+'">'+rar+'</td>'
+            +'<td>'+dv(a,'element')+'</td><td>'+dv(a,'race')+'</td>'
+            +'<td>'+dv(a,'attack')+'</td><td>'+dv2(a,'defense','defence')+'</td><td>'+mc+'</td>'
+            +'<td>'+t+'</td>'+floorTd(t);
+    }
+    function rowTool(a) {
+        var t=a.template?a.template.template_id:'—', sh=dv(a,'shine'), rar=dv(a,'rarity');
+        return imgCell(dv(a,'img'))+'<td>'+a.asset_id+'</td><td>'+dv(a,'name')+'</td>'
+            +'<td class="'+shClass(sh)+'">'+sh+'</td><td class="'+rarClass(rar)+'">'+rar+'</td>'
+            +'<td>'+dv(a,'type')+'</td>'
+            +'<td>'+dv(a,'ease')+'</td><td>'+dv(a,'luck')+'</td><td>'+dv(a,'delay')+'</td>'
+            +'<td>'+t+'</td>'+floorTd(t);
+    }
+    function rowLand(a) {
+        var t=a.template?a.template.template_id:'—', rar=dv(a,'rarity');
+        var comm=dv2(a,'commission','comm_percent');
+        var slots=dv2(a,'slots','open_slots');
+        return imgCell(dv(a,'img'))+'<td>'+a.asset_id+'</td><td>'+dv(a,'name')+'</td>'
+            +'<td>'+dv(a,'planet')+'</td><td>'+dv(a,'type')+'</td><td class="'+rarClass(rar)+'">'+rar+'</td>'
+            +'<td>'+dv(a,'ease')+'</td><td>'+dv(a,'luck')+'</td><td>'+dv(a,'delay')+'</td>'
+            +'<td>'+comm+'</td><td>'+dv(a,'x')+'</td><td>'+dv(a,'y')+'</td>'
+            +'<td>'+slots+'</td><td>'+dv(a,'land_rating')+'</td>'+floorTd(t);
+    }
+    function rowArms(a) {
+        var t=a.template?a.template.template_id:'—', sh=dv(a,'shine'), rar=dv(a,'rarity');
+        return imgCell(dv(a,'img'))+'<td>'+a.asset_id+'</td><td>'+dv(a,'name')+'</td>'
+            +'<td class="'+shClass(sh)+'">'+sh+'</td><td class="'+rarClass(rar)+'">'+rar+'</td>'
+            +'<td>'+dv(a,'element')+'</td>'
+            +'<td>'+dv(a,'attack')+'</td><td>'+dv2(a,'defense','defence')+'</td>'
+            +'<td>'+t+'</td>'+floorTd(t);
+    }
+    function rowFaces(a) {
+        var t=a.template?a.template.template_id:'—', sh=dv(a,'shine'), rar=dv(a,'rarity');
+        return imgCell(dv(a,'img'))+'<td>'+a.asset_id+'</td><td>'+dv(a,'name')+'</td>'
+            +'<td class="'+shClass(sh)+'">'+sh+'</td><td class="'+rarClass(rar)+'">'+rar+'</td>'
+            +'<td>'+dv(a,'race')+'</td><td>'+dv(a,'type')+'</td>'
+            +'<td>'+t+'</td>'+floorTd(t);
+    }
+    function rowPDUnit(a) {
+        var t=a.template?a.template.template_id:'—', rar=dv(a,'rarity');
+        var schema=a.schema?a.schema.schema_name:'—';
+        return imgCell(dv(a,'img'))+'<td>'+a.asset_id+'</td><td>'+dv(a,'name')+'</td>'
+            +'<td>'+dv(a,'type')+'</td><td class="'+rarClass(rar)+'">'+rar+'</td>'
+            +'<td>'+dv(a,'element')+'</td>'
+            +'<td>'+dv(a,'attack')+'</td><td>'+dv2(a,'defense','defence')+'</td>'
+            +'<td style="color:#555;font-size:0.85em;">'+schema+'</td>'
+            +'<td>'+t+'</td>'+floorTd(t);
+    }
+    function rowPDMat(a) {
+        var t=a.template?a.template.template_id:'—', rar=dv(a,'rarity');
+        return imgCell(dv(a,'img'))+'<td>'+a.asset_id+'</td><td>'+dv(a,'name')+'</td>'
+            +'<td>'+dv(a,'type')+'</td><td class="'+rarClass(rar)+'">'+rar+'</td>'
+            +'<td>'+t+'</td>'+floorTd(t);
+    }
+
+    // ─── FETCH ─────────────────────────────────────────────────────────────────
+    async function fetchAllAssets(owner, collection, schema) {
+        var assets=[], page=1;
+        while(true){
+            var p='owner='+encodeURIComponent(owner)+'&collection_name='+collection+'&page='+page+'&limit=100&order=asc&sort=asset_id&_ts='+Date.now();
+            if(schema) p+='&schema_name='+encodeURIComponent(schema);
+            try{
+                var res=await fetch(API_AA+'?'+p,{cache:'no-store'});
+                var json=await res.json();
+                if(!json.data||json.data.length===0) break;
+                assets=assets.concat(json.data);
+                if(json.data.length<100) break;
+                page++; await new Promise(function(r){setTimeout(r,350);});
+            }catch(e){break;}
+        }
+        return assets;
+    }
+
+    // ─── FLOOR FETCH ───────────────────────────────────────────────────────────
+    async function fetchFloor(tmpl) {
+        if(_floorCache[tmpl]!==undefined) return _floorCache[tmpl];
+        var tryAPI = async function(url) {
+            var res=await fetch(url+'?symbol=WAX&state=1&template_id='+tmpl+'&_ts='+Date.now(),{cache:'no-store'});
+            if(!res.ok) throw new Error();
+            var json=await res.json();
+            if(json.data&&json.data[0]&&json.data[0].price){var p=json.data[0].price,v=parseInt(p.amount)/Math.pow(10,p.token_precision);return v.toFixed(2);}
+            return 'NONE';
+        };
+        try { _floorCache[tmpl]=await tryAPI(API_SALES); }
+        catch(e){ try { _floorCache[tmpl]=await tryAPI(API_SALES_FB); } catch(e2){ _floorCache[tmpl]='ERR'; } }
+        return _floorCache[tmpl];
+    }
+
+    // ─── MARKET INTEL ──────────────────────────────────────────────────────────
+    var _intelOpen = false;
+    function closeIntel() { _intelOpen=false; document.getElementById('market-frame').classList.remove('open'); }
+
+    async function openIntel(assetName, templateId, collection) {
+        _intelOpen=true;
+        var mf=document.getElementById('market-frame'); mf.classList.add('open');
+        document.getElementById('intel-header').innerHTML='MARKET INTEL <button id="intel-close" onclick="closeIntel()">[ X ]</button>';
+        document.getElementById('intel-name').textContent=assetName||'—';
+        document.getElementById('intel-floor').textContent='SCANNING...';
+        document.getElementById('intel-last').textContent='SCANNING...';
+        document.getElementById('intel-sugg').textContent='—';
+        if(templateId&&templateId!=='—'){
+            var col=collection||'alien.worlds';
+            document.getElementById('lnk-atomic').href='https://wax.atomichub.io/market?collection_name='+col+'&template_id='+templateId+'&order=asc&sort=price&state=1&symbol=WAX';
+            document.getElementById('lnk-nefty').href='https://neftyblocks.com/marketplace/listing?collection_name='+col+'&template_id='+templateId;
+            document.getElementById('lnk-nfthive').href='https://nfthive.io/market?collection='+col+'&template_id='+templateId;
+            // Floor
+            try{
+                var res=await fetch(API_SALES+'?symbol=WAX&state=1&template_id='+templateId+'&_ts='+Date.now(),{cache:'no-store'});
+                var json=await res.json();
+                if(json.data&&json.data[0]&&json.data[0].price){
+                    var p=json.data[0].price,v=parseInt(p.amount)/Math.pow(10,p.token_precision);
+                    document.getElementById('intel-floor').textContent=v.toFixed(2)+' WAX';
+                    if(json.data[0].assets&&json.data[0].assets[0]&&json.data[0].assets[0].prices&&json.data[0].assets[0].prices[0]&&json.data[0].assets[0].prices[0].suggested_median){
+                        var sv=parseInt(json.data[0].assets[0].prices[0].suggested_median)/Math.pow(10,p.token_precision);
+                        document.getElementById('intel-sugg').textContent=sv.toFixed(2)+' WAX';
+                    }
+                } else { document.getElementById('intel-floor').textContent='NONE'; }
+            }catch(e){document.getElementById('intel-floor').textContent='ERR';}
+            // Last sold
+            try{
+                var res2=await fetch(API_HISTORY+'?state=3&template_id='+templateId+'&page=1&limit=1&order=desc&sort=updated&symbol=WAX&_ts='+Date.now(),{cache:'no-store'});
+                var json2=await res2.json();
+                if(json2.data&&json2.data[0]&&json2.data[0].price){
+                    var p2=json2.data[0].price,v2=parseInt(p2.amount)/Math.pow(10,p2.token_precision);
+                    document.getElementById('intel-last').textContent=v2.toFixed(2)+' WAX';
+                } else { document.getElementById('intel-last').textContent='NONE'; }
+            }catch(e){document.getElementById('intel-last').textContent='ERR';}
+        } else {
+            document.getElementById('intel-floor').textContent='—';
+            document.getElementById('intel-last').textContent='—';
+        }
+    }
+
+    // ─── TAB LOADING ───────────────────────────────────────────────────────────
+    function setStatus(msg){var el=document.getElementById('stash-status');if(el)el.textContent=msg;}
+
+    function showConnectPrompt(){
+        document.getElementById('stash-content').innerHTML='<div class="connect-prompt"><div>// CONNECT YOUR WALLET TO VIEW YOUR STASH //</div><div style="font-size:0.78em;margin-top:8px;color:#252535;">YOUR NFT HOLDINGS &middot; LIVE FROM CHAIN</div><button class="cp-btn" onclick="handleWalletClick()">[ CONNECT WALLET ]</button></div>';
+    }
+
+    function buildTable(heads, assets, rowFn, collection) {
+        var html='<div class="stash-table-wrap"><table class="stash-table"><thead><tr>';
+        heads.forEach(function(h){html+='<th>'+h+'</th>';});
+        html+='</tr></thead><tbody>';
+        assets.forEach(function(a){
+            var tmpl=a.template?a.template.template_id:'';
+            var name=dv(a,'name');
+            html+='<tr data-tmpl="'+tmpl+'" data-name="'+name.replace(/"/g,'&quot;')+'" data-col="'+(collection||'')+'" onclick="rowClick(this)">'+rowFn(a)+'</tr>';
+        });
+        html+='</tbody></table></div>';
+        return html;
+    }
+
+    function rowClick(row) {
+        document.querySelectorAll('.stash-table tbody tr.selected').forEach(function(r){r.classList.remove('selected');});
+        row.classList.add('selected');
+        var tmpl=row.getAttribute('data-tmpl');
+        var name=row.getAttribute('data-name');
+        var col=row.getAttribute('data-col');
+        openIntel(name, tmpl, col);
+    }
+
+    async function loadTab(tabId, wallet) {
+        var cfg=TAB_CFG[tabId]; if(!cfg) return;
+        var content=document.getElementById('stash-content');
+        content.innerHTML='<div class="stash-loading">SCANNING <span class="loading-dots"></span></div>';
+        setStatus('FETCHING...');
+
+        var cacheKey=tabId+'_'+wallet, assets;
+        if(_assetCache[cacheKey]){
+            assets=_assetCache[cacheKey];
+        } else if(cfg.pdAll){
+            if(!_pdAllCache[wallet]) _pdAllCache[wallet]=await fetchAllAssets(wallet,cfg.col,null);
+            var allPD=_pdAllCache[wallet];
+            if(cfg.pdSide==='mat'){
+                assets=allPD.filter(function(a){var s=a.schema?a.schema.schema_name.toLowerCase():'';return s.includes('mat')||s.includes('material');});
+                // fallback: if no 'mat' schema found, try splitting by schema order
+                if(assets.length===0){
+                    var schemas=[];
+                    allPD.forEach(function(a){var s=a.schema?a.schema.schema_name:'?';if(schemas.indexOf(s)<0)schemas.push(s);});
+                    schemas.sort();
+                    if(schemas.length>1) assets=allPD.filter(function(a){return a.schema&&a.schema.schema_name===schemas[schemas.length-1];});
+                    else assets=[];
+                }
+            } else {
+                assets=allPD.filter(function(a){var s=a.schema?a.schema.schema_name.toLowerCase():'';return !s.includes('mat')&&!s.includes('material');});
+                if(assets.length===0) assets=allPD;
+            }
+            _assetCache[cacheKey]=assets;
+        } else {
+            assets=await fetchAllAssets(wallet,cfg.col,cfg.schema);
+            _assetCache[cacheKey]=assets;
+        }
+
+        var cntEl=document.getElementById('cnt-'+tabId);
+        if(cntEl) cntEl.textContent=assets.length;
+
+        if(assets.length===0){
+            content.innerHTML='<div class="stash-loading" style="color:#252535;">NO ASSETS FOUND FOR THIS CATEGORY</div>';
+            setStatus('0 ASSETS'); return;
+        }
+        content.innerHTML=buildTable(cfg.heads, assets, cfg.row, cfg.col);
+        setStatus(assets.length+' ASSETS');
+    }
+
+    function switchTab(tabId){
+        _activeTab=tabId;
+        document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+        var ab=document.getElementById('tab-'+tabId); if(ab) ab.classList.add('active');
+        var s=document.getElementById('stash-search'); if(s) s.value='';
+        closeIntel();
+        var wallet=localStorage.getItem('naron_wallet');
+        if(!wallet){showConnectPrompt();return;}
+        loadTab(tabId,wallet);
+    }
+
+    function refreshTab(){
+        var wallet=localStorage.getItem('naron_wallet'); if(!wallet){showConnectPrompt();return;}
+        var cacheKey=_activeTab+'_'+wallet; delete _assetCache[cacheKey];
+        if(TAB_CFG[_activeTab]&&TAB_CFG[_activeTab].pdAll) delete _pdAllCache[wallet];
+        loadTab(_activeTab,wallet);
+    }
+
+    // ─── SCAN PRICES ───────────────────────────────────────────────────────────
+    async function scanPrices(){
+        var wallet=localStorage.getItem('naron_wallet'); if(!wallet) return;
+        var assets=_assetCache[_activeTab+'_'+wallet]; if(!assets||assets.length===0){setStatus('LOAD A TAB FIRST');return;}
+        var btn=document.getElementById('scan-prices-btn'); btn.disabled=true; btn.textContent='[ SCANNING... ]';
+        var barWrap=document.getElementById('scan-bar-wrap'),barFill=document.getElementById('scan-bar-fill'),barLabel=document.getElementById('scan-bar-label');
+        barWrap.classList.add('vis');
+        var templates=[];
+        assets.forEach(function(a){var t=a.template?String(a.template.template_id):null;if(t&&templates.indexOf(t)<0)templates.push(t);});
+        for(var i=0;i<templates.length;i++){
+            barLabel.textContent='SCANNING '+(i+1)+'/'+templates.length+': '+templates[i];
+            barFill.style.width=Math.round(((i+1)/templates.length)*100)+'%';
+            await fetchFloor(templates[i]);
+            var val=_floorCache[templates[i]];
+            document.querySelectorAll('[data-tmpl="'+templates[i]+'"].floor-pending').forEach(function(cell){
+                cell.textContent=(val==='NONE'||val==='ERR')?'—':val+' WAX';
+                cell.classList.remove('floor-pending'); cell.classList.add('floor-cell'); cell.removeAttribute('data-tmpl');
+            });
+            if(i%4===3) await new Promise(function(r){setTimeout(r,400);});
+        }
+        barLabel.textContent='COMPLETE'; setTimeout(function(){barWrap.classList.remove('vis');},2500);
+        btn.disabled=false; btn.textContent='[ SCAN PRICES ]'; setStatus('PRICES UPDATED');
+    }
+
+    function filterStash(){
+        var val=document.getElementById('stash-search').value.toLowerCase();
+        document.querySelectorAll('.stash-table tbody tr').forEach(function(row){row.style.display=row.textContent.toLowerCase().includes(val)?'':'none';});
+    }
+
+    checkWalletState();
+
+    // ── HEADER NARON PLANET + STAR GAME ──────────────────────────────────────
+    (function(){
+        var _starActive=false,_starScore=0;
+        function _spawnStar(){
+            if(!_starActive)return;
+            var s=document.createElement('div');s.className='star-target';s.textContent='✦';
+            s.style.left=(Math.random()<0.5?(Math.random()*80+10):(window.innerWidth-Math.random()*80-60))+'px';
+            s.style.top=(Math.random()*(window.innerHeight-100)+20)+'px';
+            s.addEventListener('click',function(){s.remove();_starScore++;var el=document.getElementById('star-score-num');if(el)el.textContent=_starScore;if(_starScore>=10){var m=document.createElement('div');m.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#050510;border:1px solid var(--theme-color,#ffaa00);padding:32px 48px;font-family:monospace;color:var(--theme-color,#ffaa00);text-align:center;animation:hp-fadeout 3s forwards;';m.innerHTML='<div style="font-size:1.2em;letter-spacing:4px;margin-bottom:10px;">// TRANSMISSION LOGGED //</div><div style="color:#444;font-size:0.75em;letter-spacing:2px;line-height:2;">SECTOR SCAN COMPLETE<br><span style="color:var(--theme-color,#ffaa00);">[ REWARD: PENDING UNLOCK ]</span><br><span style="color:#333;">— more signals incoming —</span></div>';document.body.appendChild(m);setTimeout(function(){if(m.parentNode)m.remove();},3000);_starActive=false;}});
+            document.body.appendChild(s);setTimeout(function(){if(s.parentNode)s.remove();},1600);setTimeout(_spawnStar,Math.random()*1200+600);
+        }
+        var hc=document.getElementById('header-planet-canvas');
+        if(!hc||typeof THREE==='undefined')return;
+        var R=new THREE.WebGLRenderer({canvas:hc,antialias:true,alpha:true});
+        R.setClearColor(0x000000,0);R.setPixelRatio(Math.min(window.devicePixelRatio,2));R.setSize(36,36);
+        var sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(35,1,0.1,100);cam.position.z=4;
+        sc.add(new THREE.AmbientLight(0xffffff,0.5));
+        var sl=new THREE.DirectionalLight(0xffffff,2.0);sl.position.set(3,3,5);sc.add(sl);
+        var tx=new THREE.TextureLoader().load('planets/naron.jpg');tx.minFilter=THREE.LinearFilter;tx.generateMipmaps=false;
+        var pm=new THREE.Mesh(new THREE.SphereGeometry(1,32,32),new THREE.MeshStandardMaterial({map:tx}));sc.add(pm);
+        var spd=0.008,BASE=0.008,BOOST=0.35,MAX=1.2,DECAY=0.018,_clicked=false;
+        hc.addEventListener('click',function(e){e.stopPropagation();spd=Math.min(spd+BOOST,MAX);if(!_clicked){_clicked=true;var m=document.createElement('div');m.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#050510;border:1px solid var(--theme-color,#ffaa00);padding:32px 48px;font-family:monospace;color:var(--theme-color,#ffaa00);text-align:center;animation:hp-fadeout 2.8s forwards;pointer-events:none;';m.innerHTML='<div style="font-size:1.3em;letter-spacing:4px;margin-bottom:12px;">// SIGNAL DETECTED //</div><div style="color:#444;font-size:0.75em;letter-spacing:2px;line-height:2;">NARON SECTOR &middot; ENCRYPTED CHANNEL<br><span style="color:var(--theme-color,#ffaa00);">[ REWARD POOL: CLASSIFIED ]</span><br><span style="color:#333;">— scan for anomalies in the void —</span></div>';document.body.appendChild(m);setTimeout(function(){if(m.parentNode)m.remove();},2800);_starActive=true;var hud=document.getElementById('star-hud');if(hud)hud.style.display='block';_spawnStar();}});
+        (function _anim(){requestAnimationFrame(_anim);spd-=(spd-BASE)*DECAY;if(spd<BASE)spd=BASE;pm.rotation.y+=spd;R.render(sc,cam);})();
+    })();
+</script>
+</body>
+</html>

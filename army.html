@@ -750,8 +750,19 @@ function handleWalletClick() {
     if (localStorage.getItem("naron_wallet")) {
         disconnectWallet();
     } else {
-        openWalletModal();
+        doWalletLogin();
     }
+}
+async function doWalletLogin() {
+    if (!window.walletKit) return;
+    try {
+        var r = await window.walletKit.login();
+        window.walletSession = r.session;
+        var account = String(r.session.actor);
+        localStorage.setItem("naron_wallet", account);
+        if (window.wax) wax.userAccount = account;
+        checkWalletState();
+    } catch(e) { console.error(e); }
 }
 function openWalletModal() {
     const m = document.getElementById('wallet-modal');
