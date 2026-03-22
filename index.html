@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -73,6 +74,8 @@
             padding: 15px 30px; position: sticky; top: 0; z-index: 2000;
             box-shadow: 0 5px 20px rgba(0,0,0,0.9);
         }
+        #header-planet-canvas { width:36px; height:36px; border-radius:50%; cursor:pointer; vertical-align:middle; margin-right:8px; flex-shrink:0; }
+        @keyframes hp-fadeout { 0%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
         .logo-section h1 {
             color: var(--theme-color); margin: 0; font-size: 1.8em; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 0 10px var(--theme-color);
         }
@@ -461,7 +464,8 @@
 
     <header class="global-header">
         <div class="logo-section">
-            <h1><img src="NCico.png" style="height:36px;vertical-align:middle;margin-right:10px;border-radius:4px;cursor:pointer;" onclick="document.getElementById('nc-logo').click()" title="NARON CODEX">NARON CODEX <span class="loot-chest" data-chest-id="1" title="">◈</span></h1>
+            <canvas id="header-planet-canvas" width="36" height="36"></canvas>
+            <h1>NARON CODEX <span class="loot-chest" data-chest-id="1" title="">◈</span></h1>
         </div>
         
         <nav class="nav-links">
@@ -1134,6 +1138,81 @@
             dd.classList.remove('open');
         }
     });
+// ── HEADER NARON PLANET + STAR GAME ─────────────────────────────────────────
+(function() {
+    // Star game state
+    var _starActive = false, _starScore = 0;
+    function _spawnStar() {
+        if (!_starActive) return;
+        var s = document.createElement('div');
+        s.className = 'star-target'; s.textContent = '✦';
+        s.style.left = (Math.random() < 0.5 ? (Math.random()*80+10) : (window.innerWidth-Math.random()*80-60)) + 'px';
+        s.style.top  = (Math.random()*(window.innerHeight-100)+20) + 'px';
+        s.addEventListener('click', function() {
+            s.remove(); _starScore++;
+            var el = document.getElementById('star-score-num');
+            if (el) el.textContent = _starScore;
+            if (_starScore >= 10) {
+                var m = document.createElement('div');
+                m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#050510;border:1px solid var(--theme-color,#00ff88);padding:32px 48px;font-family:monospace;color:var(--theme-color,#00ff88);text-align:center;animation:hp-fadeout 3s forwards;';
+                m.innerHTML = '<div style="font-size:1.2em;letter-spacing:4px;margin-bottom:10px;">// TRANSMISSION LOGGED //</div><div style="color:#444;font-size:0.75em;letter-spacing:2px;line-height:2;">SECTOR SCAN COMPLETE<br><span style="color:var(--theme-color,#00ff88);">[ REWARD: PENDING UNLOCK ]</span><br><span style="color:#333;">— more signals incoming —</span></div>';
+                document.body.appendChild(m);
+                setTimeout(function() { if (m.parentNode) m.remove(); }, 3000);
+                _starActive = false;
+            }
+        });
+        document.body.appendChild(s);
+        setTimeout(function() { if (s.parentNode) s.remove(); }, 1600);
+        setTimeout(_spawnStar, Math.random()*1200+600);
+    }
+
+    // Planet init
+    var hc = document.getElementById('header-planet-canvas');
+    if (!hc || typeof THREE === 'undefined') return;
+    var R = new THREE.WebGLRenderer({ canvas: hc, antialias: true, alpha: true });
+    R.setClearColor(0x000000, 0);
+    R.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    R.setSize(36, 36);
+    var sc = new THREE.Scene();
+    var cam = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    cam.position.z = 4;
+    sc.add(new THREE.AmbientLight(0xffffff, 0.5));
+    var sl = new THREE.DirectionalLight(0xffffff, 2.0);
+    sl.position.set(3, 3, 5); sc.add(sl);
+    var tx = new THREE.TextureLoader().load('planets/naron.jpg');
+    tx.minFilter = THREE.LinearFilter; tx.generateMipmaps = false;
+    var pm = new THREE.Mesh(new THREE.SphereGeometry(1,32,32), new THREE.MeshStandardMaterial({ map: tx }));
+    sc.add(pm);
+    var spd = 0.008, BASE = 0.008, BOOST = 0.35, MAX = 1.2, DECAY = 0.018;
+    var _clicked = false;
+    hc.addEventListener('click', function(e) {
+        e.stopPropagation();
+        spd = Math.min(spd + BOOST, MAX);
+        if (!_clicked) {
+            _clicked = true;
+            var m = document.createElement('div');
+            m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#050510;border:1px solid var(--theme-color,#00ff88);padding:32px 48px;font-family:monospace;color:var(--theme-color,#00ff88);text-align:center;animation:hp-fadeout 2.8s forwards;pointer-events:none;';
+            m.innerHTML = '<div style="font-size:1.3em;letter-spacing:4px;margin-bottom:12px;">// SIGNAL DETECTED //</div><div style="color:#444;font-size:0.75em;letter-spacing:2px;line-height:2;">NARON SECTOR · ENCRYPTED CHANNEL<br><span style="color:var(--theme-color,#00ff88);">[ REWARD POOL: CLASSIFIED ]</span><br><span style="color:#333;">— scan for anomalies in the void —</span></div>';
+            document.body.appendChild(m);
+            setTimeout(function() { if (m.parentNode) m.remove(); }, 2800);
+            _starActive = true;
+            var hud = document.getElementById('star-hud');
+            if (hud) hud.style.display = 'block';
+            _spawnStar();
+            // Also trigger the nc-logo star game on index (awards chest)
+            var ncl = document.getElementById('nc-logo');
+            if (ncl) ncl.click();
+        }
+    });
+    (function _anim() {
+        requestAnimationFrame(_anim);
+        spd -= (spd - BASE) * DECAY;
+        if (spd < BASE) spd = BASE;
+        pm.rotation.y += spd;
+        R.render(sc, cam);
+    })();
+})();
+// ── END HEADER NARON PLANET ──────────────────────────────────────────────────
     </script>
 
 <div id="chest-modal-backdrop">

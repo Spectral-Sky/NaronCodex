@@ -113,6 +113,8 @@
             position: sticky; top: 0; z-index: 6000;
             box-shadow: 0 5px 20px rgba(0,0,0,0.9);
         }
+        #header-planet-canvas { width:36px; height:36px; border-radius:50%; cursor:pointer; vertical-align:middle; margin-right:8px; flex-shrink:0; }
+        @keyframes hp-fadeout { 0%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
         .logo-section h1 { color: var(--theme-color); margin: 0; font-size: 1.8em; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 0 10px var(--theme-color); }
         .nav-links { display: flex; gap: 10px; }
         .nav-links .nav-btn.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); box-shadow: var(--theme-shadow); }
@@ -437,7 +439,8 @@
 
 <header class="global-header">
     <div class="logo-section">
-        <h1> <span class="loot-chest" data-chest-id="7" title="">◈</span></h1>
+        <canvas id="header-planet-canvas" width="36" height="36"></canvas>
+        <h1>NARON CODEX <span class="loot-chest" data-chest-id="7" title="">◈</span></h1>
     </div>
     <nav class="nav-links">
         <a href="/index.html" class="nav-btn"><img src="NCico.png" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">HUB</a>
@@ -573,7 +576,7 @@
 
     <!-- ══ BOTTOM BUN ════════════════════════════════════════════════════════ -->
     <div class="codex-footer">
-        <div class="footer-text"> // THIS ARCHIVE WAS MADE POSSIBLE BY THE NARON UNION // ©@Spectral.Sky 2026 // </div>
+        <div class="footer-text">// LAND.WORLDS — NARON CODEX //</div>
         <div style="color:#444;font-size:0.7em;max-width:600px;text-align:center;line-height:1.7;">
             <strong>NOTICE:</strong> Naron Codex is an informational fan resource. This protocol is <strong>NOT</strong> affiliated with Dacoco GmbH, Alien Worlds, or WAX.io. Data is for educational/fan purposes only and should <strong>NOT</strong> be considered financial advice. All images and names associated with Alien Worlds remain the intellectual property of Dacoco GmbH. © 2026 @Spectral.Sky.
         </div>
@@ -1981,19 +1984,53 @@ function spawnStar() {
     setTimeout(() => { if (star.parentNode) star.remove(); }, 1600);
     setTimeout(spawnStar, Math.random() * 1200 + 600);
 }
-// Star game NARON CODEX logo
+// ── END STAR MINI-GAME ───────────────────────────────────────────────────────
+
+// ── HEADER NARON PLANET (land) ───────────────────────────────────────────────
 (function() {
-    const logoH1 = document.querySelector('h1');
-    if (logoH1) logoH1.style.cursor = 'pointer';
-    if (logoH1) logoH1.addEventListener('click', function() {
-        if (!starGameActive) {
+    var hc = document.getElementById('header-planet-canvas');
+    if (!hc) return;
+    var R2 = new THREE.WebGLRenderer({ canvas: hc, antialias: true, alpha: true });
+    R2.setClearColor(0x000000, 0);
+    R2.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    R2.setSize(36, 36);
+    var sc2 = new THREE.Scene();
+    var cam2 = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    cam2.position.z = 4;
+    sc2.add(new THREE.AmbientLight(0xffffff, 0.5));
+    var sl2 = new THREE.DirectionalLight(0xffffff, 2.0);
+    sl2.position.set(3, 3, 5); sc2.add(sl2);
+    var tx2 = new THREE.TextureLoader().load('planets/naron.jpg');
+    tx2.minFilter = THREE.LinearFilter; tx2.generateMipmaps = false;
+    var pm2 = new THREE.Mesh(new THREE.SphereGeometry(1,32,32), new THREE.MeshStandardMaterial({ map: tx2 }));
+    sc2.add(pm2);
+    var spd2 = 0.008, BASE2 = 0.008, BOOST2 = 0.35, MAX2 = 1.2, DECAY2 = 0.018;
+    var _lc = false;
+    hc.addEventListener('click', function(e) {
+        e.stopPropagation();
+        spd2 = Math.min(spd2 + BOOST2, MAX2);
+        if (!_lc) {
+            _lc = true;
+            var m = document.createElement('div');
+            m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#050510;border:1px solid var(--theme-color,#00ff88);padding:32px 48px;font-family:monospace;color:var(--theme-color,#00ff88);text-align:center;animation:hp-fadeout 2.8s forwards;pointer-events:none;';
+            m.innerHTML = '<div style="font-size:1.3em;letter-spacing:4px;margin-bottom:12px;">// SIGNAL DETECTED //</div><div style="color:#444;font-size:0.75em;letter-spacing:2px;line-height:2;">NARON SECTOR · ENCRYPTED CHANNEL<br><span style="color:var(--theme-color,#00ff88);">[ REWARD POOL: CLASSIFIED ]</span><br><span style="color:#333;">— scan for anomalies in the void —</span></div>';
+            document.body.appendChild(m);
+            setTimeout(function() { if (m.parentNode) m.remove(); }, 2800);
             starGameActive = true;
-            document.getElementById('star-hud').style.display = 'block';
+            var hud = document.getElementById('star-hud');
+            if (hud) hud.style.display = 'block';
             spawnStar();
         }
     });
+    (function _anim2() {
+        requestAnimationFrame(_anim2);
+        spd2 -= (spd2 - BASE2) * DECAY2;
+        if (spd2 < BASE2) spd2 = BASE2;
+        pm2.rotation.y += spd2;
+        R2.render(sc2, cam2);
+    })();
 })();
-// ── END STAR MINI-GAME ───────────────────────────────────────────────────────
+// ── END HEADER NARON PLANET (land) ───────────────────────────────────────────
 
 </script>
 
