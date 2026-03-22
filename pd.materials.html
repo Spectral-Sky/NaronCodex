@@ -163,6 +163,10 @@
         }
         .simon-pinging { animation: simon-ping 0.65s ease-out forwards !important; }
         .simon-fail    { animation: simon-fail-flash 0.6s ease-out forwards !important; }
+        @keyframes simon-beacon {
+            0%, 100% { transform: scale(1.0); box-shadow: 0 0 10px #fff, 0 0 25px rgba(255,255,255,0.6); }
+            50%       { transform: scale(2.0); box-shadow: 0 0 25px #fff, 0 0 60px rgba(255,255,255,0.8), 0 0 100px rgba(255,255,255,0.3); }
+        }
 
         /* --- PREVIEW DECK --- */
         #preview-frame {
@@ -1234,11 +1238,38 @@
         var rainbow = document.getElementById('secret-rainbow-dot');
         if (rainbow) {
             rainbow.style.display = 'block';
-            rainbow.animate([{transform:'scale(0)'},{transform:'scale(2)'},{transform:'scale(1)'}],{duration:500,easing:'cubic-bezier(0.175,0.885,0.32,1.275)'});
+            var anim = rainbow.animate([{transform:'scale(0)'},{transform:'scale(2)'},{transform:'scale(1)'}],{duration:500,easing:'cubic-bezier(0.175,0.885,0.32,1.275)'});
+            anim.onfinish = function() {
+                rainbow.style.animation = 'simon-beacon 0.7s ease-in-out infinite';
+            };
+            rainbow.title = '🎉 CLICK HERE TO CLAIM YOUR CODE!';
             rainbow.onclick = simonWin;
         }
     }
     function simonWin() {
+        var _rb = document.getElementById('secret-rainbow-dot');
+        if (_rb) _rb.style.animation = '';
+        (function() {
+            var _c = ['#00ffcc','#ff003c','#ffaa00','#bc13fe','#0088ff','#ff69b4','#ffffff'];
+            for (var _i = 0; _i < 80; _i++) {
+                (function() {
+                    var _p = document.createElement('div');
+                    var _sz = (Math.random() * 8 + 4) + 'px';
+                    _p.style.cssText = 'position:fixed;pointer-events:none;z-index:99998;border-radius:' + (Math.random() > 0.5 ? '50%' : '2px') + ';width:' + _sz + ';height:' + _sz + ';';
+                    _p.style.background = _c[Math.floor(Math.random() * _c.length)];
+                    _p.style.left = (Math.random() * 100) + 'vw';
+                    _p.style.top = '-20px';
+                    document.body.appendChild(_p);
+                    var _tx = (Math.random() - 0.5) * 400;
+                    var _ty = (Math.random() * window.innerHeight + 300);
+                    var _rot = (Math.random() * 720);
+                    _p.animate([
+                        { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+                        { transform: 'translate(' + _tx + 'px,' + _ty + 'px) rotate(' + _rot + 'deg)', opacity: 0 }
+                    ], { duration: 1500 + Math.random() * 1500, easing: 'cubic-bezier(0.25,0.46,0.45,0.94)', delay: Math.random() * 400 }).onfinish = function() { _p.remove(); };
+                })();
+            }
+        })();
         var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         var code = 'NARON-'; for (var i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
         localStorage.setItem('naron_simon_code', code);
@@ -1248,7 +1279,7 @@
         overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;';
         overlay.innerHTML = '<div style="background:#050510;border:2px solid var(--theme-color);padding:48px 56px;text-align:center;font-family:monospace;color:var(--theme-color);box-shadow:0 0 80px rgba(0,0,0,0.9),0 0 60px rgba(91,173,255,0.15);max-width:520px;width:90vw;">' +
             '<div style="font-size:1.5em;letter-spacing:5px;margin-bottom:6px;">// SEQUENCE COMPLETE //</div>' +
-            '<div style="color:#444;font-size:0.75em;letter-spacing:2px;margin-bottom:24px;border-bottom:1px solid #1a2a3a;padding-bottom:16px;">NARON CODEX · PLANETARY DEFENSE</div>' +
+            '<div style="color:#444;font-size:0.75em;letter-spacing:2px;margin-bottom:24px;border-bottom:1px solid #1a2a3a;padding-bottom:16px;">NARON CODEX</div>' +
             '<div style="color:#666;font-size:0.75em;letter-spacing:2px;margin-bottom:6px;">WALLET</div>' +
             '<div style="font-size:1.1em;letter-spacing:3px;color:#aad4ff;margin-bottom:24px;">' + wallet + '</div>' +
             '<div style="color:#666;font-size:0.75em;letter-spacing:2px;margin-bottom:8px;">YOUR UNLOCK CODE</div>' +
