@@ -108,7 +108,7 @@
         }
         #preview-frame.minimized { transform:translateX(-282px); }
         #preview-status { font-size:0.68em; color:#444; letter-spacing:2px; text-align:center; }
-        #preview-img { max-width:130px; max-height:190px; object-fit:contain; background:#0d0d1e; border:1px solid #252540; border-radius:6px; }
+        #preview-img { width:calc(100% - 2px); max-height:270px; object-fit:contain; background:#0d0d1e; border:1px solid #252540; border-radius:6px; }
         #preview-label { font-size:0.72em; color:#aaa; letter-spacing:1px; text-align:center; line-height:1.5; padding:2px 4px; }
 
         /* DECK TOGGLE TAB */
@@ -355,6 +355,15 @@
     </div>
 </div>
 
+<div id="wallet-modal" onclick="if(event.target===this)closeWalletModal()" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+    <div style="background:#050510;border:1px solid var(--theme-color);padding:32px 40px;min-width:280px;text-align:center;font-family:monospace;box-shadow:0 0 40px rgba(0,0,0,0.9);">
+        <div style="color:var(--theme-color);font-size:0.8em;letter-spacing:3px;margin-bottom:20px;">SELECT WALLET</div>
+        <button class="wallet-picker-opt" onclick="loginWithAnchor()" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;width:100%;">&#9875; ANCHOR</button>
+        <button class="wallet-picker-opt" onclick="loginWithWAX()" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;width:100%;"><img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:18px;border-radius:3px;" onerror="this.style.display='none'"> WAX CLOUD WALLET</button>
+        <button class="wallet-picker-opt" onclick="closeWalletModal()" style="color:#555;font-size:0.85em;width:100%;">[ CANCEL ]</button>
+    </div>
+</div>
+
 <div id="chest-modal-backdrop">
     <div id="chest-modal">
         <button id="chest-modal-close" onclick="closeChestModal()">[ X ]</button>
@@ -389,15 +398,27 @@
             showConnectPrompt();
         }
     }
-    function handleWalletClick() { if (localStorage.getItem("naron_wallet")) disconnectWallet(); else doWalletLogin(); }
-    async function doWalletLogin() {
-        if (!window.walletKit) return;
+    function handleWalletClick() { if (localStorage.getItem("naron_wallet")) disconnectWallet(); else openWalletModal(); }
+    function openWalletModal() { var m=document.getElementById('wallet-modal'); if(m) m.style.display='flex'; }
+    function closeWalletModal() { var m=document.getElementById('wallet-modal'); if(m) m.style.display='none'; }
+    async function loginWithAnchor() {
+        closeWalletModal();
+        if (!window.walletKit || !window.WalletPluginAnchor) return;
         try {
-            var r = await window.walletKit.login();
+            var r = await window.walletKit.login({ walletPlugin: new window.WalletPluginAnchor() });
             window.walletSession = r.session;
             var account = String(r.session.actor);
             localStorage.setItem("naron_wallet", account);
             var wi=document.getElementById('wallet-input'); if(wi) wi.value=account;
+            checkWalletState();
+        } catch(e) { console.error(e); }
+    }
+    async function loginWithWAX() {
+        closeWalletModal();
+        try {
+            var userAccount = await wax.login();
+            localStorage.setItem("naron_wallet", userAccount);
+            var wi=document.getElementById('wallet-input'); if(wi) wi.value=userAccount;
             checkWalletState();
         } catch(e) { console.error(e); }
     }
