@@ -1030,6 +1030,26 @@ function processData(data) {
         const schema     = (nft.schema?.schema_name || "").toLowerCase();
         const collection = (nft.collection?.collection_name || "").toLowerCase();
         const name       = (nft.name || "").toLowerCase();
+        const templateId = parseInt(nft.template?.template_id || 0);
+
+        // Services (Lava Lux) — check by template ID first, before any filters
+        if (SERVICES_TEMPLATE_IDS.has(templateId)) {
+            const isPD   = true;
+            const rarity = (d.rarity || td.rarity || "common").toLowerCase();
+            const localData = NFT_DATA[templateId];
+            const img = d.img || td.img || (localData?.img ? localData.img : null);
+            const obj = {
+                templateId, isPD, rarity, shine: "stone",
+                name: nft.name, img, active: false, asset_id: nft.asset_id,
+                atk: 0, def: 0, moveCost: null, moveCostReduction: null,
+                atkMult:     localData?.atk_mult     || 0,
+                defMult:     localData?.def_mult     || 0,
+                moveCostAdd: localData?.movecost_add || 0,
+                missions:    SERVICES_MISSIONS[templateId] || 0,
+                effect:      d.effect || td.effect || `+${SERVICES_MISSIONS[templateId] || 0} daily missions`,
+            };
+            services.push(obj); return;
+        }
 
         // Schema exclusions
         if (schema === "level.worlds" || schema === "material" || schema.includes('tool')) return;
@@ -1045,7 +1065,6 @@ function processData(data) {
         const bonus  = RARITY_BONUS[rarity] || 1;
 
         // Look up verified stats from local database (PD templates)
-        const templateId = parseInt(nft.template?.template_id || 0);
         const localData  = NFT_DATA[templateId];
 
         // Stats: local DB is the source of truth for all known templates (PD and AW)
@@ -1085,11 +1104,6 @@ function processData(data) {
             defMult:     localData?.def_mult     || 0,
             moveCostAdd: localData?.movecost_add || 0,
         };
-        if (SERVICES_TEMPLATE_IDS.has(templateId)) {
-            obj.missions = SERVICES_MISSIONS[templateId] || 0;
-            obj.effect = d.effect || td.effect || `+${obj.missions} daily missions`;
-            services.push(obj); return;
-        }
         if (EQUIPMENT_TEMPLATE_IDS.has(templateId)) {
             obj.active = forgeEnabled;
             // Store equipment type for display
