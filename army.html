@@ -236,6 +236,22 @@
         .val-crew   { color: var(--shine-antimatter); }
         .val-arms   { color: #aa88ff; }
         .val-atk    { color: var(--color-atk); }
+
+        /* SCORE BREAKDOWN PANEL */
+        #breakdown-btn { font-size:0.72em; padding:5px 14px; margin-bottom:8px; letter-spacing:1px; }
+        #score-breakdown { display:none; background:rgba(3,3,16,0.94); border:1px solid #1a1a2e; padding:10px 14px; margin-bottom:16px; font-size:0.78em; }
+        #score-breakdown.open { display:block; }
+        .bd-grid { display:grid; grid-template-columns:170px 90px 90px 100px; gap:2px 8px; }
+        .bd-head { color:#333; font-size:0.82em; letter-spacing:1px; padding-bottom:4px; border-bottom:1px solid #1a1a2e; }
+        .bd-row  { display:contents; }
+        .bd-row > div { padding:3px 0; border-bottom:1px solid #090912; }
+        .bd-label { color:#555; }
+        .bd-atk   { color:#ff6644; }
+        .bd-def   { color:#5588ff; }
+        .bd-move  { color:#ffd700; }
+        .bd-sub   > div { color:#aaa; border-top:1px solid #252540; border-bottom:none; padding-top:6px; }
+        .bd-mult  > div { color:#ff8800; border-bottom:1px solid #090912; }
+        .bd-total > div { color:var(--theme-color); font-weight:bold; border-top:1px solid var(--theme-color); border-bottom:none; padding-top:6px; }
         .val-def    { color: var(--color-def); }
         .val-move   { color: #ffd700; }
 
@@ -594,6 +610,19 @@
         <div class="stat-box">TOTAL ATTACK<span class="stat-val val-atk" id="totalAtk">—</span></div>
         <div class="stat-box">TOTAL DEFENSE<span class="stat-val val-def" id="totalDef">—</span></div>
         <div class="stat-box">EST. MOVE TIME<span class="stat-val val-move" id="totalMoveTime">—</span></div>
+    </div>
+    <button id="breakdown-btn" class="cyber-btn" onclick="toggleBreakdown()" style="display:none;">∑ SCORE BREAKDOWN</button>
+    <div id="score-breakdown">
+        <div class="bd-grid">
+            <div class="bd-head"></div><div class="bd-head">⚔ ATK</div><div class="bd-head">🛡 DEF</div><div class="bd-head">⏱ MOVE</div>
+            <div id="bd-crew" class="bd-row"><div class="bd-label">CREW &amp; MERCS</div><div class="bd-atk">—</div><div class="bd-def">—</div><div class="bd-move">—</div></div>
+            <div id="bd-arms" class="bd-row"><div class="bd-label">ARMS &amp; EQUIP</div><div class="bd-atk">—</div><div class="bd-def">—</div><div class="bd-move">—</div></div>
+            <div id="bd-creat" class="bd-row"><div class="bd-label">CREATURES</div><div class="bd-atk">—</div><div class="bd-def">—</div><div class="bd-move">—</div></div>
+            <div id="bd-sup" class="bd-row"><div class="bd-label">SUPPLIES</div><div class="bd-atk">—</div><div class="bd-def">—</div><div class="bd-move">—</div></div>
+            <div id="bd-base" class="bd-row bd-sub"><div class="bd-label">BASE</div><div class="bd-atk">—</div><div class="bd-def">—</div><div class="bd-move">—</div></div>
+            <div id="bd-lava" class="bd-row bd-mult" style="display:none"><div class="bd-label">LAVA LUX</div><div class="bd-atk">—</div><div class="bd-def">—</div><div class="bd-move">—</div></div>
+            <div id="bd-total" class="bd-row bd-total"><div class="bd-label">TOTAL</div><div class="bd-atk">—</div><div class="bd-def">—</div><div class="bd-move">—</div></div>
+        </div>
     </div>
 
     <!-- Results -->
@@ -1010,6 +1039,13 @@ function recalculate() {
     if (rawData.length > 0) processData(rawData);
 }
 
+function toggleBreakdown() {
+    const el  = document.getElementById('score-breakdown');
+    const btn = document.getElementById('breakdown-btn');
+    const open = el.classList.toggle('open');
+    btn.innerText = open ? '∑ HIDE BREAKDOWN' : '∑ SCORE BREAKDOWN';
+}
+
 // ── Process ─────────────────────────────────────────────────────────────────
 function processData(data) {
     let faces = [], crew = [], arms = [], creatures = [], supplies = [], equipment = [], services = [];
@@ -1147,6 +1183,39 @@ function processData(data) {
     document.getElementById('totalAtk').innerText      = Math.floor(finalAtk).toLocaleString();
     document.getElementById('totalDef').innerText      = Math.floor(finalDef).toLocaleString();
     document.getElementById('totalMoveTime').innerText = `${moveH}h ${moveM}m`;
+
+    // ── Score breakdown panel ──────────────────────────────────────────────────
+    const crewAtk  = activeCrew.reduce((s,x) => s + (x.atk||0), 0);
+    const crewDef  = activeCrew.reduce((s,x) => s + (x.def||0), 0);
+    const armsAtk  = activeArms.reduce((s,x) => s + (x.atk||0), 0);
+    const armsDef  = activeArms.reduce((s,x) => s + (x.def||0), 0);
+    const creatAtk = creatures.reduce((s,x)  => s + (x.atk||0), 0);
+    const creatDef = creatures.reduce((s,x)  => s + (x.def||0), 0);
+    const supAtk   = supplies.reduce((s,x)   => s + (x.atk||0), 0);
+    const supDef   = supplies.reduce((s,x)   => s + (x.def||0), 0);
+    const pm  = v => v > 0 ? '+' + v.toLocaleString() : v === 0 ? '—' : v.toLocaleString();
+    const neg = v => v > 0 ? '-' + Math.round(v/60) + 'm' : '—';
+    const hm  = s => { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h+'h '+m+'m'; };
+    function bdSet(id, label, atk, def, move) {
+        const el = document.getElementById(id); if (!el) return;
+        el.children[0].textContent = label;
+        el.children[1].textContent = atk;
+        el.children[2].textContent = def;
+        el.children[3].textContent = move;
+    }
+    bdSet('bd-crew',  'CREW & MERCS',              pm(crewAtk),  pm(crewDef),  crewMoveSecs  > 0 ? '+'+Math.round(crewMoveSecs/60)+'m'  : '—');
+    bdSet('bd-arms',  'ARMS & EQUIP'+(forgeEnabled?'':' (OFFLINE)'), pm(armsAtk), pm(armsDef), '—');
+    bdSet('bd-creat', 'CREATURES',                 pm(creatAtk), pm(creatDef), '—');
+    bdSet('bd-sup',   'SUPPLIES',                  pm(supAtk),   pm(supDef),   neg(supplyRedSecs));
+    bdSet('bd-base',  'BASE',                      baseAtk.toLocaleString(), baseDef.toLocaleString(), hm(BASE_MOVE_SECS + crewMoveSecs - supplyRedSecs));
+    const lavaEl = document.getElementById('bd-lava');
+    if (lavaLuxAtkPct > 0 && lavaEl) {
+        lavaEl.style.display = 'contents';
+        bdSet('bd-lava', 'LAVA LUX ×'+(1+lavaLuxAtkPct/100).toFixed(2),
+            pm(finalAtk - baseAtk), pm(finalDef - baseDef), '—');
+    } else if (lavaEl) { lavaEl.style.display = 'none'; }
+    bdSet('bd-total', 'TOTAL', finalAtk.toLocaleString(), finalDef.toLocaleString(), hm(totalMoveSecs));
+    document.getElementById('breakdown-btn').style.display = 'inline-block';
 
     render(faces, crew, arms, creatures, supplies, equipment, services, forgeEnabled);
 }
