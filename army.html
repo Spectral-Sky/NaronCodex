@@ -899,15 +899,6 @@ const RARITY_GRADIENTS = {
     "mythic":    "linear-gradient(90deg, #880022 0%, #cc0044 30%, #ff2266 50%, #cc0044 70%, #880022 100%)",
     "mythical":  "linear-gradient(90deg, #880022 0%, #cc0044 30%, #ff2266 50%, #cc0044 70%, #880022 100%)",
 };
-const SUPPLY_KEYWORDS = ["decaffeinated", "boar", "ration", "battery", "stimpack", "coffee", "booster"];
-const BANNED_KEYWORDS = [
-    "liquid", "prism", "chromium", "etherium", "concentrated", "purified",
-    "singularity", "key", "mineral", "abyss", "glow", "shard", "fragment", "dust",
-    "blueprint", "component", "circuit", "core", "essence", "relic", "medal",
-    "embers", "chest", "coastline", "sandy", "land", "avatar", "quartz",
-    "peacemaker", "stealth mercenary", "desert", "mountains", "volcano", "forest",
-    "crystal", "carbon", "oreon", "coins"
-];
 // PD Equipment template IDs (Gadgets, Weapons, Protection)
 // Desktop gets full-res/animated IPFS source; mobile gets wsrv.nl thumbnail
 const IS_MOBILE = window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches;
@@ -1051,12 +1042,10 @@ function processData(data) {
             services.push(obj); return;
         }
 
-        // Schema exclusions
-        if (schema === "level.worlds" || schema === "material" || schema.includes('tool')) return;
-        // Supplies bypass banned keyword filter (e.g. "Red Boar - Primordial Essence" contains "essence")
-        const isSupply = SUPPLY_KEYWORDS.some(kw => name.includes(kw));
-        // Name exclusions (supplies are exempt)
-        if (!isSupply && BANNED_KEYWORDS.some(kw => name.includes(kw))) return;
+        // Allowlist — skip anything not in the template database
+        if (!NFT_DATA[templateId]) return;
+        // Tools and materials are tracked for stash but not army-relevant
+        if (NFT_DATA[templateId].category === 'tool' || NFT_DATA[templateId].category === 'material') return;
 
         const isPD   = collection === "planetdefnft";
         const rarity = (d.rarity || td.rarity || "common").toLowerCase();
@@ -1104,38 +1093,21 @@ function processData(data) {
             defMult:     localData?.def_mult     || 0,
             moveCostAdd: localData?.movecost_add || 0,
         };
-        if (EQUIPMENT_TEMPLATE_IDS.has(templateId)) {
-            obj.active = forgeEnabled;
-            // Store equipment type for display
-            obj.equipType = d.type || td.type || '';
-            equipment.push(obj);
-            return;
-        }
 
-        // Planetdef creatures — always active
-        if (collection === "planetdefnft" && schema === "creature") {
-            obj.active = true; creatures.push(obj); return;
-        }
-        // Supplies
-        if (isSupply) { supplies.push(obj); return; }
-
-        // Faces / Warlords
-        const isHuman = name.includes("human");
-        if ((schema.includes('warlord') || schema.includes('face')) && !isHuman) {
-            obj.slots = (localData?.crew_slots)
-                ?? WARLORD_OVERRIDE[nft.name]
-                ?? parseFloat(d.crew_slot || d.units || d.slots || (bonus * mult));
+        // Route by category from local database
+        const cat = localData.category;
+        if (cat === 'creature')                  { obj.active = true; creatures.push(obj); return; }
+        if (cat === 'supply')                    { supplies.push(obj); return; }
+        if (cat === 'equipment')                 { obj.active = forgeEnabled; obj.equipType = d.type || td.type || ''; equipment.push(obj); return; }
+        if (cat === 'face' || cat === 'warlord') {
+            obj.slots = localData.crew_slots ?? WARLORD_OVERRIDE[nft.name] ?? 0;
             obj.active = true;
-            faces.push(obj);
-        } else {
-            if (schema.includes('arms')) {
-                arms.push(obj);
-            } else {
-                if (!isPD && rarity === 'abundant') return; // abundant AW crew don't count (PD balance rule)
-                if (!isPD && obj.atk === bonus * mult && obj.def === bonus * mult) return; // zero base AW stats
-                crew.push(obj);
-            }
+            faces.push(obj); return;
         }
+        if (cat === 'arms')                      { arms.push(obj); return; }
+        // crew / mercenary
+        if (rarity === 'abundant') return; // abundant don't count in PD balance
+        crew.push(obj);
     });
 
     const totalSlots = faces.reduce((s, f) => s + (f.slots || 0), 0);
