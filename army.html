@@ -1417,7 +1417,7 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
                 <div class="card-name">${item.name}</div>
                 ${!item.isPD && item.shine ? `<div class="card-shine-label" style="color:var(--shine-${item.shine},#888)">${item.shine.toUpperCase()}</div>` : ''}
                 ${showStatus ? `<div class="card-status ${statusClass}">${statusText}</div>` : ''}
-                ${item.templateId ? `<a class="card-tpl-link" href="https://wax.atomichub.io/explorer/template/wax-mainnet/${item.isPD ? 'planetdefnft' : 'alien.worlds'}/${item.templateId}" target="_blank" onclick="event.stopPropagation()">#${item.templateId}</a>` : ''}
+                ${item.asset_id ? `<a class="card-tpl-link" href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${item.asset_id}" target="_blank" onclick="event.stopPropagation()">#${item.asset_id}</a>` : ''}
             </div>`;
         return card;
     }
