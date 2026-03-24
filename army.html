@@ -1081,6 +1081,9 @@ function processData(data) {
             atk, def,
             moveCost:          moveCostVal    || null,
             moveCostReduction: moveCostRedVal || null,
+            atkMult:     localData?.atk_mult     || 0,
+            defMult:     localData?.def_mult     || 0,
+            moveCostAdd: localData?.movecost_add || 0,
         };
         if (SERVICES_TEMPLATE_IDS.has(templateId)) {
             obj.missions = SERVICES_MISSIONS[templateId] || 0;
@@ -1133,15 +1136,22 @@ function processData(data) {
         activeArms.forEach(a => a.active = true);
     }
 
-    // supplies (Red Boar) and services (Lava Lux) always contribute atk/def regardless of forge state
-    const finalAtk = [...activeCrew, ...activeArms, ...creatures, ...supplies, ...services].reduce((s, x) => s + (x.atk || 0), 0);
-    const finalDef = [...activeCrew, ...activeArms, ...creatures, ...supplies, ...services].reduce((s, x) => s + (x.def || 0), 0);
+    // Red Boar (supplies) flat atk/def always count
+    const baseAtk = [...activeCrew, ...activeArms, ...creatures, ...supplies].reduce((s, x) => s + (x.atk || 0), 0);
+    const baseDef = [...activeCrew, ...activeArms, ...creatures, ...supplies].reduce((s, x) => s + (x.def || 0), 0);
+    // Lava Lux: highest-mult card applies once as a % multiplier to the entire army total
+    const topLavaLux = services.filter(s => s.atkMult > 0).sort((a, b) => b.atkMult - a.atkMult)[0];
+    const lavaLuxAtkPct  = topLavaLux?.atkMult     || 0;
+    const lavaLuxDefPct  = topLavaLux?.defMult     || 0;
+    const lavaLuxMoveAdd = topLavaLux?.moveCostAdd || 0;
+    const finalAtk = Math.round(baseAtk * (1 + lavaLuxAtkPct / 100));
+    const finalDef = Math.round(baseDef * (1 + lavaLuxDefPct / 100));
 
     // Move time: 3h base + (10s × each active crew moveCost) − (10s × each supply moveCostReduction)
     const BASE_MOVE_SECS = 3 * 60 * 60;
     const crewMoveSecs   = activeCrew.reduce((s, c) => s + (c.moveCost || 0) * 10, 0);
     const supplyRedSecs  = forgeEnabled ? supplies.reduce((s, c) => s + (c.moveCostReduction || 0) * 10, 0) : 0;
-    const totalMoveSecs  = Math.max(0, BASE_MOVE_SECS + crewMoveSecs - supplyRedSecs);
+    const totalMoveSecs  = Math.max(0, BASE_MOVE_SECS + crewMoveSecs - supplyRedSecs + lavaLuxMoveAdd * 10);
     const moveH = Math.floor(totalMoveSecs / 3600);
     const moveM = Math.floor((totalMoveSecs % 3600) / 60);
 
@@ -1322,9 +1332,9 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
             subText = parts.join('<br>');
         } else if (type === "missions") {
             subText = item.missions
-                ? `<span style="color:#ffd700">+${item.missions} daily missions</span>`
+                ? `<span style="color:#ffd700">+${item.missions} missions/day</span>`
                 : (item.effect || "SERVICE");
-            if (item.atk || item.def) subText += `<br><span style="color:#ff4444">⚔ ${item.atk}</span> &nbsp;|&nbsp; <span style="color:#4488ff">🛡 ${item.def}</span>`;
+            if (item.atkMult > 0) subText += `<br><span style="color:#ff8800">+${item.atkMult}% ⚔ &nbsp;|&nbsp; +${item.defMult}% 🛡</span>`;
         } else {
             subText = "ITEM";
         }
