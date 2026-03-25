@@ -593,6 +593,13 @@
                 <span class="slider"></span>
             </label>
         </div>
+        <div class="forge-toggle">
+            <span>🏨 LAVA LUX</span>
+            <label class="switch">
+                <input type="checkbox" id="lavaLuxCheck" onchange="recalculate()" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
         <button id="syncBtn" class="cyber-btn"
             style="color:var(--theme-color); border-color:var(--theme-color);"
             onclick="startScan()">[ SYNCHRONIZE ]</button>
@@ -1049,7 +1056,8 @@ function toggleBreakdown() {
 // ── Process ─────────────────────────────────────────────────────────────────
 function processData(data) {
     let faces = [], crew = [], arms = [], creatures = [], supplies = [], equipment = [], services = [];
-    const forgeEnabled = document.getElementById('forgeCheck').checked;
+    const forgeEnabled    = document.getElementById('forgeCheck').checked;
+    const lavaLuxEnabled  = document.getElementById('lavaLuxCheck').checked;
 
     data.forEach(nft => {
         const d  = nft.data || {};
@@ -1162,7 +1170,7 @@ function processData(data) {
     const baseAtk = [...activeCrew, ...activeArms, ...creatures, ...supplies].reduce((s, x) => s + (x.atk || 0), 0);
     const baseDef = [...activeCrew, ...activeArms, ...creatures, ...supplies].reduce((s, x) => s + (x.def || 0), 0);
     // Lava Lux: highest-mult card applies once as a direct multiplier to the entire army total
-    const topLavaLux      = services.filter(s => s.atkMult > 1).sort((a, b) => b.atkMult - a.atkMult)[0];
+    const topLavaLux      = lavaLuxEnabled ? services.filter(s => s.atkMult > 1).sort((a, b) => b.atkMult - a.atkMult)[0] : null;
     const lavaLuxAtkMult  = topLavaLux?.atkMult      || 1;
     const lavaLuxDefMult  = topLavaLux?.defMult      || 1;
     const lavaLuxMoveMult = topLavaLux?.moveCostMult || 1;
