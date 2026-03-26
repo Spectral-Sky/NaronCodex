@@ -306,7 +306,7 @@
         .welcome-logo { width: 90px; height: 90px; object-fit: contain; cursor: pointer; }
 
         /* --- WALLET PICKER --- */
-        .wallet-section { position: relative; }
+        .wallet-section { position: relative; display:flex; gap:6px; align-items:center; }
         #wallet-picker {
             display: none; position: absolute; right: 0; top: calc(100% + 6px);
             background: #020a08; border: 1px solid var(--theme-color);
@@ -503,8 +503,10 @@
         </nav>
 
         <div class="wallet-section">
-            <button id="wallet-connect-btn" class="wallet-btn" onclick="handleWalletClick()">[ CONNECT WALLET ⚓<img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:11px;vertical-align:middle;margin:0 2px;border-radius:2px;" onerror="this.style.display='none'"> ]</button>
-        </div>
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="disconnectWallet()" style="display:none;"></button>
+        <button id="wallet-btn-anchor" class="wallet-btn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
+        <button id="wallet-btn-wcc" class="wallet-btn" onclick="loginWithWCC()">[ &#9729; CLOUD WALLET ]</button>
+    </div>
         <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
     </header>
 <nav id="nav-dropdown">
@@ -818,7 +820,7 @@
 
 
         </div>
-        <div style="text-align:center; padding: 12px 0 4px; font-family:'Courier New',monospace; font-size:0.72em; color:#252535; letter-spacing:2px;">v 1.1</div>
+        <div style="text-align:center; padding: 12px 0 4px; font-family:'Courier New',monospace; font-size:0.72em; color:#252535; letter-spacing:2px;">v 1.1.1</div>
     </footer>
 
     <script>
@@ -1044,37 +1046,13 @@
                 btn.innerHTML = '[ CONNECT WALLET ⚓<img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:11px;vertical-align:middle;margin:0 2px;border-radius:2px;" onerror="this.style.display=\'none\'"> ]';
                 btn.classList.remove("logged-in");
             }
+        } catch(e) { console.error(e); }
         }
-
-        function handleWalletClick() {
-            if (localStorage.getItem("naron_wallet")) {
-                disconnectWallet();
-            } else {
-                openWalletModal();
-            }
         }
-        async function doWalletLogin() {
-            try {
-                var r = await window.walletKit.login();
-                window.walletSession = r.session;
-                var account = String(r.session.actor);
-                localStorage.setItem("naron_wallet", account);
-                if (window.wax) wax.userAccount = account;
-                checkWalletState();
-            } catch(e) { console.error(e); }
-        }
-        function openWalletModal() {
-            const m = document.getElementById('wallet-modal');
-            if (m) { m.style.display = 'flex'; }
-        }
-        function closeWalletModal() {
-            const m = document.getElementById('wallet-modal');
-            if (m) { m.style.display = 'none'; }
         }
 
         async function loginWithAnchor() {
-            closeWalletModal();
-            try {
+        try {
                 const { session } = await window.walletKit.login();
                 window.walletSession = session;
                 localStorage.setItem("naron_wallet", String(session.actor));
@@ -1083,8 +1061,7 @@
         }
 
         async function loginWithWCC() {
-            closeWalletModal();
-            try {
+        try {
                 var userAccount = await wax.login();
                 localStorage.setItem("naron_wallet", userAccount);
                 var wi = document.getElementById("wallet-input"); if (wi) wi.value = userAccount;
@@ -1275,14 +1252,6 @@
         <div id="chest-modal-log"></div>
         <div id="chest-modal-link-wrap"><a id="chest-modal-link" href="#" target="_blank">[ OPEN CACHE ]</a></div>
         <div id="chest-modal-empty"></div>
-    </div>
-</div>
-<div id="wallet-modal" onclick="if(event.target===this)closeWalletModal()" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
-    <div style="background:#050510;border:1px solid var(--theme-color);padding:32px 40px;min-width:280px;text-align:center;font-family:monospace;box-shadow:0 0 40px rgba(0,0,0,0.9);">
-        <div style="color:var(--theme-color);letter-spacing:3px;font-size:0.9em;margin-bottom:20px;border-bottom:1px solid #1a2a3a;padding-bottom:12px;">// CONNECT WALLET //</div>
-        <button class="wallet-picker-opt" onclick="loginWithAnchor()" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;width:100%;">⚓ ANCHOR</button>
-        <button class="wallet-picker-opt" onclick="loginWithWCC()" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;width:100%;"><img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:18px;border-radius:3px;" onerror="this.style.display='none'"> WAX CLOUD WALLET</button>
-        <button class="wallet-picker-opt" onclick="closeWalletModal()" style="color:#555;font-size:0.85em;width:100%;">[ CANCEL ]</button>
     </div>
 </div>
 </body>

@@ -119,7 +119,7 @@
         .wallet-btn:hover { background: var(--theme-hover); box-shadow: var(--theme-shadow); }
         .wallet-btn.logged-in { background: var(--theme-color); color: #000; border: 1px solid #fff; }
 
-        .wallet-section { position: relative; }
+        .wallet-section { position: relative; display:flex; gap:6px; align-items:center; }
         #wallet-picker {
             display: none; position: absolute; right: 0; top: calc(100% + 6px);
             background: #020a08; border: 1px solid var(--theme-color);
@@ -498,7 +498,9 @@
         <a href="stash.html" class="nav-btn">&#11041; STASH</a>
     </nav>
     <div class="wallet-section">
-        <button id="wallet-connect-btn" class="wallet-btn" onclick="handleWalletClick()">[ CONNECT WALLET ⚓<img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:11px;vertical-align:middle;margin:0 2px;border-radius:2px;" onerror="this.style.display='none'"> ]</button>
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="disconnectWallet()" style="display:none;"></button>
+        <button id="wallet-btn-anchor" class="wallet-btn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
+        <button id="wallet-btn-wcc" class="wallet-btn" onclick="loginWithWCC()">[ &#9729; CLOUD WALLET ]</button>
     </div>
     <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
 </header>
@@ -1371,34 +1373,11 @@
     function checkWalletState() {
         const saved = localStorage.getItem("naron_wallet");
         updateWalletUI(saved || null);
+    } catch(e) { console.error(e); }
     }
-    function handleWalletClick() {
-        if (localStorage.getItem("naron_wallet")) {
-            disconnectWallet();
-        } else {
-            openWalletModal();
-        }
     }
-    async function doWalletLogin() {
-        try {
-            var r = await window.walletKit.login();
-            window.walletSession = r.session;
-            var account = String(r.session.actor);
-            localStorage.setItem("naron_wallet", account);
-            if (window.wax) wax.userAccount = account;
-            checkWalletState();
-        } catch(e) { console.error(e); }
-    }
-    function openWalletModal() {
-        const m = document.getElementById('wallet-modal');
-        if (m) { m.style.display = 'flex'; }
-    }
-    function closeWalletModal() {
-        const m = document.getElementById('wallet-modal');
-        if (m) { m.style.display = 'none'; }
     }
     async function loginWithAnchor() {
-        closeWalletModal();
         try {
             const { session } = await window.walletKit.login();
             window.walletSession = session;
@@ -1409,7 +1388,6 @@
         } catch(e) { console.error("Anchor login failed:", e); }
     }
     async function loginWithWCC() {
-        closeWalletModal();
         try {
             var userAccount = await wax.login();
                 localStorage.setItem("naron_wallet", userAccount);
@@ -1427,11 +1405,20 @@
         checkWalletState();
     }
 
-    function updateWalletUI(accountName) {
-        const btn = document.getElementById("wallet-connect-btn");
-        if(!btn) return;
-        if(accountName) {
-            btn.innerHTML = `[ ${accountName} ]`;
+    function updateWalletUI(account) {
+    var btnAccount=document.getElementById("wallet-connect-btn");
+    var btnAnchor=document.getElementById("wallet-btn-anchor");
+    var btnWCC=document.getElementById("wallet-btn-wcc");
+    if(account){
+        if(btnAccount){btnAccount.textContent='[ '+account+' ]';btnAccount.style.display='';btnAccount.classList.add('logged-in');}
+        if(btnAnchor) btnAnchor.style.display='none';
+        if(btnWCC) btnWCC.style.display='none';
+    } else {
+        if(btnAccount){btnAccount.style.display='none';btnAccount.classList.remove('logged-in');}
+        if(btnAnchor) btnAnchor.style.display='';
+        if(btnWCC) btnWCC.style.display='';
+    }
+} ]`;
             btn.classList.add("logged-in");
         } else {
             btn.innerHTML = '[ CONNECT WALLET ⚓<img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:11px;vertical-align:middle;margin:0 2px;border-radius:2px;" onerror="this.style.display=\'none\'"> ]';
@@ -1838,14 +1825,6 @@
         <div id="chest-modal-log"></div>
         <div id="chest-modal-link-wrap"><a id="chest-modal-link" href="#" target="_blank">[ OPEN CACHE ]</a></div>
         <div id="chest-modal-empty"></div>
-    </div>
-</div>
-<div id="wallet-modal" onclick="if(event.target===this)closeWalletModal()" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
-    <div style="background:#050510;border:1px solid var(--theme-color);padding:32px 40px;min-width:280px;text-align:center;font-family:monospace;box-shadow:0 0 40px rgba(0,0,0,0.9);">
-        <div style="color:var(--theme-color);letter-spacing:3px;font-size:0.9em;margin-bottom:20px;border-bottom:1px solid #1a2a3a;padding-bottom:12px;">// CONNECT WALLET //</div>
-        <button class="wallet-picker-opt" onclick="loginWithAnchor()" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;width:100%;">⚓ ANCHOR</button>
-        <button class="wallet-picker-opt" onclick="loginWithWCC()" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;width:100%;"><img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:18px;border-radius:3px;" onerror="this.style.display='none'"> WAX CLOUD WALLET</button>
-        <button class="wallet-picker-opt" onclick="closeWalletModal()" style="color:#555;font-size:0.85em;width:100%;">[ CANCEL ]</button>
     </div>
 </div>
 </body>
