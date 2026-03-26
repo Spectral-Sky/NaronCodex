@@ -845,15 +845,10 @@ async function loginWithAnchor() {
 }
 async function loginWithWCC() {
     closeWalletModal();
-    if (!window.walletKit) { return; }
     try {
-        const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginWAX() });
-        window.walletSession = session;
-        const account = String(session.actor);
-        localStorage.setItem("naron_wallet", account);
-        if(window.wax) wax.userAccount = account;
-        const wi = document.getElementById("wallet-input");
-        if (wi) wi.value = account;
+        var userAccount = await wax.login();
+        localStorage.setItem("naron_wallet", userAccount);
+        const wi = document.getElementById("wallet-input"); if (wi) wi.value = userAccount;
         checkWalletState();
     } catch(e) { console.error("WAX login failed:", e); }
 }
