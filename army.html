@@ -1295,6 +1295,22 @@ function processData(data) {
         });
     }
 
+    // Equipment: each piece equips to one crew unit (forge required), like arms
+    let activeEquipment = [];
+    if (forgeEnabled) {
+        equipment.sort((a, b) => (b.atk + b.def) - (a.atk + a.def));
+        activeEquipment = equipment.slice(0, activeCrew.length);
+        activeEquipment.forEach(e => e.active = true);
+        equipment.slice(activeCrew.length).forEach(e => e.active = false);
+        activeCrew.forEach((c, i) => {
+            if (activeEquipment[i]) {
+                c.linkedEquipment = activeEquipment[i];
+            }
+        });
+    } else {
+        equipment.forEach(e => e.active = false);
+    }
+
     // Each pet applies to one unit (best creatures → best crew by ATK+DEF; no forge required)
     creatures.sort((a, b) => (b.atk + b.def) - (a.atk + a.def));
     const activeCreatures = creatures.slice(0, activeCrew.length);
@@ -1413,7 +1429,7 @@ function processData(data) {
         const units = [];
         for (let i = 0; i < slots && crewIdx < activeCrew.length; i++, crewIdx++) {
             const c = activeCrew[crewIdx];
-            units.push({ crew: c, arm: activeArms[crewIdx] || null, creature: c.linkedCreature || null, supply: c.linkedSupply || null, service: c.linkedService || null });
+            units.push({ crew: c, arm: activeArms[crewIdx] || null, equipment: c.linkedEquipment || null, creature: c.linkedCreature || null, supply: c.linkedSupply || null, service: c.linkedService || null });
         }
         divisions.push({ commander: face, units });
     });
@@ -1445,7 +1461,6 @@ function render(faces, crew, arms, creatures, supplies, equipment, services, for
         // ── Divisions view ──────────────────────────────────────────────────
         buildDivisions(divisions, root, forgeEnabled, creatures, supplies, services);
         if (reserveCrew.length) buildSection("RESERVE — CREW & MERCS", reserveCrew, root, "never", "stats", false);
-        if (equipTagged.length) buildSection(`ARSENAL — EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, equipTagged, root, "partial", "stats", false);
         buildSection("CREATURES — PLANETARY DEFENSE", creatures, root, "partial", "stats", false);
         buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, "partial", "reduction", false);
         if (services.length) buildSection("SERVICES — LAVA LUX HOTELS", services, root, "always", "missions", false);
@@ -1538,6 +1553,13 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
                     cell.appendChild(sep);
                     cell.appendChild(makeNFTCard(unit.arm, "always", "stats", false));
                 }
+                if (unit.equipment && forgeEnabled) {
+                    const sep = document.createElement('div');
+                    sep.className = 'unit-arm-sep';
+                    sep.textContent = '⚙';
+                    cell.appendChild(sep);
+                    cell.appendChild(makeNFTCard(unit.equipment, "always", "stats", false));
+                }
                 // Buff indicators — each is 1:1 assigned to this unit
                 const buffParts = [];
                 if (unit.creature) {
@@ -1560,7 +1582,10 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
                     buffParts.push(`<div class="ubuff-mini">${suImgSrc ? `<img class="ubuff-mini-img" src="${suImgSrc}" alt="">` : ''}<div class="ubuff-mini-text"><div class="ubuff-mini-name" style="color:${suRar}">${su.name}</div>${suStat ? `<div class="ubuff-mini-stat">${suStat}</div>` : ''}</div></div>`);
                 }
                 if (unit.service) {
-                    buffParts.push(`<span class="ubuff ubuff-lava" title="${unit.service.name}">✦ LAVA LUX</span>`);
+                    const svc = unit.service;
+                    const svcImgSrc = svc.img ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + svc.img)}&w=68&h=68&output=webp&fit=contain` : '';
+                    const svcMult = svc.atkMult > 1 ? `<span style="color:#ff4444">⚔ ×${svc.atkMult.toFixed(2)}</span>` : '';
+                    buffParts.push(`<div class="ubuff-mini">${svcImgSrc ? `<img class="ubuff-mini-img" src="${svcImgSrc}" alt="">` : ''}<div class="ubuff-mini-text"><div class="ubuff-mini-name" style="color:#ff8800">✦ ${svc.name}</div>${svcMult ? `<div class="ubuff-mini-stat">${svcMult}</div>` : ''}</div></div>`);
                 }
                 if (buffParts.length) {
                     const buffRow = document.createElement('div');
