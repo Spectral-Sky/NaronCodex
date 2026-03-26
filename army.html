@@ -323,6 +323,18 @@
         .s-reserve { color: #ff4444; }
         .s-always  { color: var(--theme-color); }
 
+        /* ── Division layout ─────────────────────────────────────────── */
+        .division-block { margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.15); }
+        .division-title-bar { padding: 5px 10px; background: rgba(0,0,0,0.5); border-bottom: 1px solid rgba(255,255,255,0.06); font-family: 'Courier New',monospace; font-size: 0.71em; letter-spacing: 1.5px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .division-body { display: flex; align-items: flex-start; gap: 10px; padding: 10px; }
+        .division-commander-col { flex: 0 0 140px; }
+        .division-units-area { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; align-content: start; }
+        .unit-cell { display: flex; flex-direction: column; gap: 3px; }
+        .unit-cell .nft-card { margin: 0; }
+        .unit-arm-sep { height: 2px; background: linear-gradient(to right,transparent,rgba(255,255,255,0.07),transparent); margin: 0 3px; }
+        .div-empty { color: #2a2a3a; font-family: monospace; font-size: 0.75em; padding: 14px 6px; letter-spacing: 1px; }
+        @media (max-width: 640px) { .division-body { flex-direction: column; } .division-commander-col { flex: 0 0 auto; width: 100%; } }
+
         /* ── Empty state ── */
         #results-empty {
             display: none; text-align: center; padding: 60px 20px;
@@ -1235,24 +1247,133 @@ function processData(data) {
     bdSet('bd-total', 'TOTAL', finalAtk.toLocaleString(), finalDef.toLocaleString(), hm(totalMoveSecs));
     document.getElementById('breakdown-btn').style.display = 'inline-block';
 
-    render(faces, crew, arms, creatures, supplies, equipment, services, forgeEnabled);
+    // Build division structure: each commander leads their slice of activeCrew + matching arms
+    const divisions = [];
+    let crewIdx = 0;
+    faces.forEach(face => {
+        const slots = Math.floor(face.slots || 0);
+        const units = [];
+        for (let i = 0; i < slots && crewIdx < activeCrew.length; i++, crewIdx++) {
+            units.push({ crew: activeCrew[crewIdx], arm: activeArms[crewIdx] || null });
+        }
+        divisions.push({ commander: face, units });
+    });
+
+    render(faces, crew, arms, creatures, supplies, equipment, services, forgeEnabled, divisions);
 }
 
 // ── Render ──────────────────────────────────────────────────────────────────
-function render(faces, crew, arms, creatures, supplies, equipment, services, forgeEnabled) {
+function render(faces, crew, arms, creatures, supplies, equipment, services, forgeEnabled, divisions) {
     const root = document.getElementById('results');
     root.innerHTML = "";
-    buildSection("LOGISTICS — FACES & WARLORDS",                 faces,     root, "always",                    "slots", false);
-    buildSection("ARMY — CREW & MERCENARIES",                      crew,      root, "partial",                   "stats", false);
 
-    // Merge equipment into arms — equipment active only when forge is on
+    if (divisions && divisions.length) {
+        buildDivisions(divisions, root, forgeEnabled);
+    } else {
+        // Fallback flat view (no commanders in wallet)
+        buildSection("ARMY — CREW & MERCENARIES", crew, root, "partial", "stats", false);
+        const equipTagged = equipment.map(e => ({ ...e, active: forgeEnabled }));
+        buildSection(`ARSENAL — ARMS & EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, [...arms, ...equipTagged], root, "partial", "stats", false);
+    }
+
+    // Reserve crew not assigned to any division
+    const reserveCrew = crew.filter(c => !c.active);
+    if (reserveCrew.length) buildSection("RESERVE — CREW & MERCS", reserveCrew, root, "never", "stats", false);
+
+    // Equipment (PD gear, separate from arms)
     const equipTagged = equipment.map(e => ({ ...e, active: forgeEnabled }));
-    const allArsenal = [...arms, ...equipTagged];
-    buildSection(`ARSENAL — ARMS & EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, allArsenal, root, "partial", "stats", false);
+    if (equipTagged.length) buildSection(`ARSENAL — EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, equipTagged, root, "partial", "stats", false);
 
-    buildSection("CREATURES — PLANETARY DEFENSE",                creatures, root, "always",                    "stats", false);
+    buildSection("CREATURES — PLANETARY DEFENSE", creatures, root, "always", "stats", false);
     buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "reduction", false);
     if (services.length) buildSection("SERVICES — LAVA LUX HOTELS", services, root, "always", "missions", false);
+}
+
+// ── Division view ─────────────────────────────────────────────────────────────
+function buildDivisions(divisions, root, forgeEnabled) {
+    const section = document.createElement('div');
+    section.className = 'army-section';
+
+    const header = document.createElement('div');
+    header.className = 'section-header';
+    header.innerHTML = `<span>⊞ DIVISIONS <span class="section-meta">×${divisions.length}</span></span>`;
+    let sectionOpen = true;
+    header.addEventListener('click', () => {
+        sectionOpen = !sectionOpen;
+        content.style.maxHeight = sectionOpen ? content.scrollHeight + 'px' : '0px';
+    });
+    section.appendChild(header);
+
+    const content = document.createElement('div');
+    content.className = 'section-content';
+
+    divisions.forEach((div, idx) => {
+        const cmd = div.commander;
+        const shineRed = (FACE_SHINE_REDUCTION[cmd.rarity] || {})[cmd.shine] || 0;
+        const shineColor = cmd.shine && cmd.shine !== 'stone' ? `var(--shine-${cmd.shine},#888)` : '#444';
+        const rarityColor = RARITY_COLORS[cmd.rarity] || '#888';
+
+        const block = document.createElement('div');
+        block.className = 'division-block';
+
+        // Title bar
+        const titleBar = document.createElement('div');
+        titleBar.className = 'division-title-bar';
+        titleBar.innerHTML = `
+            <span style="color:var(--theme-color);font-weight:bold">DIVISION ${idx + 1}</span>
+            <span style="color:${rarityColor}">${cmd.rarity.toUpperCase()}</span>
+            ${cmd.shine && cmd.shine !== 'stone' ? `<span style="color:${shineColor}">✦ ${cmd.shine.toUpperCase()}</span>` : ''}
+            <span style="color:#999">${cmd.name}</span>
+            <span style="margin-left:auto;display:flex;gap:12px">
+                <span>${Math.floor(cmd.slots || 0)} SLOTS</span>
+                ${shineRed > 0 ? `<span style="color:${shineColor}">▼ -${shineRed} MOVE</span>` : ''}
+                <span style="color:${div.units.length < Math.floor(cmd.slots || 0) ? '#ff8800' : '#00cc66'}">${div.units.length}/${Math.floor(cmd.slots || 0)} CREW</span>
+            </span>`;
+        block.appendChild(titleBar);
+
+        // Body: commander card + unit cells
+        const body = document.createElement('div');
+        body.className = 'division-body';
+
+        // Commander card
+        const cmdCol = document.createElement('div');
+        cmdCol.className = 'division-commander-col';
+        cmdCol.appendChild(makeNFTCard(cmd, "always", "slots", false));
+        body.appendChild(cmdCol);
+
+        // Unit cells (crew + optional arm)
+        if (div.units.length) {
+            const unitsArea = document.createElement('div');
+            unitsArea.className = 'division-units-area';
+            div.units.forEach(unit => {
+                const cell = document.createElement('div');
+                cell.className = 'unit-cell';
+                cell.appendChild(makeNFTCard(unit.crew, "always", "stats", false));
+                if (unit.arm && forgeEnabled) {
+                    const sep = document.createElement('div');
+                    sep.className = 'unit-arm-sep';
+                    cell.appendChild(sep);
+                    cell.appendChild(makeNFTCard(unit.arm, "always", "stats", false));
+                }
+                unitsArea.appendChild(cell);
+            });
+            body.appendChild(unitsArea);
+        } else {
+            const empty = document.createElement('div');
+            empty.className = 'div-empty';
+            empty.textContent = '// NO CREW ASSIGNED //';
+            body.appendChild(empty);
+        }
+
+        block.appendChild(body);
+        content.appendChild(block);
+    });
+
+    section.appendChild(content);
+    root.appendChild(section);
+
+    // Open after append so scrollHeight is measurable
+    content.style.maxHeight = content.scrollHeight + 'px';
 }
 
 // ── Equipment locked subsection ──────────────────────────────────────────────
@@ -1333,6 +1454,72 @@ function buildEquipmentSection(equipment, root, forgeEnabled) {
     });
 }
 
+// ── Standalone card factory (reused by buildSection + buildDivisions) ────────
+function makeNFTCard(item, activeMode, type, showStatus) {
+    const isActive    = activeMode === "always" || (activeMode === "partial" && item.active);
+    const statusClass = activeMode === "always" ? "s-always" : isActive ? "s-active" : "s-reserve";
+    const statusText  = activeMode === "always" ? "◈ ACTIVE"  : isActive ? "◈ OPERATIONAL" : "○ RESERVE";
+    const barColor    = RARITY_COLORS[item.rarity] || '#888';
+    const barGradient = RARITY_GRADIENTS[item.rarity] || 'linear-gradient(90deg, #333 0%, #666 50%, #333 100%)';
+    const barTextColor = item.rarity === 'abundant' ? '#111' : '#fff';
+    const barLabel    = item.rarity.toUpperCase();
+    let subText = "";
+    if (type === "slots") {
+        subText = `${Math.floor(item.slots || 0)} SLOTS`;
+        const shineRed = (FACE_SHINE_REDUCTION[item.rarity] || {})[item.shine] || 0;
+        if (shineRed > 0) subText += `<br><span style="color:var(--shine-${item.shine},#888)">✦ -${shineRed} MOVE</span>`;
+    } else if (type === "stats") {
+        subText = `<span style="color:#ff4444">⚔ ${Math.floor(item.atk)}</span> &nbsp;|&nbsp; <span style="color:#4488ff">🛡 ${Math.floor(item.def)}</span>`;
+        if (item.moveCost) subText += `<br><span class="card-move-cost">&gt;&gt; ${item.moveCost}</span>`;
+    } else if (type === "reduction") {
+        const parts = [];
+        if (item.moveCostReduction) parts.push(`<span class="card-move-reduc">▼ -${item.moveCostReduction}</span>`);
+        if (item.atk || item.def) parts.push(`<span style="color:#ff4444">⚔ ${item.atk}</span> &nbsp;|&nbsp; <span style="color:#4488ff">🛡 ${item.def}</span>`);
+        subText = parts.join('<br>');
+    } else if (type === "missions") {
+        subText = item.missions ? `<span style="color:#ffd700">+${item.missions} missions/day</span>` : (item.effect || "SERVICE");
+        if (item.atkMult > 1) subText += `<br><span style="color:#ff8800">×${item.atkMult.toFixed(2)} ⚔ &nbsp;|&nbsp; ×${item.defMult.toFixed(2)} 🛡 &nbsp;|&nbsp; ×${item.moveCostMult.toFixed(2)} MOVE</span>`;
+    } else { subText = "ITEM"; }
+    const imgHash = item.img;
+    const imgFallback = imgHash ? `https://ipfs.io/ipfs/${imgHash}` : null;
+    const imgSrc = imgHash
+        ? (IS_MOBILE
+            ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=160&h=160&output=webp&fit=contain`
+            : `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=320&h=320&fit=contain&n=-1`)
+        : null;
+    const card = document.createElement('div');
+    card.className = `nft-card${!isActive ? ' inactive' : ''}`;
+    card.style.borderTopColor = barColor;
+    card.style.borderTopWidth = '4px';
+    if (item.linkedItem) card.dataset.cardName = item.name;
+    card.innerHTML = `
+        ${item.qty > 1 ? `<div class="qty-badge">×${item.qty}</div>` : ''}
+        <div class="shine-bar" style="background:${barGradient};background-size:200% 100%;color:${barTextColor}">${barLabel}</div>
+        ${imgSrc ? `<img src="${imgSrc}" onerror="this.onerror=null;this.src='${imgFallback}'" loading="lazy" alt="${item.name}">` : '<div class="no-img">NO IMAGE</div>'}
+        <div class="card-info">
+            <div class="card-subtext">${subText}</div>
+            <div class="card-name">${item.name}</div>
+            ${!item.isPD && item.shine ? `<div class="card-shine-label" style="color:var(--shine-${item.shine},#888)">${item.shine.toUpperCase()}</div>` : ''}
+            ${showStatus ? `<div class="card-status ${statusClass}">${statusText}</div>` : ''}
+            ${item.linkedItem ? `<div class="link-badge">⟷ ${item.linkedItem}</div>` : ''}
+            ${item.asset_id ? `<a class="card-tpl-link" href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${item.asset_id}" target="_blank" onclick="event.stopPropagation()">#${item.asset_id}</a>` : ''}
+        </div>`;
+    if (item.linkedItem) {
+        card.addEventListener('click', e => {
+            if (e.target.closest('a')) return;
+            const wasSelected = card.classList.contains('link-selected');
+            document.querySelectorAll('.nft-card.link-selected,.nft-card.link-highlight').forEach(c => c.classList.remove('link-selected','link-highlight'));
+            if (!wasSelected) {
+                card.classList.add('link-selected');
+                document.querySelectorAll('.nft-card[data-card-name]').forEach(c => {
+                    if (c.dataset.cardName === item.linkedItem) c.classList.add('link-highlight');
+                });
+            }
+        });
+    }
+    return card;
+}
+
 function buildSection(title, list, root, activeMode, type, showStatus = true) {
     if (!list.length) return;
 
@@ -1382,81 +1569,7 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
     content.appendChild(grid);
 
     // ── Card renderer ──────────────────────────────────────────────────────
-    function makeCard(item) {
-        const isActive   = activeMode === "always" || (activeMode === "partial" && item.active);
-        const statusClass = activeMode === "always" ? "s-always" : isActive ? "s-active" : "s-reserve";
-        const statusText  = activeMode === "always" ? "◈ ACTIVE"  : isActive ? "◈ OPERATIONAL" : "○ RESERVE";
-
-        // Both PD and AW: rarity bar at top; AW cards also show shine text below name
-        const barColor    = RARITY_COLORS[item.rarity] || '#888';
-        const barGradient = RARITY_GRADIENTS[item.rarity] || 'linear-gradient(90deg, #333 0%, #666 50%, #333 100%)';
-        const barTextColor = item.rarity === 'abundant' ? '#111' : '#fff';
-        const barLabel    = item.rarity.toUpperCase();
-
-        let subText = "";
-        if (type === "slots") {
-            subText = `${Math.floor(item.slots || 0)} SLOTS`;
-            const shineRed = (FACE_SHINE_REDUCTION[item.rarity] || {})[item.shine] || 0;
-            if (shineRed > 0) subText += `<br><span style="color:var(--shine-${item.shine},#888)">✦ -${shineRed} MOVE</span>`;
-        } else if (type === "stats") {
-            subText = `<span style="color:#ff4444">⚔ ${Math.floor(item.atk)}</span> &nbsp;|&nbsp; <span style="color:#4488ff">🛡 ${Math.floor(item.def)}</span>`;
-            if (item.moveCost) subText += `<br><span class="card-move-cost">&gt;&gt; ${item.moveCost}</span>`;
-        } else if (type === "reduction") {
-            const parts = [];
-            if (item.moveCostReduction) parts.push(`<span class="card-move-reduc">▼ -${item.moveCostReduction}</span>`);
-            if (item.atk || item.def) parts.push(`<span style="color:#ff4444">⚔ ${item.atk}</span> &nbsp;|&nbsp; <span style="color:#4488ff">🛡 ${item.def}</span>`);
-            subText = parts.join('<br>');
-        } else if (type === "missions") {
-            subText = item.missions
-                ? `<span style="color:#ffd700">+${item.missions} missions/day</span>`
-                : (item.effect || "SERVICE");
-            if (item.atkMult > 1) subText += `<br><span style="color:#ff8800">×${item.atkMult.toFixed(2)} ⚔ &nbsp;|&nbsp; ×${item.defMult.toFixed(2)} 🛡 &nbsp;|&nbsp; ×${item.moveCostMult.toFixed(2)} MOVE</span>`;
-        } else {
-            subText = "ITEM";
-        }
-
-        const imgHash     = item.img;
-        const imgFallback = imgHash ? `https://ipfs.io/ipfs/${imgHash}` : null;
-        const imgSrc      = imgHash
-            ? (IS_MOBILE
-                ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=160&h=160&output=webp&fit=contain`
-                : `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=320&h=320&fit=contain&n=-1`)
-            : null;
-
-        const card = document.createElement('div');
-        card.className = `nft-card${!isActive ? ' inactive' : ''}`;
-        card.style.borderTopColor = barColor;
-        card.style.borderTopWidth = '4px';
-        if (item.linkedItem) card.dataset.cardName = item.name;
-        card.innerHTML = `
-            ${item.qty > 1 ? `<div class="qty-badge">×${item.qty}</div>` : ''}
-            <div class="shine-bar" style="background:${barGradient};background-size:200% 100%;color:${barTextColor}">${barLabel}</div>
-            ${imgSrc
-                ? `<img src="${imgSrc}" onerror="this.onerror=null;this.src='${imgFallback}'" loading="lazy" alt="${item.name}">`
-                : `<div class="no-img">NO IMAGE</div>`}
-            <div class="card-info">
-                <div class="card-subtext">${subText}</div>
-                <div class="card-name">${item.name}</div>
-                ${!item.isPD && item.shine ? `<div class="card-shine-label" style="color:var(--shine-${item.shine},#888)">${item.shine.toUpperCase()}</div>` : ''}
-                ${showStatus ? `<div class="card-status ${statusClass}">${statusText}</div>` : ''}
-                ${item.linkedItem ? `<div class="link-badge">⟷ ${item.linkedItem}</div>` : ''}
-                ${item.asset_id ? `<a class="card-tpl-link" href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${item.asset_id}" target="_blank" onclick="event.stopPropagation()">#${item.asset_id}</a>` : ''}
-            </div>`;
-        if (item.linkedItem) {
-            card.addEventListener('click', e => {
-                if (e.target.closest('a')) return;
-                const wasSelected = card.classList.contains('link-selected');
-                document.querySelectorAll('.nft-card.link-selected,.nft-card.link-highlight').forEach(c => c.classList.remove('link-selected','link-highlight'));
-                if (!wasSelected) {
-                    card.classList.add('link-selected');
-                    document.querySelectorAll('.nft-card[data-card-name]').forEach(c => {
-                        if (c.dataset.cardName === item.linkedItem) c.classList.add('link-highlight');
-                    });
-                }
-            });
-        }
-        return card;
-    }
+    const makeCard = item => makeNFTCard(item, activeMode, type, showStatus);
 
     // ── Sort + re-render grid ─────────────────────────────────────────────
     function renderGrid() {
