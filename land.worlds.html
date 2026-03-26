@@ -1685,7 +1685,7 @@ function handleWalletClick() {
     if (localStorage.getItem('naron_wallet')) {
         disconnectWallet();
     } else {
-        doWalletLogin();
+        openWalletModal();
     }
 }
 async function doWalletLogin() {
