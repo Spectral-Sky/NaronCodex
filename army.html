@@ -359,13 +359,13 @@
         .unit-arm-sep { display: flex; align-items: center; gap: 5px; margin: 1px 2px; color: rgba(255,170,0,0.4); font-size: 0.62em; letter-spacing: 1px; }
         .unit-arm-sep::before, .unit-arm-sep::after { content: ''; flex: 1; height: 1px; background: rgba(255,170,0,0.15); }
         .div-empty { color: #2a2a3a; font-family: monospace; font-size: 0.75em; padding: 14px 6px; letter-spacing: 1px; }
-        .unit-buff-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 4px 2px; }
+        .unit-buff-row { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 2px; width: 100%; }
         /* Lava Lux — stays as a simple badge */
         .ubuff { font-size: 0.6em; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 2px; white-space: nowrap; }
         .ubuff-lava { color: #ff8800; border: 1px solid rgba(255,136,0,0.35); }
         /* Pet + supply — full-width mini buff cards, stacked vertically */
         .ubuff-mini {
-            flex: 0 0 100%; min-width: 0; box-sizing: border-box;
+            width: 100%; min-width: 0; box-sizing: border-box;
             display: flex; align-items: center; gap: 7px;
             background: rgba(6,5,0,0.95); border: 1px solid rgba(255,255,255,0.07);
             padding: 5px 7px 6px; min-height: 46px;
@@ -739,6 +739,7 @@
     </div>
     <button id="breakdown-btn" class="cyber-btn" onclick="toggleBreakdown()" style="display:none;">∑ SCORE BREAKDOWN</button>
     <button id="view-toggle-btn" class="cyber-btn" onclick="toggleArmyView()" style="display:none;">⊞ DIVISIONS</button>
+    <button id="empty-div-btn" class="cyber-btn" onclick="toggleEmptyDivisions()" style="display:none;">▶ SHOW EMPTY DIVISIONS</button>
     <div id="score-breakdown">
         <div class="bd-grid">
             <div class="bd-head"></div><div class="bd-head">⚔ ATK</div><div class="bd-head">🛡 DEF</div><div class="bd-head">⏱ MOVE</div>
@@ -1045,6 +1046,19 @@ function toggleArmyView() {
         btn.classList.toggle('div-active', armyViewMode === 'divisions');
     }
     if (window._lastRenderArgs) render(...window._lastRenderArgs);
+}
+
+let _emptyDivisionsShown = false;
+function toggleEmptyDivisions() {
+    _emptyDivisionsShown = !_emptyDivisionsShown;
+    document.querySelectorAll('.division-block.division-empty').forEach(block => {
+        const isCollapsed = !_emptyDivisionsShown;
+        block.classList.toggle('collapsed', isCollapsed);
+        const tog = block.querySelector('.div-toggle');
+        if (tog) tog.textContent = isCollapsed ? '▶' : '▼';
+    });
+    const btn = document.getElementById('empty-div-btn');
+    if (btn) btn.textContent = _emptyDivisionsShown ? '▼ HIDE EMPTY DIVISIONS' : '▶ SHOW EMPTY DIVISIONS';
 }
 
 const EQUIPMENT_TEMPLATE_IDS = new Set([
@@ -1416,6 +1430,13 @@ function render(faces, crew, arms, creatures, supplies, equipment, services, for
     const hasDivisions = divisions && divisions.length > 0;
     const vtBtn = document.getElementById('view-toggle-btn');
     if (vtBtn) vtBtn.style.display = hasDivisions ? 'inline-block' : 'none';
+    const emptyBtn = document.getElementById('empty-div-btn');
+    if (emptyBtn) {
+        const inDivView = hasDivisions && armyViewMode === 'divisions';
+        emptyBtn.style.display = inDivView ? 'inline-block' : 'none';
+        _emptyDivisionsShown = false;
+        emptyBtn.textContent = '▶ SHOW EMPTY DIVISIONS';
+    }
 
     const equipTagged = equipment.map(e => ({ ...e, active: forgeEnabled }));
     const reserveCrew = crew.filter(c => !c.active);
@@ -1470,7 +1491,7 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
 
         const isEmpty = div.units.length === 0;
         const block = document.createElement('div');
-        block.className = 'division-block' + (isEmpty ? ' collapsed' : '');
+        block.className = 'division-block' + (isEmpty ? ' collapsed division-empty' : '');
 
         // Title bar (clickable to collapse/expand)
         const titleBar = document.createElement('div');
