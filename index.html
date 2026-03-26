@@ -1032,8 +1032,7 @@
             });
         });
 
-        var wax = new waxjs.WaxJS({ rpcEndpoint: "https://wax.greymass.com", userAccount: "", tryAutoLogin: false });
-        ) {
+        function checkWalletState() {
             const savedWallet = localStorage.getItem("naron_wallet");
             const btn = document.getElementById("wallet-connect-btn");
             if (savedWallet) {
@@ -1084,18 +1083,12 @@
         }
 
         async function loginWithWCC() {
-        closeWalletModal();
-        try {
-            var userAccount = await wax.login();
-            localStorage.setItem("naron_wallet", userAccount);
-            var wi = document.getElementById("wallet-input"); if (wi) wi.value = userAccount;
-            checkWalletState();
-        } catch(e) { console.error("WAX login failed:", e); }
-    }
+            closeWalletModal();
+            if (!window.walletKit) { console.error("WharfKit not loaded yet"); return; }
             try {
-                const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginWAX() });
-                window.walletSession = session;
-                localStorage.setItem("naron_wallet", String(session.actor));
+                var userAccount = await wax.login();
+                localStorage.setItem("naron_wallet", userAccount);
+                var wi = document.getElementById("wallet-input"); if (wi) wi.value = userAccount;
                 checkWalletState();
             } catch(e) { console.error("WAX Cloud Wallet login failed:", e); }
         }

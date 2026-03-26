@@ -1676,7 +1676,7 @@ window.toggleExpand = async (templateId, btn) => {
 let currentAccount = '';
 const wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
 
-        ) {
+function checkWalletState() {
     const saved = localStorage.getItem('naron_wallet');
     if (saved) currentAccount = saved;
     updateWalletUI(saved || null);
@@ -1721,22 +1721,13 @@ async function loginWithAnchor() {
     } catch(e) { console.error('Anchor login failed:', e); }
 }
 async function loginWithWCC() {
-        closeWalletModal();
-        try {
-            var userAccount = await wax.login();
-            localStorage.setItem("naron_wallet", userAccount);
-            var wi = document.getElementById("wallet-input"); if (wi) wi.value = userAccount;
-            checkWalletState();
-        } catch(e) { console.error("WAX login failed:", e); }
-    }
+    closeWalletModal();
+    if (!window.walletKit) { return; }
     try {
-        const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginWAX() });
-        window.walletSession = session;
-        const account = String(session.actor);
-        currentAccount = account;
-        localStorage.setItem('naron_wallet', account);
-        if(window.wax) wax.userAccount = account;
-        checkWalletState();
+        var userAccount = await wax.login();
+                localStorage.setItem("naron_wallet", userAccount);
+                var wi = document.getElementById("wallet-input"); if (wi) wi.value = userAccount;
+                checkWalletState();
     } catch(e) { console.error('WAX login failed:', e); }
 }
 function disconnectWallet() {

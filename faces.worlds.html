@@ -1174,7 +1174,7 @@
         });
 
         // 3. WALLET FUNCTIONS
-        ) {
+        function checkWalletState() {
             const saved = localStorage.getItem("naron_wallet");
             updateWalletUI(saved || null);
         }
@@ -1217,20 +1217,12 @@
             } catch(e) { console.error("Anchor login failed:", e); }
         }
         async function loginWithWCC() {
-        closeWalletModal();
-        try {
-            var userAccount = await wax.login();
-            localStorage.setItem("naron_wallet", userAccount);
-            var wi = document.getElementById("wallet-input"); if (wi) wi.value = userAccount;
-            checkWalletState();
-        } catch(e) { console.error("WAX login failed:", e); }
-    }
+            closeWalletModal();
+            if (!window.walletKit) { return; }
             try {
-                const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginWAX() });
-                window.walletSession = session;
-                const account = String(session.actor);
-                localStorage.setItem("naron_wallet", account);
-                if(window.wax) wax.userAccount = account;
+                var userAccount = await wax.login();
+                localStorage.setItem("naron_wallet", userAccount);
+                var wi = document.getElementById("wallet-input"); if (wi) wi.value = userAccount;
                 checkWalletState();
             } catch(e) { console.error("WAX login failed:", e); }
         }
