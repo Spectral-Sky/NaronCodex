@@ -16,16 +16,14 @@
         import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
         import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
         import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
-        import { WalletPluginWAX } from 'https://esm.sh/@wharfkit/wallet-plugin-wax@1';
         const kit = new SessionKit({
             appName: 'naroncodex',
             chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
             ui: new WebRenderer(),
-            walletPlugins: [new WalletPluginAnchor(), new WalletPluginWAX()],
+            walletPlugins: [new WalletPluginAnchor()],
         });
         window.walletKit = kit;
         window.WalletPluginAnchor = WalletPluginAnchor;
-        window.WalletPluginWAX = WalletPluginWAX;
         try {
             const session = await kit.restore();
             if (session) {
@@ -1682,10 +1680,7 @@ function checkWalletState() {
     const saved = localStorage.getItem('naron_wallet');
     if (saved) currentAccount = saved;
     updateWalletUI(saved || null);
-} catch(e) { console.error(e); }
-}
-}
-}
+        }
 async function loginWithAnchor() {
         try {
         const { session } = await window.walletKit.login();
@@ -1728,12 +1723,6 @@ function updateWalletUI(account) {
         if(btnAccount){btnAccount.style.display='none';btnAccount.classList.remove('logged-in');}
         if(btnAnchor) btnAnchor.style.display='';
         if(btnWCC) btnWCC.style.display='';
-    }
-} ]`;
-        btn.classList.add('logged-in');
-    } else {
-        btn.innerHTML = '[ CONNECT WALLET ⚓<img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:11px;vertical-align:middle;margin:0 2px;border-radius:2px;" onerror="this.style.display=\'none\'"> ]';
-        btn.classList.remove('logged-in');
     }
 }
 

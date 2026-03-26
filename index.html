@@ -19,19 +19,15 @@
         import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
         import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
         import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
-        import { WalletPluginWAX } from 'https://esm.sh/@wharfkit/wallet-plugin-wax@1';
-
         const kit = new SessionKit({
             appName: 'naroncodex',
             chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
             ui: new WebRenderer(),
-            walletPlugins: [new WalletPluginAnchor(), new WalletPluginWAX()],
+            walletPlugins: [new WalletPluginAnchor()],
         });
 
         window.walletKit = kit;
         window.WalletPluginAnchor = WalletPluginAnchor;
-        window.WalletPluginWAX = WalletPluginWAX;
-
         // Restore any saved session on page load
         try {
             const session = await kit.restore();
@@ -820,7 +816,7 @@
 
 
         </div>
-        <div style="text-align:center; padding: 12px 0 4px; font-family:'Courier New',monospace; font-size:0.72em; color:#252535; letter-spacing:2px;">v 1.1.1</div>
+        <div style="text-align:center; padding: 12px 0 4px; font-family:'Courier New',monospace; font-size:0.72em; color:#252535; letter-spacing:2px;">v 1.1.2</div>
     </footer>
 
     <script>
@@ -1038,19 +1034,22 @@
 
         function checkWalletState() {
             const savedWallet = localStorage.getItem("naron_wallet");
-            const btn = document.getElementById("wallet-connect-btn");
-            if (savedWallet) {
-                btn.innerHTML = `[ ${savedWallet} ]`;
-                btn.classList.add("logged-in");
+            updateWalletUI(savedWallet || null);
+        }
+        function updateWalletUI(account) {
+            var btnAccount=document.getElementById("wallet-connect-btn");
+            var btnAnchor=document.getElementById("wallet-btn-anchor");
+            var btnWCC=document.getElementById("wallet-btn-wcc");
+            if(account){
+                if(btnAccount){btnAccount.textContent='[ '+account+' ]';btnAccount.style.display='';btnAccount.classList.add('logged-in');}
+                if(btnAnchor) btnAnchor.style.display='none';
+                if(btnWCC) btnWCC.style.display='none';
             } else {
-                btn.innerHTML = '[ CONNECT WALLET ⚓<img src="https://www.google.com/s2/favicons?domain=mycloudwallet.com&sz=32" style="height:11px;vertical-align:middle;margin:0 2px;border-radius:2px;" onerror="this.style.display=\'none\'"> ]';
-                btn.classList.remove("logged-in");
+                if(btnAccount){btnAccount.style.display='none';btnAccount.classList.remove('logged-in');}
+                if(btnAnchor) btnAnchor.style.display='';
+                if(btnWCC) btnWCC.style.display='';
             }
-        } catch(e) { console.error(e); }
         }
-        }
-        }
-
         async function loginWithAnchor() {
         try {
                 const { session } = await window.walletKit.login();
