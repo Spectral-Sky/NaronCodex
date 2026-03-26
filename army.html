@@ -37,6 +37,7 @@
         } catch(e) {}
     </script>
     <style>
+        html { font-size: 17px; }
         :root {
             --theme-color: #ffaa00;
             --theme-shadow: 0 0 15px rgba(255,170,0,0.4);
@@ -270,7 +271,7 @@
         /* ── NFT card grid ── */
         .card-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(11em, 1fr));
             gap: 12px; padding: 16px;
             overflow: visible;
         }
@@ -352,8 +353,8 @@
         .division-title-bar:hover .div-toggle { color: #888; }
         .division-block.collapsed .division-body { display: none; }
         .division-body { display: flex; align-items: flex-start; gap: 10px; padding: 10px; }
-        .division-commander-col { flex: 0 0 165px; }
-        .division-units-area { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 6px; align-content: start; }
+        .division-commander-col { flex: 0 0 10em; }
+        .division-units-area { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(9.2em, 1fr)); gap: 6px; align-content: start; }
         .unit-cell { display: flex; flex-direction: column; gap: 3px; border-left: 2px solid rgba(255,170,0,0.18); padding-left: 5px; }
         .unit-cell .nft-card { margin: 0; }
         .unit-arm-sep { display: flex; align-items: center; gap: 5px; margin: 1px 2px; color: rgba(255,170,0,0.4); font-size: 0.62em; letter-spacing: 1px; }
@@ -368,10 +369,10 @@
             width: 100%; min-width: 0; box-sizing: border-box;
             display: flex; align-items: center; gap: 7px;
             background: rgba(6,5,0,0.95); border: 1px solid rgba(255,255,255,0.07);
-            padding: 5px 7px 6px; min-height: 46px;
+            padding: 5px 7px 6px; min-height: 2.8em;
             font-size: 0.72em; letter-spacing: 0.4px;
         }
-        .ubuff-mini-img { flex-shrink: 0; width: 34px; height: 34px; object-fit: contain; border-radius: 2px; opacity: 0.9; }
+        .ubuff-mini-img { flex-shrink: 0; width: 2em; height: 2em; object-fit: contain; border-radius: 2px; opacity: 0.9; }
         .ubuff-mini-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .ubuff-mini-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ubuff-mini-stat { color: #bbb; margin-top: 1px; }
@@ -629,6 +630,7 @@
             #codex-disclaimer { padding: 10px; font-size: 0.72em; }
         }
     </style>
+    <script>(function(){ var s=localStorage.getItem('nc_font_size'); if(s) document.documentElement.style.fontSize=s+'px'; })();</script>
 </head>
 <body>
 <div id="star-hud" style="display:none;position:fixed;bottom:15px;left:15px;z-index:50000;font-family:monospace;font-size:0.75em;color:#ffe066;opacity:0.6;letter-spacing:1px;pointer-events:none;">&#9733; <span id="star-score-num">0</span></div>
@@ -740,6 +742,8 @@
     <button id="breakdown-btn" class="cyber-btn" onclick="toggleBreakdown()" style="display:none;">∑ SCORE BREAKDOWN</button>
     <button id="view-toggle-btn" class="cyber-btn" onclick="toggleArmyView()" style="display:none;">⊞ DIVISIONS</button>
     <button id="empty-div-btn" class="cyber-btn" onclick="toggleEmptyDivisions()" style="display:none;">▶ SHOW EMPTY DIVISIONS</button>
+    <button class="cyber-btn" onclick="adjustFontSize(1)" title="Increase font size" style="padding:8px 11px;letter-spacing:0">A+</button>
+    <button class="cyber-btn" onclick="adjustFontSize(-1)" title="Decrease font size" style="padding:8px 11px;letter-spacing:0">A−</button>
     <div id="score-breakdown">
         <div class="bd-grid">
             <div class="bd-head"></div><div class="bd-head">⚔ ATK</div><div class="bd-head">🛡 DEF</div><div class="bd-head">⏱ MOVE</div>
@@ -1059,6 +1063,13 @@ function toggleEmptyDivisions() {
     });
     const btn = document.getElementById('empty-div-btn');
     if (btn) btn.textContent = _emptyDivisionsShown ? '▼ HIDE EMPTY DIVISIONS' : '▶ SHOW EMPTY DIVISIONS';
+}
+
+function adjustFontSize(delta) {
+    const current = parseFloat(document.documentElement.style.fontSize) || 17;
+    const next = Math.max(13, Math.min(24, current + delta));
+    document.documentElement.style.fontSize = next + 'px';
+    localStorage.setItem('nc_font_size', next);
 }
 
 const EQUIPMENT_TEMPLATE_IDS = new Set([
