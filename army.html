@@ -346,13 +346,18 @@
 
         /* ── Division layout ─────────────────────────────────────────── */
         .division-block { margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.15); }
-        .division-title-bar { padding: 5px 10px; background: rgba(0,0,0,0.5); border-bottom: 1px solid rgba(255,255,255,0.06); font-family: 'Courier New',monospace; font-size: 0.71em; letter-spacing: 1.5px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .division-title-bar { padding: 5px 10px; background: rgba(0,0,0,0.5); border-bottom: 1px solid rgba(255,255,255,0.06); font-family: 'Courier New',monospace; font-size: 0.71em; letter-spacing: 1.5px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+        .division-title-bar:hover { background: rgba(255,255,255,0.03); }
+        .div-toggle { color: #444; font-size: 0.85em; flex-shrink: 0; transition: color 0.2s; }
+        .division-title-bar:hover .div-toggle { color: #888; }
+        .division-block.collapsed .division-body { display: none; }
         .division-body { display: flex; align-items: flex-start; gap: 10px; padding: 10px; }
         .division-commander-col { flex: 0 0 165px; }
         .division-units-area { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 6px; align-content: start; }
-        .unit-cell { display: flex; flex-direction: column; gap: 3px; }
+        .unit-cell { display: flex; flex-direction: column; gap: 3px; border-left: 2px solid rgba(255,170,0,0.18); padding-left: 5px; }
         .unit-cell .nft-card { margin: 0; }
-        .unit-arm-sep { height: 2px; background: linear-gradient(to right,transparent,rgba(255,255,255,0.07),transparent); margin: 0 3px; }
+        .unit-arm-sep { display: flex; align-items: center; gap: 5px; margin: 1px 2px; color: rgba(255,170,0,0.4); font-size: 0.62em; letter-spacing: 1px; }
+        .unit-arm-sep::before, .unit-arm-sep::after { content: ''; flex: 1; height: 1px; background: rgba(255,170,0,0.15); }
         .div-empty { color: #2a2a3a; font-family: monospace; font-size: 0.75em; padding: 14px 6px; letter-spacing: 1px; }
         .unit-buff-row { display: flex; flex-wrap: wrap; gap: 3px; padding: 3px 4px 2px; }
         .ubuff { font-size: 0.6em; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 2px; white-space: nowrap; }
@@ -1452,13 +1457,15 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
         const shineColor = cmd.shine && cmd.shine !== 'stone' ? `var(--shine-${cmd.shine},#888)` : '#444';
         const rarityColor = RARITY_COLORS[cmd.rarity] || '#888';
 
+        const isEmpty = div.units.length === 0;
         const block = document.createElement('div');
-        block.className = 'division-block';
+        block.className = 'division-block' + (isEmpty ? ' collapsed' : '');
 
-        // Title bar
+        // Title bar (clickable to collapse/expand)
         const titleBar = document.createElement('div');
         titleBar.className = 'division-title-bar';
         titleBar.innerHTML = `
+            <span class="div-toggle">${isEmpty ? '▶' : '▼'}</span>
             <span style="color:var(--theme-color);font-weight:bold">DIVISION ${idx + 1}</span>
             <span style="color:${rarityColor}">${cmd.rarity.toUpperCase()}</span>
             ${cmd.shine && cmd.shine !== 'stone' ? `<span style="color:${shineColor}">✦ ${cmd.shine.toUpperCase()}</span>` : ''}
@@ -1466,8 +1473,12 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
             <span style="margin-left:auto;display:flex;gap:12px">
                 <span>${Math.floor(cmd.slots || 0)} SLOTS</span>
                 ${shineRed > 0 ? `<span style="color:${shineColor}">▼ -${shineRed} MOVE</span>` : ''}
-                <span style="color:${div.units.length < Math.floor(cmd.slots || 0) ? '#ff8800' : '#00cc66'}">${div.units.length}/${Math.floor(cmd.slots || 0)} CREW</span>
+                <span style="color:${isEmpty ? '#555' : div.units.length < Math.floor(cmd.slots || 0) ? '#ff8800' : '#00cc66'}">${div.units.length}/${Math.floor(cmd.slots || 0)} CREW</span>
             </span>`;
+        titleBar.addEventListener('click', () => {
+            const nowCollapsed = block.classList.toggle('collapsed');
+            titleBar.querySelector('.div-toggle').textContent = nowCollapsed ? '▶' : '▼';
+        });
         block.appendChild(titleBar);
 
         // Body: commander card + unit cells
@@ -1491,6 +1502,7 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
                 if (unit.arm && forgeEnabled) {
                     const sep = document.createElement('div');
                     sep.className = 'unit-arm-sep';
+                    sep.textContent = '⚔';
                     cell.appendChild(sep);
                     cell.appendChild(makeNFTCard(unit.arm, "always", "stats", false));
                 }
@@ -1671,7 +1683,7 @@ function makeNFTCard(item, activeMode, type, showStatus) {
                     <a class="cb-link" href="https://wax.atomichub.io/market?template_id=${item.templateId}&order=asc&sort=price&symbol=WAX" target="_blank" onclick="event.stopPropagation()">⟳ ATOMICHUB</a>
                     <a class="cb-link" href="https://neftyblocks.com/marketplace/listing?template_id=${item.templateId}" target="_blank" onclick="event.stopPropagation()">⟳ NEFTY BLOCKS</a>
                 </div>` : ''}
-                ${item.asset_id ? `<a class="cb-link" style="font-size:0.6em;opacity:0.45;margin-top:2px" href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${item.asset_id}" target="_blank" onclick="event.stopPropagation()">asset #${item.asset_id}</a>` : ''}
+                ${item.asset_id ? `<a class="cb-link" style="margin-top:2px" href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${item.asset_id}" target="_blank" onclick="event.stopPropagation()">asset #${item.asset_id}</a>` : ''}
             </div>
         </div>`;
     card.addEventListener('click', e => {
