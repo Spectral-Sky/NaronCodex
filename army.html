@@ -363,15 +363,18 @@
         /* Lava Lux — stays as a simple badge */
         .ubuff { font-size: 0.6em; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 2px; white-space: nowrap; }
         .ubuff-lava { color: #ff8800; border: 1px solid rgba(255,136,0,0.35); }
-        /* Pet + supply — mini card boxes, each ~half the cell width */
+        /* Pet + supply — full-width mini buff cards, stacked vertically */
         .ubuff-mini {
-            flex: 0 0 calc(50% - 2px); min-width: 0;
+            flex: 0 0 100%; min-width: 0; box-sizing: border-box;
+            display: flex; align-items: center; gap: 7px;
             background: rgba(6,5,0,0.95); border: 1px solid rgba(255,255,255,0.07);
-            border-top: 2px solid #555; padding: 3px 5px 4px;
-            font-size: 0.58em; letter-spacing: 0.5px; box-sizing: border-box;
+            padding: 5px 7px 6px; min-height: 46px;
+            font-size: 0.72em; letter-spacing: 0.4px;
         }
-        .ubuff-mini-name { color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .ubuff-mini-stat { font-weight: bold; margin-top: 2px; }
+        .ubuff-mini-img { flex-shrink: 0; width: 34px; height: 34px; object-fit: contain; border-radius: 2px; opacity: 0.9; }
+        .ubuff-mini-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .ubuff-mini-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ubuff-mini-stat { color: #bbb; margin-top: 1px; }
         #view-toggle-btn.div-active { color: #00ff95; border-color: rgba(0,255,149,0.5); }
         @media (max-width: 640px) { .division-body { flex-direction: column; } .division-commander-col { flex: 0 0 auto; width: 100%; } }
 
@@ -1064,9 +1067,9 @@ let rawData = [];
 // ── On-chain forge status check ──────────────────────────────────────────────
 async function checkForgeStatus(wallet) {
     const WAX_RPC = [
-        'https://wax.greymass.com',
         'https://wax.eosphere.io',
-        'https://api.wax.alohaeos.com'
+        'https://api.wax.alohaeos.com',
+        'https://wax.greymass.com'
     ];
     for (const node of WAX_RPC) {
         try {
@@ -1522,7 +1525,8 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
                     const crAtk = cr.atk ? `<span style="color:#ff4444">⚔ +${Math.floor(cr.atk)}</span>` : '';
                     const crDef = cr.def ? `<span style="color:#4488ff">🛡 +${Math.floor(cr.def)}</span>` : '';
                     const crStat = [crAtk, crDef].filter(Boolean).join(' ');
-                    buffParts.push(`<div class="ubuff-mini" style="border-top-color:${crRar}"><div class="ubuff-mini-name">🐾 ${cr.name}</div>${crStat ? `<div class="ubuff-mini-stat">${crStat}</div>` : ''}</div>`);
+                    const crImgSrc = cr.img ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + cr.img)}&w=68&h=68&output=webp&fit=contain` : '';
+                    buffParts.push(`<div class="ubuff-mini">${crImgSrc ? `<img class="ubuff-mini-img" src="${crImgSrc}" alt="">` : ''}<div class="ubuff-mini-text"><div class="ubuff-mini-name" style="color:${crRar}">🐾 ${cr.name}</div>${crStat ? `<div class="ubuff-mini-stat">${crStat}</div>` : ''}</div></div>`);
                 }
                 if (unit.supply) {
                     const su = unit.supply;
@@ -1531,7 +1535,8 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
                     const suAtk  = su.atk ? `<span style="color:#ff4444">⚔ +${Math.floor(su.atk)}</span>` : '';
                     const suDef  = su.def ? `<span style="color:#4488ff">🛡 +${Math.floor(su.def)}</span>` : '';
                     const suStat = [suMove, suAtk, suDef].filter(Boolean).join(' ');
-                    buffParts.push(`<div class="ubuff-mini" style="border-top-color:${suRar}"><div class="ubuff-mini-name">${su.name}</div>${suStat ? `<div class="ubuff-mini-stat">${suStat}</div>` : ''}</div>`);
+                    const suImgSrc = su.img ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + su.img)}&w=68&h=68&output=webp&fit=contain` : '';
+                    buffParts.push(`<div class="ubuff-mini">${suImgSrc ? `<img class="ubuff-mini-img" src="${suImgSrc}" alt="">` : ''}<div class="ubuff-mini-text"><div class="ubuff-mini-name" style="color:${suRar}">${su.name}</div>${suStat ? `<div class="ubuff-mini-stat">${suStat}</div>` : ''}</div></div>`);
                 }
                 if (unit.service) {
                     buffParts.push(`<span class="ubuff ubuff-lava" title="${unit.service.name}">✦ LAVA LUX</span>`);
