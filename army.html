@@ -316,6 +316,9 @@
         .card-name { font-weight: bold; font-size: 0.75em; height: 30px; overflow: hidden; color: #ccc; line-height: 1.4; }
         .card-tpl-link { display:block; font-size:0.62em; color:#333; text-decoration:none; margin-top:5px; letter-spacing:0.5px; }
         .card-tpl-link:hover { color:var(--theme-color); }
+        .link-badge { font-size:0.62em; color:#00cc77; letter-spacing:0.5px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:0.75; cursor:pointer; }
+        .nft-card.link-selected  { outline:2px solid var(--theme-color); box-shadow:var(--theme-shadow); transform:scale(1.07); z-index:10; }
+        .nft-card.link-highlight { outline:2px solid #00ff95; box-shadow:0 0 18px rgba(0,255,149,0.45); transform:scale(1.05); z-index:9; }
         .card-shine-label { font-size: 0.68em; margin-top: 3px; letter-spacing: 2px; font-weight: bold; }
         .card-status { font-size: 0.68em; margin-top: 5px; letter-spacing: 1px; }
         .s-active  { color: var(--shine-antimatter); }
@@ -1164,6 +1167,13 @@ function processData(data) {
         arms.sort((a, b) => (b.atk + b.def) - (a.atk + a.def));
         activeArms = arms.slice(0, activeCrew.length);
         activeArms.forEach(a => a.active = true);
+        // Tag arm↔crew pairs (best arm → best crew by index)
+        activeCrew.forEach((c, i) => {
+            if (activeArms[i]) {
+                c.linkedItem = activeArms[i].name;
+                activeArms[i].linkedItem = c.name;
+            }
+        });
     }
 
     // Red Boar (supplies) flat atk/def always count
@@ -1177,6 +1187,11 @@ function processData(data) {
     const lavaLuxMoveMult = topLavaLux?.moveCostMult || 1;
     // Find the unit with the highest ATK to receive the Lava Lux buff
     const lavaTarget      = topLavaLux ? [...allActive].sort((a, b) => (b.atk || 0) - (a.atk || 0))[0] : null;
+    // Tag Lava Lux↔target pair
+    if (topLavaLux && lavaTarget) {
+        topLavaLux.linkedItem = lavaTarget.name;
+        lavaTarget.linkedItem = (lavaTarget.linkedItem ? lavaTarget.linkedItem + ' + ' : '') + topLavaLux.name;
+    }
     const lavaTargetAtk   = lavaTarget?.atk  || 0;
     const lavaTargetDef   = lavaTarget?.def  || 0;
     const lavaTargetMove  = lavaTarget?.moveCost || 0;
@@ -1340,6 +1355,7 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
     list.forEach(item => {
         const key = `${item.name}||${item.isPD ? item.rarity : item.shine}||${Math.round(item.atk)}||${Math.round(item.def)}||${Math.round(item.slots || 0)}||${item.active}`;
         if (!groups[key]) groups[key] = { ...item, qty: 0 };
+        else if (item.linkedItem && !groups[key].linkedItem) groups[key].linkedItem = item.linkedItem;
         groups[key].qty++;
     });
     const items = Object.values(groups);
@@ -1423,6 +1439,7 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
         card.className = `nft-card${!isActive ? ' inactive' : ''}`;
         card.style.borderTopColor = barColor;
         card.style.borderTopWidth = '4px';
+        if (item.linkedItem) card.dataset.cardName = item.name;
         card.innerHTML = `
             ${item.qty > 1 ? `<div class="qty-badge">×${item.qty}</div>` : ''}
             <div class="shine-bar" style="background:${barGradient};background-size:200% 100%;color:${barTextColor}">${barLabel}</div>
@@ -1434,8 +1451,22 @@ function buildSection(title, list, root, activeMode, type, showStatus = true) {
                 <div class="card-name">${item.name}</div>
                 ${!item.isPD && item.shine ? `<div class="card-shine-label" style="color:var(--shine-${item.shine},#888)">${item.shine.toUpperCase()}</div>` : ''}
                 ${showStatus ? `<div class="card-status ${statusClass}">${statusText}</div>` : ''}
+                ${item.linkedItem ? `<div class="link-badge">⟷ ${item.linkedItem}</div>` : ''}
                 ${item.asset_id ? `<a class="card-tpl-link" href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${item.asset_id}" target="_blank" onclick="event.stopPropagation()">#${item.asset_id}</a>` : ''}
             </div>`;
+        if (item.linkedItem) {
+            card.addEventListener('click', e => {
+                if (e.target.closest('a')) return;
+                const wasSelected = card.classList.contains('link-selected');
+                document.querySelectorAll('.nft-card.link-selected,.nft-card.link-highlight').forEach(c => c.classList.remove('link-selected','link-highlight'));
+                if (!wasSelected) {
+                    card.classList.add('link-selected');
+                    document.querySelectorAll('.nft-card[data-card-name]').forEach(c => {
+                        if (c.dataset.cardName === item.linkedItem) c.classList.add('link-highlight');
+                    });
+                }
+            });
+        }
         return card;
     }
 
@@ -1568,6 +1599,10 @@ document.addEventListener('click', function(e) {
     const btn = document.getElementById('hamburger-btn');
     if (dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) {
         dd.classList.remove('open');
+    }
+    // Clear card link highlights when clicking outside a card
+    if (!e.target.closest('.nft-card')) {
+        document.querySelectorAll('.nft-card.link-selected,.nft-card.link-highlight').forEach(c => c.classList.remove('link-selected','link-highlight'));
     }
 });
 
