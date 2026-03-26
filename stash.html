@@ -423,7 +423,6 @@
     function closeWalletModal() { var m=document.getElementById('wallet-modal'); if(m) m.style.display='none'; }
     async function loginWithAnchor() {
         closeWalletModal();
-        if (!window.walletKit || !window.WalletPluginAnchor) return;
         try {
             var r = await window.walletKit.login({ walletPlugin: new window.WalletPluginAnchor() });
             window.walletSession = r.session;

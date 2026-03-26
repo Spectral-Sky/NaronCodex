@@ -811,7 +811,6 @@ function handleWalletClick() {
     }
 }
 async function doWalletLogin() {
-    if (!window.walletKit) return;
     try {
         var r = await window.walletKit.login();
         window.walletSession = r.session;
@@ -831,7 +830,6 @@ function closeWalletModal() {
 }
 async function loginWithAnchor() {
     closeWalletModal();
-    if (!window.walletKit) { return; }
     try {
         const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginAnchor() });
         window.walletSession = session;

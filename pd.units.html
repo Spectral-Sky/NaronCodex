@@ -1380,7 +1380,6 @@
         }
     }
     async function doWalletLogin() {
-        if (!window.walletKit) return;
         try {
             var r = await window.walletKit.login();
             window.walletSession = r.session;
@@ -1400,7 +1399,6 @@
     }
     async function loginWithAnchor() {
         closeWalletModal();
-        if (!window.walletKit) { return; }
         try {
             const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginAnchor() });
             window.walletSession = session;
@@ -1412,7 +1410,6 @@
     }
     async function loginWithWCC() {
         closeWalletModal();
-        if (!window.walletKit) { return; }
         try {
             var userAccount = await wax.login();
                 localStorage.setItem("naron_wallet", userAccount);
