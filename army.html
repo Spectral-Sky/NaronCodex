@@ -333,6 +333,12 @@
         .unit-cell .nft-card { margin: 0; }
         .unit-arm-sep { height: 2px; background: linear-gradient(to right,transparent,rgba(255,255,255,0.07),transparent); margin: 0 3px; }
         .div-empty { color: #2a2a3a; font-family: monospace; font-size: 0.75em; padding: 14px 6px; letter-spacing: 1px; }
+        .unit-buff-row { display: flex; flex-wrap: wrap; gap: 3px; padding: 3px 4px 2px; }
+        .ubuff { font-size: 0.6em; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 2px; white-space: nowrap; }
+        .ubuff-creature { color: #00cc66; border: 1px solid rgba(0,204,102,0.25); }
+        .ubuff-supply   { color: #4488ff; border: 1px solid rgba(68,136,255,0.25); }
+        .ubuff-lava     { color: #ff8800; border: 1px solid rgba(255,136,0,0.35); }
+        #view-toggle-btn.div-active { color: #00ff95; border-color: rgba(0,255,149,0.5); }
         @media (max-width: 640px) { .division-body { flex-direction: column; } .division-commander-col { flex: 0 0 auto; width: 100%; } }
 
         /* ── Empty state ── */
@@ -634,6 +640,7 @@
         <div class="stat-box">EST. MOVE TIME<span class="stat-val val-move" id="totalMoveTime">—</span></div>
     </div>
     <button id="breakdown-btn" class="cyber-btn" onclick="toggleBreakdown()" style="display:none;">∑ SCORE BREAKDOWN</button>
+    <button id="view-toggle-btn" class="cyber-btn" onclick="toggleArmyView()" style="display:none;">⊞ DIVISIONS</button>
     <div id="score-breakdown">
         <div class="bd-grid">
             <div class="bd-head"></div><div class="bd-head">⚔ ATK</div><div class="bd-head">🛡 DEF</div><div class="bd-head">⏱ MOVE</div>
@@ -930,6 +937,17 @@ const RARITY_GRADIENTS = {
 // PD Equipment template IDs (Gadgets, Weapons, Protection)
 // Desktop gets full-res/animated IPFS source; mobile gets wsrv.nl thumbnail
 const IS_MOBILE = window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches;
+let armyViewMode = 'army'; // 'army' | 'divisions'
+
+function toggleArmyView() {
+    armyViewMode = armyViewMode === 'army' ? 'divisions' : 'army';
+    const btn = document.getElementById('view-toggle-btn');
+    if (btn) {
+        btn.textContent = armyViewMode === 'army' ? '⊞ DIVISIONS' : '☰ ARMY VIEW';
+        btn.classList.toggle('div-active', armyViewMode === 'divisions');
+    }
+    if (window._lastRenderArgs) render(...window._lastRenderArgs);
+}
 
 const EQUIPMENT_TEMPLATE_IDS = new Set([
     902055, 902056, 902057, 902058, 902059, 902060,  // Gadgets
@@ -1264,33 +1282,43 @@ function processData(data) {
 
 // ── Render ──────────────────────────────────────────────────────────────────
 function render(faces, crew, arms, creatures, supplies, equipment, services, forgeEnabled, divisions) {
+    window._lastRenderArgs = [faces, crew, arms, creatures, supplies, equipment, services, forgeEnabled, divisions];
     const root = document.getElementById('results');
     root.innerHTML = "";
 
-    if (divisions && divisions.length) {
-        buildDivisions(divisions, root, forgeEnabled);
-    } else {
-        // Fallback flat view (no commanders in wallet)
-        buildSection("ARMY — CREW & MERCENARIES", crew, root, "partial", "stats", false);
-        const equipTagged = equipment.map(e => ({ ...e, active: forgeEnabled }));
-        buildSection(`ARSENAL — ARMS & EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, [...arms, ...equipTagged], root, "partial", "stats", false);
-    }
+    const hasDivisions = divisions && divisions.length > 0;
+    const vtBtn = document.getElementById('view-toggle-btn');
+    if (vtBtn) vtBtn.style.display = hasDivisions ? 'inline-block' : 'none';
 
-    // Reserve crew not assigned to any division
-    const reserveCrew = crew.filter(c => !c.active);
-    if (reserveCrew.length) buildSection("RESERVE — CREW & MERCS", reserveCrew, root, "never", "stats", false);
-
-    // Equipment (PD gear, separate from arms)
     const equipTagged = equipment.map(e => ({ ...e, active: forgeEnabled }));
-    if (equipTagged.length) buildSection(`ARSENAL — EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, equipTagged, root, "partial", "stats", false);
+    const reserveCrew = crew.filter(c => !c.active);
 
-    buildSection("CREATURES — PLANETARY DEFENSE", creatures, root, "always", "stats", false);
-    buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "reduction", false);
-    if (services.length) buildSection("SERVICES — LAVA LUX HOTELS", services, root, "always", "missions", false);
+    if (hasDivisions && armyViewMode === 'divisions') {
+        // ── Divisions view ──────────────────────────────────────────────────
+        buildDivisions(divisions, root, forgeEnabled, creatures, supplies, services);
+        if (reserveCrew.length) buildSection("RESERVE — CREW & MERCS", reserveCrew, root, "never", "stats", false);
+        if (equipTagged.length) buildSection(`ARSENAL — EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, equipTagged, root, "partial", "stats", false);
+        buildSection("CREATURES — PLANETARY DEFENSE", creatures, root, "always", "stats", false);
+        buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "reduction", false);
+        if (services.length) buildSection("SERVICES — LAVA LUX HOTELS", services, root, "always", "missions", false);
+    } else {
+        // ── Flat army view (old layout) ─────────────────────────────────────
+        if (faces.length) buildSection("COMMANDERS", faces, root, "always", "slots", false);
+        buildSection("ARMY — CREW & MERCENARIES", crew.filter(c => c.active), root, "always", "stats", false);
+        buildSection(`ARSENAL — ARMS${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, arms.filter(a => a.active), root, forgeEnabled ? "always" : "never", "stats", false);
+        if (equipTagged.length) buildSection(`ARSENAL — EQUIPMENT${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, equipTagged, root, "partial", "stats", false);
+        buildSection("CREATURES — PLANETARY DEFENSE", creatures, root, "always", "stats", false);
+        buildSection(`SUPPLIES${!forgeEnabled ? ' (FORGE OFFLINE)' : ''}`, supplies, root, forgeEnabled ? "always" : "never", "reduction", false);
+        if (services.length) buildSection("SERVICES — LAVA LUX HOTELS", services, root, "always", "missions", false);
+        if (reserveCrew.length) buildSection("RESERVE — CREW & MERCS", reserveCrew, root, "never", "stats", false);
+    }
 }
 
 // ── Division view ─────────────────────────────────────────────────────────────
-function buildDivisions(divisions, root, forgeEnabled) {
+function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, services) {
+    creatures = creatures || [];
+    supplies  = supplies  || [];
+    services  = services  || [];
     const section = document.createElement('div');
     section.className = 'army-section';
 
@@ -1341,7 +1369,11 @@ function buildDivisions(divisions, root, forgeEnabled) {
         cmdCol.appendChild(makeNFTCard(cmd, "always", "slots", false));
         body.appendChild(cmdCol);
 
-        // Unit cells (crew + optional arm)
+        // Unit cells (crew + optional arm + buff row)
+        const lavaLuxSvc    = services.find(s => s.atkMult > 1);
+        const lavaTargetName = lavaLuxSvc ? lavaLuxSvc.linkedItem : null;
+        const supplyMoveRed  = forgeEnabled ? supplies.reduce((s, x) => s + (x.moveCostReduction || 0), 0) : 0;
+
         if (div.units.length) {
             const unitsArea = document.createElement('div');
             unitsArea.className = 'division-units-area';
@@ -1354,6 +1386,26 @@ function buildDivisions(divisions, root, forgeEnabled) {
                     sep.className = 'unit-arm-sep';
                     cell.appendChild(sep);
                     cell.appendChild(makeNFTCard(unit.arm, "always", "stats", false));
+                }
+                // Buff indicators
+                const buffParts = [];
+                if (creatures.length === 1) {
+                    buffParts.push(`<span class="ubuff ubuff-creature" title="${creatures[0].name}">🐾 ${creatures[0].name}</span>`);
+                } else if (creatures.length > 1) {
+                    buffParts.push(`<span class="ubuff ubuff-creature" title="${creatures.map(c=>c.name).join(', ')}">🐾 ×${creatures.length} CREATURES</span>`);
+                }
+                if (supplyMoveRed > 0) {
+                    const supNames = supplies.filter(s => s.moveCostReduction).map(s => s.name).join(', ');
+                    buffParts.push(`<span class="ubuff ubuff-supply" title="${supNames}">▼ -${supplyMoveRed} MOVE</span>`);
+                }
+                if (lavaTargetName && unit.crew.name === lavaTargetName) {
+                    buffParts.push(`<span class="ubuff ubuff-lava" title="${lavaLuxSvc.name}">✦ LAVA LUX</span>`);
+                }
+                if (buffParts.length) {
+                    const buffRow = document.createElement('div');
+                    buffRow.className = 'unit-buff-row';
+                    buffRow.innerHTML = buffParts.join('');
+                    cell.appendChild(buffRow);
                 }
                 unitsArea.appendChild(cell);
             });
