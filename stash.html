@@ -424,7 +424,7 @@
     async function loginWithAnchor() {
         closeWalletModal();
         try {
-            var r = await window.walletKit.login({ walletPlugin: new window.WalletPluginAnchor() });
+            var r = await window.walletKit.login();
             window.walletSession = r.session;
             var account = String(r.session.actor);
             localStorage.setItem("naron_wallet", account);

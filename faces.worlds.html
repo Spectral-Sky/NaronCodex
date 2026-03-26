@@ -1206,7 +1206,7 @@
         async function loginWithAnchor() {
             closeWalletModal();
             try {
-                const { session } = await window.walletKit.login({ walletPlugin: new window.WalletPluginAnchor() });
+                const { session } = await window.walletKit.login();
                 window.walletSession = session;
                 const account = String(session.actor);
                 localStorage.setItem("naron_wallet", account);
