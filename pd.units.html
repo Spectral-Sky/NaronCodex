@@ -113,7 +113,7 @@
         .nav-links { display: flex; gap: 10px; }
         .nav-links .nav-btn.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); box-shadow: var(--theme-shadow); }
 
-        .wallet-btn { background: #111; color: var(--theme-color); border: 1px dashed var(--theme-color); padding: 10px 20px; font-family: monospace; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        .wallet-btn { background: #111; color: var(--theme-color); border: 1px dashed var(--theme-color); padding: 10px 20px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; transition: all 0.3s; }
         .wallet-btn:hover { background: var(--theme-hover); box-shadow: var(--theme-shadow); }
         .wallet-btn.logged-in { background: var(--theme-color); color: #000; border: 1px solid #fff; }
 
@@ -126,7 +126,7 @@
         .wallet-picker-opt {
             display: block; width: 100%; background: transparent; color: #aaa;
             border: none; border-bottom: 1px solid #0f2a22; padding: 12px 18px;
-            font-family: monospace; font-size: 0.9em; font-weight: bold; text-align: left;
+            font-family: 'Courier New', monospace; font-size: 0.9em; font-weight: bold; text-align: left;
             cursor: pointer; transition: all 0.2s; letter-spacing: 1px;
         }
         .wallet-picker-opt:last-child { border-bottom: none; }
@@ -141,7 +141,7 @@
             box-shadow: 0 10px 20px rgba(0,0,0,0.8); margin-bottom: 0; flex-wrap: wrap; gap: 10px;
         }
         h1 { color: var(--theme-color); letter-spacing: 3px; margin: 0; text-transform: uppercase; font-size: 1.5em; line-height: 1; text-shadow: 0 0 10px var(--theme-color); transition: color 0.5s, text-shadow 0.5s; }
-        .nav-btn { background: transparent; color: #888; border: 1px solid transparent; padding: 8px 16px; font-family: monospace; font-weight: bold; font-size: 0.9em; text-decoration: none; cursor: pointer; transition: all 0.3s; text-transform: uppercase; border-radius: 6px; }
+        .nav-btn { background: transparent; color: #888; border: 1px solid transparent; padding: 8px 16px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9em; text-decoration: none; cursor: pointer; transition: all 0.3s; text-transform: uppercase; border-radius: 6px; }
         .nav-btn:hover { color: var(--theme-color); border-color: var(--theme-color); }
         .nav-btn.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); box-shadow: var(--theme-shadow); }
 
@@ -383,7 +383,7 @@
         .market-btn-logo { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
         .nfthive-logo { height: 12px; width: auto; }
         .f12-logo { height: 14px; width: auto; }
-        .c-low, .c-last, .c-sugg { min-width: 70px; text-align: center; color: #555; font-family: monospace; font-size: 0.85em; }
+        .c-low, .c-last, .c-sugg { min-width: 70px; text-align: center; color: #555; font-family: 'Courier New', monospace; font-size: 0.85em; }
         .c-minted, .c-burned { min-width: 55px; text-align: center; }
         /* ── Loot chest ── */
         .loot-chest{display:inline-block;width:10px;height:10px;cursor:pointer;opacity:0.07;transition:opacity 0.4s,transform 0.3s;user-select:none;font-size:10px;line-height:10px;vertical-align:middle;}
@@ -395,7 +395,7 @@
         #chest-modal-close:hover{color:#fff;}
         #chest-modal-log{color:#00ff88;font-size:0.82em;line-height:1.9;min-height:80px;white-space:pre-wrap;}
         #chest-modal-link-wrap{display:none;margin-top:18px;text-align:center;}
-        #chest-modal-link{display:inline-block;padding:10px 24px;border:1px solid #ffaa00;color:#ffaa00;font-family:monospace;font-size:0.9em;text-decoration:none;letter-spacing:1px;}
+        #chest-modal-link{display:inline-block;padding:10px 24px;border:1px solid #ffaa00;color:#ffaa00;font-family:'Courier New',monospace;font-size:0.9em;text-decoration:none;letter-spacing:1px;}
         #chest-modal-link:hover{background:rgba(255,170,0,0.1);}
         #chest-modal-empty{display:none;margin-top:14px;color:#555;font-size:0.78em;text-align:center;border:1px dashed #222;padding:10px;}
         /* ── Mobile hamburger nav ── */
@@ -426,18 +426,18 @@
         }
         /* NAV DROPDOWNS */
         .nav-dropdown-wrap { position:relative; display:inline-block; }
-        .nav-dropdown-btn { background:transparent; color:#888; border:1px solid transparent; padding:8px 16px; font-family:monospace; font-weight:bold; font-size:0.9em; cursor:pointer; transition:all 0.3s; text-transform:uppercase; border-radius:6px; letter-spacing:1px; }
+        .nav-dropdown-btn { background:transparent; color:#888; border:1px solid transparent; padding:8px 16px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.9em; cursor:pointer; transition:all 0.3s; text-transform:uppercase; border-radius:6px; letter-spacing:1px; }
         .nav-dropdown-btn:hover { color:var(--theme-color); border-color:var(--theme-color); }
         .nav-dropdown-btn.active { color:#000; background:var(--theme-color); border-color:var(--theme-color); box-shadow:var(--theme-shadow); }
         .nav-dropdown-menu { display:none; position:absolute; top:100%; margin-top:0; left:0; z-index:5000; background:rgba(2,8,6,0.98); border:1px solid var(--theme-color); min-width:160px; padding:8px 0 4px 0; box-shadow:0 8px 24px rgba(0,0,0,0.9); backdrop-filter:blur(6px); }
         .nav-dropdown-wrap:hover .nav-dropdown-menu { display:block; }
-        .nav-dropdown-item { display:block; padding:8px 16px; color:#888; text-decoration:none; font-family:monospace; font-size:0.85em; letter-spacing:1px; text-transform:uppercase; transition:all 0.2s; white-space:nowrap; }
+        .nav-dropdown-item { display:block; padding:8px 16px; color:#888; text-decoration:none; font-family:'Courier New',monospace; font-size:0.85em; letter-spacing:1px; text-transform:uppercase; transition:all 0.2s; white-space:nowrap; }
         .nav-dropdown-item:hover { color:var(--theme-color); background:rgba(255,255,255,0.04); }
         .nav-dropdown-item.active { color:var(--theme-color); font-weight:bold; background:rgba(255,255,255,0.03); }
     </style>
 </head>
 <body>
-<div id="star-hud" style="display:none;position:fixed;bottom:15px;left:15px;z-index:50000;font-family:monospace;font-size:0.75em;color:#ffe066;opacity:0.6;letter-spacing:1px;pointer-events:none;">&#9733; <span id="star-score-num">0</span></div>
+<div id="star-hud" style="display:none;position:fixed;bottom:15px;left:15px;z-index:50000;font-family:'Courier New',monospace;font-size:0.75em;color:#ffe066;opacity:0.6;letter-spacing:1px;pointer-events:none;">&#9733; <span id="star-score-num">0</span></div>
 
 <div id="mobile-backdrop" onclick="closeDeckMobile()"></div>
 <div id="cursor-glow"></div>
@@ -559,8 +559,8 @@
 </div>
 
 <div style="max-width:1400px; margin:6px auto 0 auto; padding:0 20px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-    <a href="https://www.planetarydefense.io/" target="_blank" style="display:flex;align-items:center;gap:6px;text-decoration:none;background:rgba(0,0,0,0.5);border:1px solid #1a3a5c;border-radius:6px;padding:5px 12px;color:#5badff;font-family:monospace;font-size:0.8em;font-weight:bold;transition:all 0.2s;" onmouseover="this.style.borderColor='#5badff'" onmouseout="this.style.borderColor='#1a3a5c'"><img src="https://www.google.com/s2/favicons?domain=planetarydefense.io&sz=128" style="width:14px;height:14px;border-radius:2px;"> PLANETARYDEFENSE.IO</a>
-    <a href="https://discord.com/invite/rhHWe6hDNP" target="_blank" style="display:flex;align-items:center;gap:6px;text-decoration:none;background:rgba(0,0,0,0.5);border:1px solid #1a3a5c;border-radius:6px;padding:5px 12px;color:#5865F2;font-family:monospace;font-size:0.8em;font-weight:bold;transition:all 0.2s;" onmouseover="this.style.borderColor='#5865F2'" onmouseout="this.style.borderColor='#1a3a5c'"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" style="width:14px;height:14px;border-radius:2px;"> PD DISCORD</a>
+    <a href="https://www.planetarydefense.io/" target="_blank" style="display:flex;align-items:center;gap:6px;text-decoration:none;background:rgba(0,0,0,0.5);border:1px solid #1a3a5c;border-radius:6px;padding:5px 12px;color:#5badff;font-family:'Courier New',monospace;font-size:0.8em;font-weight:bold;transition:all 0.2s;" onmouseover="this.style.borderColor='#5badff'" onmouseout="this.style.borderColor='#1a3a5c'"><img src="https://www.google.com/s2/favicons?domain=planetarydefense.io&sz=128" style="width:14px;height:14px;border-radius:2px;"> PLANETARYDEFENSE.IO</a>
+    <a href="https://discord.com/invite/rhHWe6hDNP" target="_blank" style="display:flex;align-items:center;gap:6px;text-decoration:none;background:rgba(0,0,0,0.5);border:1px solid #1a3a5c;border-radius:6px;padding:5px 12px;color:#5865F2;font-family:'Courier New',monospace;font-size:0.8em;font-weight:bold;transition:all 0.2s;" onmouseover="this.style.borderColor='#5865F2'" onmouseout="this.style.borderColor='#1a3a5c'"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" style="width:14px;height:14px;border-radius:2px;"> PD DISCORD</a>
 </div>
 
 <!-- ═══════════════════════════════════════════ SPLIT VIEW SECTIONS ═══ -->
@@ -1146,9 +1146,9 @@
                 tbody.prepend(secretRow);
             }
             if(filter === PASS_1) {
-                secretRow.innerHTML = `<td colspan="10" style="text-align:center;color:#00ff00;padding:40px;font-family:monospace;font-size:1.2em;font-weight:bold;letter-spacing:4px;background:#051a05;border:2px dashed #00ff00;cursor:pointer;" onclick="alert('ACCESS GRANTED: WELCOME, SHADE.\\n\\n[ INITIALIZING CREATOR PROTOCOLS... ]')">>> MAKER RECOGNIZED. CLICK TO INITIALIZE <<</td>`;
+                secretRow.innerHTML = `<td colspan="10" style="text-align:center;color:#00ff00;padding:40px;font-family:'Courier New',monospace;font-size:1.2em;font-weight:bold;letter-spacing:4px;background:#051a05;border:2px dashed #00ff00;cursor:pointer;" onclick="alert('ACCESS GRANTED: WELCOME, SHADE.\\n\\n[ INITIALIZING CREATOR PROTOCOLS... ]')">>> MAKER RECOGNIZED. CLICK TO INITIALIZE <<</td>`;
             } else {
-                secretRow.innerHTML = `<td colspan="10" style="text-align:center;color:#ffaa00;padding:40px;font-family:monospace;font-size:1.2em;font-weight:bold;letter-spacing:4px;background:#1a1005;border:2px dashed #ffaa00;cursor:pointer;" onclick="alert('LEGENDARY PROTOCOL ACTIVATED.\\n\\n[ DECRYPTING CLASSIFIED FEDERATION FILES... ]')">>> ALIEN LEGEND DETECTED. CLICK TO DECRYPT <<</td>`;
+                secretRow.innerHTML = `<td colspan="10" style="text-align:center;color:#ffaa00;padding:40px;font-family:'Courier New',monospace;font-size:1.2em;font-weight:bold;letter-spacing:4px;background:#1a1005;border:2px dashed #ffaa00;cursor:pointer;" onclick="alert('LEGENDARY PROTOCOL ACTIVATED.\\n\\n[ DECRYPTING CLASSIFIED FEDERATION FILES... ]')">>> ALIEN LEGEND DETECTED. CLICK TO DECRYPT <<</td>`;
             }
             secretRow.style.display = "";
             if(resetBtn) resetBtn.classList.add("glow-alert");
