@@ -1291,6 +1291,7 @@ function processData(data) {
         if (cat === 'face' || cat === 'warlord') {
             obj.slots = localData.crew_slots ?? WARLORD_OVERRIDE[nft.name] ?? 0;
             obj.active = true;
+            obj._isWarlord = (cat === 'warlord');
             faces.push(obj); return;
         }
         if (cat === 'arms')                      { arms.push(obj); return; }
@@ -1299,8 +1300,24 @@ function processData(data) {
         crew.push(obj);
     });
 
+    // Prioritize: shined faces (move-cost reducing) → warlords → normal faces
+    // Within each tier: higher shine reduction first, then more slots first
+    faces.sort((a, b) => {
+        const shineRed = (f) => (FACE_SHINE_REDUCTION[f.rarity] || {})[f.shine] || 0;
+        const tier = (f) => shineRed(f) > 0 ? 0 : f._isWarlord ? 1 : 2;
+        const td = tier(a) - tier(b);
+        if (td !== 0) return td;
+        const rd = shineRed(b) - shineRed(a);
+        if (rd !== 0) return rd;
+        return (b.slots || 0) - (a.slots || 0);
+    });
+
     const totalSlots = faces.reduce((s, f) => s + (f.slots || 0), 0);
-    crew.sort((a, b) => (b.def + b.atk) - (a.def + a.atk));
+    // Tiebreaker: equal combined score → higher ATK wins
+    crew.sort((a, b) => {
+        const d = (b.def + b.atk) - (a.def + a.atk);
+        return d !== 0 ? d : (b.atk - a.atk);
+    });
     const activeCrew = crew.slice(0, Math.floor(totalSlots));
     activeCrew.forEach(c => c.active = true);
 
@@ -1310,7 +1327,10 @@ function processData(data) {
     equipment.forEach(e => e._gearCat = 'equip');
     if (forgeEnabled) {
         const allGear = [...arms, ...equipment];
-        allGear.sort((a, b) => (b.atk + b.def) - (a.atk + a.def));
+        allGear.sort((a, b) => {
+            const d = (b.atk + b.def) - (a.atk + a.def);
+            return d !== 0 ? d : (b.atk - a.atk);
+        });
         activeGear = allGear.slice(0, activeCrew.length);
         activeGear.forEach(g => g.active = true);
         allGear.slice(activeCrew.length).forEach(g => g.active = false);
@@ -1721,12 +1741,12 @@ function makeNFTCard(item, activeMode, type, showStatus) {
         const shineRed = (FACE_SHINE_REDUCTION[item.rarity] || {})[item.shine] || 0;
         if (shineRed > 0) subText += `<br><span style="color:var(--shine-${item.shine},#888)">✦ -${shineRed} >></span>`;
     } else if (type === "stats") {
-        subText = `<span style="color:#ff4444">⚔ ${Math.floor(item.atk)}</span> &nbsp;|&nbsp; <span style="color:#4488ff">🛡 ${Math.floor(item.def)}</span>`;
+        subText = `<span style="white-space:nowrap"><span style="color:#ff4444">⚔&nbsp;${Math.floor(item.atk)}</span>&nbsp;|&nbsp;<span style="color:#4488ff">🛡&nbsp;${Math.floor(item.def)}</span></span>`;
         if (item.moveCost) subText += `<br><span class="card-move-cost">&gt;&gt; ${item.moveCost}</span>`;
     } else if (type === "reduction") {
         const parts = [];
         if (item.moveCostReduction) parts.push(`<span class="card-move-reduc">▼ -${item.moveCostReduction}</span>`);
-        if (item.atk || item.def) parts.push(`<span style="color:#ff4444">⚔ ${item.atk}</span> &nbsp;|&nbsp; <span style="color:#4488ff">🛡 ${item.def}</span>`);
+        if (item.atk || item.def) parts.push(`<span style="white-space:nowrap"><span style="color:#ff4444">⚔&nbsp;${item.atk}</span>&nbsp;|&nbsp;<span style="color:#4488ff">🛡&nbsp;${item.def}</span></span>`);
         subText = parts.join('<br>');
     } else if (type === "missions") {
         subText = item.missions ? `<span style="color:#ffd700">+${item.missions} missions/day</span>` : (item.effect || "SERVICE");
