@@ -588,7 +588,7 @@
             <th class="live-header" onclick="sortAsset('land_rating')">LAND RATING</th>
             <th class="live-header" onclick="sortAsset('usedBoosts')">USED BOOSTS</th>
             <th class="live-header" onclick="sortAsset('boostLast')">BOOST LAST</th>
-            <th class="live-header" onclick="sortAsset('floor')">FLOOR (WAX)</th>
+            <th class="live-header" onclick="sortAsset('listed_price')">LISTING</th>
             <th class="live-header" onclick="sortAsset('build_val')">EST. RATING VALUE (BETA)</th>
         </tr></thead>
         <tbody id="asset-tbody">
@@ -1240,7 +1240,7 @@ async function loadAllAssets() {
     const tbody  = document.getElementById('asset-tbody');
     const status = document.getElementById('status');
     const tpls   = allTemplates.filter(t => activePlanets.size === 0 || activePlanets.has(t.planet));
-    tbody.innerHTML = `<tr><td colspan="17" class="sub-loading">LOADING ALL ASSETS — 0/${tpls.length} TEMPLATES…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="18" class="sub-loading">LOADING ALL ASSETS — 0/${tpls.length} TEMPLATES…</td></tr>`;
     document.getElementById('asset-table').classList.add('system-ready');
     const BATCH = 3;
     for (let i = 0; i < tpls.length; i += BATCH) {
@@ -1251,7 +1251,7 @@ async function loadAllAssets() {
             return Promise.all(tasks);
         }));
         const done = Math.min(i + BATCH, tpls.length);
-        tbody.innerHTML = `<tr><td colspan="17" class="sub-loading">LOADING — ${done}/${tpls.length} TEMPLATES…</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="18" class="sub-loading">LOADING — ${done}/${tpls.length} TEMPLATES…</td></tr>`;
     }
     assetViewLoaded = true;
     status.textContent = 'ASSET VIEW READY';
@@ -1262,11 +1262,15 @@ function renderAssetTable() {
     const tbody  = document.getElementById('asset-tbody');
     const table  = document.getElementById('asset-table');
     const search = document.getElementById('searchInput').value.toLowerCase();
-    const tpls   = allTemplates.filter(t => activePlanets.size === 0 || activePlanets.has(t.planet));
+    const tpls   = allTemplates.filter(t => {
+        if (activePlanets.size > 0 && !activePlanets.has(t.planet)) return false;
+        if (hiddenTypes.has(t.type)) return false;
+        return true;
+    });
     let allAssets = [];
     tpls.forEach(t => {
         const assets = assetCache.get(t.template_id) || [];
-        const listed = listingCache.get(t.template_id) || new Map();
+        const listingMap = listingCache.get(t.template_id) || new Map();
         const pc = priceCache.get(t.template_id);
         const tplFloor = (pc && pc.floor !== '—') ? parseFloat(pc.floor) : null;
         assets.forEach(a => {
@@ -1278,8 +1282,9 @@ function renderAssetTable() {
                 rarity:    t.rarity,
                 img:       t.img,
                 tpl_id:    t.template_id,
-                listed:    listed.get(String(a.asset_id)) ?? null,
-                floor:     tplFloor,
+                listed:        listingMap.get(String(a.asset_id)) ?? null,
+                listed_price:  (() => { const e = listingMap.get(String(a.asset_id)); return e ? parseFloat(e.price) : null; })(),
+                floor:         tplFloor,
                 build_val: aBuildWAX,
             });
         });
@@ -1300,7 +1305,9 @@ function renderAssetTable() {
             ? `<span style="color:#444">(burned)</span>`
             : `<a href="https://wax.atomichub.io/explorer/account/${a.owner}" target="_blank" style="color:var(--theme-color);text-decoration:none" onclick="event.stopPropagation()">${a.owner}</a>`;
         const ratingCell  = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
-        const floorCell   = a.floor != null ? `<span class="price-highlight">${a.floor.toFixed(2)}</span>` : `<span style="color:#333">—</span>`;
+        const listingCell = a.listed
+            ? `<a href="https://wax.atomichub.io/market/sale/${a.listed.sale_id}" target="_blank" style="color:#00cc66;text-decoration:none;font-weight:bold" onclick="event.stopPropagation()">${a.listed.price} WAX</a>`
+            : `<a href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${a.asset_id}" target="_blank" style="color:#444;text-decoration:none" onclick="event.stopPropagation()">NOT LISTED</a>`;
         const aIsBase     = a.build_val === 0;
         const aDelta      = (!aIsBase && a.floor != null && a.build_val != null) ? Math.round(a.build_val - a.floor) : null;
         const buildCell   = aIsBase
@@ -1325,7 +1332,7 @@ function renderAssetTable() {
             <td style="text-align:center">${ratingCell}</td>
             <td style="text-align:center">${a.usedBoosts}</td>
             <td style="text-align:center">${a.boostLast}</td>
-            <td style="text-align:center;font-size:0.85em">${floorCell}</td>
+            <td style="text-align:center;font-size:0.85em">${listingCell}</td>
             <td style="text-align:center;font-size:0.85em;line-height:1.5">${buildCell}</td>
         </tr>`;
     }).join('') || `<tr><td colspan="18" class="sub-loading">NO ASSETS LOADED YET</td></tr>`;
@@ -1531,7 +1538,7 @@ async function fetchAssetsForTemplate(templateId) {
 // ─── LISTING FETCH ────────────────────────────────────────────────────────────
 async function fetchListingsForTemplate(templateId) {
     if (listingCache.has(templateId)) return listingCache.get(templateId);
-    const listed = new Map(); // asset_id → price string
+    const listed = new Map(); // asset_id → { price, sale_id }
     try {
         const r = await fetch(`https://wax.api.atomicassets.io/atomicmarket/v2/sales?state=1&collection_name=alien.worlds&template_id=${templateId}&limit=1000&symbol=WAX`);
         const d = await r.json();
@@ -1544,7 +1551,7 @@ async function fetchListingsForTemplate(templateId) {
                 if (!price) return;
                 (sale.assets || []).forEach(a => {
                     const id = typeof a === 'object' ? a.asset_id : a;
-                    if (id) listed.set(String(id), price);
+                    if (id) listed.set(String(id), { price, sale_id: sale.sale_id });
                 });
             });
         }
@@ -1593,10 +1600,10 @@ function renderSubTable(templateId, assets) {
         const tplImg     = currentSubImg[templateId] || '';
         // Listed price for this specific asset
         const listings   = listingCache.get(templateId);
-        const listedPrice = listings?.get(String(a.asset_id));
-        const priceCell  = listedPrice
-            ? `<span class="price-highlight">${listedPrice} WAX</span>`
-            : `<span style="color:#333">—</span>`;
+        const listing    = listings?.get(String(a.asset_id));
+        const priceCell  = listing
+            ? `<a href="https://wax.atomichub.io/market/sale/${listing.sale_id}" target="_blank" style="color:#00cc66;text-decoration:none;font-weight:bold" onclick="event.stopPropagation()">${listing.price} WAX</a>`
+            : `<a href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${a.asset_id}" target="_blank" style="color:#444;text-decoration:none" onclick="event.stopPropagation()">NOT LISTED</a>`;
         // EST. RATING VALUE: cheapest WAX to reach this rating (TLM vs NFT path)
         const pc        = priceCache.get(templateId);
         const floorWAX  = (pc && pc.floor !== '—') ? parseFloat(pc.floor) : null;
