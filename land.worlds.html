@@ -1540,9 +1540,13 @@ async function fetchListingsForTemplate(templateId) {
     if (listingCache.has(templateId)) return listingCache.get(templateId);
     const listed = new Map(); // asset_id → { price, sale_id }
     try {
-        const r = await fetch(`https://wax.api.atomicassets.io/atomicmarket/v2/sales?state=1&collection_name=alien.worlds&template_id=${templateId}&limit=1000&symbol=WAX`);
-        const d = await r.json();
-        if (d.data?.length) {
+        // Paginate — AtomicMarket API caps at 100 per page
+        let page = 1;
+        while (true) {
+            const r = await fetch(`https://wax.api.atomicassets.io/atomicmarket/v2/sales?state=1&collection_name=alien.worlds&template_id=${templateId}&limit=100&page=${page}&symbol=WAX`);
+            if (!r.ok) break;
+            const d = await r.json();
+            if (!d.data?.length) break;
             d.data.forEach(sale => {
                 const p = sale.price;
                 const price = sale.listing_price
@@ -1554,6 +1558,8 @@ async function fetchListingsForTemplate(templateId) {
                     if (id) listed.set(String(id), { price, sale_id: sale.sale_id });
                 });
             });
+            if (d.data.length < 100) break;
+            page++;
         }
     } catch(e) {}
     listingCache.set(templateId, listed);
