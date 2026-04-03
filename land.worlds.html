@@ -554,6 +554,13 @@
     </div>
 </div>
 
+<!-- ══ PLANET HINT ════════════════════════════════════════════════════════════ -->
+<div style="overflow:hidden;background:rgba(0,0,0,0.4);border-bottom:1px solid rgba(255,255,255,0.04);padding:3px 0;">
+    <marquee scrollamount="3" style="font-family:'Courier New',monospace;font-size:0.68em;color:#335;letter-spacing:2px;">
+        ★ CLICK A PLANET'S NAME TO FILTER &nbsp;&nbsp;·&nbsp;&nbsp; CLICK AGAIN TO DESELECT &nbsp;&nbsp;·&nbsp;&nbsp; MULTIPLE PLANETS CAN BE ACTIVE AT ONCE &nbsp;&nbsp;·&nbsp;&nbsp; USE THE SCAN BUTTONS TO LOAD PRICE DATA PER PLANET &nbsp;&nbsp;·&nbsp;&nbsp; 📦 = BUNDLE LISTING (PRICE COVERS MULTIPLE ASSETS) &nbsp;&nbsp;★&nbsp;&nbsp;
+    </marquee>
+</div>
+
 <!-- ══ TABLE ══════════════════════════════════════════════════════════════════ -->
 <div class="grid-container">
   <div id="tpl-view" style="grid-column:2;">
@@ -1226,6 +1233,7 @@ window.scanPlanetPrices = async (planet, btn) => {
         btn.textContent = `${i + batch.length}/${uncached.length}`;
     }
     btn.textContent = '✓ ' + planet.toUpperCase();
+    _allAssetsFlat = null; // price data changed, rebuild cache
     renderTemplateTable();
     if (assetViewActive) renderAssetTable();
     setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
@@ -1236,6 +1244,33 @@ let assetViewActive  = false;
 let assetViewLoaded  = false;
 let assetViewSortCol = 'asset_id';
 let assetViewSortDir = 1;
+let _allAssetsFlat   = null; // pre-computed; invalidated after data loads
+
+function buildAllAssetsFlat() {
+    const result = [];
+    allTemplates.forEach(t => {
+        const assets     = assetCache.get(t.template_id) || [];
+        const listingMap = listingCache.get(t.template_id) || new Map();
+        const pc         = priceCache.get(t.template_id);
+        const tplFloor   = (pc && pc.floor !== '—') ? parseFloat(pc.floor) : null;
+        assets.forEach(a => {
+            const le = listingMap.get(String(a.asset_id)) ?? null;
+            result.push({
+                ...a,
+                planet:       t.planet,
+                type:         t.type,
+                rarity:       t.rarity,
+                img:          t.img,
+                tpl_id:       t.template_id,
+                listed:       le,
+                listed_price: le ? parseFloat(le.price) : null,
+                floor:        tplFloor,
+                build_val:    computeRatingWAX(a.land_rating),
+            });
+        });
+    });
+    return result;
+}
 
 window.toggleView = () => {
     assetViewActive = !assetViewActive;
@@ -1279,44 +1314,22 @@ async function loadAllAssets() {
         tbody.innerHTML = `<tr><td colspan="18" class="sub-loading">LOADING — ${done}/${tpls.length} TEMPLATES…</td></tr>`;
     }
     assetViewLoaded = true;
+    _allAssetsFlat = null; // rebuild flat cache now that all data is loaded
     status.textContent = 'ASSET VIEW READY';
     renderAssetTable();
 }
 
 function renderAssetTable() {
+    if (!_allAssetsFlat) _allAssetsFlat = buildAllAssetsFlat();
     const tbody  = document.getElementById('asset-tbody');
     const table  = document.getElementById('asset-table');
     const search = document.getElementById('searchInput').value.toLowerCase();
-    const tpls   = allTemplates.filter(t => {
-        if (activePlanets.size > 0 && !activePlanets.has(t.planet)) return false;
-        if (hiddenTypes.has(t.type)) return false;
+    let allAssets = _allAssetsFlat.filter(a => {
+        if (activePlanets.size > 0 && !activePlanets.has(a.planet)) return false;
+        if (hiddenTypes.has(a.type)) return false;
+        if (search && !JSON.stringify(a).toLowerCase().includes(search)) return false;
         return true;
     });
-    let allAssets = [];
-    tpls.forEach(t => {
-        const assets = assetCache.get(t.template_id) || [];
-        const listingMap = listingCache.get(t.template_id) || new Map();
-        const pc = priceCache.get(t.template_id);
-        const tplFloor = (pc && pc.floor !== '—') ? parseFloat(pc.floor) : null;
-        assets.forEach(a => {
-            const aBuildWAX = computeRatingWAX(a.land_rating);
-            allAssets.push({
-                ...a,
-                planet:    t.planet,
-                type:      t.type,
-                rarity:    t.rarity,
-                img:       t.img,
-                tpl_id:    t.template_id,
-                listed:        listingMap.get(String(a.asset_id)) ?? null,
-                listed_price:  (() => { const e = listingMap.get(String(a.asset_id)); return e ? parseFloat(e.price) : null; })(),
-                floor:         tplFloor,
-                build_val: aBuildWAX,
-            });
-        });
-    });
-    if (search) {
-        allAssets = allAssets.filter(a => JSON.stringify(a).toLowerCase().includes(search));
-    }
     allAssets.sort((a, b) => {
         let av = a[assetViewSortCol] ?? '', bv = b[assetViewSortCol] ?? '';
         if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * assetViewSortDir;
@@ -1331,7 +1344,7 @@ function renderAssetTable() {
             : `<a href="https://wax.atomichub.io/explorer/account/${a.owner}" target="_blank" style="color:var(--theme-color);text-decoration:none" onclick="event.stopPropagation()">${a.owner}</a>`;
         const ratingCell  = typeof a.land_rating === 'number' ? a.land_rating.toLocaleString() : '—';
         const listingCell = a.listed
-            ? `<a href="https://wax.atomichub.io/market/sale/${a.listed.sale_id}" target="_blank" style="color:#00cc66;text-decoration:none;font-weight:bold" onclick="event.stopPropagation()">${a.listed.price} WAX</a>`
+            ? `<a href="https://wax.atomichub.io/market/sale/${a.listed.sale_id}" target="_blank" style="color:${a.listed.bundle ? '#ff8800' : '#00cc66'};text-decoration:none;font-weight:bold" onclick="event.stopPropagation()">${a.listed.price} WAX${a.listed.bundle ? ' 📦' : ''}</a>`
             : `<a href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${a.asset_id}" target="_blank" style="color:#444;text-decoration:none" onclick="event.stopPropagation()">NOT LISTED</a>`;
         const aIsBase     = a.build_val === 0;
         const aDelta      = (!aIsBase && a.floor != null && a.build_val != null) ? Math.round(a.build_val - a.floor) : null;
@@ -1590,7 +1603,7 @@ async function fetchListingsForTemplate(templateId) {
                 if (!price) return;
                 (sale.assets || []).forEach(a => {
                     const id = typeof a === 'object' ? a.asset_id : a;
-                    if (id) listed.set(String(id), { price, sale_id: sale.sale_id });
+                    if (id) listed.set(String(id), { price, sale_id: sale.sale_id, bundle: (sale.assets || []).length > 1 });
                 });
             });
             if (d.data.length < 100) break;
@@ -1643,7 +1656,7 @@ function renderSubTable(templateId, assets) {
         const listings   = listingCache.get(templateId);
         const listing    = listings?.get(String(a.asset_id));
         const priceCell  = listing
-            ? `<a href="https://wax.atomichub.io/market/sale/${listing.sale_id}" target="_blank" style="color:#00cc66;text-decoration:none;font-weight:bold" onclick="event.stopPropagation()">${listing.price} WAX</a>`
+            ? `<a href="https://wax.atomichub.io/market/sale/${listing.sale_id}" target="_blank" style="color:${listing.bundle ? '#ff8800' : '#00cc66'};text-decoration:none;font-weight:bold" onclick="event.stopPropagation()">${listing.price} WAX${listing.bundle ? ' 📦' : ''}</a>`
             : `<a href="https://wax.atomichub.io/explorer/asset/wax-mainnet/${a.asset_id}" target="_blank" style="color:#444;text-decoration:none" onclick="event.stopPropagation()">NOT LISTED</a>`;
         // EST. RATING VALUE: cheapest WAX to reach this rating (TLM vs NFT path)
         const pc        = priceCache.get(templateId);
