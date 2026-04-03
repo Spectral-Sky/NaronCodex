@@ -503,7 +503,15 @@
             <button class="cyber-btn" onclick="adjustFont(1)">A+</button>
             <button class="cyber-btn" onclick="adjustFont(-1)">A-</button>
             <input type="text" id="searchInput" oninput="filterTable()" placeholder="SEARCH...">
-            <button class="cyber-btn" id="scan-btn" onclick="scanAllPrices(this)">[ SCAN PRICES ]</button>
+            <div id="scan-wrap" style="display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                <span style="color:#446;font-size:0.78em;font-family:'Courier New',monospace;letter-spacing:1px;">SCAN:</span>
+                <button class="cyber-btn scan-planet-btn" onclick="scanPlanetPrices('eyeke',this)" style="padding:4px 7px;font-size:0.75em">EYEKE</button>
+                <button class="cyber-btn scan-planet-btn" onclick="scanPlanetPrices('kavian',this)" style="padding:4px 7px;font-size:0.75em">KAVIAN</button>
+                <button class="cyber-btn scan-planet-btn" onclick="scanPlanetPrices('magor',this)" style="padding:4px 7px;font-size:0.75em">MAGOR</button>
+                <button class="cyber-btn scan-planet-btn" onclick="scanPlanetPrices('naron',this)" style="padding:4px 7px;font-size:0.75em">NARON</button>
+                <button class="cyber-btn scan-planet-btn" onclick="scanPlanetPrices('neri',this)" style="padding:4px 7px;font-size:0.75em">NERI</button>
+                <button class="cyber-btn scan-planet-btn" onclick="scanPlanetPrices('veles',this)" style="padding:4px 7px;font-size:0.75em">VELES</button>
+            </div>
             <button class="cyber-btn" id="view-toggle-btn" onclick="toggleView()">[ ALL ASSETS VIEW ]</button>
             <div id="type-filter-wrap" style="position:relative;display:inline-block;">
                 <button class="cyber-btn" id="type-filter-btn" onclick="toggleTypeDropdown()">[ TYPE ▾ ]</button>
@@ -1091,7 +1099,7 @@ const BUILD_AVG_RATING  = 600000;
 const BUILD_MEGA_WAX    = 600;
 const BUILD_SUPER_WAX   = 25000;
 const BUILD_TLM_PER_WAX = 0.28;
-const BUILD_BASE        = 100;
+const BUILD_BASE        = 435000; // base (unbuilt) land rating after /10000 division
 const BUILD_BOOST_MULT  = 1.0021;
 const BUILD_TLM_BOOST   = 64;
 
@@ -1206,6 +1214,23 @@ window.scanAllPrices = async (btn) => {
     if (btn) { btn.textContent = '[ PRICES LOADED ]'; btn.disabled = false; }
 };
 
+window.scanPlanetPrices = async (planet, btn) => {
+    const orig = btn.textContent;
+    btn.disabled = true;
+    const uncached = allTemplates.filter(t => t.planet === planet && !priceCache.has(t.template_id));
+    if (!uncached.length) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500); return; }
+    const BATCH = 4;
+    for (let i = 0; i < uncached.length; i += BATCH) {
+        const batch = uncached.slice(i, i + BATCH);
+        await Promise.all(batch.map(t => fetchTemplatePrice(t.template_id)));
+        btn.textContent = `${i + batch.length}/${uncached.length}`;
+    }
+    btn.textContent = '✓ ' + planet.toUpperCase();
+    renderTemplateTable();
+    if (assetViewActive) renderAssetTable();
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+};
+
 // ─── ASSET ALL-ASSETS VIEW ────────────────────────────────────────────────────
 let assetViewActive  = false;
 let assetViewLoaded  = false;
@@ -1315,7 +1340,7 @@ function renderAssetTable() {
             : a.build_val != null
                 ? `<span class="price-highlight">~${a.build_val.toLocaleString()}</span>${aDelta != null ? `<br><span style="color:${aDelta >= 0 ? '#00cc66' : '#cc4444'};font-size:0.82em">${aDelta >= 0 ? '+' : ''}${aDelta.toLocaleString()}</span>` : ''}`
                 : `<span style="color:#333">—</span>`;
-        return `<tr class="tpl-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${a.img}','${a.owner.replace(/'/g,"\\'")}')">
+        return `<tr class="tpl-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${a.img}','${a.owner.replace(/'/g,"\\'")}','${a.tpl_id}')">
             <td style="text-align:center;color:#446;font-size:0.8em!important">${a.asset_id}</td>
             <td style="text-align:center;padding:4px!important">${a.img ? `<img src="https://ipfs.io/ipfs/${a.img}" style="height:52px;width:auto;max-width:58px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
             <td style="text-align:center;font-weight:bold;text-transform:uppercase">${a.planet}</td>
@@ -1357,23 +1382,33 @@ window.onTplRowClick = async (e, templateId, imgHash, label) => {
     }
 };
 
-window.onAssetRowClick = async (assetId, imgHash, owner) => {
+window.onAssetRowClick = async (assetId, imgHash, owner, tplId) => {
     showPreview(imgHash, `ASSET #${assetId}`, owner !== '(burned)' ? `Owner: ${owner}` : '(burned)');
     updateAssetLinks(assetId);
     document.getElementById('intel-header').textContent = `ASSET ${assetId}`;
     document.getElementById('intel-floor').textContent = 'CHECKING...';
-    document.getElementById('intel-last').textContent  = '—';
-    document.getElementById('intel-sugg').textContent  = '—';
-    // Check if asset currently listed
+    document.getElementById('intel-last').textContent  = '…';
+    document.getElementById('intel-sugg').textContent  = '…';
+    // Fetch template price (floor/last/suggested) and asset listing status in parallel
+    const [, listingResp] = await Promise.allSettled([
+        tplId ? fetchTemplatePrice(tplId).then(intel => {
+            showIntelPanel(`ASSET ${assetId}`, intel);
+        }) : Promise.resolve(),
+        fetch(`${HISTORY_BASE}?state=1&asset_id=${assetId}&symbol=WAX&limit=1`)
+            .then(r => r.json())
+    ]);
+    // Override floor cell with specific asset listing status
     try {
-        const r = await fetch(`${HISTORY_BASE.replace('/v2/sales','/v2/sales')}?state=1&asset_id=${assetId}&symbol=WAX&limit=1`);
-        const d = await r.json();
-        if (d.data?.length) {
+        const d = listingResp.value;
+        if (d?.data?.length) {
             const p = d.data[0].price;
             const v = (parseInt(p.amount) / Math.pow(10, p.token_precision)).toFixed(2);
             document.getElementById('intel-floor').textContent = v + ' WAX (LISTED)';
-        } else { document.getElementById('intel-floor').textContent = 'NOT LISTED'; }
-    } catch(e) { document.getElementById('intel-floor').textContent = 'ERR'; }
+        } else {
+            const cur = document.getElementById('intel-floor').textContent;
+            if (cur === 'CHECKING...') document.getElementById('intel-floor').textContent = 'NOT LISTED';
+        }
+    } catch(e) { document.getElementById('intel-floor').textContent = 'NOT LISTED'; }
 };
 
 window.sortBy = col => {
@@ -1549,9 +1584,9 @@ async function fetchListingsForTemplate(templateId) {
             if (!d.data?.length) break;
             d.data.forEach(sale => {
                 const p = sale.price;
-                const price = sale.listing_price
-                    ? (parseInt(sale.listing_price) / 1e8).toFixed(2)
-                    : p ? (parseInt(p.amount) / Math.pow(10, p.token_precision)).toFixed(2) : null;
+                const price = p
+                    ? (parseInt(p.amount) / Math.pow(10, p.token_precision)).toFixed(2)
+                    : sale.listing_price ? (parseInt(sale.listing_price) / 1e8).toFixed(2) : null;
                 if (!price) return;
                 (sale.assets || []).forEach(a => {
                     const id = typeof a === 'object' ? a.asset_id : a;
@@ -1627,7 +1662,7 @@ function renderSubTable(templateId, assets) {
         const buildCell = isBase
             ? `<span style="color:#444">BASE</span>`
             : `<span class="price-highlight">~${buildWAX.toLocaleString()} WAX</span>${deltaStr}`;
-        return `<tr class="sub-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${tplImg}','${a.owner.replace(/'/g,"\\'")}')">
+        return `<tr class="sub-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${tplImg}','${a.owner.replace(/'/g,"\\'")}','${templateId}')">
             <td style="text-align:center;color:#446;font-size:0.78em!important">${a.asset_id}</td>
             <td>${ownerCell}</td>
             <td style="text-align:center">${a.ease}</td>
