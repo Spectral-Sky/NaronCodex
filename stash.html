@@ -86,7 +86,8 @@
         #nav-dropdown.open { display:flex; }
 
         /* TITLE BAR */
-        .title-bar { display:flex; align-items:flex-start; justify-content:space-between; padding:20px 30px 10px; border-bottom:1px solid rgba(255,170,0,0.12); background:rgba(5,5,5,0.97); backdrop-filter:blur(5px); }
+        .title-bar { display:flex; flex-direction:column; align-items:stretch; padding:20px 30px 0; border-bottom:1px solid rgba(255,170,0,0.12); background:rgba(5,5,5,0.97); backdrop-filter:blur(5px); }
+        .title-bar-marquee { overflow:hidden; background:rgba(0,0,0,0.3); border-top:1px solid rgba(255,255,255,0.04); padding:4px 0; margin-top:12px; }
         .title-bar-left { display:flex; flex-direction:column; gap:8px; }
         .title-bar-left h1 { margin:0; font-size:1.8em; letter-spacing:6px; text-transform:uppercase; color:var(--theme-color); text-shadow:var(--theme-shadow); }
         .title-bar-left .page-subtitle { margin:0; color:#555; font-size:0.72em; letter-spacing:3px; font-family:'Courier New'; }
@@ -101,7 +102,7 @@
 
         /* DECK: PREVIEW FRAME */
         #preview-frame {
-            position:fixed; top:185px; left:20px; width:260px; height:340px;
+            position:fixed; top:240px; left:20px; width:260px; height:340px;
             z-index:1500; background:rgba(3,3,16,0.96); border:2px solid var(--theme-color);
             box-shadow:var(--theme-shadow); padding:12px; box-sizing:border-box;
             font-family:monospace; display:flex; flex-direction:column; align-items:center;
@@ -114,7 +115,7 @@
 
         /* DECK TOGGLE TAB */
         #deck-toggle-tab {
-            position:fixed; top:185px; left:278px; width:24px; height:340px;
+            position:fixed; top:240px; left:278px; width:24px; height:340px;
             z-index:1501; background:rgba(3,3,16,0.96);
             border:2px solid var(--theme-color); border-left:none;
             color:var(--theme-color); cursor:pointer; font-size:1.2em; font-weight:bold;
@@ -128,7 +129,7 @@
 
         /* MARKET INTEL PANEL */
         #market-frame {
-            position:fixed; top:540px; left:20px; width:260px; z-index:1500;
+            position:fixed; top:595px; left:20px; width:260px; z-index:1500;
             background:#000; border:2px solid var(--theme-color);
             padding:10px; font-family:monospace; display:none;
             box-shadow:var(--theme-shadow); transition:transform 0.3s ease;
@@ -149,7 +150,7 @@
         body.deck-open .stash-main { margin-left:310px; }
 
         /* STASH MAIN */
-        .stash-main { max-width:1400px; margin:0 auto; width:100%; padding:20px; box-sizing:border-box; flex:1; }
+        .stash-main { max-width:1400px; margin:0 auto; width:100%; padding:20px; box-sizing:border-box; flex:1; transition:margin-left 0.3s ease; }
 
         /* TABS */
         .tab-bar { display:flex; gap:0; border-bottom:2px solid var(--theme-color); margin-bottom:14px; flex-wrap:wrap; }
@@ -168,6 +169,8 @@
         #stash-search:focus { border-color:var(--theme-color); }
         #wallet-input { background:#07070f; color:#ccc; border:1px solid #1a1a2e; padding:6px 12px; font-family:'Courier New',monospace; font-size:0.82em; outline:none; width:200px; }
         #wallet-input:focus { border-color:var(--theme-color); }
+        #btn-load-wallet, #scan-prices-btn { animation:rgb-glow 4s linear infinite; }
+        #scan-prices-btn:disabled { animation:none; }
 
         /* SCAN BAR */
         .scan-bar-wrap { margin-bottom:8px; display:none; }
@@ -181,6 +184,15 @@
         .cp-btn { margin-top:20px; background:transparent; color:var(--theme-color); border:1px dashed var(--theme-color); padding:12px 28px; font-family:'Courier New',monospace; font-size:0.9em; cursor:pointer; transition:all 0.2s; text-transform:uppercase; letter-spacing:2px; display:inline-block; }
         .cp-btn:hover { background:var(--theme-hover); }
         @keyframes blink { 0%,100%{opacity:0.3;} 50%{opacity:1;} }
+        @keyframes rgb-glow {
+            0%   { box-shadow:0 0 8px #ff0044,0 0 20px #ff004466; border-color:#ff0044; color:#ff0044; }
+            16%  { box-shadow:0 0 8px #ff8800,0 0 20px #ff880066; border-color:#ff8800; color:#ff8800; }
+            33%  { box-shadow:0 0 8px #ffe000,0 0 20px #ffe00066; border-color:#ffe000; color:#ffe000; }
+            50%  { box-shadow:0 0 8px #00ff88,0 0 20px #00ff8866; border-color:#00ff88; color:#00ff88; }
+            66%  { box-shadow:0 0 8px #00aaff,0 0 20px #00aaff66; border-color:#00aaff; color:#00aaff; }
+            83%  { box-shadow:0 0 8px #cc00ff,0 0 20px #cc00ff66; border-color:#cc00ff; color:#cc00ff; }
+            100% { box-shadow:0 0 8px #ff0044,0 0 20px #ff004466; border-color:#ff0044; color:#ff0044; }
+        }
         .stash-loading { text-align:center; padding:60px 20px; color:#2a2a3a; font-size:0.85em; letter-spacing:3px; }
         .loading-dots::after { content:'...'; animation:blink 1.2s infinite; }
 
@@ -339,6 +351,11 @@
             <div id="secret-rainbow-dot" class="theme-opt" style="display:none;--dot-color:#ffffff" onclick="simonDotClick(this,'rainbow','#050510')" title="RGB MODE"></div>
         </div>
     </div>
+    <div class="title-bar-marquee">
+        <marquee scrollamount="6" style="font-family:'Courier New',monospace;font-size:0.68em;color:#ccc;letter-spacing:2px;" onmouseenter="this.setAttribute('scrollamount','1')" onmouseleave="this.setAttribute('scrollamount','6')">
+            ★ ENTER A WALLET AND CLICK [ LOAD WALLET ] TO VIEW YOUR ASSETS &nbsp;·&nbsp; CLICK A COLUMN HEADER TO SORT &nbsp;·&nbsp; CLICK ANY ROW TO OPEN MARKET INTEL &nbsp;·&nbsp; USE [ FETCH PRICES ] AFTER LOADING A TAB TO SEE FLOOR PRICES &nbsp;·&nbsp; TYPE IN THE FILTER BOX TO SEARCH BY NAME, RARITY, OR ANY VALUE &nbsp;·&nbsp; A+ / A- ADJUSTS TABLE FONT SIZE &nbsp;·&nbsp; TABS ARE CACHED — USE [ REFRESH ] TO RELOAD LATEST DATA &nbsp;·&nbsp; APPRAISE TAB SHOWS TOTAL COLLECTION VALUE ACROSS ALL SCHEMAS &nbsp;&nbsp;★&nbsp;&nbsp;
+        </marquee>
+    </div>
 </div>
 
 <div class="stash-main">
@@ -355,7 +372,7 @@
 
     <div class="stash-action-bar">
         <input type="text" id="wallet-input" placeholder="ENTER WAX WALLET..." oninput="manualWalletInput()" onkeydown="if(event.key==='Enter')manualScan()">
-        <button class="cyber-btn" onclick="manualScan()">[ LOAD WALLET ]</button>
+        <button class="cyber-btn" id="btn-load-wallet" onclick="manualScan()">[ LOAD WALLET ]</button>
         <button class="cyber-btn" onclick="refreshTab()">[ REFRESH ]</button>
         <button class="cyber-btn" id="scan-prices-btn" onclick="scanPrices()">[ FETCH PRICES ]</button>
         <button class="cyber-btn" onclick="adjustFont(1)" style="padding:6px 10px;">A+</button>
@@ -500,6 +517,8 @@
     // ─── STASH CORE ────────────────────────────────────────────────────────────
     var _activeTab = 'crew';
     var _assetCache = {}, _pdAllCache = {}, _floorCache = {};
+    var _loadToken = 0;
+    var _stashSortCol = -1, _stashSortDir = 1;
     var API_AA_ENDPOINTS = [
         'https://wax.api.atomicassets.io/atomicassets/v1/assets',
         'https://aa.wax.blacklusion.io/atomicassets/v1/assets',
@@ -718,7 +737,7 @@
 
     function buildTable(heads, assets, rowFn, collection) {
         var html='<div class="stash-table-wrap"><table class="stash-table"><thead><tr>';
-        heads.forEach(function(h){html+='<th>'+h+'</th>';});
+        heads.forEach(function(h){html+='<th onclick="stashSort(this)">'+h+'</th>';});
         html+='</tr></thead><tbody>';
         assets.forEach(function(a){
             var tmpl=a.template?a.template.template_id:'';
@@ -727,6 +746,26 @@
         });
         html+='</tbody></table></div>';
         return html;
+    }
+
+    function stashSort(th) {
+        var ths=Array.from(th.closest('thead').querySelectorAll('th'));
+        var col=ths.indexOf(th);
+        if(_stashSortCol===col){_stashSortDir*=-1;}else{_stashSortCol=col;_stashSortDir=1;}
+        ths.forEach(function(h){h.textContent=h.textContent.replace(/ [▲▼]$/,'');});
+        th.textContent+=_stashSortDir===1?' ▲':' ▼';
+        var tbody=th.closest('table').querySelector('tbody');
+        var rows=Array.from(tbody.querySelectorAll('tr'));
+        rows.sort(function(a,b){
+            var aCell=a.querySelectorAll('td')[col];
+            var bCell=b.querySelectorAll('td')[col];
+            var aVal=(aCell?aCell.textContent.trim():'').replace(/ WAX$/i,'');
+            var bVal=(bCell?bCell.textContent.trim():'').replace(/ WAX$/i,'');
+            var aNum=parseFloat(aVal),bNum=parseFloat(bVal);
+            if(!isNaN(aNum)&&!isNaN(bNum)) return(aNum-bNum)*_stashSortDir;
+            return aVal.localeCompare(bVal)*_stashSortDir;
+        });
+        rows.forEach(function(r){tbody.appendChild(r);});
     }
 
     function rowClick(row) {
@@ -748,6 +787,7 @@
     }
 
     async function loadTab(tabId, wallet) {
+        var myToken = ++_loadToken;
         var cfg=TAB_CFG[tabId]; if(!cfg) return;
         var content=document.getElementById('stash-content');
         content.innerHTML='<div class="stash-loading">SCANNING <span class="loading-dots"></span></div>';
@@ -779,6 +819,8 @@
             _assetCache[cacheKey]=assets;
         }
 
+        if(myToken !== _loadToken) return; // tab changed mid-fetch — discard stale result
+
         var cntEl=document.getElementById('cnt-'+tabId);
         if(cntEl) cntEl.textContent=assets.length;
 
@@ -792,6 +834,7 @@
 
     function switchTab(tabId){
         _activeTab=tabId;
+        _stashSortCol=-1; _stashSortDir=1;
         document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
         var ab=document.getElementById('tab-'+tabId); if(ab) ab.classList.add('active');
         var s=document.getElementById('stash-search'); if(s) s.value='';
