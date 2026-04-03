@@ -141,9 +141,9 @@
         .intel-row { display:flex; justify-content:space-between; border-bottom:1px dashed #333; padding:5px 0; font-size:0.88em; }
         .intel-label { color:#666; }
         .intel-val { color:var(--theme-color); font-weight:bold; font-family:monospace; }
-        .market-links { display:flex; flex-direction:column; gap:5px; margin-top:10px; border-top:1px solid #333; padding-top:8px; }
-        .market-link-btn { background:#000; color:var(--theme-color); border:1px solid #333; padding:6px 10px; font-family:'Courier New',monospace; font-size:0.72em; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:6px; transition:all 0.2s; letter-spacing:1px; }
-        .market-link-btn:hover { border-color:var(--theme-color); background:rgba(255,170,0,0.06); }
+        .market-links { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:10px; border-top:1px solid #333; padding-top:10px; }
+        .market-link-btn { background:#111; color:var(--theme-color); border:1px solid #333; padding:6px 8px; font-family:'Courier New',monospace; font-size:0.72em; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:5px; transition:all 0.2s; letter-spacing:0.5px; }
+        .market-link-btn:hover { background:var(--theme-color); color:#000; border-color:var(--theme-color); }
         .market-btn-logo { width:14px; height:14px; object-fit:contain; }
 
         /* PUSH TABLE RIGHT WHEN DECK OPEN */
@@ -283,10 +283,12 @@
     <div class="intel-row"><span class="intel-label">LOWEST PRICE:</span><span id="intel-floor" class="intel-val">—</span></div>
     <div class="intel-row"><span class="intel-label">LAST SOLD:</span><span id="intel-last" class="intel-val">—</span></div>
     <div class="intel-row"><span class="intel-label">SUGGESTED:</span><span id="intel-sugg" class="intel-val">—</span></div>
+    <canvas id="sparkline-canvas" style="display:block;width:100%;height:65px;margin-top:8px;border-top:1px dashed #333;padding-top:4px;box-sizing:border-box;"></canvas>
     <div class="market-links">
-        <a id="lnk-atomic" href="#" target="_blank" class="market-link-btn"><img src="atomicfavicon.ico" class="market-btn-logo" alt="" onerror="this.style.display='none'"> ATOMICHUB</a>
-        <a id="lnk-nefty" href="#" target="_blank" class="market-link-btn"><img src="https://resizer2.neftyblocks.com/?ipfs=https%3A%2F%2Fraw.githubusercontent.com%2Feoscafe%2Feos-airdrops%2Fmaster%2Flogos%2FNEFTY_296.png&width=100" class="market-btn-logo" alt=""> NEFTY</a>
-        <a id="lnk-nfthive" href="#" target="_blank" class="market-link-btn"><img src="https://nfthive.io/favicon.ico" class="market-btn-logo" alt="" onerror="this.style.display='none'"> NFTHIVE</a>
+        <a id="lnk-atomic" href="#" target="_blank" class="market-link-btn"><img src="atomicfavicon.ico" class="market-btn-logo" alt="" onerror="this.style.display='none'">ATOMIC</a>
+        <a id="lnk-nefty" href="#" target="_blank" class="market-link-btn"><img src="https://resizer2.neftyblocks.com/?ipfs=https%3A%2F%2Fraw.githubusercontent.com%2Feoscafe%2Feos-airdrops%2Fmaster%2Flogos%2FNEFTY_296.png&width=100" class="market-btn-logo" alt="">NEFTY</a>
+        <a id="lnk-hive" href="#" target="_blank" class="market-link-btn"><img src="https://nfthive.io/favicon.ico" class="market-btn-logo" alt="" onerror="this.style.display='none'">HIVE</a>
+        <a id="lnk-f12" href="#" target="_blank" class="market-link-btn"><img src="F12key_logoV2.png" class="market-btn-logo" alt="" onerror="this.style.display='none'">F12 KEY</a>
     </div>
 </div>
 
@@ -686,6 +688,43 @@
     }
     function closeIntel() { _intelOpen=false; var mf=document.getElementById('market-frame'); mf.classList.remove('open'); mf.style.display='none'; }
 
+    function drawSparkline(entries) {
+        var cvs=document.getElementById('sparkline-canvas'); if(!cvs) return;
+        var W=cvs.clientWidth||258, H=60; cvs.width=W; cvs.height=H;
+        var ctx=cvs.getContext('2d'); ctx.clearRect(0,0,W,H);
+        var color=getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim()||'#ffaa00';
+        var LABEL_H=12, graphH=H-LABEL_H;
+        if(!entries||entries.length<2){ctx.fillStyle='#444';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText('NO HISTORY',W/2,graphH/2+3);return;}
+        var prices=entries.map(function(e){return typeof e==='object'?e.price:e;});
+        var times=entries.map(function(e){return typeof e==='object'?e.time:null;});
+        var min=Math.min.apply(null,prices),max=Math.max.apply(null,prices),pad=4,range=max-min||1;
+        var sy=function(p){return graphH-pad-((p-min)/range)*(graphH-pad*2);};
+        var sx=function(i){return pad+(i/(prices.length-1))*(W-pad*2);};
+        ctx.beginPath();
+        prices.forEach(function(p,i){i===0?ctx.moveTo(sx(i),sy(p)):ctx.lineTo(sx(i),sy(p));});
+        ctx.lineTo(sx(prices.length-1),graphH); ctx.lineTo(sx(0),graphH); ctx.closePath();
+        ctx.fillStyle=color+'22'; ctx.fill();
+        ctx.beginPath();
+        prices.forEach(function(p,i){i===0?ctx.moveTo(sx(i),sy(p)):ctx.lineTo(sx(i),sy(p));});
+        ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.stroke();
+        ctx.fillStyle=color;
+        prices.forEach(function(p,i){ctx.beginPath();ctx.arc(sx(i),sy(p),2,0,Math.PI*2);ctx.fill();});
+        ctx.fillStyle='#555'; ctx.font='8px monospace';
+        ctx.textAlign='left'; ctx.fillText(min.toFixed(1),pad,graphH-1);
+        ctx.textAlign='right'; ctx.fillText(max.toFixed(1),W-pad,9);
+        if(times[0]){
+            var fmt=function(ts){var d=new Date(ts);return(d.getMonth()+1)+'/'+(d.getDate());};
+            var n=prices.length-1;
+            [0,Math.round(n/3),Math.round(2*n/3),n].forEach(function(idx,i){
+                var x=sx(idx);
+                ctx.textAlign=i===0?'left':i===3?'right':'center';
+                ctx.fillText(fmt(times[idx]),i===0?pad:i===3?W-pad:x,H-2);
+            });
+        }
+    }
+
+    window.stashSort = stashSort; // ensure accessible from inline onclick in dynamically built tables
+
     async function openIntel(assetName, templateId, collection) {
         _intelOpen=true;
         var mf=document.getElementById('market-frame'); mf.classList.add('open'); mf.style.display='block';
@@ -695,11 +734,13 @@
         document.getElementById('intel-floor').textContent='SCANNING...';
         document.getElementById('intel-last').textContent='SCANNING...';
         document.getElementById('intel-sugg').textContent='—';
+        drawSparkline([]);
         if(templateId&&templateId!=='—'){
             var col=collection||'alien.worlds';
             document.getElementById('lnk-atomic').href='https://wax.atomichub.io/market?collection_name='+col+'&template_id='+templateId+'&order=asc&sort=price&state=1&symbol=WAX';
             document.getElementById('lnk-nefty').href='https://neftyblocks.com/marketplace/listing?collection_name='+col+'&template_id='+templateId;
-            document.getElementById('lnk-nfthive').href='https://nfthive.io/market?collection='+col+'&template_id='+templateId;
+            document.getElementById('lnk-hive').href='https://nfthive.io/market?collection='+col+'&template_id='+templateId;
+            document.getElementById('lnk-f12').href='https://f12key.eu/collection/'+col+'/templates/'+templateId;
             // Floor
             try{
                 var res=await fetch(API_SALES+'?symbol=WAX&state=1&template_id='+templateId+'&_ts='+Date.now(),{cache:'no-store'});
@@ -713,15 +754,17 @@
                     }
                 } else { document.getElementById('intel-floor').textContent='NONE'; }
             }catch(e){document.getElementById('intel-floor').textContent='ERR';}
-            // Last sold
+            // Last sold + sparkline history
             try{
-                var res2=await fetch(API_HISTORY+'?state=3&template_id='+templateId+'&page=1&limit=1&order=desc&sort=updated&symbol=WAX&_ts='+Date.now(),{cache:'no-store'});
+                var res2=await fetch(API_HISTORY+'?state=3&template_id='+templateId+'&page=1&limit=10&order=desc&sort=updated&symbol=WAX&_ts='+Date.now(),{cache:'no-store'});
                 var json2=await res2.json();
                 if(json2.data&&json2.data[0]&&json2.data[0].price){
                     var p2=json2.data[0].price,v2=parseInt(p2.amount)/Math.pow(10,p2.token_precision);
                     document.getElementById('intel-last').textContent=v2.toFixed(2)+' WAX';
-                } else { document.getElementById('intel-last').textContent='NONE'; }
-            }catch(e){document.getElementById('intel-last').textContent='ERR';}
+                    var hist=json2.data.slice().reverse().map(function(s){return{price:parseInt(s.price.amount)/Math.pow(10,s.price.token_precision),time:parseInt(s.updated_at_time)};});
+                    drawSparkline(hist);
+                } else { document.getElementById('intel-last').textContent='NONE'; drawSparkline([]); }
+            }catch(e){document.getElementById('intel-last').textContent='ERR'; drawSparkline([]);}
         } else {
             document.getElementById('intel-floor').textContent='—';
             document.getElementById('intel-last').textContent='—';
