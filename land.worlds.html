@@ -556,7 +556,7 @@
 
 <!-- ══ PLANET HINT ════════════════════════════════════════════════════════════ -->
 <div style="overflow:hidden;background:rgba(0,0,0,0.4);border-bottom:1px solid rgba(255,255,255,0.04);padding:3px 0;">
-    <marquee scrollamount="3" style="font-family:'Courier New',monospace;font-size:0.68em;color:#335;letter-spacing:2px;">
+    <marquee id="hint-marquee" scrollamount="6" style="font-family:'Courier New',monospace;font-size:0.68em;color:#ccc;letter-spacing:2px;" onmouseenter="this.setAttribute('scrollamount','1')" onmouseleave="this.setAttribute('scrollamount','6')">
         ★ CLICK A PLANET'S NAME TO FILTER &nbsp;&nbsp;·&nbsp;&nbsp; CLICK AGAIN TO DESELECT &nbsp;&nbsp;·&nbsp;&nbsp; MULTIPLE PLANETS CAN BE ACTIVE AT ONCE &nbsp;&nbsp;·&nbsp;&nbsp; USE THE SCAN BUTTONS TO LOAD PRICE DATA PER PLANET &nbsp;&nbsp;·&nbsp;&nbsp; 📦 = BUNDLE LISTING (PRICE COVERS MULTIPLE ASSETS) &nbsp;&nbsp;★&nbsp;&nbsp;
     </marquee>
 </div>
