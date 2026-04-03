@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-48CCMEYHXG');
+    </script>
+    <title>OUTPOST SCOUTER // Naron Codex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="NCico.png">
+    <script src="waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor()],
+        });
+        window.walletKit = kit;
+        window.WalletPluginAnchor = WalletPluginAnchor;
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+                if (typeof checkWalletState === 'function') checkWalletState();
+            }
+        } catch(e) {}
+    </script>
+    <style>
+        :root {
+            --theme-color: #00ffcc;
+            --theme-shadow: 0 0 15px rgba(0,255,204,0.4);
+            --theme-dark: #001a14;
+            --theme-hover: rgba(0,255,204,0.1);
+            --theme-border: 1px solid rgba(0,255,204,0.3);
+        }
+        body {
+            cursor: crosshair;
+            background: #03030e;
+            color: #d0d0d0;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0; padding: 0; min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* WARP STARS CANVAS — sits above body bg, below content */
+        #stars-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:1; pointer-events:none; }
+
+        /* GLOBAL HEADER */
+        .global-header { display:flex; justify-content:space-between; align-items:center; background:rgba(2,10,8,0.95); border-bottom:2px solid var(--theme-color); padding:15px 30px; position:sticky; top:0; z-index:2000; box-shadow:0 5px 20px rgba(0,0,0,0.9); backdrop-filter:blur(8px); }
+        #header-planet-canvas { width:36px; height:36px; border-radius:50%; cursor:pointer; vertical-align:middle; margin-right:8px; flex-shrink:0; }
+        @keyframes hp-fadeout { 0%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
+        .logo-section { display:flex; align-items:center; }
+        .logo-section h1 { color:var(--theme-color); margin:0; font-size:1.8em; letter-spacing:4px; text-transform:uppercase; text-shadow:0 0 10px var(--theme-color); }
+        .nav-links { display:flex; gap:10px; flex-wrap:wrap; }
+        .nav-btn { background:transparent; color:#888; border:1px solid transparent; padding:8px 16px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.9em; text-decoration:none; cursor:pointer; transition:all 0.3s; text-transform:uppercase; border-radius:6px; }
+        .nav-btn:hover { color:var(--theme-color); border-color:var(--theme-color); }
+        .nav-btn.active { color:#000; background:var(--theme-color); border-color:var(--theme-color); box-shadow:var(--theme-shadow); }
+        .wallet-section { position:relative; display:flex; gap:6px; align-items:center; }
+        .wallet-btn { background:#0a0a14; color:var(--theme-color); border:1px dashed var(--theme-color); padding:10px 20px; font-family:'Courier New',monospace; font-weight:bold; cursor:pointer; transition:all 0.3s; }
+        .wallet-btn:hover { background:var(--theme-hover); box-shadow:var(--theme-shadow); }
+        .wallet-btn.logged-in { background:var(--theme-color); color:#000; border:1px solid #fff; }
+        #hamburger-btn { display:none; background:transparent; border:1px solid #444; color:#aaa; font-size:1.2em; padding:6px 10px; cursor:pointer; border-radius:4px; }
+        #nav-dropdown { display:none; flex-direction:column; background:rgba(2,10,8,0.97); border-bottom:1px solid var(--theme-color); padding:10px 20px; gap:6px; position:relative; z-index:1999; }
+        #nav-dropdown.open { display:flex; }
+        .nav-dropdown-wrap { position:relative; }
+        .nav-dropdown-btn { background:transparent; color:#888; border:1px solid transparent; padding:8px 16px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.9em; cursor:pointer; transition:all 0.3s; text-transform:uppercase; border-radius:6px; }
+        .nav-dropdown-btn:hover { color:var(--theme-color); border-color:var(--theme-color); }
+        .nav-dropdown-menu { display:none; position:absolute; top:100%; left:0; background:rgba(2,10,8,0.98); border:1px solid var(--theme-color); border-top:none; min-width:140px; z-index:3000; padding:4px 0; }
+        .nav-dropdown-wrap:hover .nav-dropdown-menu { display:block; }
+        .nav-dropdown-item { display:block; padding:8px 16px; color:#888; text-decoration:none; font-family:'Courier New',monospace; font-size:0.85em; transition:all 0.2s; }
+        .nav-dropdown-item:hover { color:var(--theme-color); background:var(--theme-hover); }
+
+        /* TITLE BAR — positioned above stars canvas */
+        .title-bar { display:flex; flex-direction:column; align-items:stretch; padding:20px 30px 0; border-bottom:1px solid rgba(0,255,204,0.12); background:rgba(5,5,5,0.97); backdrop-filter:blur(5px); position:relative; z-index:2; }
+        .title-bar-marquee { overflow:hidden; background:rgba(0,0,0,0.3); border-top:1px solid rgba(255,255,255,0.04); padding:4px 0; margin-top:12px; }
+        .title-bar-left { display:flex; flex-direction:column; gap:8px; }
+        .title-bar-left h1 { margin:0; font-size:1.8em; letter-spacing:6px; text-transform:uppercase; color:var(--theme-color); text-shadow:var(--theme-shadow); }
+        .title-bar-left .page-subtitle { margin:0; color:#555; font-size:0.72em; letter-spacing:3px; }
+
+        /* OUTPOST MAIN — positioned above stars canvas */
+        .outpost-main { max-width:1200px; margin:0 auto; width:100%; padding:30px 20px 60px; box-sizing:border-box; flex:1; position:relative; z-index:2; }
+
+        /* ACTION BAR */
+        .action-bar { display:flex; align-items:center; gap:16px; margin-bottom:28px; flex-wrap:wrap; }
+
+        /* ROUNDED SCI-FI BUTTON */
+        .outpost-btn {
+            border-radius: 20px;
+            padding: 10px 28px;
+            background: transparent;
+            border: 1px solid var(--theme-color);
+            color: var(--theme-color);
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+        }
+        .outpost-btn { text-decoration:none; }
+        .outpost-btn:hover { background:var(--theme-color); color:#000; box-shadow:var(--theme-shadow); }
+        .outpost-btn:disabled { opacity:0.4; cursor:default; background:transparent; color:var(--theme-color); box-shadow:none; }
+
+        /* STATUS */
+        #scan-status { font-size:0.72em; color:#444; letter-spacing:1.5px; }
+
+        /* SECTIONS */
+        .section-block { margin-bottom:40px; }
+        .section-header {
+            font-size:0.88em; letter-spacing:3px; font-weight:bold;
+            padding:7px 16px; border-radius:20px; display:inline-block;
+            margin-bottom:18px;
+        }
+        .active-header   { color:#00ff77; background:rgba(0,255,100,0.06); border:1px solid rgba(0,255,100,0.3); }
+        .upcoming-header { color:#44aaff; background:rgba(0,170,255,0.06); border:1px solid rgba(0,170,255,0.3); }
+
+        /* OFFERS GRID */
+        .offers-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+        @media (max-width:900px) { .offers-grid { grid-template-columns:repeat(2,1fr); } }
+
+        /* OFFER CARD — 3D FLIP */
+        .card-wrap { perspective:900px; height:320px; }
+        .offer-card {
+            width:100%; height:100%;
+            position:relative;
+            transform-style:preserve-3d;
+            transition:transform 0.45s ease;
+            cursor:pointer;
+        }
+        .offer-card.flipped { transform:rotateY(180deg); }
+        .card-face {
+            position:absolute; inset:0;
+            backface-visibility:hidden;
+            -webkit-backface-visibility:hidden;
+            border-radius:14px; overflow:hidden;
+        }
+        .card-front {
+            background:rgba(0,255,204,0.02);
+            border:1px solid rgba(0,255,204,0.14);
+            display:flex; flex-direction:column; align-items:center; gap:8px;
+            padding:14px 10px; text-align:center;
+            transition:border-color 0.2s, box-shadow 0.2s;
+        }
+        .offer-card:not(.flipped):hover .card-front { border-color:var(--theme-color); box-shadow:0 0 16px rgba(0,255,204,0.18); }
+        .offer-card.active .card-front   { border-color:rgba(0,255,100,0.35); }
+        .offer-card.upcoming .card-front { border-color:rgba(0,170,255,0.28); }
+        .card-back {
+            transform:rotateY(180deg);
+            background:#04040f;
+            border:1px solid rgba(0,255,204,0.3);
+            display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+            padding:10px;
+        }
+        .card-back-img { width:100%; flex:1; object-fit:contain; min-height:0; border-radius:6px; }
+        .card-back-label { color:var(--theme-color); font-size:0.68em; letter-spacing:1px; text-transform:uppercase; text-align:center; line-height:1.3; }
+        .offer-img { width:156px; height:156px; object-fit:contain; border-radius:8px; background:#080818; border:1px solid #1a1a2e; }
+        .offer-img-placeholder { width:156px; height:156px; border-radius:8px; background:#080818; border:1px solid #1a1a2e; display:flex; align-items:center; justify-content:center; color:#252535; font-size:0.68em; letter-spacing:1px; }
+        .offer-name { color:var(--theme-color); font-size:0.74em; letter-spacing:1px; font-weight:bold; text-transform:uppercase; line-height:1.35; }
+        .offer-badge { font-size:0.6em; letter-spacing:2px; padding:2px 10px; border-radius:10px; font-weight:bold; text-transform:uppercase; }
+        .element-earth     { color:#c8a827; border:1px solid rgba(200,168,39,0.35); }
+        .element-wind      { color:#00ccaa; border:1px solid rgba(0,204,170,0.35); }
+        .element-fire      { color:#ff6644; border:1px solid rgba(255,102,68,0.35); }
+        .element-water     { color:#4488ff; border:1px solid rgba(68,136,255,0.35); }
+        .element-lightning { color:#ffcc00; border:1px solid rgba(255,204,0,0.35); }
+        .element-generic   { color:#888;    border:1px solid #333; }
+        .offer-cost { color:#e0e0e0; font-size:0.88em; letter-spacing:1px; font-weight:bold; display:flex; align-items:center; gap:5px; }
+        .shard-icon-img { width:26px; height:26px; object-fit:contain; vertical-align:middle; }
+        .offer-window { width:100%; font-size:0.65em; color:#555; letter-spacing:0.5px; display:flex; flex-direction:column; gap:4px; border-top:1px solid #141425; padding-top:7px; margin-top:2px; }
+        .window-row { display:flex; justify-content:space-between; gap:6px; }
+        .window-label { color:#3a3a5a; text-transform:uppercase; flex-shrink:0; }
+        .window-time   { color:#666; text-align:right; }
+
+        /* EMPTY / LOADING */
+        .empty-msg     { color:#2a2a4a; font-size:0.8em; letter-spacing:2px; padding:16px 0; }
+        .outpost-loading { color:#3a3a5a; letter-spacing:3px; font-size:0.82em; padding:50px 0; text-align:center; }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+        .loading-dots::after { content:'...'; animation:blink 1s step-end infinite; }
+
+        /* HEADER STAR GAME */
+        .star-target { position:fixed; font-size:1.5em; cursor:pointer; z-index:9999; color:var(--theme-color); animation:hp-fadeout 1.6s ease-in forwards; user-select:none; pointer-events:all; }
+        #star-hud { display:none; position:fixed; bottom:12px; right:16px; z-index:9998; font-family:'Courier New',monospace; font-size:0.7em; color:#333; letter-spacing:2px; }
+
+        /* RESPONSIVE */
+        @media (max-width:768px) {
+            .nav-links { display:none; }
+            #hamburger-btn { display:block; }
+            .title-bar-left h1 { font-size:1.3em; letter-spacing:4px; }
+            .offers-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
+            .card-wrap { height:255px; }
+            .offer-img, .offer-img-placeholder { width:100px; height:100px; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+
+<header class="global-header">
+    <div class="logo-section">
+        <canvas id="header-planet-canvas" width="36" height="36"></canvas>
+        <h1>NARON CODEX</h1>
+    </div>
+    <nav class="nav-links">
+        <a href="index.html" class="nav-btn"><img src="NCico.png" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">HUB</a>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">AW &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="crew.worlds.html" class="nav-dropdown-item">CREW</a>
+                <a href="arms.worlds.html" class="nav-dropdown-item">ARMS</a>
+                <a href="tools.worlds.html" class="nav-dropdown-item">TOOLS</a>
+                <a href="faces.worlds.html" class="nav-dropdown-item">FACES</a>
+                <a href="land.worlds.html" class="nav-dropdown-item">LAND</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.onerror=null;this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="pd.units.html" class="nav-dropdown-item">PD UNITS</a>
+                <a href="pd.materials.html" class="nav-dropdown-item">PD MATS</a>
+                <a href="army.html" class="nav-dropdown-item">ARMY BUILDER</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn active">UTILITY &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="stash.html" class="nav-dropdown-item">&#11041; STASH</a>
+                <a href="outpost.html" class="nav-dropdown-item" style="color:var(--theme-color)"><img src="Shards.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST</a>
+            </div>
+        </div>
+    </nav>
+    <div class="wallet-section">
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="disconnectWallet()" style="display:none;"></button>
+        <button id="wallet-btn-anchor" class="wallet-btn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
+        <button id="wallet-btn-wcc" class="wallet-btn" onclick="loginWithWCC()">[ &#9729; CLOUD WALLET ]</button>
+    </div>
+    <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
+</header>
+
+<nav id="nav-dropdown">
+    <a href="index.html" class="nav-btn">HUB</a>
+    <a href="crew.worlds.html" class="nav-btn">CREW</a>
+    <a href="arms.worlds.html" class="nav-btn">ARMS</a>
+    <a href="tools.worlds.html" class="nav-btn">TOOLS</a>
+    <a href="faces.worlds.html" class="nav-btn">FACES</a>
+    <a href="land.worlds.html" class="nav-btn">LAND</a>
+    <a href="pd.units.html" class="nav-btn">PD UNITS</a>
+    <a href="pd.materials.html" class="nav-btn">PD MATS</a>
+    <a href="army.html" class="nav-btn">ARMY BUILDER</a>
+    <a href="stash.html" class="nav-btn">&#11041; STASH</a>
+    <a href="outpost.html" class="nav-btn active"><img src="Shards.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST</a>
+</nav>
+
+
+<div class="title-bar">
+    <div class="title-bar-left">
+        <h1><img src="Shards.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST SCOUTER</h1>
+        <p class="page-subtitle">ALIEN WORLDS OUTPOST &middot; LIVE SHARD OFFERS FROM CHAIN</p>
+    </div>
+    <div class="title-bar-marquee">
+        <marquee scrollamount="6" style="font-family:'Courier New',monospace;font-size:0.68em;color:#ccc;letter-spacing:2px;" onmouseenter="this.setAttribute('scrollamount','1')" onmouseleave="this.setAttribute('scrollamount','6')">
+            ★ CLICK [ SCAN OUTPOST ] TO FETCH LIVE OFFERS FROM THE WAX BLOCKCHAIN &nbsp;·&nbsp; ACTIVE OFFERS ARE AVAILABLE TO PURCHASE NOW WITH SHARDS &nbsp;·&nbsp; COSTS ARE DISPLAYED IN SHARDS — DIVIDE BY THE SHOWN VALUE TO CONFIRM &nbsp;·&nbsp; UPCOMING OFFERS SHOW WHEN THEY WILL OPEN AND CLOSE &nbsp;·&nbsp; DATA IS FETCHED FRESH WITH NO CACHE ON EVERY SCAN &nbsp;·&nbsp; VISIT THE ALIEN WORLDS OUTPOST TO MAKE PURCHASES &nbsp;&nbsp;★&nbsp;&nbsp;
+        </marquee>
+    </div>
+</div>
+
+<div class="outpost-main">
+    <div class="action-bar">
+        <button class="outpost-btn" id="scan-btn" onclick="scanOutpost()">[ SCAN OUTPOST ]</button>
+        <a href="https://play.alienworlds.io/outpost" target="_blank" rel="noopener" class="outpost-btn">[ &#9654; VISIT OUTPOST ]</a>
+        <span id="scan-status"></span>
+    </div>
+    <div id="outpost-content">
+        <div class="outpost-loading">SCANNING OUTPOST<span class="loading-dots"></span></div>
+    </div>
+</div>
+
+<div id="star-hud">✦ <span id="star-score-num">0</span></div>
+
+<script>
+    // ─── WALLET ────────────────────────────────────────────────────────────────
+    var wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: '', tryAutoLogin: false });
+
+    function checkWalletState() {
+        updateWalletUI(localStorage.getItem('naron_wallet') || null);
+    }
+    async function loginWithAnchor() {
+        try {
+            var r = await window.walletKit.login();
+            window.walletSession = r.session;
+            localStorage.setItem('naron_wallet', String(r.session.actor));
+            checkWalletState();
+        } catch(e) { console.error(e); }
+    }
+    async function loginWithWCC() {
+        try {
+            var account = await wax.login();
+            localStorage.setItem('naron_wallet', account);
+            checkWalletState();
+        } catch(e) { console.error(e); }
+    }
+    function disconnectWallet() {
+        if (window.walletKit && window.walletSession) { window.walletKit.logout(window.walletSession).catch(function(){}); window.walletSession = null; }
+        localStorage.removeItem('naron_wallet');
+        checkWalletState();
+    }
+    function updateWalletUI(account) {
+        var btnAccount = document.getElementById('wallet-connect-btn');
+        var btnAnchor  = document.getElementById('wallet-btn-anchor');
+        var btnWCC     = document.getElementById('wallet-btn-wcc');
+        if (account) {
+            if (btnAccount) { btnAccount.textContent = '[ ' + account + ' ]'; btnAccount.style.display = ''; btnAccount.classList.add('logged-in'); }
+            if (btnAnchor) btnAnchor.style.display = 'none';
+            if (btnWCC)    btnWCC.style.display    = 'none';
+        } else {
+            if (btnAccount) { btnAccount.style.display = 'none'; btnAccount.classList.remove('logged-in'); }
+            if (btnAnchor) btnAnchor.style.display = '';
+            if (btnWCC)    btnWCC.style.display    = '';
+        }
+    }
+
+    // ─── HAMBURGER ─────────────────────────────────────────────────────────────
+    function toggleHamburger() { var dd = document.getElementById('nav-dropdown'); if (dd) dd.classList.toggle('open'); }
+    document.addEventListener('click', function(e) {
+        var dd = document.getElementById('nav-dropdown'), btn = document.getElementById('hamburger-btn');
+        if (dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) dd.classList.remove('open');
+    });
+
+    // ─── DATA ──────────────────────────────────────────────────────────────────
+    var RPC_ENDPOINTS = [
+        'https://wax.greymass.com',
+        'https://api.waxsweden.org',
+        'https://wax.eosphere.io',
+        'https://wax.eosnation.io',
+        'https://wax.alohaeos.com'
+    ];
+    var AA_BASE_ENDPOINTS = [
+        'https://wax.api.atomicassets.io',
+        'https://aa.wax.blacklusion.io',
+        'https://wax-aa.eu.eosamsterdam.net',
+        'https://atomic.wax.eosrio.io'
+    ];
+    var IPFS_GATEWAY = 'https://ipfs.io/ipfs/';
+    var _tmplCache = {};
+    var _aaActiveBase = null;
+
+    async function fetchTableRows(params) {
+        for (var i = 0; i < RPC_ENDPOINTS.length; i++) {
+            try {
+                var res = await fetch(RPC_ENDPOINTS[i] + '/v1/chain/get_table_rows', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    cache: 'no-store',
+                    body: JSON.stringify(params)
+                });
+                if (!res.ok) continue;
+                var json = await res.json();
+                if (json.rows !== undefined) return json;
+            } catch(e) { continue; }
+        }
+        return null;
+    }
+
+    async function fetchTemplateInfo(tmplId) {
+        if (_tmplCache[tmplId]) return _tmplCache[tmplId];
+        var tryList = _aaActiveBase
+            ? [_aaActiveBase].concat(AA_BASE_ENDPOINTS.filter(function(u){ return u !== _aaActiveBase; }))
+            : AA_BASE_ENDPOINTS;
+        for (var i = 0; i < tryList.length; i++) {
+            try {
+                var res = await fetch(tryList[i] + '/atomicassets/v1/templates?template_id=' + tmplId + '&limit=1&_ts=' + Date.now(), { cache: 'no-store' });
+                if (!res.ok) continue;
+                var json = await res.json();
+                if (json.data && json.data[0]) {
+                    _aaActiveBase = tryList[i];
+                    var d = json.data[0];
+                    var im = d.immutable_data || {};
+                    var info = {
+                        name:    im.name    ? String(im.name)    : ('Template #' + tmplId),
+                        img:     im.img     ? IPFS_GATEWAY + im.img : null,
+                        element: im.element ? String(im.element) : null,
+                        type:    im.type    ? String(im.type)    : null,
+                        schema:  (d.schema && d.schema.schema_name) ? d.schema.schema_name : null
+                    };
+                    _tmplCache[tmplId] = info;
+                    return info;
+                }
+            } catch(e) { continue; }
+        }
+        _tmplCache[tmplId] = { name: 'Template #' + tmplId, img: null };
+        return _tmplCache[tmplId];
+    }
+
+    // WAX time_point_sec fields come back as ISO strings ("2024-04-01T12:00:00") or epoch ints
+    function parseTs(val) {
+        if (val == null) return null;
+        if (typeof val === 'number') return val;
+        var s = String(val);
+        var d = new Date(s.indexOf('Z') === -1 && s.indexOf('+') === -1 ? s + 'Z' : s);
+        return isNaN(d.getTime()) ? null : d.getTime() / 1000;
+    }
+
+    function formatTime(epoch) {
+        var ts = (typeof epoch === 'number') ? epoch : parseTs(epoch);
+        if (ts == null) return '\u2014';
+        var d = new Date(ts * 1000);
+        if (isNaN(d.getTime())) return '\u2014';
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return months[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' &middot; ' + String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0') + ' UTC';
+    }
+
+    function imgFallback(el) { el.style.display = 'none'; }
+
+    function setStatus(msg) {
+        var el = document.getElementById('scan-status');
+        if (el) el.textContent = msg;
+    }
+
+    // ─── SCAN ──────────────────────────────────────────────────────────────────
+    async function scanOutpost() {
+        var btn = document.getElementById('scan-btn');
+        var content = document.getElementById('outpost-content');
+        btn.disabled = true;
+        content.innerHTML = '<div class="outpost-loading">SCANNING OUTPOST<span class="loading-dots"></span></div>';
+        setStatus('FETCHING FROM CHAIN\u2026');
+
+        var result = await fetchTableRows({
+            code: 'uspts.worlds',
+            scope: 'uspts.worlds',
+            table: 'pointoffers',
+            limit: 100,
+            json: true
+        });
+
+        if (!result || !result.rows || result.rows.length === 0) {
+            content.innerHTML = '<div class="empty-msg">// NO OFFERS FOUND — CHECK CONNECTION //</div>';
+            setStatus('');
+            btn.disabled = false;
+            return;
+        }
+
+        var now = Date.now() / 1000;
+        var active = [], upcoming = [];
+
+        result.rows.forEach(function(r) {
+            var rawStart = r.start    != null ? r.start    : (r.start_time != null ? r.start_time : r.starts);
+            var rawEnd   = r.end      != null ? r.end      : (r.end_time   != null ? r.end_time   : r.ends);
+            var startTs  = parseTs(rawStart);
+            var endTs    = parseTs(rawEnd);
+            var rawCost  = r.required != null ? r.required : (r.cost != null ? r.cost : r.points_required);
+            var cost     = (rawCost || 0) / 10;
+            var tmplId   = r.template_id;
+            if (!tmplId) return;
+            if (endTs != null && now > endTs) return; // expired — skip
+            var entry = { tmplId: String(tmplId), cost: cost, startTs: startTs, endTs: endTs };
+            if (startTs != null && now < startTs) {
+                upcoming.push(entry);
+            } else {
+                active.push(entry);
+            }
+        });
+
+        upcoming.sort(function(a, b) { return (a.startTs || 0) - (b.startTs || 0); });
+
+        // Fetch template details for all unique IDs
+        var allIds = active.concat(upcoming).map(function(e){ return e.tmplId; });
+        var uniqueIds = allIds.filter(function(v, i, a){ return a.indexOf(v) === i; });
+        setStatus('LOADING ' + uniqueIds.length + ' TEMPLATE' + (uniqueIds.length !== 1 ? 'S' : '') + '\u2026');
+        for (var i = 0; i < uniqueIds.length; i++) {
+            await fetchTemplateInfo(uniqueIds[i]);
+        }
+
+        renderOffers(active, upcoming);
+
+        var now2 = new Date();
+        setStatus('LAST SCAN: '
+            + String(now2.getUTCHours()).padStart(2,'0') + ':'
+            + String(now2.getUTCMinutes()).padStart(2,'0')
+            + ' UTC \u00b7 ' + active.length + ' ACTIVE \u00b7 ' + upcoming.length + ' UPCOMING');
+        btn.disabled = false;
+    }
+
+    function toggleFlip(el) { el.classList.toggle('flipped'); }
+    window.toggleFlip = toggleFlip;
+
+    // ─── RENDER ────────────────────────────────────────────────────────────────
+    function renderOffers(active, upcoming) {
+        var content = document.getElementById('outpost-content');
+
+        function buildGrid(entries, cls) {
+            if (entries.length === 0) return '<div class="empty-msg">// NONE //</div>';
+            return '<div class="offers-grid">'
+                + entries.map(function(e) {
+                    var info = _tmplCache[e.tmplId] || { name: 'Template #' + e.tmplId, img: null };
+
+                    // Front image
+                    var frontImg = info.img
+                        ? '<img src="' + info.img + '" class="offer-img" onerror="imgFallback(this)">'
+                        : '<div class="offer-img-placeholder">NO IMG</div>';
+
+                    // Element / type badge
+                    var badge = '';
+                    if (info.element) {
+                        var elKey = info.element.toLowerCase().replace(/[^a-z]/g, '');
+                        badge = '<span class="offer-badge element-' + elKey + '">' + info.element.toUpperCase() + '</span>';
+                    } else if (info.type) {
+                        badge = '<span class="offer-badge element-generic">' + info.type.toUpperCase() + '</span>';
+                    }
+
+                    // Time window
+                    var windowHtml = '<div class="offer-window">';
+                    if (cls === 'upcoming' && e.startTs != null) {
+                        windowHtml += '<div class="window-row"><span class="window-label">STARTS</span><span class="window-time">' + formatTime(e.startTs) + '</span></div>';
+                    }
+                    if (e.endTs != null) {
+                        windowHtml += '<div class="window-row"><span class="window-label">ENDS</span><span class="window-time">' + formatTime(e.endTs) + '</span></div>';
+                    }
+                    windowHtml += '</div>';
+
+                    // Back face: large image
+                    var backImg = info.img
+                        ? '<img src="' + info.img + '" class="card-back-img" onerror="imgFallback(this)">'
+                        : '<div class="offer-img-placeholder" style="width:100%;height:80%;">NO IMG</div>';
+
+                    return '<div class="card-wrap">'
+                        + '<div class="offer-card ' + cls + '" onclick="toggleFlip(this)">'
+                        + '<div class="card-face card-front">'
+                        + frontImg
+                        + '<div class="offer-name">' + info.name + '</div>'
+                        + badge
+                        + '<div class="offer-cost"><img src="Shards.png" class="shard-icon-img" alt="shards"> ' + e.cost.toFixed(1) + ' SHARDS</div>'
+                        + windowHtml
+                        + '</div>'
+                        + '<div class="card-face card-back">'
+                        + backImg
+                        + '<div class="card-back-label">' + info.name + '</div>'
+                        + '</div>'
+                        + '</div>'
+                        + '</div>';
+                }).join('') + '</div>';
+        }
+
+        var html = ''
+            + '<div class="section-block">'
+            + '<div class="section-header active-header">&#9685; ACTIVE NOW (' + active.length + ')</div>'
+            + buildGrid(active, 'active')
+            + '</div>'
+            + '<div class="section-block">'
+            + '<div class="section-header upcoming-header">&#9684; COMING UP (' + upcoming.length + ')</div>'
+            + buildGrid(upcoming, 'upcoming')
+            + '</div>';
+
+        content.innerHTML = html;
+    }
+
+    // ─── WARP STARS ───────────────────────────────────────────────────────────
+    function initStars() {
+        var canvas = document.getElementById('stars-canvas');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var W, H, cx, cy;
+
+        function resize() {
+            W = canvas.width  = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+            cx = W / 2;
+            cy = H / 2;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        var stars = [];
+        for (var i = 0; i < 160; i++) {
+            stars.push({
+                x: (Math.random() - 0.5) * W,
+                y: (Math.random() - 0.5) * H,
+                z: Math.random() * W
+            });
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(3,3,14,0.2)';
+            ctx.fillRect(0, 0, W, H);
+
+            for (var i = 0; i < stars.length; i++) {
+                var s = stars[i];
+                var pz = s.z;
+                s.z -= 5;
+                if (s.z <= 0) {
+                    s.x = (Math.random() - 0.5) * W;
+                    s.y = (Math.random() - 0.5) * H;
+                    s.z = W;
+                    pz = s.z;
+                }
+                var sx = (s.x / s.z)  * W + cx;
+                var sy = (s.y / s.z)  * H + cy;
+                var px = (s.x / pz)   * W + cx;
+                var py = (s.y / pz)   * H + cy;
+                var brightness = 1 - s.z / W;
+                var size = Math.max(0.5, brightness * 2.5);
+                ctx.strokeStyle = 'rgba(180,255,235,' + brightness.toFixed(2) + ')';
+                ctx.lineWidth = size;
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(sx, sy);
+                ctx.stroke();
+            }
+            requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // ─── INIT ──────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        checkWalletState();
+        initStars();
+        scanOutpost();
+    });
+
+    // ─── HEADER PLANET + STAR GAME ────────────────────────────────────────────
+    (function(){
+        var _starActive=false,_starScore=0;
+        function _spawnStar(){
+            if(!_starActive)return;
+            var s=document.createElement('div');s.className='star-target';s.textContent='✦';
+            s.style.left=(Math.random()<0.5?(Math.random()*80+10):(window.innerWidth-Math.random()*80-60))+'px';
+            s.style.top=(Math.random()*(window.innerHeight-100)+20)+'px';
+            s.addEventListener('click',function(){
+                s.remove();_starScore++;
+                var el=document.getElementById('star-score-num');if(el)el.textContent=_starScore;
+                if(_starScore>=10){
+                    var m=document.createElement('div');
+                    m.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#050510;border:1px solid var(--theme-color,#00ffcc);padding:32px 48px;font-family:monospace;color:var(--theme-color,#00ffcc);text-align:center;animation:hp-fadeout 3s forwards;';
+                    m.innerHTML='<div style="font-size:1.2em;letter-spacing:4px;margin-bottom:10px;">// TRANSMISSION LOGGED //</div><div style="color:#444;font-size:0.75em;letter-spacing:2px;line-height:2;">SECTOR SCAN COMPLETE<br><span style="color:var(--theme-color,#00ffcc);">[ REWARD: PENDING UNLOCK ]</span><br><span style="color:#333;">— more signals incoming —</span></div>';
+                    document.body.appendChild(m);setTimeout(function(){if(m.parentNode)m.remove();},3000);_starActive=false;
+                }
+            });
+            document.body.appendChild(s);
+            setTimeout(function(){if(s.parentNode)s.remove();},1600);
+            setTimeout(_spawnStar,Math.random()*1200+600);
+        }
+        var hc=document.getElementById('header-planet-canvas');
+        if(!hc||typeof THREE==='undefined')return;
+        var R=new THREE.WebGLRenderer({canvas:hc,antialias:true,alpha:true});
+        R.setClearColor(0x000000,0);R.setPixelRatio(Math.min(window.devicePixelRatio,2));R.setSize(36,36);
+        var sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(35,1,0.1,100);cam.position.z=4;
+        sc.add(new THREE.AmbientLight(0xffffff,0.5));
+        var sl=new THREE.DirectionalLight(0xffffff,2.0);sl.position.set(3,3,5);sc.add(sl);
+        var tx=new THREE.TextureLoader().load('planets/naron.jpg');tx.minFilter=THREE.LinearFilter;tx.generateMipmaps=false;
+        var pm=new THREE.Mesh(new THREE.SphereGeometry(1,32,32),new THREE.MeshStandardMaterial({map:tx}));sc.add(pm);
+        var spd=0.008,BASE=0.008,BOOST=0.35,MAX=1.2,DECAY=0.018,_clicked=false;
+        hc.addEventListener('click',function(e){
+            e.stopPropagation();spd=Math.min(spd+BOOST,MAX);
+            if(!_clicked){
+                _clicked=true;
+                var m=document.createElement('div');
+                m.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#050510;border:1px solid var(--theme-color,#00ffcc);padding:32px 48px;font-family:monospace;color:var(--theme-color,#00ffcc);text-align:center;animation:hp-fadeout 2.8s forwards;pointer-events:none;';
+                m.innerHTML='<div style="font-size:1.3em;letter-spacing:4px;margin-bottom:12px;">// SIGNAL DETECTED //</div><div style="color:#444;font-size:0.75em;letter-spacing:2px;line-height:2;">NARON SECTOR &middot; ENCRYPTED CHANNEL<br><span style="color:var(--theme-color,#00ffcc);">[ REWARD POOL: CLASSIFIED ]</span><br><span style="color:#333;">— scan for anomalies in the void —</span></div>';
+                document.body.appendChild(m);setTimeout(function(){if(m.parentNode)m.remove();},2800);
+                _starActive=true;var hud=document.getElementById('star-hud');if(hud)hud.style.display='block';_spawnStar();
+            }
+        });
+        (function _anim(){requestAnimationFrame(_anim);spd-=(spd-BASE)*DECAY;if(spd<BASE)spd=BASE;pm.rotation.y+=spd;R.render(sc,cam);})();
+    })();
+</script>
+</body>
+</html>
