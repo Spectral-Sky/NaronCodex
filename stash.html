@@ -85,11 +85,14 @@
         #nav-dropdown { display:none; flex-direction:column; background:rgba(2,10,8,0.97); border-bottom:1px solid var(--theme-color); padding:10px 20px; gap:6px; }
         #nav-dropdown.open { display:flex; }
 
-        /* TOP BAR */
-        .top-bar { display:flex; justify-content:space-between; align-items:flex-start; max-width:1400px; margin:0 auto; width:100%; padding:10px 20px 0 20px; box-sizing:border-box; }
-        #theme-panel { display:flex; gap:6px; margin-top:6px; }
-        .theme-opt { width:18px; height:18px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:all 0.2s; flex-shrink:0; }
-        .theme-opt:hover { border-color:#fff; transform:scale(1.2); }
+        /* TITLE BAR */
+        .title-bar { display:flex; align-items:flex-start; justify-content:space-between; padding:20px 30px 10px; border-bottom:1px solid rgba(255,170,0,0.12); background:rgba(5,5,5,0.97); backdrop-filter:blur(5px); }
+        .title-bar-left { display:flex; flex-direction:column; gap:8px; }
+        .title-bar-left h1 { margin:0; font-size:1.8em; letter-spacing:6px; text-transform:uppercase; color:var(--theme-color); text-shadow:var(--theme-shadow); }
+        .title-bar-left .page-subtitle { margin:0; color:#555; font-size:0.72em; letter-spacing:3px; font-family:'Courier New'; }
+        #theme-panel { display:flex; gap:12px; padding:4px 0; margin-top:4px; }
+        .theme-opt { width:18px; height:18px; border-radius:50%; border:2px solid #333; cursor:pointer; transition:transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
+        .theme-opt:hover { transform:scale(1.4); border-color:#fff; box-shadow:0 0 10px var(--theme-color); }
         @keyframes simon-flash { 0%{transform:scale(1);filter:brightness(1);} 30%{transform:scale(1.5);filter:brightness(3);} 100%{transform:scale(1);filter:brightness(1);} }
         @keyframes simon-fail  { 0%{} 25%{transform:scale(1.4) rotate(-15deg);filter:brightness(3);} 50%{transform:scale(1.4) rotate(15deg);filter:brightness(3);} 75%{transform:scale(1.4) rotate(-8deg);filter:brightness(2);} 100%{} }
         @keyframes simon-beacon { 0%{box-shadow:0 0 0 0 var(--dot-color,#fff);} 50%{box-shadow:0 0 12px 8px var(--dot-color,#fff);} 100%{box-shadow:0 0 0 0 var(--dot-color,#fff);} }
@@ -126,20 +129,20 @@
         /* MARKET INTEL PANEL */
         #market-frame {
             position:fixed; top:540px; left:20px; width:260px; z-index:1500;
-            background:rgba(3,3,16,0.96); border:2px solid var(--theme-color);
-            padding:12px; font-family:monospace; display:none;
+            background:#000; border:2px solid var(--theme-color);
+            padding:10px; font-family:monospace; display:none;
             box-shadow:var(--theme-shadow); transition:transform 0.3s ease;
         }
         #market-frame.open { display:block; }
         #market-frame.minimized { transform:translateX(-282px); display:block; }
-        #intel-header { color:var(--theme-color); font-size:0.75em; letter-spacing:3px; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid #1a1a2e; text-transform:uppercase; }
-        #intel-name { color:#aaa; font-size:0.72em; letter-spacing:1px; margin-bottom:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .intel-row { display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.78em; }
-        .intel-label { color:#444; letter-spacing:1px; }
-        .intel-val { color:var(--theme-color); font-weight:bold; }
-        .market-links { display:flex; flex-direction:column; gap:5px; margin-top:10px; border-top:1px solid #1a1a2e; padding-top:8px; }
-        .market-link-btn { background:#0a0a14; color:var(--theme-color); border:1px solid #1a1a2e; padding:6px 10px; font-family:'Courier New',monospace; font-size:0.72em; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:6px; transition:all 0.2s; letter-spacing:1px; }
-        .market-link-btn:hover { border-color:var(--theme-color); }
+        #intel-header { color:var(--theme-color); font-weight:bold; font-size:0.82em; letter-spacing:2px; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #333; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #intel-name { color:#aaa; font-size:0.72em; letter-spacing:1px; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .intel-row { display:flex; justify-content:space-between; border-bottom:1px dashed #333; padding:5px 0; font-size:0.88em; }
+        .intel-label { color:#666; }
+        .intel-val { color:var(--theme-color); font-weight:bold; font-family:monospace; }
+        .market-links { display:flex; flex-direction:column; gap:5px; margin-top:10px; border-top:1px solid #333; padding-top:8px; }
+        .market-link-btn { background:#000; color:var(--theme-color); border:1px solid #333; padding:6px 10px; font-family:'Courier New',monospace; font-size:0.72em; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:6px; transition:all 0.2s; letter-spacing:1px; }
+        .market-link-btn:hover { border-color:var(--theme-color); background:rgba(255,170,0,0.06); }
         .market-btn-logo { width:14px; height:14px; object-fit:contain; }
 
         /* PUSH TABLE RIGHT WHEN DECK OPEN */
@@ -147,8 +150,6 @@
 
         /* STASH MAIN */
         .stash-main { max-width:1400px; margin:0 auto; width:100%; padding:20px; box-sizing:border-box; flex:1; }
-        .stash-title { font-size:1.8em; letter-spacing:6px; color:var(--theme-color); text-shadow:0 0 20px var(--theme-color); }
-        .stash-subtitle { font-size:0.75em; color:#444; letter-spacing:2px; margin-top:4px; }
 
         /* TABS */
         .tab-bar { display:flex; gap:0; border-bottom:2px solid var(--theme-color); margin-bottom:14px; flex-wrap:wrap; }
@@ -324,8 +325,10 @@
     <a href="stash.html" class="nav-btn">&#11041; STASH</a>
 </nav>
 
-<div class="top-bar">
-    <div>
+<div class="title-bar">
+    <div class="title-bar-left">
+        <h1>STASH</h1>
+        <p class="page-subtitle" id="stash-subtitle">YOUR NFT HOLDINGS &middot; LIVE FROM CHAIN</p>
         <div id="theme-panel">
             <div id="simon-dot-0" class="theme-opt" style="background:#ff4d4d;--dot-color:#ff4d4d" onclick="simonDotClick(this,'#ff4d4d','#1a0505')" title="Crimson Red"></div>
             <div id="simon-dot-1" class="theme-opt" style="background:#ff9900;--dot-color:#ff9900" onclick="simonDotClick(this,'#ff9900','#1a1005')" title="Safety Orange"></div>
@@ -335,10 +338,6 @@
             <div id="simon-dot-5" class="theme-opt" style="background:#bf00ff;--dot-color:#bf00ff" onclick="simonDotClick(this,'#bf00ff','#12051a')" title="Neon Purple"></div>
             <div id="secret-rainbow-dot" class="theme-opt" style="display:none;--dot-color:#ffffff" onclick="simonDotClick(this,'rainbow','#050510')" title="RGB MODE"></div>
         </div>
-    </div>
-    <div style="text-align:right;">
-        <div class="stash-title">STASH</div>
-        <div class="stash-subtitle" id="stash-subtitle">CONNECT WALLET TO VIEW YOUR ASSETS</div>
     </div>
 </div>
 
