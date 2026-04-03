@@ -359,6 +359,8 @@
         <button class="cyber-btn" onclick="manualScan()">[ SCAN ]</button>
         <button class="cyber-btn" onclick="refreshTab()">[ REFRESH ]</button>
         <button class="cyber-btn" id="scan-prices-btn" onclick="scanPrices()">[ SCAN PRICES ]</button>
+        <button class="cyber-btn" onclick="adjustFont(1)" style="padding:6px 10px;">A+</button>
+        <button class="cyber-btn" onclick="adjustFont(-1)" style="padding:6px 10px;">A-</button>
         <input type="text" id="stash-search" placeholder="FILTER..." oninput="filterStash()">
         <span id="stash-status" style="font-size:0.72em;color:#333;letter-spacing:1px;"></span>
     </div>
@@ -877,7 +879,7 @@
         allAssets.forEach(function(a) {
             var tmpl = a.template ? String(a.template.template_id) : '__notpl__';
             if (!groups[tmpl]) {
-                groups[tmpl] = { tmpl: tmpl, assets: [], name: dv(a,'name'), rarity: dv(a,'rarity'), type: dv(a,'type') || dv(a,'schema_name') || (a.schema ? a.schema.schema_name : '—'), img: dv(a,'img'), col: a.collection ? a.collection.collection_name : 'alien.worlds' };
+                groups[tmpl] = { tmpl: tmpl, assets: [], name: dv(a,'name'), rarity: dv(a,'rarity'), type: dv(a,'type') || dv(a,'schema_name') || (a.schema ? a.schema.schema_name : '—'), schema: a.schema ? a.schema.schema_name : '—', img: dv(a,'img'), col: a.collection ? a.collection.collection_name : 'alien.worlds' };
                 groupOrder.push(tmpl);
             }
             groups[tmpl].assets.push(a);
@@ -911,6 +913,7 @@
                     + '<td class="'+rarClass(g.rarity)+'">'+g.rarity+'</td>'
                     + '<td>'+g.name+'</td>'
                     + '<td style="color:#888;font-size:0.85em">'+g.type+'</td>'
+                    + '<td style="color:#555;font-size:0.78em">'+g.schema+'</td>'
                     + '<td style="text-align:center;font-weight:bold">'+qty+'</td>'
                     + '<td style="text-align:right">'+warn+floorStr+'</td>'
                     + '<td style="text-align:right">'+lastStr+'</td>'
@@ -920,13 +923,13 @@
 
             var totalRow = scanDone
                 ? '<tfoot><tr style="border-top:2px solid var(--theme-color)">'
-                  + '<td colspan="7" style="text-align:right;color:var(--theme-color);font-weight:bold;letter-spacing:1px;">ESTIMATED TOTAL'+(anyMissing?' <span style="color:#ff8800;font-size:0.8em">(⚠ SOME MISSING)</span>':'')+'</td>'
+                  + '<td colspan="8" style="text-align:right;color:var(--theme-color);font-weight:bold;letter-spacing:1px;">ESTIMATED TOTAL'+(anyMissing?' <span style="color:#ff8800;font-size:0.8em">(⚠ SOME MISSING)</span>':'')+'</td>'
                   + '<td style="text-align:right"><span class="floor-cell" style="font-size:1.1em">'+grandTotal.toFixed(2)+' WAX</span></td>'
                   + '</tr></tfoot>'
                 : '';
 
             content.innerHTML = '<div class="stash-table-wrap"><table class="stash-table">'
-                + '<thead><tr><th>IMAGE</th><th>RARITY</th><th>NAME</th><th>TYPE</th><th>QTY</th><th>FLOOR/UNIT</th><th>LAST SOLD</th><th>TOTAL VALUE</th></tr></thead>'
+                + '<thead><tr><th>IMAGE</th><th>RARITY</th><th>NAME</th><th>TYPE</th><th>SCHEMA</th><th>QTY</th><th>FLOOR/UNIT</th><th>LAST SOLD</th><th>TOTAL VALUE</th></tr></thead>'
                 + '<tbody>' + rows + '</tbody>'
                 + totalRow
                 + '</table></div>';
@@ -944,6 +947,13 @@
 
         renderAppraise(true);
         setStatus(allAssets.length + ' ASSETS · ' + totalTemplates + ' TEMPLATES');
+    }
+
+    function adjustFont(delta) {
+        var cells = document.querySelectorAll('.stash-table td, .stash-table th');
+        var cur = parseFloat(cells[0] && cells[0].style.fontSize) || 0.82;
+        cur = Math.min(1.5, Math.max(0.5, cur + delta * 0.08));
+        cells.forEach(function(c){ c.style.setProperty('font-size', cur+'em', 'important'); });
     }
 
     function filterStash(){
