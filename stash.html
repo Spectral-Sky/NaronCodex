@@ -351,6 +351,7 @@
         <button class="tab-btn"        id="tab-faces"    onclick="switchTab('faces')"   >FACES    <span class="tab-count" id="cnt-faces">—</span></button>
         <button class="tab-btn"        id="tab-pd-units" onclick="switchTab('pd-units')">PD UNITS <span class="tab-count" id="cnt-pd-units">—</span></button>
         <button class="tab-btn"        id="tab-pd-mats"  onclick="switchTab('pd-mats')" >PD MATS  <span class="tab-count" id="cnt-pd-mats">—</span></button>
+        <button class="tab-btn"        id="tab-appraise" onclick="switchTab('appraise')" >APPRAISE <span class="tab-count" id="cnt-appraise">—</span></button>
     </div>
 
     <div class="stash-action-bar">
@@ -780,6 +781,7 @@
         closeIntel();
         var wallet=getCurrentWallet();
         if(!wallet){showConnectPrompt();return;}
+        if(tabId==='appraise'){loadAppraise(wallet);return;}
         loadTab(tabId,wallet);
     }
 
@@ -825,6 +827,123 @@
         }
         barLabel.textContent='COMPLETE'; setTimeout(function(){barWrap.classList.remove('vis');},2500);
         btn.disabled=false; btn.textContent='[ SCAN PRICES ]'; setStatus('PRICES UPDATED');
+    }
+
+    // ─── APPRAISE TAB ──────────────────────────────────────────────────────────
+    var _lastSoldCache = {};
+    async function fetchLastSold(tmpl) {
+        if (_lastSoldCache[tmpl] !== undefined) return _lastSoldCache[tmpl];
+        try {
+            var res = await fetch(API_HISTORY+'?state=3&template_id='+tmpl+'&page=1&limit=1&order=desc&sort=updated&symbol=WAX&_ts='+Date.now(), {cache:'no-store'});
+            var json = await res.json();
+            if (json.data && json.data[0] && json.data[0].price) {
+                var p = json.data[0].price;
+                _lastSoldCache[tmpl] = (parseInt(p.amount) / Math.pow(10, p.token_precision)).toFixed(2);
+            } else { _lastSoldCache[tmpl] = 'NONE'; }
+        } catch(e) { _lastSoldCache[tmpl] = 'ERR'; }
+        return _lastSoldCache[tmpl];
+    }
+
+    async function loadAppraise(wallet) {
+        var content = document.getElementById('stash-content');
+        content.innerHTML = '<div class="stash-loading">FETCHING ALL ASSETS <span class="loading-dots"></span></div>';
+        setStatus('FETCHING...');
+
+        // Collect all assets across all known collections/schemas
+        var allCollections = [
+            {col:'alien.worlds', schema:'crew.worlds'},
+            {col:'alien.worlds', schema:'tool.worlds'},
+            {col:'alien.worlds', schema:'land.worlds'},
+            {col:'alien.worlds', schema:'arms.worlds'},
+            {col:'alien.worlds', schema:'faces.worlds'},
+            {col:'planetdefnft', schema:null},
+        ];
+        var allAssets = [];
+        for (var i = 0; i < allCollections.length; i++) {
+            var c = allCollections[i];
+            var cacheKey = (c.schema || c.col) + '_' + wallet;
+            // reuse any already-loaded cache from other tabs
+            var cached = null;
+            if (c.schema) cached = _assetCache[c.schema.split('.')[0] + '_' + wallet] || _assetCache[cacheKey];
+            if (!cached) {
+                cached = await fetchAllAssets(wallet, c.col, c.schema);
+                _assetCache[cacheKey] = cached;
+            }
+            allAssets = allAssets.concat(cached);
+        }
+
+        // Group by template_id
+        var groups = {}, groupOrder = [];
+        allAssets.forEach(function(a) {
+            var tmpl = a.template ? String(a.template.template_id) : '__notpl__';
+            if (!groups[tmpl]) {
+                groups[tmpl] = { tmpl: tmpl, assets: [], name: dv(a,'name'), rarity: dv(a,'rarity'), type: dv(a,'type') || dv(a,'schema_name') || (a.schema ? a.schema.schema_name : '—'), img: dv(a,'img'), col: a.collection ? a.collection.collection_name : 'alien.worlds' };
+                groupOrder.push(tmpl);
+            }
+            groups[tmpl].assets.push(a);
+        });
+
+        var totalTemplates = groupOrder.length;
+        document.getElementById('cnt-appraise').textContent = allAssets.length;
+        if (allAssets.length === 0) { content.innerHTML = '<div class="stash-loading" style="color:#252535;">NO ASSETS FOUND</div>'; setStatus('0 ASSETS'); return; }
+
+        // Render skeleton table immediately
+        function renderAppraise(scanDone) {
+            var grandTotal = 0, anyMissing = false;
+            var rows = groupOrder.map(function(tmpl) {
+                var g = groups[tmpl];
+                var qty = g.assets.length;
+                var floor = _floorCache[tmpl];
+                var last  = _lastSoldCache[tmpl];
+                var floorNum = (floor && floor !== 'NONE' && floor !== 'ERR') ? parseFloat(floor) : null;
+                var rowTotal = floorNum != null ? floorNum * qty : null;
+                if (rowTotal != null) grandTotal += rowTotal;
+                if (floorNum == null) anyMissing = true;
+                var warn  = (scanDone && floorNum == null) ? '<span style="color:#ff8800;font-weight:bold" title="No active floor listing found">⚠</span> ' : '';
+                var floorStr  = !scanDone ? '<span style="color:#333">—</span>' : (floorNum != null ? floor + ' WAX' : '<span style="color:#555">NONE</span>');
+                var lastStr   = !scanDone ? '<span style="color:#333">—</span>' : (last && last !== 'NONE' && last !== 'ERR' ? last + ' WAX' : '<span style="color:#555">—</span>');
+                var totalStr  = rowTotal != null ? '<span class="floor-cell">'+rowTotal.toFixed(2)+' WAX</span>' : '<span style="color:#555">—</span>';
+                var imgUrl    = g.img && g.img !== '—' ? (g.img.startsWith('http') ? g.img : IPFS_GW + g.img) : null;
+                var imgFb     = g.img && g.img !== '—' ? (g.img.startsWith('http') ? g.img : IPFS_FB + g.img) : null;
+                var imgTag    = imgUrl ? '<img src="'+imgUrl+'" loading="lazy" onerror="this.onerror=null;this.src=\''+imgFb+'\';">' : '';
+                return '<tr data-tmpl="'+tmpl+'" data-name="'+g.name.replace(/"/g,'&quot;')+'" data-col="'+g.col+'" onclick="rowClick(this)">'
+                    + '<td class="img-cell">'+imgTag+'</td>'
+                    + '<td class="'+rarClass(g.rarity)+'">'+g.rarity+'</td>'
+                    + '<td>'+g.name+'</td>'
+                    + '<td style="color:#888;font-size:0.85em">'+g.type+'</td>'
+                    + '<td style="text-align:center;font-weight:bold">'+qty+'</td>'
+                    + '<td style="text-align:right">'+warn+floorStr+'</td>'
+                    + '<td style="text-align:right">'+lastStr+'</td>'
+                    + '<td style="text-align:right">'+totalStr+'</td>'
+                    + '</tr>';
+            }).join('');
+
+            var totalRow = scanDone
+                ? '<tfoot><tr style="border-top:2px solid var(--theme-color)">'
+                  + '<td colspan="7" style="text-align:right;color:var(--theme-color);font-weight:bold;letter-spacing:1px;">ESTIMATED TOTAL'+(anyMissing?' <span style="color:#ff8800;font-size:0.8em">(⚠ SOME MISSING)</span>':'')+'</td>'
+                  + '<td style="text-align:right"><span class="floor-cell" style="font-size:1.1em">'+grandTotal.toFixed(2)+' WAX</span></td>'
+                  + '</tr></tfoot>'
+                : '';
+
+            content.innerHTML = '<div class="stash-table-wrap"><table class="stash-table">'
+                + '<thead><tr><th>IMAGE</th><th>RARITY</th><th>NAME</th><th>TYPE</th><th>QTY</th><th>FLOOR/UNIT</th><th>LAST SOLD</th><th>TOTAL VALUE</th></tr></thead>'
+                + '<tbody>' + rows + '</tbody>'
+                + totalRow
+                + '</table></div>';
+        }
+
+        renderAppraise(false);
+        setStatus('SCANNING PRICES...');
+
+        // Batch scan floor + last sold for all templates
+        for (var j = 0; j < groupOrder.length; j++) {
+            var tmpl = groupOrder[j];
+            await Promise.all([fetchFloor(tmpl), fetchLastSold(tmpl)]);
+            if (j % 4 === 3) await new Promise(function(r){ setTimeout(r, 350); });
+        }
+
+        renderAppraise(true);
+        setStatus(allAssets.length + ' ASSETS · ' + totalTemplates + ' TEMPLATES');
     }
 
     function filterStash(){
