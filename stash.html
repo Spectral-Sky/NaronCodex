@@ -889,10 +889,17 @@
         document.getElementById('cnt-appraise').textContent = allAssets.length;
         if (allAssets.length === 0) { content.innerHTML = '<div class="stash-loading" style="color:#252535;">NO ASSETS FOUND</div>'; setStatus('0 ASSETS'); return; }
 
-        // Render skeleton table immediately
+        // Build schema list for dropdown
+        var schemaSet = [];
+        groupOrder.forEach(function(tmpl) { var s = groups[tmpl].schema; if (schemaSet.indexOf(s) < 0) schemaSet.push(s); });
+        schemaSet.sort();
+        var _appraiseSchema = 'ALL'; // current filter
+
         function renderAppraise(scanDone) {
+            var visOrder = _appraiseSchema === 'ALL' ? groupOrder : groupOrder.filter(function(t){ return groups[t].schema === _appraiseSchema; });
             var grandTotal = 0, anyMissing = false;
-            var rows = groupOrder.map(function(tmpl) {
+
+            var rows = visOrder.map(function(tmpl) {
                 var g = groups[tmpl];
                 var qty = g.assets.length;
                 var floor = _floorCache[tmpl];
@@ -901,18 +908,17 @@
                 var rowTotal = floorNum != null ? floorNum * qty : null;
                 if (rowTotal != null) grandTotal += rowTotal;
                 if (floorNum == null) anyMissing = true;
-                var warn  = (scanDone && floorNum == null) ? '<span style="color:#ff8800;font-weight:bold" title="No active floor listing found">⚠</span> ' : '';
-                var floorStr  = !scanDone ? '<span style="color:#333">—</span>' : (floorNum != null ? floor + ' WAX' : '<span style="color:#555">NONE</span>');
-                var lastStr   = !scanDone ? '<span style="color:#333">—</span>' : (last && last !== 'NONE' && last !== 'ERR' ? last + ' WAX' : '<span style="color:#555">—</span>');
-                var totalStr  = rowTotal != null ? '<span class="floor-cell">'+rowTotal.toFixed(2)+' WAX</span>' : '<span style="color:#555">—</span>';
-                var imgUrl    = g.img && g.img !== '—' ? (g.img.startsWith('http') ? g.img : IPFS_GW + g.img) : null;
-                var imgFb     = g.img && g.img !== '—' ? (g.img.startsWith('http') ? g.img : IPFS_FB + g.img) : null;
-                var imgTag    = imgUrl ? '<img src="'+imgUrl+'" loading="lazy" onerror="this.onerror=null;this.src=\''+imgFb+'\';">' : '';
+                var warn     = (scanDone && floorNum == null) ? '<span style="color:#ff8800;font-weight:bold" title="No active floor listing found">⚠</span> ' : '';
+                var floorStr = !scanDone ? '<span style="color:#333">—</span>' : (floorNum != null ? floor + ' WAX' : '<span style="color:#555">NONE</span>');
+                var lastStr  = !scanDone ? '<span style="color:#333">—</span>' : (last && last !== 'NONE' && last !== 'ERR' ? last + ' WAX' : '<span style="color:#555">—</span>');
+                var totalStr = rowTotal != null ? '<span class="floor-cell">'+rowTotal.toFixed(2)+' WAX</span>' : '<span style="color:#555">—</span>';
+                var imgUrl   = g.img && g.img !== '—' ? (g.img.startsWith('http') ? g.img : IPFS_GW + g.img) : null;
+                var imgFb    = g.img && g.img !== '—' ? (g.img.startsWith('http') ? g.img : IPFS_FB + g.img) : null;
+                var imgTag   = imgUrl ? '<img src="'+imgUrl+'" loading="lazy" onerror="this.onerror=null;this.src=\''+imgFb+'\';">' : '';
                 return '<tr data-tmpl="'+tmpl+'" data-name="'+g.name.replace(/"/g,'&quot;')+'" data-col="'+g.col+'" onclick="rowClick(this)">'
                     + '<td class="img-cell">'+imgTag+'</td>'
                     + '<td class="'+rarClass(g.rarity)+'">'+g.rarity+'</td>'
                     + '<td>'+g.name+'</td>'
-                    + '<td style="color:#888;font-size:0.85em">'+g.type+'</td>'
                     + '<td style="color:#555;font-size:0.78em">'+g.schema+'</td>'
                     + '<td style="text-align:center;font-weight:bold">'+qty+'</td>'
                     + '<td style="text-align:right">'+warn+floorStr+'</td>'
@@ -921,19 +927,39 @@
                     + '</tr>';
             }).join('');
 
-            var totalRow = scanDone
+            var totalStr = scanDone
+                ? '<span class="floor-cell" style="font-size:1.05em">'+grandTotal.toFixed(2)+' WAX</span>'
+                  + (anyMissing ? ' <span style="color:#ff8800;font-size:0.8em">⚠ SOME MISSING</span>' : '')
+                : '<span style="color:#444">SCANNING...</span>';
+
+            var ddOpts = '<option value="ALL">ALL SCHEMAS</option>'
+                + schemaSet.map(function(s){ return '<option value="'+s+'"'+(s===_appraiseSchema?' selected':'')+'>'+s+'</option>'; }).join('');
+
+            var header = '<div style="display:flex;align-items:center;gap:14px;padding:8px 4px 10px;flex-wrap:wrap;">'
+                + '<select id="appraise-schema-dd" onchange="window._appraiseSchemaChange(this.value)" style="background:#0a0a18;color:var(--theme-color);border:1px solid #252540;font-family:\'Courier New\',monospace;font-size:0.8em;padding:5px 8px;cursor:pointer;">'+ddOpts+'</select>'
+                + '<span style="font-family:\'Courier New\',monospace;font-size:0.78em;color:#446;letter-spacing:1px;">ESTIMATED TOTAL:</span>'
+                + '<span id="appraise-grand-total">'+totalStr+'</span>'
+                + '</div>';
+
+            var totalFooter = scanDone
                 ? '<tfoot><tr style="border-top:2px solid var(--theme-color)">'
-                  + '<td colspan="8" style="text-align:right;color:var(--theme-color);font-weight:bold;letter-spacing:1px;">ESTIMATED TOTAL'+(anyMissing?' <span style="color:#ff8800;font-size:0.8em">(⚠ SOME MISSING)</span>':'')+'</td>'
+                  + '<td colspan="7" style="text-align:right;color:var(--theme-color);font-weight:bold;letter-spacing:1px;">ESTIMATED TOTAL'+(anyMissing?' <span style="color:#ff8800;font-size:0.8em">(⚠ SOME MISSING)</span>':'')+'</td>'
                   + '<td style="text-align:right"><span class="floor-cell" style="font-size:1.1em">'+grandTotal.toFixed(2)+' WAX</span></td>'
                   + '</tr></tfoot>'
                 : '';
 
-            content.innerHTML = '<div class="stash-table-wrap"><table class="stash-table">'
-                + '<thead><tr><th>IMAGE</th><th>RARITY</th><th>NAME</th><th>TYPE</th><th>SCHEMA</th><th>QTY</th><th>FLOOR/UNIT</th><th>LAST SOLD</th><th>TOTAL VALUE</th></tr></thead>'
+            content.innerHTML = header
+                + '<div class="stash-table-wrap"><table class="stash-table">'
+                + '<thead><tr><th>IMAGE</th><th>RARITY</th><th>NAME</th><th>SCHEMA</th><th>QTY</th><th>FLOOR/UNIT</th><th>LAST SOLD</th><th>TOTAL VALUE</th></tr></thead>'
                 + '<tbody>' + rows + '</tbody>'
-                + totalRow
+                + totalFooter
                 + '</table></div>';
         }
+
+        window._appraiseSchemaChange = function(val) {
+            _appraiseSchema = val;
+            renderAppraise(true);
+        };
 
         renderAppraise(false);
         setStatus('SCANNING PRICES...');
