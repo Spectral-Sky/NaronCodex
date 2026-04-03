@@ -508,11 +508,12 @@
         'https://atomic.wax.eosrio.io/atomicassets/v1/assets'
     ];
     var API_AA = API_AA_ENDPOINTS[0];
+    var _aaActiveEndpoint = null; // sticky once a working mirror is found
     var API_SALES    = 'https://wax.eosusa.io/atomicmarket/v1/sales/templates';
     var API_SALES_FB = 'https://wax.api.atomicassets.io/atomicmarket/v1/sales/templates';
     var API_HISTORY  = 'https://wax.api.atomicassets.io/atomicmarket/v2/sales';
     var IPFS_GW      = 'https://ipfs.io/ipfs/';
-    var IPFS_FB      = 'https://cloudflare-ipfs.com/ipfs/';
+    var IPFS_FB      = 'https://gateway.ipfs.io/ipfs/';
 
     // ─── TABLE DEFINITIONS ─────────────────────────────────────────────────────
     var TAB_CFG = {
@@ -609,18 +610,21 @@
 
     // ─── FETCH ─────────────────────────────────────────────────────────────────
     async function fetchAllAssets(owner, collection, schema) {
-        var assets=[], page=1, activeEndpoint=null;
+        var assets=[], page=1;
         while(true){
             var p='owner='+encodeURIComponent(owner)+'&collection_name='+collection+'&page='+page+'&limit=100&order=asc&sort=asset_id&_ts='+Date.now();
             if(schema) p+='&schema_name='+encodeURIComponent(schema);
             var pageData=null;
-            var tryList=activeEndpoint ? [activeEndpoint] : API_AA_ENDPOINTS;
+            // if sticky endpoint is set, try it first; fall back to full list if it fails
+            var tryList=_aaActiveEndpoint
+                ? [_aaActiveEndpoint].concat(API_AA_ENDPOINTS.filter(function(u){return u!==_aaActiveEndpoint;}))
+                : API_AA_ENDPOINTS;
             for(var ei=0;ei<tryList.length;ei++){
                 try{
                     var res=await fetch(tryList[ei]+'?'+p,{cache:'no-store'});
                     if(!res.ok) continue;
                     var json=await res.json();
-                    if(json.data!==undefined){ activeEndpoint=tryList[ei]; pageData=json.data; break; }
+                    if(json.data!==undefined){ _aaActiveEndpoint=tryList[ei]; pageData=json.data; break; }
                 }catch(e){ continue; }
             }
             if(!pageData||pageData.length===0) break;
