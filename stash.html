@@ -356,9 +356,9 @@
 
     <div class="stash-action-bar">
         <input type="text" id="wallet-input" placeholder="ENTER WAX WALLET..." oninput="manualWalletInput()" onkeydown="if(event.key==='Enter')manualScan()">
-        <button class="cyber-btn" onclick="manualScan()">[ SCAN ]</button>
+        <button class="cyber-btn" onclick="manualScan()">[ LOAD WALLET ]</button>
         <button class="cyber-btn" onclick="refreshTab()">[ REFRESH ]</button>
-        <button class="cyber-btn" id="scan-prices-btn" onclick="scanPrices()">[ SCAN PRICES ]</button>
+        <button class="cyber-btn" id="scan-prices-btn" onclick="scanPrices()">[ FETCH PRICES ]</button>
         <button class="cyber-btn" onclick="adjustFont(1)" style="padding:6px 10px;">A+</button>
         <button class="cyber-btn" onclick="adjustFont(-1)" style="padding:6px 10px;">A-</button>
         <input type="text" id="stash-search" placeholder="FILTER..." oninput="filterStash()">
@@ -810,7 +810,7 @@
     // ─── SCAN PRICES ───────────────────────────────────────────────────────────
     async function scanPrices(){
         var wallet=getCurrentWallet(); if(!wallet) return;
-        var assets=_assetCache[_activeTab+'_'+wallet]; if(!assets||assets.length===0){setStatus('LOAD A TAB FIRST');return;}
+        var assets=_assetCache[_activeTab+'_'+wallet]; if(!assets||assets.length===0){setStatus('SELECT A TAB TO LOAD ASSETS FIRST');return;}
         var btn=document.getElementById('scan-prices-btn'); btn.disabled=true; btn.textContent='[ SCANNING... ]';
         var barWrap=document.getElementById('scan-bar-wrap'),barFill=document.getElementById('scan-bar-fill'),barLabel=document.getElementById('scan-bar-label');
         barWrap.classList.add('vis');
