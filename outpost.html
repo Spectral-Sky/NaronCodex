@@ -949,7 +949,9 @@
         rim.position.set(-4, -2, -5);
         scene.add(rim);
 
-        var tx = new THREE.TextureLoader().load('planets/naron.jpg');
+        var _planets = ['eyeke','kavian','magor','naron','neri','veles'];
+        var _pick = _planets[Math.floor(Math.random() * _planets.length)];
+        var tx = new THREE.TextureLoader().load('planets/' + _pick + '.jpg');
         tx.minFilter = THREE.LinearFilter;
         tx.generateMipmaps = false;
         var planet = new THREE.Mesh(
@@ -965,7 +967,7 @@
 
         function frame(ts) {
             requestAnimationFrame(frame);
-            planet.rotation.y += arrived ? 0.0012 : 0.004;
+            planet.rotation.y += arrived ? 0.00024 : 0.0008;
 
             if (!arrived) {
                 if (!tStart) tStart = ts;

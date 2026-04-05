@@ -67,6 +67,9 @@
             12vw 44vh rgba(255,255,255,0.5),26vw 58vh #fff,40vw 72vh rgba(255,255,255,0.4),55vw 88vh #fff,70vw 52vh rgba(255,255,255,0.6),84vw 66vh rgba(255,255,255,0.7),
             7vw 80vh rgba(255,255,255,0.5),93vw 40vh #fff,50vw 36vh rgba(255,255,255,0.4),20vw 90vh rgba(255,255,255,0.3); opacity:0.9; }
 
+        /* ARRIVAL PLANET CANVAS */
+        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:0; pointer-events:none; display:none; opacity:0; transition:opacity 1s ease; }
+
         /* GLOBAL HEADER */
         .global-header { display:flex; justify-content:space-between; align-items:center; background:rgba(2,10,8,0.95); border-bottom:2px solid var(--theme-color); padding:15px 30px; position:sticky; top:0; z-index:2000; box-shadow:0 5px 20px rgba(0,0,0,0.9); backdrop-filter:blur(8px); }
         #header-planet-canvas { width:36px; height:36px; border-radius:50%; cursor:pointer; vertical-align:middle; margin-right:8px; flex-shrink:0; }
@@ -264,6 +267,7 @@
 </head>
 <body>
 <div class="nebula-bg"></div>
+<canvas id="planet-canvas"></canvas>
 
 <div id="star-hud" style="display:none;position:fixed;bottom:15px;left:15px;z-index:50000;font-family:'Courier New',monospace;font-size:0.75em;color:#ffe066;opacity:0.6;letter-spacing:1px;pointer-events:none;">&#9733; <span id="star-score-num">0</span></div>
 <div id="cursor-glow"></div>
@@ -880,6 +884,7 @@
         }
         content.innerHTML=buildTable(cfg.heads, assets, cfg.row, cfg.col);
         setStatus(assets.length+' ASSETS');
+        triggerArrival();
     }
 
     function switchTab(tabId){
@@ -1096,6 +1101,69 @@
     }
 
     checkWalletState();
+
+    // ── ARRIVAL PLANET ZOOM ───────────────────────────────────────────────────
+    var _arrivalFired = false;
+    var _PLANETS = ['eyeke','kavian','magor','naron','neri','veles'];
+
+    function triggerArrival() {
+        if (_arrivalFired) return;
+        _arrivalFired = true;
+        var pc = document.getElementById('planet-canvas');
+        if (!pc || typeof THREE === 'undefined') return;
+        pc.style.display = 'block';
+        requestAnimationFrame(function() {
+            pc.style.opacity = '0.45';
+            initPlanetZoom(pc);
+        });
+    }
+
+    function initPlanetZoom(canvas) {
+        var W = window.innerWidth, H = window.innerHeight;
+        var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        renderer.setClearColor(0x000000, 0);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(W, H);
+        var scene  = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 500);
+        camera.position.set(0.6, -0.25, 22);
+        camera.lookAt(0, 0, 0);
+        scene.add(new THREE.AmbientLight(0x223344, 0.9));
+        var sun = new THREE.DirectionalLight(0x99ffee, 2.2);
+        sun.position.set(6, 4, 10); scene.add(sun);
+        var rim = new THREE.DirectionalLight(0x004466, 0.6);
+        rim.position.set(-4, -2, -5); scene.add(rim);
+        var pick = _PLANETS[Math.floor(Math.random() * _PLANETS.length)];
+        var tx = new THREE.TextureLoader().load('planets/' + pick + '.jpg');
+        tx.minFilter = THREE.LinearFilter; tx.generateMipmaps = false;
+        var planet = new THREE.Mesh(
+            new THREE.SphereGeometry(2.2, 64, 64),
+            new THREE.MeshStandardMaterial({ map: tx, roughness: 0.75, metalness: 0.05 })
+        );
+        scene.add(planet);
+        var zStart = 22, zEnd = 4.5, tStart = null, DURATION = 4200, arrived = false;
+        function frame(ts) {
+            requestAnimationFrame(frame);
+            planet.rotation.y += arrived ? 0.00024 : 0.0008;
+            if (!arrived) {
+                if (!tStart) tStart = ts;
+                var t = Math.min(1, (ts - tStart) / DURATION);
+                var ease = t < 0.65
+                    ? Math.pow(t / 0.65, 2) * 0.65
+                    : 0.65 + 0.35 * (1 - Math.pow(1 - (t - 0.65) / 0.35, 5));
+                camera.position.z = zStart - ease * (zStart - zEnd);
+                if (t >= 1) arrived = true;
+            }
+            renderer.render(scene, camera);
+        }
+        requestAnimationFrame(frame);
+        window.addEventListener('resize', function() {
+            W = window.innerWidth; H = window.innerHeight;
+            renderer.setSize(W, H);
+            camera.aspect = W / H;
+            camera.updateProjectionMatrix();
+        });
+    }
 
     // ── HEADER NARON PLANET + STAR GAME ──────────────────────────────────────
     (function(){
