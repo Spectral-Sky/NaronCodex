@@ -171,7 +171,16 @@
         .element-fire      { color:#ff6644; border:1px solid rgba(255,102,68,0.35); }
         .element-water     { color:#4488ff; border:1px solid rgba(68,136,255,0.35); }
         .element-lightning { color:#ffcc00; border:1px solid rgba(255,204,0,0.35); }
+        .element-air       { color:#88ddff; border:1px solid rgba(136,221,255,0.35); }
+        .element-metal     { color:#b0b8c8; border:1px solid rgba(176,184,200,0.35); }
+        .element-gem       { color:#dd66ff; border:1px solid rgba(221,102,255,0.35); }
+        .element-neutral   { color:#888888; border:1px solid rgba(136,136,136,0.35); }
+        .element-nature    { color:#55cc55; border:1px solid rgba(85,204,85,0.35); }
         .element-generic   { color:#888;    border:1px solid #333; }
+        .offer-badges      { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; }
+
+        /* PLANET ZOOM CANVAS */
+        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:1; pointer-events:none; display:none; opacity:0; transition:opacity 1s ease; }
         .offer-cost { color:#e0e0e0; font-size:0.88em; letter-spacing:1px; font-weight:bold; display:flex; align-items:center; gap:5px; }
         .shard-icon-img { width:26px; height:26px; object-fit:contain; vertical-align:middle; }
         .offer-window { width:100%; font-size:0.65em; color:#555; letter-spacing:0.5px; display:flex; flex-direction:column; gap:4px; border-top:1px solid #141425; padding-top:7px; margin-top:2px; }
@@ -259,6 +268,7 @@
 <body>
 
 <canvas id="stars-canvas"></canvas>
+<canvas id="planet-canvas"></canvas>
 
 <header class="global-header">
     <div class="logo-section">
@@ -455,12 +465,24 @@
                     _aaActiveBase = tryList[i];
                     var d = json.data[0];
                     var im = d.immutable_data || {};
+                    // Collect both elements — AW arms/crew store them in element + element2 (or similar keys)
+                    var elements = [];
+                    // Scan all keys for anything element-shaped: element, element2, element_*, *_element
+                    Object.keys(im).forEach(function(k) {
+                        var lk = k.toLowerCase();
+                        if ((lk === 'element' || lk === 'element2' || lk.indexOf('element') !== -1)
+                                && typeof im[k] === 'string' && im[k].trim()) {
+                            var val = im[k].trim();
+                            if (elements.indexOf(val) === -1) elements.push(val);
+                        }
+                    });
                     var info = {
-                        name:    im.name    ? String(im.name)    : ('Template #' + tmplId),
-                        img:     im.img     ? IPFS_GATEWAY + im.img : null,
-                        element: im.element ? String(im.element) : null,
-                        type:    im.type    ? String(im.type)    : null,
-                        schema:  (d.schema && d.schema.schema_name) ? d.schema.schema_name : null
+                        name:     im.name ? String(im.name) : ('Template #' + tmplId),
+                        img:      im.img  ? IPFS_GATEWAY + im.img : null,
+                        elements: elements,                          // array, may have 0,1 or 2 entries
+                        element:  elements[0] || null,               // kept for compat
+                        type:     im.type ? String(im.type) : null,
+                        schema:   (d.schema && d.schema.schema_name) ? d.schema.schema_name : null
                     };
                     _tmplCache[tmplId] = info;
                     return info;
@@ -552,6 +574,7 @@
         }
 
         renderOffers(active, upcoming);
+        triggerArrival();
 
         var now2 = new Date();
         setStatus('LAST SCAN: '
@@ -734,31 +757,48 @@
             return byTmpl[a].minCost - byTmpl[b].minCost;
         });
 
+        // Build current-offer lookup by template_id for comparison
+        var _currentCostByTmpl = {};
+        result.rows.forEach(function(r) {
+            var endTs = parseTs(r.end != null ? r.end : (r.end_time != null ? r.end_time : r.ends));
+            if (endTs == null || now <= endTs) {
+                var rawCost = r.required != null ? r.required : (r.cost != null ? r.cost : r.points_required);
+                var tmplId = String(r.template_id || '');
+                if (tmplId) _currentCostByTmpl[tmplId] = (rawCost || 0) / 10;
+            }
+        });
+
         termLine('dim', '');
-        termLine('bright', '// ARCHIVE RECORD DUMP — HISTORIC LOWEST SHARD COST //');
-        termLine('warn', '   DISCLAIMER: Past prices carry no guarantee of recurrence.');
-        termLine('warn', '   Outpost offers are controlled by Alien Worlds. Verify live.');
+        termLine('bright', '// ARCHIVE RECORD DUMP — PAST OFFER DATA \u00b7 ON-CHAIN RECORDS //');
+        termLine('warn', '   SOURCE: Expired offer records currently stored on-chain.');
+        termLine('warn', '   This reflects offers that have ended but not yet been cleared.');
+        termLine('warn', '   It is NOT a complete historical record — cleared entries are gone.');
+        termLine('warn', '   DISCLAIMER: Past prices are a window into what was offered before.');
+        termLine('warn', '   They carry zero guarantee of return. Verify all costs live.');
         termLine('dim', '');
 
         // Build table
         var tbl = document.createElement('table');
         tbl.className = 'arc-table';
         tbl.innerHTML = '<thead><tr>'
-            + '<th>TEMPLATE</th><th>SCHEMA</th><th>ELEMENT/TYPE</th>'
-            + '<th>LOWEST (SHD)</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
+            + '<th>TEMPLATE</th><th>SCHEMA</th><th>ELEMENTS</th>'
+            + '<th>PAST LOW (SHD)</th><th>CURRENT (SHD)</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
             + '</tr></thead>';
         var tbody = document.createElement('tbody');
 
         tmplIds.forEach(function(tid) {
             var b    = byTmpl[tid];
             var info = _tmplCache[tid] || { name: 'Template #' + tid };
-            var badge = info.element || info.type || '\u2014';
+            var elList = (info.elements && info.elements.length) ? info.elements.join(' / ') : (info.type || '\u2014');
             var dateStr = b.minEndTs ? formatDateOnly(b.minEndTs) : '\u2014';
+            var currentCost = _currentCostByTmpl[tid];
+            var currentStr  = currentCost != null ? currentCost.toFixed(1) : '\u2014';
             var tr = document.createElement('tr');
             tr.innerHTML = '<td class="name-col">' + (info.name || 'Template #' + tid) + '</td>'
                 + '<td class="schema-col">' + (info.schema || '\u2014') + '</td>'
-                + '<td>' + badge + '</td>'
+                + '<td>' + elList + '</td>'
                 + '<td class="cost-col"><img src="Shards.png" style="width:13px;height:13px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + b.minCost.toFixed(1) + '</td>'
+                + '<td class="cost-col">' + (currentCost != null ? '<img src="Shards.png" style="width:13px;height:13px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + currentStr : '<span style="color:#2a4a3a;">\u2014</span>') + '</td>'
                 + '<td style="color:#1e6a5a;text-align:center;">' + b.count + '</td>'
                 + '<td class="date-col">' + dateStr + '</td>';
             tbody.appendChild(tr);
@@ -800,13 +840,15 @@
                         ? '<img src="' + info.img + '" class="offer-img" onerror="imgFallback(this)">'
                         : '<div class="offer-img-placeholder">NO IMG</div>';
 
-                    // Element / type badge
+                    // Element / type badges — show all elements found, fall back to type
                     var badge = '';
-                    if (info.element) {
-                        var elKey = info.element.toLowerCase().replace(/[^a-z]/g, '');
-                        badge = '<span class="offer-badge element-' + elKey + '">' + info.element.toUpperCase() + '</span>';
-                    } else if (info.type) {
-                        badge = '<span class="offer-badge element-generic">' + info.type.toUpperCase() + '</span>';
+                    var elSrc = (info.elements && info.elements.length) ? info.elements : (info.type ? [info.type] : []);
+                    if (elSrc.length) {
+                        badge = '<div class="offer-badges">'
+                            + elSrc.map(function(el) {
+                                var elKey = el.toLowerCase().replace(/[^a-z]/g, '');
+                                return '<span class="offer-badge element-' + elKey + '">' + el.toUpperCase() + '</span>';
+                            }).join('') + '</div>';
                     }
 
                     // Time window
@@ -855,7 +897,101 @@
         content.innerHTML = html;
     }
 
+    // ─── ARRIVAL EFFECT ───────────────────────────────────────────────────────
+    var _arrivalFired = false;
+
+    function triggerArrival() {
+        if (_arrivalFired) return;
+        _arrivalFired = true;
+
+        // Decelerate warp stars — ease down from 5 → 0.35 over ~1.8s
+        var startSpeed = _starWarpSpeed;
+        var targetSpeed = 0.35;
+        var tStart = performance.now();
+        var decDuration = 1800;
+        (function decel(now) {
+            var t = Math.min(1, (now - tStart) / decDuration);
+            // quartic ease-out: starts fast, ends extremely slow
+            var ease = 1 - Math.pow(1 - t, 4);
+            _starWarpSpeed = startSpeed + (targetSpeed - startSpeed) * ease;
+            if (t < 1) requestAnimationFrame(decel);
+        })(performance.now());
+
+        // Show planet canvas and zoom in
+        var pc = document.getElementById('planet-canvas');
+        if (pc && typeof THREE !== 'undefined') {
+            pc.style.display = 'block';
+            requestAnimationFrame(function() {
+                pc.style.opacity = '0.6';
+                initPlanetZoom(pc);
+            });
+        }
+    }
+
+    function initPlanetZoom(canvas) {
+        var W = window.innerWidth, H = window.innerHeight;
+        var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        renderer.setClearColor(0x000000, 0);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(W, H);
+
+        var scene  = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 500);
+        // Offset camera slightly so planet drifts to lower-right during approach
+        camera.position.set(0.6, -0.25, 22);
+        camera.lookAt(0, 0, 0);
+
+        scene.add(new THREE.AmbientLight(0x223344, 0.9));
+        var sun = new THREE.DirectionalLight(0x99ffee, 2.2);
+        sun.position.set(6, 4, 10);
+        scene.add(sun);
+        var rim = new THREE.DirectionalLight(0x004466, 0.6);
+        rim.position.set(-4, -2, -5);
+        scene.add(rim);
+
+        var tx = new THREE.TextureLoader().load('planets/naron.jpg');
+        tx.minFilter = THREE.LinearFilter;
+        tx.generateMipmaps = false;
+        var planet = new THREE.Mesh(
+            new THREE.SphereGeometry(2.2, 64, 64),
+            new THREE.MeshStandardMaterial({ map: tx, roughness: 0.75, metalness: 0.05 })
+        );
+        scene.add(planet);
+
+        // Approach animation: camera.z from 22 → 4.5, rapid then hard deceleration
+        var zStart = 22, zEnd = 4.5;
+        var tStart = null, DURATION = 4200;
+        var arrived = false;
+
+        function frame(ts) {
+            requestAnimationFrame(frame);
+            planet.rotation.y += arrived ? 0.0012 : 0.004;
+
+            if (!arrived) {
+                if (!tStart) tStart = ts;
+                var t = Math.min(1, (ts - tStart) / DURATION);
+                // Piecewise: fast quadratic in for first 65%, then quintic ease-out for arrival
+                var ease = t < 0.65
+                    ? Math.pow(t / 0.65, 2) * 0.65
+                    : 0.65 + 0.35 * (1 - Math.pow(1 - (t - 0.65) / 0.35, 5));
+                camera.position.z = zStart - ease * (zStart - zEnd);
+                if (t >= 1) arrived = true;
+            }
+            renderer.render(scene, camera);
+        }
+        requestAnimationFrame(frame);
+
+        window.addEventListener('resize', function() {
+            W = window.innerWidth; H = window.innerHeight;
+            renderer.setSize(W, H);
+            camera.aspect = W / H;
+            camera.updateProjectionMatrix();
+        });
+    }
+
     // ─── WARP STARS ───────────────────────────────────────────────────────────
+    var _starWarpSpeed = 5;
+
     function initStars() {
         var canvas = document.getElementById('stars-canvas');
         if (!canvas) return;
@@ -887,7 +1023,7 @@
             for (var i = 0; i < stars.length; i++) {
                 var s = stars[i];
                 var pz = s.z;
-                s.z -= 5;
+                s.z -= _starWarpSpeed;
                 if (s.z <= 0) {
                     s.x = (Math.random() - 0.5) * W;
                     s.y = (Math.random() - 0.5) * H;
