@@ -181,7 +181,7 @@
         .offer-badges      { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; }
 
         /* PLANET ZOOM CANVAS — above star trails, below page content */
-        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10; pointer-events:none; display:none; opacity:0; }
+        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10; pointer-events:none; display:none; }
         /* Observation deck toggle */
         #obs-btn { position:fixed; bottom:18px; right:18px; z-index:2100; }
         .offer-cost { color:#e0e0e0; font-size:0.88em; letter-spacing:1px; font-weight:bold; display:flex; align-items:center; gap:5px; }
@@ -609,13 +609,11 @@
         var pc  = document.getElementById('planet-canvas');
         var btn = document.getElementById('obs-btn');
         if (_obsDeckMode) {
-            // Hide planet — looking away from it, out into open space
-            _planetTargetOpacity = 0;
+            if (pc) pc.style.display = 'none';
             if (btn) btn.textContent = '\u2713 BRIDGE VIEW';
             rampStars(0.35, 600);
         } else {
-            // Restore planet if arrival has fired
-            if (pc && _arrivalFired) { pc.style.display = 'block'; _planetTargetOpacity = 0.6; }
+            if (pc && _arrivalFired) pc.style.display = 'block';
             if (btn) btn.textContent = '\u9728 OBS DECK';
             rampStars(0.35, 300);
         }
@@ -1033,7 +1031,6 @@
 
     // ─── ARRIVAL EFFECT ───────────────────────────────────────────────────────
     var _arrivalFired = false;
-    var _planetTargetOpacity = 0;
 
     function triggerArrival(planetKey) {
         if (_arrivalFired) return;
@@ -1052,9 +1049,7 @@
         // Show planet canvas and zoom in with chosen planet
         var pc = document.getElementById('planet-canvas');
         if (pc && typeof THREE !== 'undefined') {
-            pc.style.display = 'block'; // must be visible before WebGL renders
-            pc.style.opacity = '0';
-            _planetTargetOpacity = 0.6;
+            pc.style.display = 'block';
             initPlanetZoom(pc, planetKey || 'naron');
         }
     }
@@ -1105,17 +1100,6 @@
 
         function frame(ts) {
             requestAnimationFrame(frame);
-            // Fade canvas in/out via direct JS opacity (no CSS transition — avoids compositor layer issue)
-            var pc2 = canvas;
-            var curOp = parseFloat(pc2.style.opacity) || 0;
-            var tgt = _planetTargetOpacity;
-            if (Math.abs(curOp - tgt) > 0.005) {
-                curOp += (tgt - curOp) * 0.07;
-                pc2.style.opacity = curOp;
-            } else {
-                pc2.style.opacity = tgt;
-                if (tgt === 0) pc2.style.display = 'none';
-            }
             planet.rotation.y += arrived ? 0.00024 : 0.0008;
 
             if (!arrived) {
