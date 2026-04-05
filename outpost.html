@@ -185,6 +185,62 @@
         @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
         .loading-dots::after { content:'...'; animation:blink 1s step-end infinite; }
 
+        /* ARCHIVE TERMINAL MODAL */
+        #archive-overlay {
+            display:none; position:fixed; inset:0; z-index:5000;
+            background:rgba(0,0,0,0.88); backdrop-filter:blur(4px);
+            align-items:center; justify-content:center;
+        }
+        #archive-overlay.open { display:flex; }
+        #archive-terminal {
+            width:min(820px,94vw); max-height:82vh;
+            background:#020810; border:1px solid #00ffcc44;
+            box-shadow:0 0 40px rgba(0,255,204,0.08), inset 0 0 60px rgba(0,0,0,0.8);
+            display:flex; flex-direction:column; font-family:'Courier New',monospace;
+            overflow:hidden; position:relative;
+        }
+        .term-titlebar {
+            background:#00ffcc0d; border-bottom:1px solid #00ffcc22;
+            padding:8px 14px; display:flex; justify-content:space-between; align-items:center;
+            font-size:0.72em; letter-spacing:3px; color:#00ffcc66;
+            flex-shrink:0;
+        }
+        .term-close {
+            background:transparent; border:1px solid #00ffcc44; color:#00ffcc88;
+            padding:2px 10px; cursor:pointer; font-family:inherit; font-size:1em; letter-spacing:1px;
+            transition:all 0.2s;
+        }
+        .term-close:hover { background:#00ffcc; color:#000; }
+        #term-body {
+            flex:1; overflow-y:auto; padding:18px 20px 14px;
+            scrollbar-width:thin; scrollbar-color:#00ffcc22 transparent;
+        }
+        .term-line { font-size:0.78em; color:#3a7a6a; letter-spacing:1px; margin:3px 0; line-height:1.6; }
+        .term-line.bright { color:#00ffcc; }
+        .term-line.dim    { color:#1e4a40; }
+        .term-line.warn   { color:#cc8800; }
+        .term-line.err    { color:#ff4444; }
+        .term-line.header { color:#00ffcc; font-size:0.85em; letter-spacing:3px; margin:10px 0 4px; border-bottom:1px solid #00ffcc22; padding-bottom:4px; }
+        @keyframes cursor-blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+        .term-cursor { display:inline-block; width:8px; height:1em; background:#00ffcc; animation:cursor-blink 0.8s step-end infinite; vertical-align:text-bottom; margin-left:2px; }
+        #term-prompt-row { display:flex; gap:10px; margin-top:12px; flex-shrink:0; padding:0 20px 16px; border-top:1px solid #00ffcc11; padding-top:10px; }
+        .term-ynb { background:transparent; border:1px solid #00ffcc44; color:#00ffcc88; padding:6px 20px; cursor:pointer; font-family:inherit; font-size:0.78em; letter-spacing:3px; border-radius:3px; transition:all 0.2s; }
+        .term-ynb:hover { background:#00ffcc; color:#000; border-color:#00ffcc; }
+        .term-ynb.no:hover  { background:#ff4444; color:#fff; border-color:#ff4444; }
+        /* ARCHIVE TABLE */
+        #archive-table-wrap { display:none; }
+        .arc-table { width:100%; border-collapse:collapse; font-size:0.74em; letter-spacing:0.5px; margin-top:4px; }
+        .arc-table th { color:#00ffcc88; font-weight:normal; letter-spacing:2px; text-transform:uppercase; border-bottom:1px solid #00ffcc22; padding:5px 8px; text-align:left; }
+        .arc-table td { padding:5px 8px; border-bottom:1px dashed #0a1a18; color:#4a8a7a; }
+        .arc-table td.name-col  { color:#aaa; }
+        .arc-table td.cost-col  { color:#00ffcc; font-weight:bold; }
+        .arc-table td.date-col  { color:#3a6a5a; font-size:0.9em; }
+        .arc-table td.schema-col { color:#1e6a5a; font-size:0.85em; }
+        .arc-table tr:hover td  { background:rgba(0,255,204,0.02); }
+        .arc-progress { font-size:0.72em; color:#1e6a5a; letter-spacing:2px; margin:8px 0; }
+        .arc-progress-bar { height:2px; background:#0a2a24; margin:4px 0 10px; }
+        .arc-progress-fill { height:100%; background:#00ffcc; transition:width 0.3s; width:0%; }
+
         /* HEADER STAR GAME */
         .star-target { position:fixed; font-size:1.5em; cursor:pointer; z-index:9999; color:var(--theme-color); animation:hp-fadeout 1.6s ease-in forwards; user-select:none; pointer-events:all; }
         #star-hud { display:none; position:fixed; bottom:12px; right:16px; z-index:9998; font-family:'Courier New',monospace; font-size:0.7em; color:#333; letter-spacing:2px; }
@@ -272,10 +328,26 @@
     </div>
 </div>
 
+<!-- ARCHIVE TERMINAL MODAL -->
+<div id="archive-overlay">
+    <div id="archive-terminal">
+        <div class="term-titlebar">
+            <span>NARON RELAY NODE &middot; SECTOR 7 &middot; BURIED UPLINK CHANNEL</span>
+            <button class="term-close" onclick="closeArchive()">[ DISCONNECT ]</button>
+        </div>
+        <div id="term-body"></div>
+        <div id="term-prompt-row" style="display:none;">
+            <button class="term-ynb" onclick="confirmArchivePull()">[ Y ] INITIATE</button>
+            <button class="term-ynb no" onclick="closeArchive()">[ N ] ABORT</button>
+        </div>
+    </div>
+</div>
+
 <div class="outpost-main">
     <div class="action-bar">
         <button class="outpost-btn" id="scan-btn" onclick="scanOutpost()">[ SCAN OUTPOST ]</button>
         <a href="https://play.alienworlds.io/outpost" target="_blank" rel="noopener" class="outpost-btn">[ &#9654; VISIT OUTPOST ]</a>
+        <button class="outpost-btn" id="archive-btn" onclick="openArchive()">[ &#9650; TAP BURIED UPLINK ]</button>
         <span id="scan-status"></span>
     </div>
     <div id="outpost-content">
@@ -492,6 +564,227 @@
     function toggleFlip(el) { el.classList.toggle('flipped'); }
     window.toggleFlip = toggleFlip;
 
+    // ─── ARCHIVE TERMINAL ──────────────────────────────────────────────────────
+    var _archiveState = 'idle'; // idle | confirming | pulling | done
+
+    var RELAY_FLAVOR = [
+        'INITIALISING LONG-RANGE RELAY HANDSHAKE\u2026',
+        'ROUTING VIA NARON SECTOR 7 JUMP NODE\u2026',
+        'QUANTUM LINK ESTABLISHED \u00b7 SIGNAL INTEGRITY: 94%',
+        'BYPASSING STANDARD OUTPOST AUTHENTICATION\u2026',
+        'WARNING \u2014 ACCESSING LEGACY ARCHIVE PARTITION',
+        'DATA UPLINK CONFIRMED \u00b7 BURIED CHANNEL OPEN',
+    ];
+
+    var INTRO_LINES = [
+        { t:'bright', s:'// NARON DEEP RELAY \u00b7 FTL DATA UPLINK \u00b7 SECTOR 7 //' },
+        { t:'dim',    s:'------------------------------------------------------------' },
+        { t:'dim',    s:' ' },
+        { t:'',       s:'LONG-RANGE RELAY ACQUIRED.' },
+        { t:'',       s:'BURIED OUTPOST ARCHIVE PARTITION LOCATED.' },
+        { t:'dim',    s:' ' },
+        { t:'warn',   s:'// NOTICE: ACCESSING HISTORICAL RECORD BUFFER //' },
+        { t:'dim',    s:'   This channel contains expired offer records recovered' },
+        { t:'dim',    s:'   from the outpost archive data stream. Each entry shows' },
+        { t:'dim',    s:'   the lowest shard cost ever recorded for that template,' },
+        { t:'dim',    s:'   and the date range of its last active window.' },
+        { t:'dim',    s:' ' },
+        { t:'warn',   s:'   DISCLAIMER: Historic data is a window into the past.' },
+        { t:'warn',   s:'   It provides zero guarantee any price will return.' },
+        { t:'warn',   s:'   The outpost operates on its own schedule. Verify live.' },
+        { t:'dim',    s:' ' },
+        { t:'',       s:'FULL ARCHIVE PULL REQUIRED \u2014 SCANNING ALL RELAY NODES.' },
+        { t:'',       s:'ESTIMATED RELAY HOPS: 15\u201320 \u00b7 ETA: ~10 SECONDS.' },
+        { t:'dim',    s:' ' },
+        { t:'bright', s:'INITIATE ARCHIVE PULL? CONFIRM RELAY SEQUENCE:' },
+    ];
+
+    function termLine(cls, text) {
+        var tb = document.getElementById('term-body');
+        var d = document.createElement('div');
+        d.className = 'term-line' + (cls ? ' ' + cls : '');
+        d.innerHTML = text;
+        tb.appendChild(d);
+        tb.scrollTop = tb.scrollHeight;
+        return d;
+    }
+
+    function clearTerm() {
+        var tb = document.getElementById('term-body');
+        tb.innerHTML = '';
+    }
+
+    async function typeLines(lines, delayMs) {
+        for (var i = 0; i < lines.length; i++) {
+            termLine(lines[i].t, lines[i].s);
+            await new Promise(function(r){ setTimeout(r, delayMs || 55); });
+        }
+    }
+
+    async function openArchive() {
+        if (_archiveState === 'pulling') return;
+        _archiveState = 'confirming';
+        clearTerm();
+        document.getElementById('term-prompt-row').style.display = 'none';
+        document.getElementById('archive-overlay').classList.add('open');
+
+        // Relay connection animation
+        var cur = termLine('bright', '');
+        for (var i = 0; i < RELAY_FLAVOR.length; i++) {
+            cur.innerHTML = RELAY_FLAVOR[i] + '<span class="term-cursor"></span>';
+            await new Promise(function(r){ setTimeout(r, 300); });
+        }
+        cur.innerHTML = RELAY_FLAVOR[RELAY_FLAVOR.length - 1];
+        termLine('dim', '');
+
+        await new Promise(function(r){ setTimeout(r, 200); });
+        await typeLines(INTRO_LINES, 42);
+
+        if (_archiveState === 'confirming') {
+            document.getElementById('term-prompt-row').style.display = 'flex';
+        }
+    }
+
+    function closeArchive() {
+        _archiveState = 'idle';
+        document.getElementById('archive-overlay').classList.remove('open');
+    }
+
+    async function confirmArchivePull() {
+        if (_archiveState !== 'confirming' && _archiveState !== 'done') return;
+        _archiveState = 'pulling';
+        document.getElementById('term-prompt-row').style.display = 'none';
+
+        termLine('dim', '');
+        termLine('bright', '>> RELAY SEQUENCE CONFIRMED. PULLING ARCHIVE\u2026');
+        termLine('dim', '');
+
+        // Progress indicators
+        var progLabel = termLine('arc-progress', 'SCANNING\u2026 0 RECORDS READ');
+        var progWrap  = document.createElement('div'); progWrap.className = 'arc-progress-bar';
+        var progFill  = document.createElement('div'); progFill.className = 'arc-progress-fill';
+        progWrap.appendChild(progFill);
+        document.getElementById('term-body').appendChild(progWrap);
+
+        // Fetch all rows, paging forward from the beginning
+        var allRows = [];
+        var lowerBound = null;
+        var hop = 0;
+
+        while (true) {
+            var params = {
+                code: 'uspts.worlds', scope: 'uspts.worlds', table: 'pointoffers',
+                limit: 200, json: true
+            };
+            if (lowerBound != null) params.lower_bound = lowerBound;
+
+            var result = await fetchTableRows(params);
+            if (!result || !result.rows || result.rows.length === 0) break;
+
+            allRows = allRows.concat(result.rows);
+            hop++;
+            progLabel.textContent = 'RELAY HOP ' + hop + ' \u00b7 ' + allRows.length + ' RECORDS READ\u2026';
+            // progress bar based on row id growth (heuristic max ~3000)
+            progFill.style.width = Math.min(98, Math.round((allRows.length / 3000) * 100)) + '%';
+
+            if (!result.more) break;
+            var lastRow = result.rows[result.rows.length - 1];
+            var lastId  = lastRow.id != null ? lastRow.id : lastRow.offer_id;
+            if (lastId == null) break;
+            lowerBound = String(Number(lastId) + 1);
+            await new Promise(function(r){ setTimeout(r, 120); });
+        }
+
+        progFill.style.width = '100%';
+        progLabel.textContent = 'ARCHIVE SCAN COMPLETE \u00b7 ' + allRows.length + ' TOTAL RECORDS';
+
+        // Process: group expired rows by template_id, find lowest cost
+        var now = Date.now() / 1000;
+        var byTmpl = {}; // tmplId -> { name, schema, element, type, minCost, minDate, maxDate, count }
+
+        allRows.forEach(function(r) {
+            var endTs   = parseTs(r.end != null ? r.end : (r.end_time != null ? r.end_time : r.ends));
+            if (endTs == null || now <= endTs) return; // skip active/upcoming
+            var rawCost = r.required != null ? r.required : (r.cost != null ? r.cost : r.points_required);
+            var cost    = (rawCost || 0) / 10;
+            var tmplId  = String(r.template_id || '');
+            if (!tmplId || tmplId === '0') return;
+            var startTs = parseTs(r.start != null ? r.start : (r.start_time != null ? r.start_time : r.starts));
+            if (!byTmpl[tmplId]) {
+                byTmpl[tmplId] = { minCost: cost, minStartTs: startTs, minEndTs: endTs, count: 1 };
+            } else {
+                var b = byTmpl[tmplId];
+                b.count++;
+                if (cost < b.minCost) { b.minCost = cost; b.minStartTs = startTs; b.minEndTs = endTs; }
+            }
+        });
+
+        // Enrich with cached template info
+        var tmplIds = Object.keys(byTmpl);
+        termLine('', 'ENRICHING ' + tmplIds.length + ' UNIQUE TEMPLATES FROM AA\u2026');
+        for (var i = 0; i < tmplIds.length; i++) {
+            if (!_tmplCache[tmplIds[i]]) await fetchTemplateInfo(tmplIds[i]);
+        }
+
+        // Sort by schema then cost asc
+        tmplIds.sort(function(a, b) {
+            var ia = _tmplCache[a] || {}, ib = _tmplCache[b] || {};
+            var sa = ia.schema || 'zzz', sb = ib.schema || 'zzz';
+            if (sa !== sb) return sa.localeCompare(sb);
+            return byTmpl[a].minCost - byTmpl[b].minCost;
+        });
+
+        termLine('dim', '');
+        termLine('bright', '// ARCHIVE RECORD DUMP — HISTORIC LOWEST SHARD COST //');
+        termLine('warn', '   DISCLAIMER: Past prices carry no guarantee of recurrence.');
+        termLine('warn', '   Outpost offers are controlled by Alien Worlds. Verify live.');
+        termLine('dim', '');
+
+        // Build table
+        var tbl = document.createElement('table');
+        tbl.className = 'arc-table';
+        tbl.innerHTML = '<thead><tr>'
+            + '<th>TEMPLATE</th><th>SCHEMA</th><th>ELEMENT/TYPE</th>'
+            + '<th>LOWEST (SHD)</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
+            + '</tr></thead>';
+        var tbody = document.createElement('tbody');
+
+        tmplIds.forEach(function(tid) {
+            var b    = byTmpl[tid];
+            var info = _tmplCache[tid] || { name: 'Template #' + tid };
+            var badge = info.element || info.type || '\u2014';
+            var dateStr = b.minEndTs ? formatDateOnly(b.minEndTs) : '\u2014';
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td class="name-col">' + (info.name || 'Template #' + tid) + '</td>'
+                + '<td class="schema-col">' + (info.schema || '\u2014') + '</td>'
+                + '<td>' + badge + '</td>'
+                + '<td class="cost-col"><img src="Shards.png" style="width:13px;height:13px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + b.minCost.toFixed(1) + '</td>'
+                + '<td style="color:#1e6a5a;text-align:center;">' + b.count + '</td>'
+                + '<td class="date-col">' + dateStr + '</td>';
+            tbody.appendChild(tr);
+        });
+        tbl.appendChild(tbody);
+        document.getElementById('term-body').appendChild(tbl);
+        document.getElementById('term-body').scrollTop = 999999;
+
+        termLine('dim', '');
+        termLine('bright', '// END OF ARCHIVE TRANSMISSION //');
+        termLine('dim', '---- RELAY CHANNEL HOLDING ---- DISCONNECT WHEN DONE ----');
+
+        _archiveState = 'done';
+    }
+
+    function formatDateOnly(epoch) {
+        if (!epoch) return '\u2014';
+        var d = new Date(epoch * 1000);
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return months[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+    }
+
+    window.openArchive  = openArchive;
+    window.closeArchive = closeArchive;
+    window.confirmArchivePull = confirmArchivePull;
+
     // ─── RENDER ────────────────────────────────────────────────────────────────
     function renderOffers(active, upcoming) {
         var content = document.getElementById('outpost-content');
@@ -624,6 +917,9 @@
         checkWalletState();
         initStars();
         scanOutpost();
+        document.getElementById('archive-overlay').addEventListener('click', function(e) {
+            if (e.target === this && _archiveState !== 'pulling') closeArchive();
+        });
     });
 
     // ─── HEADER PLANET + STAR GAME ────────────────────────────────────────────
