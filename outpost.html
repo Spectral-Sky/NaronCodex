@@ -124,11 +124,12 @@
         .upcoming-header { color:#44aaff; background:rgba(0,170,255,0.06); border:1px solid rgba(0,170,255,0.3); }
 
         /* OFFERS GRID */
-        .offers-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
-        @media (max-width:900px) { .offers-grid { grid-template-columns:repeat(2,1fr); } }
+        .offers-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; }
+        @media (max-width:1100px) { .offers-grid { grid-template-columns:repeat(3,1fr); } }
+        @media (max-width:700px)  { .offers-grid { grid-template-columns:repeat(2,1fr); } }
 
         /* OFFER CARD — 3D FLIP */
-        .card-wrap { perspective:900px; height:320px; }
+        .card-wrap { perspective:900px; height:300px; }
         .offer-card {
             width:100%; height:100%;
             position:relative;
@@ -141,18 +142,18 @@
             position:absolute; inset:0;
             backface-visibility:hidden;
             -webkit-backface-visibility:hidden;
-            border-radius:14px; overflow:hidden;
+            border-radius:12px; overflow:hidden;
         }
         .card-front {
-            background:rgba(0,255,204,0.02);
-            border:1px solid rgba(0,255,204,0.14);
-            display:flex; flex-direction:column; align-items:center; gap:8px;
-            padding:14px 10px; text-align:center;
+            background:#040810;
+            border:1px solid rgba(0,255,204,0.22);
+            display:flex; flex-direction:column; align-items:center; gap:7px;
+            padding:12px 8px; text-align:center;
             transition:border-color 0.2s, box-shadow 0.2s;
         }
-        .offer-card:not(.flipped):hover .card-front { border-color:var(--theme-color); box-shadow:0 0 16px rgba(0,255,204,0.18); }
-        .offer-card.active .card-front   { border-color:rgba(0,255,100,0.35); }
-        .offer-card.upcoming .card-front { border-color:rgba(0,170,255,0.28); }
+        .offer-card:not(.flipped):hover .card-front { border-color:var(--theme-color); box-shadow:0 0 14px rgba(0,255,204,0.22); }
+        .offer-card.active .card-front   { border-color:rgba(0,255,100,0.45); }
+        .offer-card.upcoming .card-front { border-color:rgba(0,170,255,0.38); }
         .card-back {
             transform:rotateY(180deg);
             background:#04040f;
@@ -162,8 +163,8 @@
         }
         .card-back-img { width:100%; flex:1; object-fit:contain; min-height:0; border-radius:6px; }
         .card-back-label { color:var(--theme-color); font-size:0.68em; letter-spacing:1px; text-transform:uppercase; text-align:center; line-height:1.3; }
-        .offer-img { width:156px; height:156px; object-fit:contain; border-radius:8px; background:#080818; border:1px solid #1a1a2e; }
-        .offer-img-placeholder { width:156px; height:156px; border-radius:8px; background:#080818; border:1px solid #1a1a2e; display:flex; align-items:center; justify-content:center; color:#252535; font-size:0.68em; letter-spacing:1px; }
+        .offer-img { width:110px; height:110px; object-fit:contain; border-radius:8px; background:#080818; border:1px solid #1a1a2e; }
+        .offer-img-placeholder { width:110px; height:110px; border-radius:8px; background:#080818; border:1px solid #1a1a2e; display:flex; align-items:center; justify-content:center; color:#252535; font-size:0.68em; letter-spacing:1px; }
         .offer-name { color:var(--theme-color); font-size:0.74em; letter-spacing:1px; font-weight:bold; text-transform:uppercase; line-height:1.35; }
         .offer-badge { font-size:0.6em; letter-spacing:2px; padding:2px 10px; border-radius:10px; font-weight:bold; text-transform:uppercase; }
         .element-earth     { color:#c8a827; border:1px solid rgba(200,168,39,0.35); }
@@ -179,8 +180,12 @@
         .element-generic   { color:#888;    border:1px solid #333; }
         .offer-badges      { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; }
 
-        /* PLANET ZOOM CANVAS */
-        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:1; pointer-events:none; display:none; opacity:0; transition:opacity 1s ease; }
+        /* PLANET ZOOM CANVAS — sits in front of star trails */
+        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:3; pointer-events:none; display:none; opacity:0; transition:opacity 1s ease; }
+        /* Stars behind planet but in front of nebula bg */
+        #stars-canvas  { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:1; pointer-events:none; }
+        /* Observation deck toggle */
+        #obs-btn { position:fixed; bottom:18px; right:18px; z-index:2100; }
         .offer-cost { color:#e0e0e0; font-size:0.88em; letter-spacing:1px; font-weight:bold; display:flex; align-items:center; gap:5px; }
         .shard-icon-img { width:52px; height:52px; object-fit:contain; vertical-align:middle; }
         .offer-window { width:100%; font-size:0.65em; color:#555; letter-spacing:0.5px; display:flex; flex-direction:column; gap:4px; border-top:1px solid #141425; padding-top:7px; margin-top:2px; }
@@ -300,8 +305,8 @@
             #hamburger-btn { display:block; }
             .title-bar-left h1 { font-size:1.3em; letter-spacing:4px; }
             .offers-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
-            .card-wrap { height:255px; }
-            .offer-img, .offer-img-placeholder { width:100px; height:100px; }
+            .card-wrap { height:270px; }
+            .offer-img, .offer-img-placeholder { width:90px; height:90px; }
         }
     </style>
 </head>
@@ -388,11 +393,12 @@
     </div>
 </div>
 
+<button class="outpost-btn" id="obs-btn" onclick="toggleObsDeck()" title="Toggle observation deck view">&#9728; OBS DECK</button>
+
 <div class="outpost-main">
     <!-- Top action bar — hidden until wares are revealed -->
     <div class="action-bar" id="top-action-bar" style="display:none;">
         <a href="https://play.alienworlds.io/outpost" target="_blank" rel="noopener" class="outpost-btn">[ &#9654; VISIT OUTPOST ]</a>
-        <button class="outpost-btn" id="scan-btn" onclick="reEngage()">[ &#8635; RESCAN ]</button>
         <button class="outpost-btn" id="archive-btn" onclick="openArchive()">[ &#9650; TAP BURIED UPLINK ]</button>
         <span id="scan-status"></span>
     </div>
@@ -591,11 +597,24 @@
         setTimeout(scanOutpost, 500);
     }
 
-    function reEngage() {
-        _arrivalFired = false;
-        document.getElementById('top-action-bar').style.display = 'none';
-        document.getElementById('outpost-subtitle').textContent = 'NARON DEEP SPACE NAVIGATION \u00b7 SECTOR 7';
-        showNavConsole();
+    // ─── OBSERVATION DECK ─────────────────────────────────────────────────────
+    var _obsDeckMode = false;
+
+    function toggleObsDeck() {
+        _obsDeckMode = !_obsDeckMode;
+        var pc  = document.getElementById('planet-canvas');
+        var btn = document.getElementById('obs-btn');
+        if (_obsDeckMode) {
+            // Hide planet — looking away from it, out into open space
+            if (pc) pc.style.opacity = '0';
+            if (btn) btn.textContent = '\u2713 BRIDGE VIEW';
+            rampStars(0.35, 600);
+        } else {
+            // Restore planet if arrival has fired
+            if (pc && _arrivalFired) pc.style.opacity = '0.6';
+            if (btn) btn.textContent = '\u9728 OBS DECK';
+            rampStars(0.35, 300);
+        }
     }
 
     // ─── SCAN ──────────────────────────────────────────────────────────────────
@@ -1035,8 +1054,17 @@
 
         var scene  = new THREE.Scene();
         var camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 500);
-        // Offset camera slightly so planet drifts to lower-right during approach
-        camera.position.set(0.6, -0.25, 22);
+        // Each planet gets a unique resting offset so they appear at different screen positions
+        var _offsets = {
+            eyeke:  { x:  1.1, y: -0.5 },
+            kavian: { x: -1.3, y:  0.2 },
+            magor:  { x:  0.2, y:  0.8 },
+            naron:  { x:  0.6, y: -0.25 },
+            neri:   { x: -0.7, y: -0.6 },
+            veles:  { x:  1.4, y:  0.4 }
+        };
+        var _off = _offsets[planetKey] || { x: 0.6, y: -0.25 };
+        camera.position.set(_off.x, _off.y, 22);
         camera.lookAt(0, 0, 0);
 
         scene.add(new THREE.AmbientLight(0x223344, 0.9));
