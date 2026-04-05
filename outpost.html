@@ -80,14 +80,14 @@
         .nav-dropdown-item:hover { color:var(--theme-color); background:var(--theme-hover); }
 
         /* TITLE BAR — positioned above stars canvas */
-        .title-bar { display:flex; flex-direction:column; align-items:stretch; padding:20px 30px 0; border-bottom:1px solid rgba(0,255,204,0.12); background:rgba(5,5,5,0.97); backdrop-filter:blur(5px); position:relative; z-index:4; }
+        .title-bar { display:flex; flex-direction:column; align-items:stretch; padding:20px 30px 0; border-bottom:1px solid rgba(0,255,204,0.12); background:rgba(5,5,5,0.97); backdrop-filter:blur(5px); position:relative; z-index:20; }
         .title-bar-marquee { overflow:hidden; background:rgba(0,0,0,0.3); border-top:1px solid rgba(255,255,255,0.04); padding:4px 0; margin-top:12px; }
         .title-bar-left { display:flex; flex-direction:column; gap:8px; }
         .title-bar-left h1 { margin:0; font-size:1.8em; letter-spacing:6px; text-transform:uppercase; color:var(--theme-color); text-shadow:var(--theme-shadow); }
         .title-bar-left .page-subtitle { margin:0; color:#555; font-size:0.72em; letter-spacing:3px; }
 
         /* OUTPOST MAIN — positioned above stars canvas */
-        .outpost-main { max-width:1200px; margin:0 auto; width:100%; padding:30px 20px 60px; box-sizing:border-box; flex:1; position:relative; z-index:4; }
+        .outpost-main { max-width:1200px; margin:0 auto; width:100%; padding:30px 20px 60px; box-sizing:border-box; flex:1; position:relative; z-index:20; }
 
         /* ACTION BAR */
         .action-bar { display:flex; align-items:center; gap:16px; margin-bottom:28px; flex-wrap:wrap; }
@@ -180,10 +180,8 @@
         .element-generic   { color:#888;    border:1px solid #333; }
         .offer-badges      { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; }
 
-        /* PLANET ZOOM CANVAS — sits in front of star trails */
-        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:3; pointer-events:none; display:none; opacity:0; transition:opacity 1s ease; }
-        /* Stars behind planet but in front of nebula bg */
-        #stars-canvas  { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:1; pointer-events:none; }
+        /* PLANET ZOOM CANVAS — above star trails, below page content */
+        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10; pointer-events:none; display:none; opacity:0; transition:opacity 1s ease; }
         /* Observation deck toggle */
         #obs-btn { position:fixed; bottom:18px; right:18px; z-index:2100; }
         .offer-cost { color:#e0e0e0; font-size:0.88em; letter-spacing:1px; font-weight:bold; display:flex; align-items:center; gap:5px; }
@@ -247,7 +245,7 @@
         }
         #archive-overlay.open { display:flex; }
         #archive-terminal {
-            width:min(820px,94vw); max-height:82vh;
+            width:min(940px,94vw); max-height:82vh;
             background:#020810; border:1px solid #00ffcc44;
             box-shadow:0 0 40px rgba(0,255,204,0.08), inset 0 0 60px rgba(0,0,0,0.8);
             display:flex; flex-direction:column; font-family:'Courier New',monospace;
@@ -287,7 +285,7 @@
         .arc-table th { color:#00ffcc88; font-weight:normal; letter-spacing:2px; text-transform:uppercase; border-bottom:1px solid #00ffcc22; padding:5px 8px; text-align:left; }
         .arc-table td { padding:5px 8px; border-bottom:1px dashed #0a1a18; color:#4a8a7a; }
         .arc-table td.name-col  { color:#aaa; }
-        .arc-table td.cost-col  { color:#00ffcc; font-weight:bold; }
+        .arc-table td.cost-col  { color:#00ffcc; font-weight:bold; white-space:nowrap; }
         .arc-table td.date-col  { color:#3a6a5a; font-size:0.9em; }
         .arc-table td.schema-col { color:#1e6a5a; font-size:0.85em; }
         .arc-table tr:hover td  { background:rgba(0,255,204,0.02); }
@@ -553,6 +551,12 @@
 
     function imgFallback(el) { el.style.display = 'none'; }
 
+    function fmtNum(n) {
+        var parts = n.toFixed(1).split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return parts.join('.');
+    }
+
     function setStatus(msg) {
         var el = document.getElementById('scan-status');
         if (el) el.textContent = msg;
@@ -679,14 +683,24 @@
         content.innerHTML = '<div class="arrival-banner">'
             + '<div class="arrival-subtitle">DROPPING OUT OF WARP \u00b7 ORBITAL APPROACH LOCKED</div>'
             + '<div class="arrival-planet-name">' + _planetLabel + '</div>'
-            + '<div class="arrival-status">FEDERATION OUTPOST ORBITAL STATION &nbsp;&middot;&nbsp; DOCKING CLEARANCE GRANTED<br>'
+            + '<div class="arrival-status" id="arrival-status-msg">FEDERATION OUTPOST ORBITAL STATION &nbsp;&middot;&nbsp; DOCKING CLEARANCE GRANTED<br>'
             + 'REQUESTING WARES INTERFACE \u00b7 STAND BY<span class="loading-dots"></span></div>'
             + '</div>';
 
         triggerArrival(_chosenPlanet);
 
-        // Brief pause, then reveal wares
+        // Brief pause for planet zoom, then show welcome message
         await new Promise(function(r){ setTimeout(r, 2400); });
+
+        var statusEl = document.getElementById('arrival-status-msg');
+        if (statusEl) {
+            statusEl.innerHTML = 'WELCOME TO <span style="color:var(--theme-color);font-weight:bold;">'
+                + _planetLabel.toUpperCase() + ' OUTPOST STATION</span>'
+                + '<br><span style="color:#2a6a5a;">LOADING WARES<span class="loading-dots"></span></span>';
+        }
+
+        // One second pause for welcome message, then reveal wares
+        await new Promise(function(r){ setTimeout(r, 1000); });
 
         document.getElementById('outpost-subtitle').textContent =
             _planetLabel.toUpperCase() + ' ORBITAL OUTPOST \u00b7 WARES INTERFACE ONLINE';
@@ -913,12 +927,12 @@
             var elList = (info.elements && info.elements.length) ? info.elements.join(' / ') : (info.type || '\u2014');
             var dateStr = b.minEndTs ? formatDateOnly(b.minEndTs) : '\u2014';
             var currentCost = _currentCostByTmpl[tid];
-            var currentStr  = currentCost != null ? currentCost.toFixed(1) : '\u2014';
+            var currentStr  = currentCost != null ? fmtNum(currentCost) : '\u2014';
             var tr = document.createElement('tr');
             tr.innerHTML = '<td class="name-col">' + (info.name || 'Template #' + tid) + '</td>'
                 + '<td class="schema-col">' + (info.schema || '\u2014') + '</td>'
                 + '<td>' + elList + '</td>'
-                + '<td class="cost-col"><img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + b.minCost.toFixed(1) + '</td>'
+                + '<td class="cost-col"><img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + fmtNum(b.minCost) + '</td>'
                 + '<td class="cost-col">' + (currentCost != null ? '<img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + currentStr : '<span style="color:#2a4a3a;">\u2014</span>') + '</td>'
                 + '<td style="color:#1e6a5a;text-align:center;">' + b.count + '</td>'
                 + '<td class="date-col">' + dateStr + '</td>';
@@ -992,7 +1006,7 @@
                         + frontImg
                         + '<div class="offer-name">' + info.name + '</div>'
                         + badge
-                        + '<div class="offer-cost"><img src="Shards.png" class="shard-icon-img" alt="shards"> ' + e.cost.toFixed(1) + ' SHARDS</div>'
+                        + '<div class="offer-cost"><img src="Shards.png" class="shard-icon-img" alt="shards"> ' + fmtNum(e.cost) + ' SHARDS</div>'
                         + windowHtml
                         + '</div>'
                         + '<div class="card-face card-back">'

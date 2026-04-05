@@ -690,6 +690,7 @@
                 <span class="card-schema">Live shard offers — active &amp; upcoming</span>
                 <div class="card-status status-live">SYSTEM LIVE</div>
             </div>
+            <canvas id="outpost-card-planet" width="90" height="90" style="position:absolute;right:30px;top:50%;transform:translateY(-50%);border-radius:50%;pointer-events:none;opacity:0.85;"></canvas>
         </a>
     </div>
 </div>
@@ -1265,6 +1266,48 @@
         if (spd < BASE) spd = BASE;
         pm.rotation.y += spd;
         R.render(sc, cam);
+    })();
+})();
+// ── OUTPOST CARD PLANET ────────────────────────────────────────────────────
+(function() {
+    if (typeof THREE === 'undefined') return;
+    var canvas = document.getElementById('outpost-card-planet');
+    if (!canvas) return;
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setClearColor(0x000000, 0);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(90, 90);
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    camera.position.z = 5;
+    scene.add(new THREE.AmbientLight(0x223344, 0.8));
+    var sun = new THREE.DirectionalLight(0x99ffee, 2.0);
+    sun.position.set(4, 3, 6);
+    scene.add(sun);
+    var PLIST = ['eyeke','kavian','magor','naron','neri','veles'];
+    var tx = new THREE.TextureLoader().load('planets/' + PLIST[Math.floor(Math.random() * PLIST.length)] + '.jpg');
+    tx.minFilter = THREE.LinearFilter; tx.generateMipmaps = false;
+    var planet = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 32, 32),
+        new THREE.MeshStandardMaterial({ map: tx, roughness: 0.75, metalness: 0.05 })
+    );
+    scene.add(planet);
+    var sat = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00aa88, roughness: 0.4 })
+    );
+    scene.add(sat);
+    var satAngle = 0, SAT_R = 1.65, SAT_INC = 0.52;
+    (function _anim() {
+        requestAnimationFrame(_anim);
+        planet.rotation.y += 0.004;
+        satAngle += 0.025;
+        sat.position.set(
+            Math.cos(satAngle) * SAT_R,
+            Math.sin(satAngle) * Math.sin(SAT_INC) * SAT_R,
+            Math.sin(satAngle) * Math.cos(SAT_INC) * SAT_R
+        );
+        renderer.render(scene, camera);
     })();
 })();
 // ── END HEADER NARON PLANET ──────────────────────────────────────────────────
