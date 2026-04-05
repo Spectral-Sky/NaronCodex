@@ -1052,6 +1052,8 @@
         // Show planet canvas and zoom in with chosen planet
         var pc = document.getElementById('planet-canvas');
         if (pc && typeof THREE !== 'undefined') {
+            pc.style.display = 'block'; // must be visible before WebGL renders
+            pc.style.opacity = '0';
             _planetTargetOpacity = 0.6;
             initPlanetZoom(pc, planetKey || 'naron');
         }
@@ -1110,7 +1112,6 @@
             if (Math.abs(curOp - tgt) > 0.005) {
                 curOp += (tgt - curOp) * 0.07;
                 pc2.style.opacity = curOp;
-                if (curOp > 0.01 && pc2.style.display === 'none') pc2.style.display = 'block';
             } else {
                 pc2.style.opacity = tgt;
                 if (tgt === 0) pc2.style.display = 'none';
