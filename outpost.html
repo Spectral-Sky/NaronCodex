@@ -182,7 +182,7 @@
         /* PLANET ZOOM CANVAS */
         #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:1; pointer-events:none; display:none; opacity:0; transition:opacity 1s ease; }
         .offer-cost { color:#e0e0e0; font-size:0.88em; letter-spacing:1px; font-weight:bold; display:flex; align-items:center; gap:5px; }
-        .shard-icon-img { width:26px; height:26px; object-fit:contain; vertical-align:middle; }
+        .shard-icon-img { width:52px; height:52px; object-fit:contain; vertical-align:middle; }
         .offer-window { width:100%; font-size:0.65em; color:#555; letter-spacing:0.5px; display:flex; flex-direction:column; gap:4px; border-top:1px solid #141425; padding-top:7px; margin-top:2px; }
         .window-row { display:flex; justify-content:space-between; gap:6px; }
         .window-label { color:#3a3a5a; text-transform:uppercase; flex-shrink:0; }
@@ -193,6 +193,46 @@
         .outpost-loading { color:#3a3a5a; letter-spacing:3px; font-size:0.82em; padding:50px 0; text-align:center; }
         @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
         .loading-dots::after { content:'...'; animation:blink 1s step-end infinite; }
+
+        /* NAV CONSOLE */
+        .nav-console {
+            max-width:520px; margin:50px auto 0;
+            border:1px solid rgba(0,255,204,0.18);
+            background:rgba(2,8,14,0.84); backdrop-filter:blur(6px);
+            padding:28px 34px 26px; position:relative; z-index:2;
+        }
+        .nav-console::before { content:''; position:absolute; inset:-1px; background:linear-gradient(135deg,rgba(0,255,204,0.07) 0%,transparent 55%); pointer-events:none; }
+        .console-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid rgba(0,255,204,0.05); font-size:0.75em; letter-spacing:1.5px; }
+        .console-label { color:#1e6a5a; text-transform:uppercase; }
+        .console-val   { color:#00ffcc; text-align:right; }
+        .console-val.amber { color:#cc8822; }
+        .console-val.dim   { color:#2a4a40; }
+        @keyframes status-pulse { 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+        .console-val.pulse { animation:status-pulse 1.4s ease-in-out infinite; }
+        hr.console-divider { border:none; border-top:1px solid rgba(0,255,204,0.1); margin:14px 0; }
+        .console-mission { color:#2e7a6a; font-size:0.73em; letter-spacing:1px; line-height:1.9; margin:0 0 22px; }
+        .console-mission .hi { color:#00ffcc88; }
+        .engage-btn {
+            display:block; width:100%; padding:14px 0;
+            border-radius:24px; background:transparent;
+            border:1px solid var(--theme-color); color:var(--theme-color);
+            font-family:'Courier New',monospace; font-size:0.95em; letter-spacing:4px;
+            text-transform:uppercase; cursor:pointer;
+            transition:background 0.25s, color 0.25s, box-shadow 0.25s; margin-top:2px;
+        }
+        .engage-btn:hover { background:var(--theme-color); color:#000; box-shadow:0 0 30px rgba(0,255,204,0.35); }
+        .engage-btn:disabled { opacity:0.35; cursor:default; background:transparent; color:var(--theme-color); box-shadow:none; }
+
+        /* ARRIVAL BANNER */
+        .arrival-banner { text-align:center; padding:56px 20px 32px; position:relative; z-index:2; }
+        .arrival-planet-name { font-size:2em; letter-spacing:8px; color:var(--theme-color); text-shadow:0 0 30px rgba(0,255,204,0.55); text-transform:uppercase; margin-bottom:10px; font-weight:bold; }
+        .arrival-subtitle { color:#3a8a7a; font-size:0.78em; letter-spacing:3px; margin-bottom:6px; }
+        .arrival-status   { color:#1e5a48; font-size:0.68em; letter-spacing:2px; }
+        @keyframes fadein-up { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
+        .arrival-banner > * { animation:fadein-up 0.7s ease both; }
+        .arrival-banner > *:nth-child(2) { animation-delay:0.3s; }
+        .arrival-banner > *:nth-child(3) { animation-delay:0.55s; }
+        .wares-reveal { animation:fadein-up 0.9s ease both; animation-delay:0.15s; }
 
         /* ARCHIVE TERMINAL MODAL */
         #archive-overlay {
@@ -299,7 +339,7 @@
             <button class="nav-btn nav-dropdown-btn active">UTILITY &#9660;</button>
             <div class="nav-dropdown-menu">
                 <a href="stash.html" class="nav-dropdown-item">&#11041; STASH</a>
-                <a href="outpost.html" class="nav-dropdown-item" style="color:var(--theme-color)"><img src="Shards.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST</a>
+                <a href="outpost.html" class="nav-dropdown-item" style="color:var(--theme-color)"><img src="Shards.png" style="width:30px;height:30px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST</a>
             </div>
         </div>
     </nav>
@@ -322,19 +362,14 @@
     <a href="pd.materials.html" class="nav-btn">PD MATS</a>
     <a href="army.html" class="nav-btn">ARMY BUILDER</a>
     <a href="stash.html" class="nav-btn">&#11041; STASH</a>
-    <a href="outpost.html" class="nav-btn active"><img src="Shards.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST</a>
+    <a href="outpost.html" class="nav-btn active"><img src="Shards.png" style="width:30px;height:30px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST</a>
 </nav>
 
 
 <div class="title-bar">
     <div class="title-bar-left">
-        <h1><img src="Shards.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST SCOUTER</h1>
-        <p class="page-subtitle">ALIEN WORLDS OUTPOST &middot; LIVE SHARD OFFERS FROM CHAIN</p>
-    </div>
-    <div class="title-bar-marquee">
-        <marquee scrollamount="6" style="font-family:'Courier New',monospace;font-size:0.68em;color:#ccc;letter-spacing:2px;" onmouseenter="this.setAttribute('scrollamount','1')" onmouseleave="this.setAttribute('scrollamount','6')">
-            ★ CLICK [ SCAN OUTPOST ] TO FETCH LIVE OFFERS FROM THE WAX BLOCKCHAIN &nbsp;·&nbsp; ACTIVE OFFERS ARE AVAILABLE TO PURCHASE NOW WITH SHARDS &nbsp;·&nbsp; COSTS ARE DISPLAYED IN SHARDS — DIVIDE BY THE SHOWN VALUE TO CONFIRM &nbsp;·&nbsp; UPCOMING OFFERS SHOW WHEN THEY WILL OPEN AND CLOSE &nbsp;·&nbsp; DATA IS FETCHED FRESH WITH NO CACHE ON EVERY SCAN &nbsp;·&nbsp; VISIT THE ALIEN WORLDS OUTPOST TO MAKE PURCHASES &nbsp;&nbsp;★&nbsp;&nbsp;
-        </marquee>
+        <h1><img src="Shards.png" style="width:30px;height:30px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST SCOUTER</h1>
+        <p class="page-subtitle" id="outpost-subtitle">NARON DEEP SPACE NAVIGATION &middot; SECTOR 7</p>
     </div>
 </div>
 
@@ -354,15 +389,14 @@
 </div>
 
 <div class="outpost-main">
-    <div class="action-bar">
-        <button class="outpost-btn" id="scan-btn" onclick="scanOutpost()">[ SCAN OUTPOST ]</button>
+    <!-- Top action bar — hidden until wares are revealed -->
+    <div class="action-bar" id="top-action-bar" style="display:none;">
         <a href="https://play.alienworlds.io/outpost" target="_blank" rel="noopener" class="outpost-btn">[ &#9654; VISIT OUTPOST ]</a>
+        <button class="outpost-btn" id="scan-btn" onclick="reEngage()">[ &#8635; RESCAN ]</button>
         <button class="outpost-btn" id="archive-btn" onclick="openArchive()">[ &#9650; TAP BURIED UPLINK ]</button>
         <span id="scan-status"></span>
     </div>
-    <div id="outpost-content">
-        <div class="outpost-loading">SCANNING OUTPOST<span class="loading-dots"></span></div>
-    </div>
+    <div id="outpost-content"></div>
 </div>
 
 <div id="star-hud">✦ <span id="star-score-num">0</span></div>
@@ -518,12 +552,56 @@
         if (el) el.textContent = msg;
     }
 
+    // ─── NAV CONSOLE ───────────────────────────────────────────────────────────
+    function showNavConsole() {
+        var content = document.getElementById('outpost-content');
+        content.innerHTML = ''
+            + '<div class="nav-console">'
+            + '<div class="console-row"><span class="console-label">VESSEL</span><span class="console-val">NCS-7 NARON DEEP SCOUT</span></div>'
+            + '<div class="console-row"><span class="console-label">DRIVE STATUS</span><span class="console-val amber">STANDBY</span></div>'
+            + '<div class="console-row"><span class="console-label">NAV SYSTEM</span><span class="console-val">ONLINE</span></div>'
+            + '<div class="console-row"><span class="console-label">SHIELDS</span><span class="console-val">NOMINAL</span></div>'
+            + '<div class="console-row"><span class="console-label">DESTINATION</span><span class="console-val pulse">AWAITING COORDINATES\u2026</span></div>'
+            + '<div class="console-row"><span class="console-label">FEDERATION BEACON</span><span class="console-val">SIGNAL ACQUIRED</span></div>'
+            + '<hr class="console-divider">'
+            + '<p class="console-mission">'
+            + '<span class="hi">MISSION DIRECTIVE:</span> Nearest Federation outpost located<br>'
+            + 'in this sector. Trade wares available on docking.<br><br>'
+            + 'Set destination and engage warp drive to begin<br>'
+            + 'approach to <span class="hi">planetary orbital station.</span>'
+            + '</p>'
+            + '<button class="engage-btn" id="engage-btn" onclick="engageWarp()">&#9654; ENGAGE WARP DRIVE</button>'
+            + '</div>';
+    }
+
+    function rampStars(target, ms) {
+        var start = _starWarpSpeed, t0 = performance.now();
+        (function step(now) {
+            var t = Math.min(1, (now - t0) / ms);
+            _starWarpSpeed = start + (target - start) * (1 - Math.pow(1 - t, 3));
+            if (t < 1) requestAnimationFrame(step);
+        })(performance.now());
+    }
+
+    function engageWarp() {
+        var btn = document.getElementById('engage-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'CALCULATING JUMP COORDINATES\u2026'; }
+        document.getElementById('outpost-subtitle').textContent = 'WARP DRIVE ENGAGED \u00b7 APPROACHING FEDERATION OUTPOST\u2026';
+        rampStars(22, 900);
+        setTimeout(scanOutpost, 500);
+    }
+
+    function reEngage() {
+        _arrivalFired = false;
+        document.getElementById('top-action-bar').style.display = 'none';
+        document.getElementById('outpost-subtitle').textContent = 'NARON DEEP SPACE NAVIGATION \u00b7 SECTOR 7';
+        showNavConsole();
+    }
+
     // ─── SCAN ──────────────────────────────────────────────────────────────────
     async function scanOutpost() {
-        var btn = document.getElementById('scan-btn');
         var content = document.getElementById('outpost-content');
-        btn.disabled = true;
-        content.innerHTML = '<div class="outpost-loading">SCANNING OUTPOST<span class="loading-dots"></span></div>';
+        content.innerHTML = '<div class="outpost-loading">LOCKED ON \u00b7 JUMPING<span class="loading-dots"></span></div>';
         setStatus('FETCHING FROM CHAIN\u2026');
 
         var result = await fetchTableRows({
@@ -538,7 +616,7 @@
         if (!result || !result.rows || result.rows.length === 0) {
             content.innerHTML = '<div class="empty-msg">// NO OFFERS FOUND — CHECK CONNECTION //</div>';
             setStatus('');
-            btn.disabled = false;
+            showNavConsole();
             return;
         }
 
@@ -573,15 +651,39 @@
             await fetchTemplateInfo(uniqueIds[i]);
         }
 
-        renderOffers(active, upcoming);
-        triggerArrival();
+        // Pick planet now so arrival banner can name it
+        var _PLIST = ['eyeke','kavian','magor','naron','neri','veles'];
+        var _chosenPlanet = _PLIST[Math.floor(Math.random() * _PLIST.length)];
+        var _planetLabel  = _chosenPlanet.charAt(0).toUpperCase() + _chosenPlanet.slice(1);
+
+        // Show arrival banner
+        content.innerHTML = '<div class="arrival-banner">'
+            + '<div class="arrival-subtitle">DROPPING OUT OF WARP \u00b7 ORBITAL APPROACH LOCKED</div>'
+            + '<div class="arrival-planet-name">' + _planetLabel + '</div>'
+            + '<div class="arrival-status">FEDERATION OUTPOST ORBITAL STATION &nbsp;&middot;&nbsp; DOCKING CLEARANCE GRANTED<br>'
+            + 'REQUESTING WARES INTERFACE \u00b7 STAND BY<span class="loading-dots"></span></div>'
+            + '</div>';
+
+        triggerArrival(_chosenPlanet);
+
+        // Brief pause, then reveal wares
+        await new Promise(function(r){ setTimeout(r, 2400); });
+
+        document.getElementById('outpost-subtitle').textContent =
+            _planetLabel.toUpperCase() + ' ORBITAL OUTPOST \u00b7 WARES INTERFACE ONLINE';
+        document.getElementById('top-action-bar').style.display = 'flex';
+
+        var waresWrap = document.createElement('div');
+        waresWrap.className = 'wares-reveal';
+        waresWrap.innerHTML = renderOffersHtml(active, upcoming);
+        content.innerHTML = '';
+        content.appendChild(waresWrap);
 
         var now2 = new Date();
         setStatus('LAST SCAN: '
             + String(now2.getUTCHours()).padStart(2,'0') + ':'
             + String(now2.getUTCMinutes()).padStart(2,'0')
             + ' UTC \u00b7 ' + active.length + ' ACTIVE \u00b7 ' + upcoming.length + ' UPCOMING');
-        btn.disabled = false;
     }
 
     function toggleFlip(el) { el.classList.toggle('flipped'); }
@@ -797,8 +899,8 @@
             tr.innerHTML = '<td class="name-col">' + (info.name || 'Template #' + tid) + '</td>'
                 + '<td class="schema-col">' + (info.schema || '\u2014') + '</td>'
                 + '<td>' + elList + '</td>'
-                + '<td class="cost-col"><img src="Shards.png" style="width:13px;height:13px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + b.minCost.toFixed(1) + '</td>'
-                + '<td class="cost-col">' + (currentCost != null ? '<img src="Shards.png" style="width:13px;height:13px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + currentStr : '<span style="color:#2a4a3a;">\u2014</span>') + '</td>'
+                + '<td class="cost-col"><img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + b.minCost.toFixed(1) + '</td>'
+                + '<td class="cost-col">' + (currentCost != null ? '<img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + currentStr : '<span style="color:#2a4a3a;">\u2014</span>') + '</td>'
                 + '<td style="color:#1e6a5a;text-align:center;">' + b.count + '</td>'
                 + '<td class="date-col">' + dateStr + '</td>';
             tbody.appendChild(tr);
@@ -826,8 +928,7 @@
     window.confirmArchivePull = confirmArchivePull;
 
     // ─── RENDER ────────────────────────────────────────────────────────────────
-    function renderOffers(active, upcoming) {
-        var content = document.getElementById('outpost-content');
+    function renderOffersHtml(active, upcoming) {
 
         function buildGrid(entries, cls) {
             if (entries.length === 0) return '<div class="empty-msg">// NONE //</div>';
@@ -894,41 +995,38 @@
             + buildGrid(upcoming, 'upcoming')
             + '</div>';
 
-        content.innerHTML = html;
+        return html;
     }
 
     // ─── ARRIVAL EFFECT ───────────────────────────────────────────────────────
     var _arrivalFired = false;
 
-    function triggerArrival() {
+    function triggerArrival(planetKey) {
         if (_arrivalFired) return;
         _arrivalFired = true;
 
-        // Decelerate warp stars — ease down from 5 → 0.35 over ~1.8s
-        var startSpeed = _starWarpSpeed;
-        var targetSpeed = 0.35;
-        var tStart = performance.now();
-        var decDuration = 1800;
+        // Decelerate warp stars — quartic ease from current speed → 0.35 over 1.8s
+        var startSpeed = _starWarpSpeed, targetSpeed = 0.35;
+        var tStart = performance.now(), decDuration = 1800;
         (function decel(now) {
             var t = Math.min(1, (now - tStart) / decDuration);
-            // quartic ease-out: starts fast, ends extremely slow
             var ease = 1 - Math.pow(1 - t, 4);
             _starWarpSpeed = startSpeed + (targetSpeed - startSpeed) * ease;
             if (t < 1) requestAnimationFrame(decel);
         })(performance.now());
 
-        // Show planet canvas and zoom in
+        // Show planet canvas and zoom in with chosen planet
         var pc = document.getElementById('planet-canvas');
         if (pc && typeof THREE !== 'undefined') {
             pc.style.display = 'block';
             requestAnimationFrame(function() {
                 pc.style.opacity = '0.6';
-                initPlanetZoom(pc);
+                initPlanetZoom(pc, planetKey || 'naron');
             });
         }
     }
 
-    function initPlanetZoom(canvas) {
+    function initPlanetZoom(canvas, planetKey) {
         var W = window.innerWidth, H = window.innerHeight;
         var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
         renderer.setClearColor(0x000000, 0);
@@ -949,9 +1047,7 @@
         rim.position.set(-4, -2, -5);
         scene.add(rim);
 
-        var _planets = ['eyeke','kavian','magor','naron','neri','veles'];
-        var _pick = _planets[Math.floor(Math.random() * _planets.length)];
-        var tx = new THREE.TextureLoader().load('planets/' + _pick + '.jpg');
+        var tx = new THREE.TextureLoader().load('planets/' + (planetKey || 'naron') + '.jpg');
         tx.minFilter = THREE.LinearFilter;
         tx.generateMipmaps = false;
         var planet = new THREE.Mesh(
@@ -1054,7 +1150,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         checkWalletState();
         initStars();
-        scanOutpost();
+        showNavConsole();
         document.getElementById('archive-overlay').addEventListener('click', function(e) {
             if (e.target === this && _archiveState !== 'pulling') closeArchive();
         });
