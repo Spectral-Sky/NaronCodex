@@ -181,7 +181,7 @@
         .offer-badges      { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; }
 
         /* PLANET ZOOM CANVAS — above star trails, below page content */
-        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10; pointer-events:none; display:none; opacity:0; transition:opacity 1s ease; }
+        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10; pointer-events:none; display:none; }
         /* Observation deck toggle */
         #obs-btn { position:fixed; bottom:18px; right:18px; z-index:2100; }
         .offer-cost { color:#e0e0e0; font-size:0.88em; letter-spacing:1px; font-weight:bold; display:flex; align-items:center; gap:5px; }
@@ -610,12 +610,12 @@
         var btn = document.getElementById('obs-btn');
         if (_obsDeckMode) {
             // Hide planet — looking away from it, out into open space
-            if (pc) pc.style.opacity = '0';
+            _planetTargetOpacity = 0;
             if (btn) btn.textContent = '\u2713 BRIDGE VIEW';
             rampStars(0.35, 600);
         } else {
             // Restore planet if arrival has fired
-            if (pc && _arrivalFired) pc.style.opacity = '0.6';
+            if (pc && _arrivalFired) { pc.style.display = 'block'; _planetTargetOpacity = 0.6; }
             if (btn) btn.textContent = '\u9728 OBS DECK';
             rampStars(0.35, 300);
         }
@@ -1033,6 +1033,8 @@
 
     // ─── ARRIVAL EFFECT ───────────────────────────────────────────────────────
     var _arrivalFired = false;
+    var _planetMesh = null;
+    var _planetTargetOpacity = 0;
 
     function triggerArrival(planetKey) {
         if (_arrivalFired) return;
@@ -1052,10 +1054,8 @@
         var pc = document.getElementById('planet-canvas');
         if (pc && typeof THREE !== 'undefined') {
             pc.style.display = 'block';
-            requestAnimationFrame(function() {
-                pc.style.opacity = '0.6';
-                initPlanetZoom(pc, planetKey || 'naron');
-            });
+            _planetTargetOpacity = 0.6;
+            initPlanetZoom(pc, planetKey || 'naron');
         }
     }
 
@@ -1094,8 +1094,9 @@
         tx.generateMipmaps = false;
         var planet = new THREE.Mesh(
             new THREE.SphereGeometry(2.2, 64, 64),
-            new THREE.MeshStandardMaterial({ map: tx, roughness: 0.75, metalness: 0.05 })
+            new THREE.MeshStandardMaterial({ map: tx, roughness: 0.75, metalness: 0.05, transparent: true, opacity: 0 })
         );
+        _planetMesh = planet;
         scene.add(planet);
 
         // Approach animation: camera.z from 22 → 4.5, rapid then hard deceleration
@@ -1105,6 +1106,14 @@
 
         function frame(ts) {
             requestAnimationFrame(frame);
+            // Fade planet in/out via material opacity — avoids CSS compositor layer issue
+            var cur = planet.material.opacity, tgt = _planetTargetOpacity;
+            if (Math.abs(cur - tgt) > 0.002) {
+                planet.material.opacity += (tgt - cur) * 0.06;
+            } else {
+                planet.material.opacity = tgt;
+                if (tgt === 0) { var pc2 = document.getElementById('planet-canvas'); if (pc2) pc2.style.display = 'none'; }
+            }
             planet.rotation.y += arrived ? 0.00024 : 0.0008;
 
             if (!arrived) {
