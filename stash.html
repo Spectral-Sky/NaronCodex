@@ -1125,8 +1125,9 @@
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.setSize(W, H);
         var scene  = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 500);
-        camera.position.set(0.6, -0.25, 22);
+        // Narrow FOV + camera parked far back = planet appears small; offset to bottom-right corner
+        var camera = new THREE.PerspectiveCamera(22, W / H, 0.1, 500);
+        camera.position.set(3.8, -2.2, 14);
         camera.lookAt(0, 0, 0);
         scene.add(new THREE.AmbientLight(0x223344, 0.9));
         var sun = new THREE.DirectionalLight(0x99ffee, 2.2);
@@ -1141,19 +1142,10 @@
             new THREE.MeshStandardMaterial({ map: tx, roughness: 0.75, metalness: 0.05 })
         );
         scene.add(planet);
-        var zStart = 22, zEnd = 4.5, tStart = null, DURATION = 4200, arrived = false;
-        function frame(ts) {
+        // No zoom — planet simply fades in static and rotates slowly
+        function frame() {
             requestAnimationFrame(frame);
-            planet.rotation.y += arrived ? 0.00024 : 0.0008;
-            if (!arrived) {
-                if (!tStart) tStart = ts;
-                var t = Math.min(1, (ts - tStart) / DURATION);
-                var ease = t < 0.65
-                    ? Math.pow(t / 0.65, 2) * 0.65
-                    : 0.65 + 0.35 * (1 - Math.pow(1 - (t - 0.65) / 0.35, 5));
-                camera.position.z = zStart - ease * (zStart - zEnd);
-                if (t >= 1) arrived = true;
-            }
+            planet.rotation.y += 0.00024;
             renderer.render(scene, camera);
         }
         requestAnimationFrame(frame);
