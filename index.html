@@ -685,12 +685,12 @@
             </div>
         </a>
         <a href="outpost.html" class="module-card" style="border-color:#7722cc;min-height:160px;">
-            <div class="card-text-wrapper">
+            <div class="card-text-wrapper" style="max-width:calc(100% - 150px)">
                 <div class="card-title"><img src="Shards.png" style="width:30px;height:30px;vertical-align:middle;margin-right:5px;object-fit:contain;" alt=""> OUTPOST SCOUTER</div>
                 <span class="card-schema">Live shard offers — active &amp; upcoming</span>
                 <div class="card-status status-live">SYSTEM LIVE</div>
             </div>
-            <canvas id="outpost-card-planet" width="90" height="90" style="position:absolute;right:30px;top:50%;transform:translateY(-50%);border-radius:50%;pointer-events:none;opacity:0.85;"></canvas>
+            <canvas id="outpost-card-planet" width="110" height="110" style="position:absolute;right:20px;top:50%;transform:translateY(-50%);border-radius:50%;pointer-events:none;opacity:0.85;"></canvas>
         </a>
     </div>
 </div>
@@ -1276,7 +1276,7 @@
     var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(90, 90);
+    renderer.setSize(110, 110);
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
     camera.position.z = 5;
