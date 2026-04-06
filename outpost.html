@@ -680,15 +680,22 @@
 
     function toggleObsDeck() {
         _obsDeckMode = !_obsDeckMode;
-        var pc  = document.getElementById('planet-canvas');
-        var btn = document.getElementById('obs-btn');
+        var btn  = document.getElementById('obs-btn');
+        var main = document.getElementById('outpost-content');
+        var bar  = document.getElementById('top-action-bar');
+        var tb   = document.querySelector('.title-bar');
         if (_obsDeckMode) {
-            _planetVisible = false;
-            if (btn) btn.textContent = '\u2713 BRIDGE VIEW';
+            // Hide UI — reveal the planet unobstructed
+            if (main) main.style.visibility = 'hidden';
+            if (bar)  bar.style.visibility  = 'hidden';
+            if (tb)   tb.style.visibility   = 'hidden';
+            if (btn)  btn.textContent = '\u2713 BRIDGE VIEW';
             rampStars(0.35, 600);
         } else {
-            if (_arrivalFired) _planetVisible = true;
-            if (btn) btn.textContent = '\u9728 OBS DECK';
+            if (main) main.style.visibility = '';
+            if (bar  && _arrivalFired) bar.style.visibility = '';
+            if (tb)   tb.style.visibility   = '';
+            if (btn)  btn.textContent = '\u9728 OBS DECK';
             rampStars(0.35, 300);
         }
     }
@@ -1173,11 +1180,11 @@
         camera.position.set(_off.x, _off.y, 22);
         camera.lookAt(0, 0, 0);
 
-        scene.add(new THREE.AmbientLight(0x223344, 0.9));
-        var sun = new THREE.DirectionalLight(0x99ffee, 2.2);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+        var sun = new THREE.DirectionalLight(0xfff5e0, 2.8);
         sun.position.set(6, 4, 10);
         scene.add(sun);
-        var rim = new THREE.DirectionalLight(0x004466, 0.6);
+        var rim = new THREE.DirectionalLight(0xffffff, 0.3);
         rim.position.set(-4, -2, -5);
         scene.add(rim);
 
