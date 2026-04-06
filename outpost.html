@@ -180,8 +180,8 @@
         .element-generic   { color:#888;    border:1px solid #333; }
         .offer-badges      { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; }
 
-        /* PLANET ZOOM CANVAS — above star trails, below page content */
-        #planet-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10; pointer-events:none; display:none; }
+        /* Planet rendered offscreen and composited onto stars canvas via drawImage */
+        #planet-webgl { display:none; position:absolute; top:-9999px; left:-9999px; }
         /* Observation deck toggle */
         #obs-btn { position:fixed; bottom:18px; right:18px; z-index:2100; }
         .offer-cost { color:#e0e0e0; font-size:0.88em; letter-spacing:1px; font-weight:bold; display:flex; align-items:center; gap:5px; }
@@ -311,7 +311,7 @@
 <body>
 
 <canvas id="stars-canvas"></canvas>
-<canvas id="planet-canvas"></canvas>
+<canvas id="planet-webgl"></canvas>
 
 <header class="global-header">
     <div class="logo-section">
@@ -609,11 +609,11 @@
         var pc  = document.getElementById('planet-canvas');
         var btn = document.getElementById('obs-btn');
         if (_obsDeckMode) {
-            if (pc) pc.style.display = 'none';
+            _planetVisible = false;
             if (btn) btn.textContent = '\u2713 BRIDGE VIEW';
             rampStars(0.35, 600);
         } else {
-            if (pc && _arrivalFired) pc.style.display = 'block';
+            if (_arrivalFired) _planetVisible = true;
             if (btn) btn.textContent = '\u9728 OBS DECK';
             rampStars(0.35, 300);
         }
@@ -1031,6 +1031,7 @@
 
     // ─── ARRIVAL EFFECT ───────────────────────────────────────────────────────
     var _arrivalFired = false;
+    var _planetVisible = false;
 
     function triggerArrival(planetKey) {
         if (_arrivalFired) return;
@@ -1046,17 +1047,17 @@
             if (t < 1) requestAnimationFrame(decel);
         })(performance.now());
 
-        // Show planet canvas and zoom in with chosen planet
-        var pc = document.getElementById('planet-canvas');
+        // Init planet into hidden WebGL canvas — composited onto stars canvas each frame
+        var pc = document.getElementById('planet-webgl');
         if (pc && typeof THREE !== 'undefined') {
-            pc.style.display = 'block';
             initPlanetZoom(pc, planetKey || 'naron');
+            _planetVisible = true;
         }
     }
 
     function initPlanetZoom(canvas, planetKey) {
         var W = window.innerWidth, H = window.innerHeight;
-        var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
         renderer.setClearColor(0x000000, 0);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.setSize(W, H);
@@ -1177,6 +1178,11 @@
                 ctx.moveTo(px, py);
                 ctx.lineTo(sx, sy);
                 ctx.stroke();
+            }
+            // Composite planet on top of stars — guaranteed draw order, no z-index issues
+            if (_planetVisible) {
+                var pw = document.getElementById('planet-webgl');
+                if (pw) ctx.drawImage(pw, 0, 0, W, H);
             }
             requestAnimationFrame(draw);
         }
