@@ -190,6 +190,8 @@
         .window-row { display:flex; justify-content:space-between; gap:6px; }
         .window-label { color:#3a3a5a; text-transform:uppercase; flex-shrink:0; }
         .window-time   { color:#666; text-align:right; }
+        .offer-floor { font-size:0.6em; color:#1e4a3a; letter-spacing:0.5px; text-align:center; padding-top:5px; border-top:1px solid #0a1a18; margin-top:3px; }
+        .floor-ratio { color:#00cc99; font-weight:bold; }
 
         /* EMPTY / LOADING */
         .empty-msg     { color:#2a2a4a; font-size:0.8em; letter-spacing:2px; padding:16px 0; }
@@ -470,6 +472,7 @@
     ];
     var IPFS_GATEWAY = 'https://ipfs.io/ipfs/';
     var _tmplCache = {};
+    var _floorCache = {};
     var _aaActiveBase = null;
 
     async function fetchTableRows(params) {
@@ -496,7 +499,7 @@
             : AA_BASE_ENDPOINTS;
         for (var i = 0; i < tryList.length; i++) {
             try {
-                var res = await fetch(tryList[i] + '/atomicassets/v1/templates?template_id=' + tmplId + '&limit=1&_ts=' + Date.now(), { cache: 'no-store' });
+                var res = await fetch(tryList[i] + '/atomicassets/v1/templates?collection_name=alien.worlds&template_id=' + tmplId + '&limit=1&_ts=' + Date.now(), { cache: 'no-store' });
                 if (!res.ok) continue;
                 var json = await res.json();
                 if (json.data && json.data[0]) {
@@ -531,6 +534,35 @@
         return _tmplCache[tmplId];
     }
 
+    async function fetchFloorPrice(tmplId) {
+        if (_floorCache[tmplId] !== undefined) return _floorCache[tmplId];
+        var tryList = _aaActiveBase
+            ? [_aaActiveBase].concat(AA_BASE_ENDPOINTS.filter(function(u){ return u !== _aaActiveBase; }))
+            : AA_BASE_ENDPOINTS;
+        for (var i = 0; i < tryList.length; i++) {
+            try {
+                var res = await fetch(
+                    tryList[i] + '/atomicmarket/v1/sales?state=1&collection_name=alien.worlds&template_id=' + tmplId + '&sort=price&order=asc&limit=1',
+                    { cache: 'no-store' }
+                );
+                if (!res.ok) continue;
+                var json = await res.json();
+                if (json.data && json.data[0]) {
+                    var p = json.data[0].price;
+                    if (p && p.amount) {
+                        var wax = parseInt(p.amount) / Math.pow(10, p.token_precision || 8);
+                        _floorCache[tmplId] = wax > 0 ? wax : null;
+                        return _floorCache[tmplId];
+                    }
+                }
+                _floorCache[tmplId] = null;
+                return null;
+            } catch(e) { continue; }
+        }
+        _floorCache[tmplId] = null;
+        return null;
+    }
+
     // WAX time_point_sec fields come back as ISO strings ("2024-04-01T12:00:00") or epoch ints
     function parseTs(val) {
         if (val == null) return null;
@@ -552,9 +584,7 @@
     function imgFallback(el) { el.style.display = 'none'; }
 
     function fmtNum(n) {
-        var parts = n.toFixed(1).split('.');
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return parts.join('.');
+        return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
     function setStatus(msg) {
@@ -670,6 +700,10 @@
         setStatus('LOADING ' + uniqueIds.length + ' TEMPLATE' + (uniqueIds.length !== 1 ? 'S' : '') + '\u2026');
         for (var i = 0; i < uniqueIds.length; i++) {
             await fetchTemplateInfo(uniqueIds[i]);
+        }
+        setStatus('LOADING MARKET PRICES\u2026');
+        for (var i = 0; i < uniqueIds.length; i++) {
+            await fetchFloorPrice(uniqueIds[i]);
         }
 
         // Pick planet now so arrival banner can name it
@@ -998,6 +1032,19 @@
                         ? '<img src="' + info.img + '" class="card-back-img" onerror="imgFallback(this)">'
                         : '<div class="offer-img-placeholder" style="width:100%;height:80%;">NO IMG</div>';
 
+                    var floorWax = _floorCache[e.tmplId];
+                    var floorLine = '';
+                    if (floorWax && e.cost > 0) {
+                        var waxPerShard = floorWax / e.cost;
+                        var wps = waxPerShard < 0.001 ? waxPerShard.toFixed(5)
+                                : waxPerShard < 0.01  ? waxPerShard.toFixed(4)
+                                : waxPerShard < 0.1   ? waxPerShard.toFixed(3)
+                                : waxPerShard.toFixed(2);
+                        floorLine = '<div class="offer-floor">FLOOR '
+                            + fmtNum(floorWax) + ' WAX &nbsp;&middot;&nbsp; <span class="floor-ratio">'
+                            + wps + ' WAX/shard</span></div>';
+                    }
+
                     return '<div class="card-wrap">'
                         + '<div class="offer-card ' + cls + '" onclick="toggleFlip(this)">'
                         + '<div class="card-face card-front">'
@@ -1005,6 +1052,7 @@
                         + '<div class="offer-name">' + info.name + '</div>'
                         + badge
                         + '<div class="offer-cost"><img src="Shards.png" class="shard-icon-img" alt="shards"> ' + fmtNum(e.cost) + ' SHARDS</div>'
+                        + floorLine
                         + windowHtml
                         + '</div>'
                         + '<div class="card-face card-back">'
