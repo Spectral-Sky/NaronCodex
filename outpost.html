@@ -1135,6 +1135,11 @@
     // ─── ARRIVAL EFFECT ───────────────────────────────────────────────────────
     var _arrivalFired = false;
     var _planetVisible = false;
+    var _mouse = { nx: 0, ny: 0 }; // normalised -1..1
+    window.addEventListener('mousemove', function(e) {
+        _mouse.nx = (e.clientX / window.innerWidth)  * 2 - 1;
+        _mouse.ny = (e.clientY / window.innerHeight) * 2 - 1;
+    });
 
     function triggerArrival(planetKey) {
         if (_arrivalFired) return;
@@ -1216,6 +1221,21 @@
                 camera.position.z = zStart - ease * (zStart - zEnd);
                 if (t >= 1) arrived = true;
             }
+
+            // Mouse parallax — only active after arrival and while OBS DECK is open
+            if (arrived && _obsDeckMode) {
+                var px = _off.x + _mouse.nx * 1.2;
+                var py = _off.y - _mouse.ny * 0.8;
+                camera.position.x += (px - camera.position.x) * 0.04;
+                camera.position.y += (py - camera.position.y) * 0.04;
+                camera.lookAt(0, 0, 0);
+            } else if (arrived) {
+                // Smoothly drift back to resting position when obs deck closes
+                camera.position.x += (_off.x - camera.position.x) * 0.06;
+                camera.position.y += (_off.y - camera.position.y) * 0.06;
+                camera.lookAt(0, 0, 0);
+            }
+
             renderer.render(scene, camera);
         }
         requestAnimationFrame(frame);
