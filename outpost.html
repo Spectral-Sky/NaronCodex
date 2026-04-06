@@ -1209,7 +1209,7 @@
 
         function frame(ts) {
             requestAnimationFrame(frame);
-            planet.rotation.y += arrived ? 0.00024 : 0.0008;
+            planet.rotation.y += arrived ? 0.0006 : 0.0008;
 
             if (!arrived) {
                 if (!tStart) tStart = ts;
@@ -1222,17 +1222,17 @@
                 if (t >= 1) arrived = true;
             }
 
-            // Mouse parallax — only active after arrival and while OBS DECK is open
+            // Mouse parallax — x-axis only, OBS DECK mode only
+            // y is never touched so the planet stays vertically locked when UI returns
             if (arrived && _obsDeckMode) {
-                var px = _off.x + _mouse.nx * 1.2;
-                var py = _off.y - _mouse.ny * 0.8;
-                camera.position.x += (px - camera.position.x) * 0.04;
-                camera.position.y += (py - camera.position.y) * 0.04;
+                var tx = _off.x + _mouse.nx * 1.2;
+                camera.position.x += (tx - camera.position.x) * 0.04;
+                camera.position.y = _off.y;
                 camera.lookAt(0, 0, 0);
-            } else if (arrived) {
-                // Smoothly drift back to resting position when obs deck closes
-                camera.position.x += (_off.x - camera.position.x) * 0.06;
-                camera.position.y += (_off.y - camera.position.y) * 0.06;
+            } else if (arrived && camera.position.x !== _off.x) {
+                // Snap back immediately on close so planet is in expected position under cards
+                camera.position.x = _off.x;
+                camera.position.y = _off.y;
                 camera.lookAt(0, 0, 0);
             }
 
