@@ -399,7 +399,7 @@
     <!-- Top action bar — hidden until wares are revealed -->
     <div class="action-bar" id="top-action-bar" style="display:none;">
         <a href="https://play.alienworlds.io/outpost" target="_blank" rel="noopener" class="outpost-btn">[ &#9654; VISIT OUTPOST ]</a>
-        <button class="outpost-btn" id="archive-btn" onclick="openArchive()">[ &#9650; TAP BURIED UPLINK ]</button>
+        <button class="outpost-btn" id="archive-btn" onclick="openArchive()">[ &#9650; HISTORICAL DATA &amp; MARKET COMPARISON ]</button>
         <span id="scan-status"></span>
     </div>
     <div id="outpost-content"></div>
@@ -475,6 +475,25 @@
     var _floorCache = {};
     var _aaActiveBase = null;
 
+    // Run up to `n` async fns concurrently
+    async function pLimit(fns, n) {
+        var queue = fns.slice(), active = 0;
+        return new Promise(function(resolve) {
+            function run() {
+                while (active < n && queue.length > 0) {
+                    active++;
+                    (queue.shift())().finally(function() {
+                        active--;
+                        if (queue.length === 0 && active === 0) resolve();
+                        else run();
+                    });
+                }
+                if (queue.length === 0 && active === 0) resolve();
+            }
+            run();
+        });
+    }
+
     async function fetchTableRows(params) {
         for (var i = 0; i < RPC_ENDPOINTS.length; i++) {
             try {
@@ -506,17 +525,25 @@
                     _aaActiveBase = tryList[i];
                     var d = json.data[0];
                     var im = d.immutable_data || {};
-                    // Collect both elements — AW arms/crew store them in element + element2 (or similar keys)
+                    // Collect elements — scan immutable_data then mutable_data fallback
+                    // Accept string or number values (some AW templates store element as int)
                     var elements = [];
-                    // Scan all keys for anything element-shaped: element, element2, element_*, *_element
-                    Object.keys(im).forEach(function(k) {
-                        var lk = k.toLowerCase();
-                        if ((lk === 'element' || lk === 'element2' || lk.indexOf('element') !== -1)
-                                && typeof im[k] === 'string' && im[k].trim()) {
-                            var val = im[k].trim();
-                            if (elements.indexOf(val) === -1) elements.push(val);
-                        }
-                    });
+                    function scanForElements(obj) {
+                        Object.keys(obj).forEach(function(k) {
+                            var lk = k.toLowerCase();
+                            if (lk === 'element' || lk === 'element2' || lk.indexOf('element') !== -1) {
+                                var v = obj[k];
+                                if (v != null) {
+                                    var val = String(v).trim();
+                                    if (val && val.toLowerCase() !== 'none' && elements.indexOf(val) === -1) {
+                                        elements.push(val);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    scanForElements(im);
+                    if (elements.length === 0) scanForElements(d.mutable_data || {});
                     var info = {
                         name:     im.name ? String(im.name) : ('Template #' + tmplId),
                         img:      im.img  ? IPFS_GATEWAY + im.img : null,
@@ -628,7 +655,7 @@
         if (btn) { btn.disabled = true; btn.textContent = 'CALCULATING JUMP COORDINATES\u2026'; }
         document.getElementById('outpost-subtitle').textContent = 'WARP DRIVE ENGAGED \u00b7 APPROACHING FEDERATION OUTPOST\u2026';
         rampStars(22, 900);
-        setTimeout(scanOutpost, 500);
+        scanOutpost();
     }
 
     // ─── OBSERVATION DECK ─────────────────────────────────────────────────────
@@ -694,17 +721,17 @@
 
         upcoming.sort(function(a, b) { return (a.startTs || 0) - (b.startTs || 0); });
 
-        // Fetch template details for all unique IDs
+        // Fetch template details + floor prices concurrently (up to 5 at a time each)
         var allIds = active.concat(upcoming).map(function(e){ return e.tmplId; });
         var uniqueIds = allIds.filter(function(v, i, a){ return a.indexOf(v) === i; });
+        var minWarpEnd = Date.now() + 5500; // minimum 5.5s warp flight from button press
         setStatus('LOADING ' + uniqueIds.length + ' TEMPLATE' + (uniqueIds.length !== 1 ? 'S' : '') + '\u2026');
-        for (var i = 0; i < uniqueIds.length; i++) {
-            await fetchTemplateInfo(uniqueIds[i]);
-        }
+        await pLimit(uniqueIds.map(function(id){ return function(){ return fetchTemplateInfo(id); }; }), 5);
         setStatus('LOADING MARKET PRICES\u2026');
-        for (var i = 0; i < uniqueIds.length; i++) {
-            await fetchFloorPrice(uniqueIds[i]);
-        }
+        await pLimit(uniqueIds.map(function(id){ return function(){ return fetchFloorPrice(id); }; }), 5);
+        // Hold remaining warp time so journey always feels like at least 5.5s
+        var remaining = minWarpEnd - Date.now();
+        if (remaining > 0) await new Promise(function(r){ setTimeout(r, remaining); });
 
         // Pick planet now so arrival banner can name it
         var _PLIST = ['eyeke','kavian','magor','naron','neri','veles'];
@@ -722,7 +749,7 @@
         triggerArrival(_chosenPlanet);
 
         // Brief pause for planet zoom, then show welcome message
-        await new Promise(function(r){ setTimeout(r, 2400); });
+        await new Promise(function(r){ setTimeout(r, 1500); });
 
         var statusEl = document.getElementById('arrival-status-msg');
         if (statusEl) {
@@ -731,8 +758,8 @@
                 + '<br><span style="color:#2a6a5a;">LOADING WARES<span class="loading-dots"></span></span>';
         }
 
-        // One second pause for welcome message, then reveal wares
-        await new Promise(function(r){ setTimeout(r, 1000); });
+        // Short pause for welcome message, then reveal wares
+        await new Promise(function(r){ setTimeout(r, 700); });
 
         document.getElementById('outpost-subtitle').textContent =
             _planetLabel.toUpperCase() + ' ORBITAL OUTPOST \u00b7 WARES INTERFACE ONLINE';
@@ -909,12 +936,12 @@
             }
         });
 
-        // Enrich with cached template info
+        // Enrich with cached template info + floor prices (concurrency 5)
         var tmplIds = Object.keys(byTmpl);
         termLine('', 'ENRICHING ' + tmplIds.length + ' UNIQUE TEMPLATES FROM AA\u2026');
-        for (var i = 0; i < tmplIds.length; i++) {
-            if (!_tmplCache[tmplIds[i]]) await fetchTemplateInfo(tmplIds[i]);
-        }
+        await pLimit(tmplIds.map(function(id){ return function(){ return _tmplCache[id] ? Promise.resolve() : fetchTemplateInfo(id); }; }), 5);
+        termLine('', 'FETCHING MARKET FLOOR PRICES\u2026');
+        await pLimit(tmplIds.map(function(id){ return function(){ return _floorCache[id] !== undefined ? Promise.resolve() : fetchFloorPrice(id); }; }), 5);
 
         // Sort by schema then cost asc
         tmplIds.sort(function(a, b) {
@@ -948,8 +975,8 @@
         var tbl = document.createElement('table');
         tbl.className = 'arc-table';
         tbl.innerHTML = '<thead><tr>'
-            + '<th>TEMPLATE</th><th>SCHEMA</th><th>ELEMENTS</th>'
-            + '<th>PAST LOW (SHD)</th><th>CURRENT (SHD)</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
+            + '<th>TEMPLATE</th><th>SCHEMA</th><th>TYPE</th>'
+            + '<th>PAST LOW (SHD)</th><th>CURRENT (SHD)</th><th>SHD / WAX</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
             + '</tr></thead>';
         var tbody = document.createElement('tbody');
 
@@ -960,12 +987,23 @@
             var dateStr = b.minEndTs ? formatDateOnly(b.minEndTs) : '\u2014';
             var currentCost = _currentCostByTmpl[tid];
             var currentStr  = currentCost != null ? fmtNum(currentCost) : '\u2014';
+            var floorWax = _floorCache[tid];
+            var costForRatio = currentCost != null ? currentCost : b.minCost;
+            var ratioStr = '\u2014';
+            if (floorWax && floorWax > 0 && costForRatio > 0) {
+                var shdPerWax = costForRatio / floorWax;
+                ratioStr = shdPerWax < 0.01 ? shdPerWax.toFixed(4)
+                         : shdPerWax < 1    ? shdPerWax.toFixed(3)
+                         : shdPerWax < 10   ? shdPerWax.toFixed(2)
+                         : shdPerWax.toFixed(1);
+            }
             var tr = document.createElement('tr');
             tr.innerHTML = '<td class="name-col">' + (info.name || 'Template #' + tid) + '</td>'
                 + '<td class="schema-col">' + (info.schema || '\u2014') + '</td>'
                 + '<td>' + elList + '</td>'
                 + '<td class="cost-col"><img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + fmtNum(b.minCost) + '</td>'
                 + '<td class="cost-col">' + (currentCost != null ? '<img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + currentStr : '<span style="color:#2a4a3a;">\u2014</span>') + '</td>'
+                + '<td style="color:#00cc99;text-align:right;white-space:nowrap;font-weight:bold;">' + ratioStr + '</td>'
                 + '<td style="color:#1e6a5a;text-align:center;">' + b.count + '</td>'
                 + '<td class="date-col">' + dateStr + '</td>';
             tbody.appendChild(tr);
@@ -1032,19 +1070,6 @@
                         ? '<img src="' + info.img + '" class="card-back-img" onerror="imgFallback(this)">'
                         : '<div class="offer-img-placeholder" style="width:100%;height:80%;">NO IMG</div>';
 
-                    var floorWax = _floorCache[e.tmplId];
-                    var floorLine = '';
-                    if (floorWax && e.cost > 0) {
-                        var waxPerShard = floorWax / e.cost;
-                        var wps = waxPerShard < 0.001 ? waxPerShard.toFixed(5)
-                                : waxPerShard < 0.01  ? waxPerShard.toFixed(4)
-                                : waxPerShard < 0.1   ? waxPerShard.toFixed(3)
-                                : waxPerShard.toFixed(2);
-                        floorLine = '<div class="offer-floor">FLOOR '
-                            + fmtNum(floorWax) + ' WAX &nbsp;&middot;&nbsp; <span class="floor-ratio">'
-                            + wps + ' WAX/shard</span></div>';
-                    }
-
                     return '<div class="card-wrap">'
                         + '<div class="offer-card ' + cls + '" onclick="toggleFlip(this)">'
                         + '<div class="card-face card-front">'
@@ -1052,7 +1077,6 @@
                         + '<div class="offer-name">' + info.name + '</div>'
                         + badge
                         + '<div class="offer-cost"><img src="Shards.png" class="shard-icon-img" alt="shards"> ' + fmtNum(e.cost) + ' SHARDS</div>'
-                        + floorLine
                         + windowHtml
                         + '</div>'
                         + '<div class="card-face card-back">'
@@ -1144,7 +1168,7 @@
 
         // Approach animation: camera.z from 22 → 4.5, rapid then hard deceleration
         var zStart = 22, zEnd = 4.5;
-        var tStart = null, DURATION = 4200;
+        var tStart = null, DURATION = 1800;
         var arrived = false;
 
         function frame(ts) {
