@@ -765,8 +765,8 @@
 
         triggerArrival(_chosenPlanet);
 
-        // Brief pause for planet zoom, then show welcome message
-        await new Promise(function(r){ setTimeout(r, 1500); });
+        // Pause to let user appreciate the planet before welcome message
+        await new Promise(function(r){ setTimeout(r, 3500); });
 
         var statusEl = document.getElementById('arrival-status-msg');
         if (statusEl) {
@@ -993,7 +993,7 @@
         tbl.className = 'arc-table';
         tbl.innerHTML = '<thead><tr>'
             + '<th style="width:36px;"></th><th>TEMPLATE</th><th>SCHEMA</th><th>TYPE</th>'
-            + '<th>PAST LOW (SHD)</th><th>CURRENT (SHD)</th><th>SHD / WAX</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
+            + '<th>PAST LOW (SHD)</th><th>CURRENT (SHD)</th><th>FLOOR (WAX)</th><th>SHARDS / WAX</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
             + '</tr></thead>';
         var tbody = document.createElement('tbody');
 
@@ -1005,6 +1005,7 @@
             var currentCost = _currentCostByTmpl[tid];
             var currentStr  = currentCost != null ? fmtNum(currentCost) : '\u2014';
             var floorWax = _floorCache[tid];
+            var floorStr = floorWax ? fmtNum(floorWax) + ' WAX' : '\u2014';
             var costForRatio = currentCost != null ? currentCost : b.minCost;
             var ratioStr = '\u2014';
             if (floorWax && floorWax > 0 && costForRatio > 0) {
@@ -1025,6 +1026,7 @@
                 + '<td>' + elList + '</td>'
                 + '<td class="cost-col"><img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + fmtNum(b.minCost) + '</td>'
                 + '<td class="cost-col">' + (currentCost != null ? '<img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + currentStr : '<span style="color:#2a4a3a;">\u2014</span>') + '</td>'
+                + '<td style="color:#4a9a8a;text-align:right;white-space:nowrap;">' + floorStr + '</td>'
                 + '<td style="color:#00cc99;text-align:right;white-space:nowrap;font-weight:bold;">' + ratioStr + '</td>'
                 + '<td style="color:#1e6a5a;text-align:center;">' + b.count + '</td>'
                 + '<td class="date-col">' + dateStr + '</td>';
