@@ -1272,8 +1272,14 @@
         }
 
         function draw() {
-            ctx.fillStyle = 'rgba(3,3,14,0.2)';
-            ctx.fillRect(0, 0, W, H);
+            // OBS deck: clear fully each frame so moving planet leaves no ghost
+            // Normal mode: semi-transparent fill creates star trail persistence
+            if (_obsDeckMode) {
+                ctx.clearRect(0, 0, W, H);
+            } else {
+                ctx.fillStyle = 'rgba(3,3,14,0.2)';
+                ctx.fillRect(0, 0, W, H);
+            }
 
             for (var i = 0; i < stars.length; i++) {
                 var s = stars[i];
