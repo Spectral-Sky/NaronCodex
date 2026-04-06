@@ -231,9 +231,9 @@
 
         /* ARRIVAL BANNER */
         .arrival-banner { text-align:center; padding:56px 20px 32px; position:relative; z-index:2; }
-        .arrival-planet-name { font-size:2em; letter-spacing:8px; color:var(--theme-color); text-shadow:0 0 30px rgba(0,255,204,0.55); text-transform:uppercase; margin-bottom:10px; font-weight:bold; }
-        .arrival-subtitle { color:#3a8a7a; font-size:0.78em; letter-spacing:3px; margin-bottom:6px; }
-        .arrival-status   { color:#1e5a48; font-size:0.68em; letter-spacing:2px; }
+        .arrival-planet-name { font-size:2em; letter-spacing:8px; color:var(--theme-color); text-shadow:0 0 30px rgba(0,255,204,0.55), 0 2px 8px #000, 0 0 2px #000, 2px 2px 0 #000, -2px -2px 0 #000; text-transform:uppercase; margin-bottom:10px; font-weight:bold; }
+        .arrival-subtitle { color:#aaddcc; font-size:0.78em; letter-spacing:3px; margin-bottom:6px; text-shadow:0 1px 6px #000, 0 0 2px #000; }
+        .arrival-status   { color:#88ccbb; font-size:0.68em; letter-spacing:2px; text-shadow:0 1px 6px #000, 0 0 2px #000; }
         @keyframes fadein-up { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
         .arrival-banner > * { animation:fadein-up 0.7s ease both; }
         .arrival-banner > *:nth-child(2) { animation-delay:0.3s; }
