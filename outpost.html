@@ -1135,6 +1135,7 @@
     // ─── ARRIVAL EFFECT ───────────────────────────────────────────────────────
     var _arrivalFired = false;
     var _planetVisible = false;
+    var _planetMeshRef = null; // set by initPlanetZoom for parallax access
     var _mouse = { nx: 0, ny: 0 }; // normalised -1..1
     window.addEventListener('mousemove', function(e) {
         _mouse.nx = (e.clientX / window.innerWidth)  * 2 - 1;
@@ -1201,6 +1202,7 @@
             new THREE.MeshStandardMaterial({ map: tx, roughness: 0.75, metalness: 0.05 })
         );
         scene.add(planet);
+        _planetMeshRef = planet;
 
         // Approach animation: camera.z from 22 → 4.5, rapid then hard deceleration
         var zStart = 22, zEnd = 4.5;
@@ -1222,18 +1224,12 @@
                 if (t >= 1) arrived = true;
             }
 
-            // Mouse parallax — x-axis only, OBS DECK mode only
-            // y is never touched so the planet stays vertically locked when UI returns
+            // Mouse parallax — shift planet mesh on x only, camera never moves
+            // This avoids any camera orientation change that would cause a jump on toggle
             if (arrived && _obsDeckMode) {
-                var tx = _off.x + _mouse.nx * 1.2;
-                camera.position.x += (tx - camera.position.x) * 0.04;
-                camera.position.y = _off.y;
-                camera.lookAt(0, 0, 0);
-            } else if (arrived && camera.position.x !== _off.x) {
-                // Snap back immediately on close so planet is in expected position under cards
-                camera.position.x = _off.x;
-                camera.position.y = _off.y;
-                camera.lookAt(0, 0, 0);
+                planet.position.x += (_mouse.nx * 1.0 - planet.position.x) * 0.05;
+            } else if (arrived && planet.position.x !== 0) {
+                planet.position.x = 0; // snap back instantly when UI returns
             }
 
             renderer.render(scene, camera);
