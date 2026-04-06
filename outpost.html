@@ -96,7 +96,7 @@
         .outpost-btn {
             border-radius: 20px;
             padding: 10px 28px;
-            background: transparent;
+            background: rgba(0,0,0,0.82);
             border: 1px solid var(--theme-color);
             color: var(--theme-color);
             cursor: pointer;
@@ -105,10 +105,11 @@
             letter-spacing: 2px;
             text-transform: uppercase;
             transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 0 8px rgba(0,255,204,0.18), inset 0 0 8px rgba(0,255,204,0.05);
         }
         .outpost-btn { text-decoration:none; }
-        .outpost-btn:hover { background:var(--theme-color); color:#000; box-shadow:var(--theme-shadow); }
-        .outpost-btn:disabled { opacity:0.4; cursor:default; background:transparent; color:var(--theme-color); box-shadow:none; }
+        .outpost-btn:hover { background:var(--theme-color); color:#000; box-shadow:0 0 20px rgba(0,255,204,0.55), inset 0 0 10px rgba(0,255,204,0.15); }
+        .outpost-btn:disabled { opacity:0.4; cursor:default; background:rgba(0,0,0,0.82); color:var(--theme-color); box-shadow:none; }
 
         /* STATUS */
         #scan-status { font-size:0.72em; color:#444; letter-spacing:1.5px; }
@@ -287,6 +288,15 @@
         .arc-table th { color:#00ffcc88; font-weight:normal; letter-spacing:2px; text-transform:uppercase; border-bottom:1px solid #00ffcc22; padding:5px 8px; text-align:left; }
         .arc-table td { padding:5px 8px; border-bottom:1px dashed #0a1a18; color:#4a8a7a; }
         .arc-table td.name-col  { color:#aaa; }
+        .arc-table td.thumb-col { padding:3px 6px; text-align:center; }
+        .arc-thumb { width:28px; height:28px; object-fit:contain; border-radius:4px; background:#080818; vertical-align:middle; }
+        .rarity-abundant  { color:#666666; }
+        .rarity-common    { color:#cccccc; }
+        .rarity-uncommon  { color:#77cc55; }
+        .rarity-rare      { color:#4499ff; }
+        .rarity-epic      { color:#bc13fe; }
+        .rarity-legendary { color:#ffaa00; }
+        .rarity-mythical  { color:#ff0055; }
         .arc-table td.cost-col  { color:#00ffcc; font-weight:bold; white-space:nowrap; }
         .arc-table td.date-col  { color:#3a6a5a; font-size:0.9em; }
         .arc-table td.schema-col { color:#1e6a5a; font-size:0.85em; }
@@ -544,13 +554,15 @@
                     }
                     scanForElements(im);
                     if (elements.length === 0) scanForElements(d.mutable_data || {});
+                    var rarityRaw = im.rarity ? String(im.rarity) : (d.template_id ? null : null);
                     var info = {
                         name:     im.name ? String(im.name) : ('Template #' + tmplId),
                         img:      im.img  ? IPFS_GATEWAY + im.img : null,
-                        elements: elements,                          // array, may have 0,1 or 2 entries
-                        element:  elements[0] || null,               // kept for compat
+                        elements: elements,
+                        element:  elements[0] || null,
                         type:     im.type ? String(im.type) : null,
-                        schema:   (d.schema && d.schema.schema_name) ? d.schema.schema_name : null
+                        schema:   (d.schema && d.schema.schema_name) ? d.schema.schema_name : null,
+                        rarity:   rarityRaw || null
                     };
                     _tmplCache[tmplId] = info;
                     return info;
@@ -612,6 +624,11 @@
 
     function fmtNum(n) {
         return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function rarityClass(rarity) {
+        if (!rarity) return '';
+        return 'rarity-' + rarity.toLowerCase().replace(/[^a-z]/g, '');
     }
 
     function setStatus(msg) {
@@ -975,7 +992,7 @@
         var tbl = document.createElement('table');
         tbl.className = 'arc-table';
         tbl.innerHTML = '<thead><tr>'
-            + '<th>TEMPLATE</th><th>SCHEMA</th><th>TYPE</th>'
+            + '<th style="width:36px;"></th><th>TEMPLATE</th><th>SCHEMA</th><th>TYPE</th>'
             + '<th>PAST LOW (SHD)</th><th>CURRENT (SHD)</th><th>SHD / WAX</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
             + '</tr></thead>';
         var tbody = document.createElement('tbody');
@@ -997,8 +1014,13 @@
                          : shdPerWax < 10   ? shdPerWax.toFixed(2)
                          : shdPerWax.toFixed(1);
             }
+            var thumbHtml = info.img
+                ? '<img src="' + info.img + '" class="arc-thumb" onerror="imgFallback(this)">'
+                : '';
+            var rc = rarityClass(info.rarity);
             var tr = document.createElement('tr');
-            tr.innerHTML = '<td class="name-col">' + (info.name || 'Template #' + tid) + '</td>'
+            tr.innerHTML = '<td class="thumb-col">' + thumbHtml + '</td>'
+                + '<td class="name-col ' + rc + '">' + (info.name || 'Template #' + tid) + '</td>'
                 + '<td class="schema-col">' + (info.schema || '\u2014') + '</td>'
                 + '<td>' + elList + '</td>'
                 + '<td class="cost-col"><img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + fmtNum(b.minCost) + '</td>'
@@ -1074,7 +1096,7 @@
                         + '<div class="offer-card ' + cls + '" onclick="toggleFlip(this)">'
                         + '<div class="card-face card-front">'
                         + frontImg
-                        + '<div class="offer-name">' + info.name + '</div>'
+                        + '<div class="offer-name ' + rarityClass(info.rarity) + '">' + info.name + '</div>'
                         + badge
                         + '<div class="offer-cost"><img src="Shards.png" class="shard-icon-img" alt="shards"> ' + fmtNum(e.cost) + ' SHARDS</div>'
                         + windowHtml
@@ -1262,9 +1284,33 @@
     }
 
     // ─── INIT ──────────────────────────────────────────────────────────────────
+    // Pre-populate _tmplCache from aw-library.json so AA calls are only needed for misses
+    async function loadLibrary() {
+        try {
+            var res = await fetch('aw-library.json', { cache: 'force-cache' });
+            if (!res.ok) return;
+            var lib = await res.json();
+            var entries = lib.templates || lib; // support both {templates:{...}} and flat {id:{...}}
+            Object.keys(entries).forEach(function(tid) {
+                if (_tmplCache[tid]) return; // don't overwrite live AA data
+                var e = entries[tid];
+                _tmplCache[tid] = {
+                    name:     e.name     || ('Template #' + tid),
+                    img:      e.img      ? (e.img.startsWith('http') ? e.img : IPFS_GATEWAY + e.img) : null,
+                    elements: e.elements || [],
+                    element:  (e.elements && e.elements[0]) || null,
+                    type:     e.type     || null,
+                    schema:   e.schema   || null,
+                    rarity:   e.rarity   || null
+                };
+            });
+        } catch(e) { /* library missing or malformed — silent, AA fallback handles it */ }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         checkWalletState();
         initStars();
+        loadLibrary(); // async, non-blocking — caches before warp is engaged
         showNavConsole();
         document.getElementById('archive-overlay').addEventListener('click', function(e) {
             if (e.target === this && _archiveState !== 'pulling') closeArchive();

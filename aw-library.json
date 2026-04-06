@@ -1,0 +1,9 @@
+{
+  "_meta": {
+    "collection": "alien.worlds",
+    "generated": "2026-04-05",
+    "total": 0,
+    "note": "Run node aw-library-seeder.js to populate. Auto-generated from AtomicAssets API. Re-run if Alien Worlds adds new templates (AW not actively adding as of April 2026). Planetary Defense templates are managed separately in nft_data.js. img values are raw IPFS hashes — pages prepend the IPFS gateway prefix."
+  },
+  "templates": {}
+}
