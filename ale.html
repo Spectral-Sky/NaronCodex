@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-48CCMEYHXG');
+    </script>
+    <title>ALE Stats // Naron Codex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="NCico.png">
+    <script src="waxjs.js"></script>
+    <script src="nft_data.js"></script>
+    <script src="ale_data.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor()],
+        });
+        window.walletKit = kit;
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+                if (typeof checkWalletState === 'function') checkWalletState();
+            }
+        } catch(e) {}
+    </script>
+    <style>
+        /* --- FOUC PREVENTION --- */
+        table { opacity: 0; visibility: hidden; transition: opacity 0.6s ease-in; background-color: transparent !important; }
+        tr, td, th, tbody { background-color: transparent !important; }
+        table.system-ready { opacity: 1; visibility: visible; }
+
+        /* --- ALE GOLD THEME --- */
+        :root {
+            --theme-color: #e8a020;
+            --theme-shadow: 0 0 15px rgba(232,160,32,0.4);
+            --theme-dark: #120d05;
+            --theme-hover: #261b0a;
+            --theme-border: 1px solid #33240d;
+        }
+
+        body {
+            cursor: crosshair;
+            background-color: #050510;
+            background-image: radial-gradient(circle at 50% 50%, var(--theme-dark) 0%, #050510 80%);
+            color: #d0d0d0;
+            font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+            margin: 0; padding: 0; overflow-x: auto;
+        }
+
+        ::-webkit-scrollbar { height: 12px; width: 12px; }
+        ::-webkit-scrollbar-track { background: #050510; }
+        ::-webkit-scrollbar-thumb { background: #333; border: 1px solid var(--theme-color); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--theme-color); }
+
+        a, button, th, td { cursor: crosshair !important; }
+
+        /* --- STARFIELD --- */
+        body::before {
+            content: " "; position: fixed; top: 0; left: 0; width: 1px; height: 1px; z-index: -1;
+            box-shadow: 5vw 10vh #fff, 15vw 25vh rgba(255,255,255,0.5), 25vw 5vh #fff, 35vw 45vh rgba(255,255,255,0.7), 45vw 15vh #fff, 55vw 65vh #fff, 65vw 20vh rgba(255,255,255,0.4), 75vw 55vh #fff, 85vw 12vh rgba(255,255,255,0.8), 95vw 40vh #fff, 10vw 60vh #fff, 20vw 80vh rgba(255,255,255,0.6), 30vw 90vh #fff, 40vw 75vh rgba(255,255,255,0.5), 50vw 85vh #fff, 60vw 95vh rgba(255,255,255,0.7), 70vw 80vh #fff, 80vw 95vh rgba(255,255,255,0.4), 90vw 70vh #fff, 98vw 85vh #fff;
+            animation: starlight 4s ease-in-out infinite;
+        }
+        @keyframes starlight { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }
+
+        /* --- CURSOR & CLICK EFFECTS --- */
+        .click-effect { position: fixed; pointer-events: none; width: 40px; height: 40px; border: 2px solid var(--theme-color); border-radius: 50%; transform: translate(-50%, -50%); animation: clickPulse 0.4s ease-out forwards; z-index: 2147483647; box-shadow: 0 0 10px var(--theme-color); }
+        @keyframes clickPulse { 0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; border-width: 5px; } 100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; border-width: 0px; } }
+        #cursor-glow { position: fixed; top: -50px; left: -50px; width: 70px; height: 70px; border-radius: 50%; background: var(--theme-color); filter: blur(35px); opacity: 0.25; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background 0.2s; }
+
+        /* --- GLOBAL HEADER --- */
+        .global-header { display: flex; justify-content: space-between; align-items: center; background: #0a0802; border-bottom: 2px solid var(--theme-color); padding: 0 30px; box-sizing: border-box; width: 100%; height: 66px; position: sticky; top: 0; z-index: 6000; box-shadow: 0 5px 20px rgba(0,0,0,0.9); }
+        #header-planet-canvas { width:36px; height:36px; border-radius:50%; cursor:pointer; vertical-align:middle; margin-right:8px; flex-shrink:0; }
+        .logo-section { display:flex; align-items:center; }
+        .logo-section h1 { color: var(--theme-color); margin: 0; font-size: 1.8em; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 0 10px var(--theme-color); font-family: 'Courier New', Courier, monospace; }
+
+        .nav-links { display: flex; gap: 10px; }
+        .nav-btn { background: transparent; color: #888; border: 1px solid transparent; padding: 8px 16px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9em; text-decoration: none; cursor: pointer; transition: all 0.3s; text-transform: uppercase; border-radius: 6px; }
+        .nav-btn:hover { color: var(--theme-color); border-color: var(--theme-color); }
+        .nav-btn.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); box-shadow: var(--theme-shadow); }
+
+        .nav-dropdown-wrap { position:relative; display:inline-block; }
+        .nav-dropdown-btn { background:transparent; color:#888; border:1px solid transparent; padding:8px 16px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.9em; cursor:pointer; transition:all 0.3s; text-transform:uppercase; border-radius:6px; letter-spacing:1px; }
+        .nav-dropdown-btn:hover { color:var(--theme-color); border-color:var(--theme-color); }
+        .nav-dropdown-btn.active { color:#000; background:var(--theme-color); border-color:var(--theme-color); box-shadow:var(--theme-shadow); }
+        .nav-dropdown-menu { display:none; position:absolute; top:100%; margin-top:0; left:0; z-index:5000; background:rgba(10,8,2,0.98); border:1px solid var(--theme-color); min-width:160px; padding:8px 0 4px 0; box-shadow:0 8px 24px rgba(0,0,0,0.9); backdrop-filter:blur(6px); }
+        .nav-dropdown-wrap:hover .nav-dropdown-menu { display:block; }
+        .nav-dropdown-item { display:block; padding:8px 16px; color:#888; text-decoration:none; font-family:'Courier New',monospace; font-size:0.85em; letter-spacing:1px; text-transform:uppercase; transition:all 0.2s; white-space:nowrap; }
+        .nav-dropdown-item:hover { color:var(--theme-color); background:rgba(255,255,255,0.04); }
+        .nav-dropdown-item.active { color:var(--theme-color); font-weight:bold; background:rgba(255,255,255,0.03); }
+
+        .wallet-section { position: relative; display:flex; gap:6px; align-items:center; }
+        .wallet-btn { background: #111; color: var(--theme-color); border: 1px dashed var(--theme-color); padding: 10px 20px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        .wallet-btn:hover { background: var(--theme-hover); box-shadow: var(--theme-shadow); }
+        .wallet-btn.logged-in { background: var(--theme-color); color: #000; border: 1px solid #fff; }
+
+        /* --- UI BAR --- */
+        .top-bar { display: flex; justify-content: space-between; align-items: flex-start; padding: 15px 30px; box-sizing: border-box; width: 100%; background: #050510; border-bottom: 2px solid var(--theme-color); position: sticky; top: 66px; z-index: 5000; box-shadow: 0 10px 20px rgba(0,0,0,0.8); margin-bottom: 0; flex-wrap: wrap; gap:10px; }
+        .top-bar h1 { color: var(--theme-color); letter-spacing: 3px; margin: 0; text-transform: uppercase; font-size: 1.5em; line-height: 1; text-shadow: 0 0 10px var(--theme-color); font-family: 'Courier New', Courier, monospace; }
+        #searchInput { background: #000; border: 1px solid var(--theme-color); color: var(--theme-color); padding: 10px; font-family: 'Segoe UI', system-ui, Arial, sans-serif; font-weight: bold; width: 200px; text-transform: uppercase; outline:none; }
+        .cyber-btn { background: var(--theme-dark); color: var(--theme-color); border: 2px solid var(--theme-color); padding: 10px 14px; font-family: 'Courier New', Courier, monospace; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; border-radius: 6px; }
+        .cyber-btn:hover { background: var(--theme-color); color: #000; box-shadow: var(--theme-shadow); }
+
+        /* --- TABS --- */
+        .tab-bar { display: flex; gap: 0; padding: 0 30px; background: rgba(5,5,16,0.97); border-bottom: 1px solid rgba(232,160,32,0.2); position: sticky; top: 138px; z-index: 4000; }
+        .tab-btn { background: transparent; color: #6a80a0; border: none; border-bottom: 2px solid transparent; padding: 12px 24px; font-family: 'Segoe UI', system-ui, Arial, sans-serif; font-size: 1em; font-weight:bold; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+        .tab-btn:hover { color: var(--theme-color); }
+        .tab-btn.active { color: #fff; border-bottom-color: var(--theme-color); box-shadow: 0 5px 15px -5px var(--theme-color); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* --- PREVIEW DECKS & MARKET INTEL --- */
+        #deck-toggle-tab { position: fixed; top: 240px; left: 298px; width: 30px; height: 400px; box-sizing: border-box; background: var(--theme-dark); border: 2px solid var(--theme-color); border-left: none; color: var(--theme-color); display: flex; align-items: center; justify-content: center; font-size: 1.2em; font-weight: bold; cursor: pointer; z-index: 3005; pointer-events: auto !important; transition: transform 0.4s ease-out, background-color 0.2s, color 0.2s; border-radius: 0 8px 8px 0; box-shadow: 5px 0 15px rgba(0,0,0,0.8); user-select: none; }
+        #deck-toggle-tab:hover { background: var(--theme-color); color: #000; }
+        #deck-toggle-tab.minimized { transform: translateX(-298px); }
+
+        #preview-frame { position: fixed; top: 240px; left: 20px; width: 280px; height: 400px; border: 2px solid var(--theme-color); background: var(--theme-dark); box-shadow: var(--theme-shadow); z-index: 3000; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.4s, opacity 0.4s; transform: translateX(0); opacity: 1; pointer-events: none; }
+        #preview-frame.minimized { transform: translateX(-400px); opacity: 0; }
+        #preview-img { width: 90%; height: auto; max-height: 80%; object-fit: contain; border: 1px solid #333; display: none; }
+        #preview-label { margin-top: 10px; color: #fff; font-weight: bold; font-size: 0.9em; text-align: center; letter-spacing: 1px; width: 90%; border-top: 1px dashed #333; padding-top: 5px; }
+
+        #market-frame { position: fixed; top: 655px; left: 20px; width: 280px; height: auto; border: 2px solid var(--theme-color); background: #000; box-sizing: border-box; box-shadow: var(--theme-shadow); z-index: 3000; padding: 10px; transition: transform 0.4s, opacity 0.4s; transform: translateX(0); opacity: 1; }
+        #market-frame.minimized { transform: translateX(-400px); opacity: 0; }
+        .intel-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding: 6px 0; font-size: 0.9em; }
+        .intel-label { color: #888; }
+        .intel-val { color: var(--theme-color); font-weight: bold; font-family: monospace; }
+        #intel-header { color:var(--theme-color); font-weight:bold; border-bottom:1px solid #333; margin-bottom:10px; text-transform: uppercase; font-size: 0.85em; letter-spacing: 1px; font-family: 'Courier New', monospace; }
+
+        .market-links { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; border-top: 1px solid #333; padding-top: 10px; pointer-events: auto; }
+        .market-link-btn { background: #111; border: 1px solid var(--theme-color); color: var(--theme-color); text-align: center; font-size: 1.1em; padding: 10px 18px; cursor: pointer; text-decoration: none; display: block; transition: all 0.2s ease-in-out; font-family: monospace; text-transform: uppercase; border-radius: 6px; }
+        .market-link-btn:hover { background: var(--theme-color); color: #000; box-shadow: var(--theme-shadow); }
+        .market-btn-logo { width: 16px; height: 16px; object-fit: contain; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+
+        /* --- MOBILE MODAL --- */
+        #mobile-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2900; backdrop-filter: blur(3px); }
+        #mobile-backdrop.active { display: block; }
+        .close-btn { display: none; position: absolute; top: -15px; right: -15px; background: var(--theme-color); color: #000; pointer-events: auto; border: 1px solid #fff; padding: 5px 10px; font-weight: bold; cursor: pointer; z-index: 4000; box-shadow: var(--theme-shadow); }
+
+        /* --- TOOLTIPS --- */
+        .info-icon { cursor: help; margin-left: 6px; color: #000; background: var(--theme-color); border-radius: 50%; width: 16px; height: 16px; display: inline-block; line-height: 16px; font-size: 11px; text-align: center; font-weight:bold; position: relative; z-index: 100; }
+        .tooltip-box { visibility: hidden; opacity: 0; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: #050505; border: 1px solid var(--theme-color); color: #ddd; padding: 12px; border-radius: 0; white-space: normal; width: 250px; box-shadow: 0 5px 30px rgba(0,0,0,1); font-size: 0.8em !important; line-height: 1.4; text-align: left; font-weight: normal; transition: opacity 0.2s; pointer-events: none; z-index: 999999 !important; text-transform:none; font-family: 'Segoe UI', system-ui, Arial, sans-serif; }
+        .info-icon:hover .tooltip-box { visibility: visible; opacity: 1; }
+
+        /* --- TABLE & WAFFLE STRUCTURE --- */
+        .grid-container { background: transparent !important; border: none !important; box-shadow: none !important; height: auto !important; overflow: visible !important; width: 100% !important; max-width: none !important; padding: 20px 0; display: grid; grid-template-columns: minmax(20px, 1fr) auto minmax(20px, 1fr); transition: grid-template-columns 0.4s ease-out; }
+        body.deck-open .grid-container { grid-template-columns: minmax(340px, 1fr) auto minmax(20px, 1fr); }
+
+        .waffle { grid-column: 2; margin: 0; border-collapse: separate !important; border-spacing: 0 !important; background: var(--theme-dark); width: auto !important; transition: background-color 0.5s; border-bottom: 2px solid var(--theme-color) !important; }
+        .live-header { position: sticky !important; top: 186px !important; z-index: 1900 !important; background-color: var(--theme-dark) !important; color: var(--theme-color) !important; border-bottom: 2px solid var(--theme-color) !important; border-right: 2px solid var(--theme-color) !important; font-weight: bold !important; text-align: center !important; box-shadow: 0 0 15px rgba(232,160,32,0.4) !important; text-transform: uppercase !important; letter-spacing: 1px !important; padding: 8px !important; overflow: visible !important; cursor: pointer !important; font-family: 'Courier New', Courier, monospace !important; }
+        .live-header:hover { z-index: 2000 !important; background-color: #000 !important; color: #fff !important; }
+        .live-header:first-of-type { border-left: 2px solid var(--theme-color) !important; border-top-left-radius: 4px; }
+
+        td { border-bottom: var(--theme-border) !important; border-right: var(--theme-border) !important; padding: 4px 10px !important; vertical-align: middle; white-space: nowrap !important; font-family: 'Segoe UI', system-ui, Arial, sans-serif !important; font-size: 0.9em !important; text-align: center; }
+        td:first-of-type { border-left: var(--theme-border) !important; }
+        td:nth-child(3) { text-align: left; }
+        td:last-child { max-width: 240px; white-space: normal !important; text-align:left; font-size: 0.8em !important; color: #a0b0c0; }
+
+        .waffle tr { height: 52px !important; transition: background-color 0.1s; }
+        .waffle tr:hover td { background-color: var(--theme-hover) !important; color: #fff !important; }
+        .waffle img { height: 46px !important; width: auto !important; display: block; margin: 0 auto; object-fit: contain !important; border: none !important; cursor: pointer; border-radius:4px; }
+
+        /* --- STAT COLORS & TAGS --- */
+        [class*="tag-"] { font-weight: bold !important; padding: 2px 6px; display: inline-block; width: 100%; text-align: center; }
+        .tag-stone     { box-shadow: inset 4px 0 0 #777, inset -4px 0 0 #777 !important; color: #aaa !important; }
+        .tag-gold      { box-shadow: inset 4px 0 0 #ffd700, inset -4px 0 0 #ffd700 !important; color: #ffe44d !important; }
+        .tag-stardust  { box-shadow: inset 4px 0 0 #da70d6, inset -4px 0 0 #da70d6 !important; color: #ee82ee !important; }
+        .tag-antimatter{ box-shadow: inset 4px 0 0 #4b0082, inset -4px 0 0 #4b0082 !important; color: #9370db !important; }
+        .tag-xdimension{ box-shadow: inset 4px 0 0 #800080, inset -4px 0 0 #800080 !important; color: #c760c7 !important; }
+
+        .tag-fire    { box-shadow: inset 4px 0 0 #ff4500, inset -4px 0 0 #ff4500 !important; color: #ff7733 !important; }
+        .tag-air     { box-shadow: inset 4px 0 0 #66ccff, inset -4px 0 0 #66ccff !important; color: #99ddff !important; }
+        .tag-gem     { box-shadow: inset 4px 0 0 #9933ff, inset -4px 0 0 #9933ff !important; color: #cc99ff !important; }
+        .tag-nature  { box-shadow: inset 4px 0 0 #00cc44, inset -4px 0 0 #00cc44 !important; color: #66ff99 !important; }
+        .tag-metal   { box-shadow: inset 4px 0 0 #505050, inset -4px 0 0 #505050 !important; color: #a0a0a0 !important; }
+        .tag-neutral { box-shadow: inset 4px 0 0 #0047ab, inset -4px 0 0 #0047ab !important; color: #4169e1 !important; }
+
+        .tag-abundant   { color: #999 !important; }
+        .tag-common     { color: #ccc !important; }
+        .tag-rare       { color: #4da6ff !important; }
+        .tag-epic       { color: #d67aff !important; }
+        .tag-legendary  { color: #ffcc00 !important; }
+        .tag-mythical   { color: #ff6688 !important; }
+
+        .stat-health   { color: #66ff99 !important; font-weight: bold; }
+        .stat-attack   { color: #ff4444 !important; font-weight: bold; }
+        .stat-taunt    { color: #ffaa00 !important; font-weight: bold; }
+        .stat-windup   { color: #66ccff !important; font-weight: bold; }
+        .stat-cooldown { color: #d67aff !important; font-weight: bold; }
+        .stat-res      { font-weight: bold; color: #bbb; }
+
+        /* --- MINE POWER TABLE --- */
+        .mp-section { padding: 30px; max-width: 900px; margin: 0 auto; }
+        .mp-section h2 { color: var(--theme-color); font-family: 'Courier New', Courier, monospace; letter-spacing: 3px; text-transform: uppercase; font-size: 1.2em; margin-bottom: 6px; text-shadow: 0 0 10px var(--theme-color); }
+        .mp-section p { color: #888; font-size: 0.85em; margin-bottom: 20px; }
+        .mp-table { border-collapse: collapse; width: 100%; }
+        .mp-table th { background: var(--theme-dark); color: var(--theme-color); border: 1px solid #33240d; padding: 10px 18px; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85em; font-family: 'Courier New', Courier, monospace; }
+        .mp-table td { border: 1px solid #33240d !important; padding: 10px 18px !important; text-align: center; font-size: 0.95em; font-weight: bold; white-space: nowrap !important; }
+        .mp-table td:first-child { text-align: left; background: rgba(18,13,5,0.6); }
+        .mp-table td.mp-none { color: #333 !important; font-weight: normal; }
+        .mp-table tr:hover td { background-color: var(--theme-hover) !important; }
+        .mp-table.system-ready { opacity: 1; visibility: visible; }
+
+        /* --- FOOTER --- */
+        .codex-footer { text-align: center; padding: 40px 20px 60px 20px; border-top: 1px dashed #333; margin-top: auto; }
+        .footer-text { color: var(--theme-color); font-family: 'Courier New', monospace; font-weight: bold; letter-spacing: 2px; font-size: 0.85em; text-transform: uppercase; }
+
+        @media screen and (max-width: 800px) {
+            .global-header { position: static; height: auto !important; padding: 8px 15px !important; min-height: 52px; }
+            .logo-section h1 { font-size: 1.1em !important; }
+            .nav-links { display: none !important; }
+            #hamburger-btn { display: flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--theme-color); color: var(--theme-color); font-size: 1.4em; padding: 2px 10px; cursor: pointer; }
+            #deck-toggle-tab { display: none !important; }
+            #preview-frame, #market-frame { display: none; }
+            #preview-frame.mobile-active { display: flex !important; left: 50%; transform: translateX(-50%); width: 90%; top: 120px; z-index:3000; pointer-events: auto; }
+            #market-frame.mobile-active { display: block !important; left: 50%; transform: translateX(-50%); width: 90%; top: 540px; z-index:3000; }
+            .close-btn { display: block; }
+            .top-bar { flex-direction: column; align-items: stretch; position: static; padding: 10px 15px; }
+            #searchInput { width: 100%; margin-bottom: 10px; }
+            .grid-container, body.deck-open .grid-container { grid-template-columns: minmax(10px, 1fr) auto minmax(10px, 1fr); padding: 10px 0; }
+            .tab-bar { top: 110px; padding: 0 10px; overflow-x: auto; }
+            .live-header { top: 155px !important; }
+        }
+    </style>
+</head>
+<body class="deck-open">
+
+    <div id="mobile-backdrop" onclick="closeDeckMobile()"></div>
+    <div id="cursor-glow"></div>
+    <div id="deck-toggle-tab" onclick="toggleDeck()">&#10094;</div>
+
+    <div id="preview-frame">
+        <div class="close-btn" onclick="closeDeckMobile()">[ X CLOSE ]</div>
+        <img id="preview-img" src="" alt="PREVIEW">
+        <div id="preview-label" style="display:none;">
+            <span id="label-name" style="display:block;"></span>
+            <span id="label-shine" class="tag-stone" style="margin-top:4px;"></span>
+            <span id="label-id" style="font-size:0.7em; color:#666; display:block; margin-top:4px;"></span>
+        </div>
+    </div>
+
+    <div id="market-frame">
+        <div id="intel-header">MARKET INTEL</div>
+        <div class="intel-row"><span class="intel-label">LOWEST PRICE:</span><span id="intel-floor" class="intel-val">---</span></div>
+        <div class="intel-row"><span class="intel-label">LAST SOLD:</span><span id="intel-last" class="intel-val">---</span></div>
+        <div class="market-links">
+            <a id="lnk-atomic" target="_blank" class="market-link-btn"><img src="atomicfavicon.ico" class="market-btn-logo" alt="">ATOMIC</a>
+            <a id="lnk-nefty" target="_blank" class="market-link-btn"><img src="https://resizer2.neftyblocks.com/?ipfs=https%3A%2F%2Fraw.githubusercontent.com%2Feoscafe%2Feos-airdrops%2Fmaster%2Flogos%2FNEFTY_296.png&width=100" class="market-btn-logo" alt="">NEFTY</a>
+            <a id="lnk-hive" target="_blank" class="market-link-btn"><img src="https://nfthive.io/favicon.ico" class="market-btn-logo" alt="">HIVE</a>
+            <a id="lnk-f12" target="_blank" class="market-link-btn"><img src="F12key_logoV2.png" class="market-btn-logo" alt="">F12 KEY</a>
+        </div>
+    </div>
+
+    <header class="global-header">
+        <div class="logo-section">
+            <canvas id="header-planet-canvas" width="36" height="36"></canvas>
+            <h1>NARON CODEX</h1>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-btn"><img src="NCico.png" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">HUB</a>
+            <div class="nav-dropdown-wrap">
+                <button class="nav-btn nav-dropdown-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">AW &#9660;</button>
+                <div class="nav-dropdown-menu">
+                    <a href="crew.worlds.html" class="nav-dropdown-item">CREW</a>
+                    <a href="arms.worlds.html" class="nav-dropdown-item">ARMS</a>
+                    <a href="tools.worlds.html" class="nav-dropdown-item">TOOLS</a>
+                    <a href="faces.worlds.html" class="nav-dropdown-item">FACES</a>
+                    <a href="land.worlds.html" class="nav-dropdown-item">LAND</a>
+                </div>
+            </div>
+            <div class="nav-dropdown-wrap">
+                <button class="nav-btn nav-dropdown-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.onerror=null;this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD &#9660;</button>
+                <div class="nav-dropdown-menu">
+                    <a href="pd.units.html" class="nav-dropdown-item">PD UNITS</a>
+                    <a href="pd.materials.html" class="nav-dropdown-item">PD MATS</a>
+                    <a href="army.html" class="nav-dropdown-item">ARMY BUILDER</a>
+                </div>
+            </div>
+            <div class="nav-dropdown-wrap">
+                <button class="nav-btn nav-dropdown-btn active">ALE &#9660;</button>
+                <div class="nav-dropdown-menu">
+                    <a href="ale.html" class="nav-dropdown-item active">⚔ STATS</a>
+                    <a href="alewiki.html" class="nav-dropdown-item">◈ WIKI</a>
+                </div>
+            </div>
+            <div class="nav-dropdown-wrap">
+                <button class="nav-btn nav-dropdown-btn">UTILITY &#9660;</button>
+                <div class="nav-dropdown-menu">
+                    <a href="stash.html" class="nav-dropdown-item">&#11041; STASH</a>
+                    <a href="outpost.html" class="nav-dropdown-item"><img src="Shards.png" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;" alt=""> OUTPOST</a>
+                </div>
+            </div>
+        </nav>
+        <div class="wallet-section">
+            <button id="wallet-connect-btn" class="wallet-btn" onclick="disconnectWallet()" style="display:none;"></button>
+            <button id="wallet-btn-anchor" class="wallet-btn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
+            <button id="wallet-btn-wcc" class="wallet-btn" onclick="loginWithWCC()">[ &#9729; CLOUD WALLET ]</button>
+        </div>
+        <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
+    </header>
+
+    <div class="top-bar">
+        <div style="flex-grow:1;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="SEARCH...">
+                <button class="cyber-btn" onclick="resetSort()">[ RESET SORT ]</button>
+            </div>
+        </div>
+        <div style="text-align:right;">
+            <h1>Alien Legends Card Stats</h1>
+            <div style="font-size:0.7em; color:#888; margin-top:5px; letter-spacing:2px; font-family:'Courier New',monospace;">BATTLE STATS &amp; RESISTANCES</div>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('arms')">⚔ ARMS</button>
+        <button class="tab-btn" onclick="showTab('crew')">CREW</button>
+        <button class="tab-btn" onclick="showTab('minepower')">MINE POWER</button>
+    </div>
+
+    <div id="tab-arms" class="tab-content active">
+        <div class="grid-container">
+            <table class="waffle" id="arms-table">
+                <thead>
+                    <tr>
+                        <th class="live-header" onclick="sortTable('arms-table',0)">ID</th>
+                        <th class="live-header">IMG</th>
+                        <th class="live-header" onclick="sortTable('arms-table',2)">NAME</th>
+                        <th class="live-header" onclick="sortTable('arms-table',3)">RARITY</th>
+                        <th class="live-header" onclick="sortTable('arms-table',4)">SHINE</th>
+                        <th class="live-header" onclick="sortTable('arms-table',5)">ELEMENT</th>
+                        <th class="live-header" onclick="sortTable('arms-table',6)">HP <span class="info-icon">ⓘ<span class="tooltip-box">Maximum hit points. Higher is better.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',7)">DMG <span class="info-icon">ⓘ<span class="tooltip-box">Base damage per attack. Higher is better.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',8)">TAUNT <span class="info-icon">ⓘ<span class="tooltip-box">Likelihood of being targeted. Higher = targeted more.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',9)">WINDUP <span class="info-icon">ⓘ<span class="tooltip-box">Initiative speed. Lower = attacks sooner.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',10)">COOLDOWN <span class="info-icon">ⓘ<span class="tooltip-box">Attack interval. Lower = attacks more frequently.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',11)">FIRE</th>
+                        <th class="live-header" onclick="sortTable('arms-table',12)">NATURE</th>
+                        <th class="live-header" onclick="sortTable('arms-table',13)">AIR</th>
+                        <th class="live-header" onclick="sortTable('arms-table',14)">GEM</th>
+                        <th class="live-header" onclick="sortTable('arms-table',15)">METAL</th>
+                        <th class="live-header" onclick="sortTable('arms-table',16)">NEUTRAL</th>
+                        <th class="live-header">ABILITY</th>
+                    </tr>
+                </thead>
+                <tbody id="arms-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-crew" class="tab-content">
+        <div class="grid-container">
+            <table class="waffle" id="crew-table">
+                <thead>
+                    <tr>
+                        <th class="live-header" onclick="sortTable('crew-table',0)">ID</th>
+                        <th class="live-header">IMG</th>
+                        <th class="live-header" onclick="sortTable('crew-table',2)">NAME</th>
+                        <th class="live-header" onclick="sortTable('crew-table',3)">RARITY</th>
+                        <th class="live-header" onclick="sortTable('crew-table',4)">SHINE</th>
+                        <th class="live-header" onclick="sortTable('crew-table',5)">RACE</th>
+                        <th class="live-header" onclick="sortTable('crew-table',6)">ELEMENT</th>
+                        <th class="live-header" onclick="sortTable('crew-table',7)">HP <span class="info-icon">ⓘ<span class="tooltip-box">Maximum hit points. Higher is better.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',8)">DMG <span class="info-icon">ⓘ<span class="tooltip-box">Base damage per attack. Higher is better.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',9)">TAUNT <span class="info-icon">ⓘ<span class="tooltip-box">Likelihood of being targeted. Higher = targeted more.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',10)">WINDUP <span class="info-icon">ⓘ<span class="tooltip-box">Initiative speed. Lower = attacks sooner.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',11)">COOLDOWN <span class="info-icon">ⓘ<span class="tooltip-box">Attack interval. Lower = attacks more frequently.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',12)">FIRE</th>
+                        <th class="live-header" onclick="sortTable('crew-table',13)">NATURE</th>
+                        <th class="live-header" onclick="sortTable('crew-table',14)">AIR</th>
+                        <th class="live-header" onclick="sortTable('crew-table',15)">GEM</th>
+                        <th class="live-header" onclick="sortTable('crew-table',16)">METAL</th>
+                        <th class="live-header" onclick="sortTable('crew-table',17)">NEUTRAL</th>
+                        <th class="live-header">ABILITY</th>
+                    </tr>
+                </thead>
+                <tbody id="crew-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-minepower" class="tab-content">
+        <div class="mp-section">
+            <h2>&#9889; Mine Power by Rarity &amp; Shine</h2>
+            <p>Mining power value for each rarity / shine combination in Alien Worlds. Higher shine = exponentially higher mine power.</p>
+            <table class="mp-table system-ready" id="mp-table"></table>
+        </div>
+    </div>
+
+    <footer class="codex-footer">
+        <div class="footer-text">// NARON CODEX · ALE STATS // ©@Spectral.Sky 2026 //</div>
+    </footer>
+
+<script>
+(function() {
+    // ── MINE POWER DATA ──────────────────────────────────────────────────────────
+    const MINE_POWER = {
+        'Abundant':  { Stone:1,    Gold:2    },
+        'Common':    { Stone:12,   Gold:27,   Stardust:60  },
+        'Rare':      { Stone:90,   Gold:203,  Stardust:450,   Antimatter:1035,  XDimension:315   },
+        'Epic':      { Stone:250,  Gold:563,  Stardust:1250,  Antimatter:2875,  XDimension:875   },
+        'Legendary': { Stone:675,  Gold:1519, Stardust:3375,  Antimatter:7763,  XDimension:2363  },
+        'Mythical':  { Stone:3975, Gold:8944, Stardust:19875, Antimatter:45713, XDimension:13913 },
+    };
+    const SHINES = ['Stone','Gold','Stardust','Antimatter','XDimension'];
+    const RARITIES = ['Abundant','Common','Rare','Epic','Legendary','Mythical'];
+    const SHINE_CLASS = { Stone:'tag-stone', Gold:'tag-gold', Stardust:'tag-stardust', Antimatter:'tag-antimatter', XDimension:'tag-xdimension' };
+    const RARITY_CLASS = { Abundant:'tag-abundant', Common:'tag-common', Rare:'tag-rare', Epic:'tag-epic', Legendary:'tag-legendary', Mythical:'tag-mythical' };
+
+    function buildMinePower() {
+        const tbl = document.getElementById('mp-table');
+        let html = '<thead><tr><th>RARITY \\ SHINE</th>';
+        SHINES.forEach(s => html += `<th><span class="${SHINE_CLASS[s]}" style="display:inline-block;padding:2px 8px;">${s.toUpperCase()}</span></th>`);
+        html += '</tr></thead><tbody>';
+        RARITIES.forEach(r => {
+            html += `<tr><td><span class="${RARITY_CLASS[r]}" style="font-weight:bold;">${r}</span></td>`;
+            SHINES.forEach(s => {
+                const v = MINE_POWER[r][s];
+                if (v !== undefined) {
+                    html += `<td>${v.toLocaleString()}</td>`;
+                } else {
+                    html += `<td class="mp-none">—</td>`;
+                }
+            });
+            html += '</tr>';
+        });
+        html += '</tbody>';
+        tbl.innerHTML = html;
+    }
+
+    // ── TABLE RENDER (from ale_data.js arrays) ───────────────────────────────────
+    function renderTable(tbodyId, rows, isCrew) {
+        const tbody = document.getElementById(tbodyId);
+        tbody.innerHTML = '';
+        rows.forEach(row => {
+            if (!row[0]) return;
+            const tr = document.createElement('tr');
+            const templateId = row[0];
+            let nft = (typeof NFT_DATA !== 'undefined') ? NFT_DATA[templateId] : null;
+            let imgHash = nft ? (nft.img || nft.icon || '') : '';
+            let imgHtml = imgHash ? `<img src="https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/'+imgHash)}&w=40&h=60&output=webp&fit=cover" loading="lazy">` : '';
+
+            tr.onclick = () => openDeck(templateId, row[1], row[2], row[3], imgHash);
+
+            const tag = v => v ? `<span class="tag-${String(v).toLowerCase().replace(/[^a-z]/g,'')}">${v}</span>` : '-';
+            const n = v => (v !== '' && v !== undefined) ? v : '-';
+
+            // col indices: [0]=id [1]=name [2]=rarity [3]=shine [4]=race [5]=element [6]=hp [7]=dmg [8]=taunt [9]=windup [10]=cooldown [11-16]=res [17]=ability
+            let html = `
+                <td>${row[0]}</td>
+                <td>${imgHtml}</td>
+                <td style="font-weight:bold;color:var(--theme-color);text-align:left;">${row[1]}</td>
+                <td>${tag(row[2])}</td>
+                <td>${tag(row[3])}</td>
+                ${isCrew ? `<td>${row[4] || '-'}</td>` : ''}
+                <td>${tag(row[5])}</td>
+                <td class="stat-health">${n(row[6])}</td>
+                <td class="stat-attack">${n(row[7])}</td>
+                <td class="stat-taunt">${n(row[8])}</td>
+                <td class="stat-windup">${n(row[9])}</td>
+                <td class="stat-cooldown">${n(row[10])}</td>
+                <td class="stat-res" style="color:#ff7733">${n(row[11])}</td>
+                <td class="stat-res" style="color:#66ff99">${n(row[12])}</td>
+                <td class="stat-res" style="color:#99ddff">${n(row[13])}</td>
+                <td class="stat-res" style="color:#cc99ff">${n(row[14])}</td>
+                <td class="stat-res" style="color:#a0a0a0">${n(row[15])}</td>
+                <td class="stat-res" style="color:#4169e1">${n(row[16])}</td>
+                <td>${row[17] || ''}</td>
+            `;
+            tr.innerHTML = html;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function buildTables() {
+        renderTable('arms-tbody', ALE_ARMS, false);
+        renderTable('crew-tbody', ALE_CREW, true);
+        document.getElementById('arms-table').classList.add('system-ready');
+        document.getElementById('crew-table').classList.add('system-ready');
+    }
+
+    // ── DECK & MARKET LOGIC ──────────────────────────────────────────────────────
+    window.openDeck = function(id, name, rarity, shine, imgHash) {
+        document.getElementById('preview-label').style.display = 'block';
+        document.getElementById('label-id').textContent = '#' + id;
+        document.getElementById('label-name').textContent = name;
+        document.getElementById('label-shine').textContent = shine;
+        document.getElementById('label-shine').className = 'tag-' + (shine || '').toLowerCase().replace(/[^a-z]/g,'');
+        let imgSrc = imgHash ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/'+imgHash)}&w=250&h=350&output=webp&fit=contain` : '';
+        document.getElementById('preview-img').src = imgSrc;
+        document.getElementById('preview-img').style.display = imgSrc ? 'block' : 'none';
+        document.getElementById('lnk-atomic').href = `https://wax.atomichub.io/market?collection_name=alien.worlds&order=asc&sort=price&symbol=WAX&template_id=${id}`;
+        document.getElementById('lnk-nefty').href  = `https://neftyblocks.com/marketplace/listing?template_id=${id}&collection_name=alien.worlds&sort=price&order=asc&page=1`;
+        document.getElementById('lnk-hive').href   = `https://nfthive.io/market?collection=alien.worlds&order=asc&sort=price&template_id=${id}`;
+        document.getElementById('lnk-f12').href    = `https://f12key.eu/collection/alien.worlds/templates/${id}`;
+        if (window.innerWidth <= 800) {
+            document.getElementById('mobile-backdrop').classList.add('active');
+            document.getElementById('preview-frame').classList.add('mobile-active');
+            document.getElementById('market-frame').classList.add('mobile-active');
+        }
+        fetchIntel(id);
+    };
+
+    window.toggleDeck = function() {
+        document.body.classList.toggle('deck-open');
+        document.getElementById('preview-frame').classList.toggle('minimized');
+        document.getElementById('market-frame').classList.toggle('minimized');
+        const tab = document.getElementById('deck-toggle-tab');
+        tab.classList.toggle('minimized');
+        tab.innerHTML = tab.classList.contains('minimized') ? '&#10095;' : '&#10094;';
+    };
+
+    window.closeDeckMobile = function() {
+        document.getElementById('mobile-backdrop').classList.remove('active');
+        document.getElementById('preview-frame').classList.remove('mobile-active');
+        document.getElementById('market-frame').classList.remove('mobile-active');
+    };
+
+    async function fetchIntel(templateId) {
+        const pFloor = document.getElementById('intel-floor');
+        const pLast  = document.getElementById('intel-last');
+        pFloor.innerText = "SCANNING...";
+        pLast.innerText  = "SCANNING...";
+        try {
+            const fRes = await fetch(`https://wax.api.atomicassets.io/atomicmarket/v1/sales/templates?symbol=WAX&template_id=${templateId}&page=1&limit=1&order=asc&sort=price`);
+            const fData = await fRes.json();
+            if (fData.data && fData.data.length > 0) {
+                let price = parseInt(fData.data[0].price.amount) / Math.pow(10, fData.data[0].price.token_precision);
+                pFloor.innerText = price.toFixed(2) + " WAX";
+            } else pFloor.innerText = "NONE";
+        } catch(e) { pFloor.innerText = "ERR"; }
+        try {
+            const lRes = await fetch(`https://wax.api.atomicassets.io/atomicmarket/v1/sales?state=3&template_id=${templateId}&page=1&limit=1&order=desc&sort=updated`);
+            const lData = await lRes.json();
+            if (lData.data && lData.data.length > 0) {
+                let price = parseInt(lData.data[0].price.amount) / Math.pow(10, lData.data[0].price.token_precision);
+                pLast.innerText = price.toFixed(2) + " WAX";
+            } else pLast.innerText = "NONE";
+        } catch(e) { pLast.innerText = "ERR"; }
+    }
+
+    // ── UTILITIES ────────────────────────────────────────────────────────────────
+    window.showTab = function(name) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        Array.from(document.querySelectorAll('.tab-btn')).find(b => b.textContent.toLowerCase().includes(name === 'minepower' ? 'mine' : name)).classList.add('active');
+    };
+
+    window.filterTable = function() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const activeId = document.querySelector('.tab-content.active').id;
+        const map = { 'tab-arms': 'arms-tbody', 'tab-crew': 'crew-tbody' };
+        const tbodyId = map[activeId];
+        if (!tbodyId) return;
+        document.getElementById(tbodyId).querySelectorAll('tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    };
+
+    var _sortState = {};
+    window.sortTable = function(tableId, colIdx) {
+        const tbl = document.getElementById(tableId);
+        const tbody = tbl.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const key = tableId + '_' + colIdx;
+        const asc = _sortState[key] !== true;
+        _sortState[key] = asc;
+        rows.sort((a, b) => {
+            let av = a.cells[colIdx].textContent.trim();
+            let bv = b.cells[colIdx].textContent.trim();
+            let an = parseFloat(av), bn = parseFloat(bv);
+            if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+            return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+        });
+        rows.forEach(r => tbody.appendChild(r));
+    };
+
+    window.resetSort = function() {
+        _sortState = {};
+        buildTables();
+    };
+
+    document.addEventListener('click', function(e) {
+        var el = document.createElement('div'); el.className = 'click-effect';
+        el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px';
+        document.body.appendChild(el); setTimeout(() => { if (el.parentNode) el.remove(); }, 400);
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        var glow = document.getElementById('cursor-glow');
+        if (glow) { glow.style.left = e.clientX + 'px'; glow.style.top = e.clientY + 'px'; }
+    });
+
+    // ── INITIALIZE ───────────────────────────────────────────────────────────────
+    buildMinePower();
+
+    if (typeof ALE_ARMS !== 'undefined') {
+        buildTables();
+    } else {
+        let attempts = 0;
+        let ival = setInterval(() => {
+            if (typeof ALE_ARMS !== 'undefined' || attempts > 20) {
+                clearInterval(ival); buildTables();
+            }
+            attempts++;
+        }, 100);
+    }
+})();
+</script>
+</body>
+</html>

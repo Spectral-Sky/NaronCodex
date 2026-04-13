@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-48CCMEYHXG');
+    </script>
+    <title>Alien Legends Wiki // Naron Codex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="NCico.png">
+    <script src="waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor()],
+        });
+        window.walletKit = kit;
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+                if (typeof checkWalletState === 'function') checkWalletState();
+            }
+        } catch(e) {}
+    </script>
+    <style>
+        /* ── THEME ──────────────────────────────────────────────────────────────── */
+        :root {
+            --theme-color: #e8a020;
+            --theme-accent: #ffd080;
+            --theme-dark: #070d1a;
+            --theme-hover: #0d1a30;
+            --theme-shadow: 0 0 15px rgba(232,160,32,0.4);
+        }
+
+        /* ── CORE ───────────────────────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            cursor: crosshair;
+            background-color: #03060f;
+            background-image: radial-gradient(circle at 50% 30%, #070d1a 0%, #03060f 80%);
+            color: #c8d8f0;
+            font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+            margin: 0; padding: 0; min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+        a, button { cursor: crosshair !important; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #03060f; }
+        ::-webkit-scrollbar-thumb { background: #1a2a3a; border: 1px solid var(--theme-color); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--theme-color); }
+
+        /* ── STARFIELD ──────────────────────────────────────────────────────────── */
+        body::before {
+            content: " "; position: fixed; top: 0; left: 0; width: 1px; height: 1px; z-index: -1;
+            box-shadow:
+                5vw 10vh #fff, 15vw 25vh rgba(255,255,255,0.5), 25vw 5vh #fff, 35vw 45vh rgba(255,255,255,0.7),
+                45vw 15vh #fff, 55vw 65vh #fff, 65vw 20vh rgba(255,255,255,0.4), 75vw 55vh #fff,
+                85vw 12vh rgba(255,255,255,0.8), 95vw 40vh #fff, 10vw 60vh #fff, 20vw 80vh rgba(255,255,255,0.6),
+                30vw 90vh #fff, 40vw 75vh rgba(255,255,255,0.5), 50vw 85vh #fff, 60vw 95vh rgba(255,255,255,0.7),
+                70vw 80vh #fff, 80vw 95vh rgba(255,255,255,0.4), 90vw 70vh #fff, 98vw 85vh #fff,
+                8vw 35vh rgba(255,255,255,0.5), 28vw 55vh #fff, 48vw 30vh rgba(255,255,255,0.8), 68vw 45vh #fff, 88vw 28vh #fff;
+            animation: starlight 4s ease-in-out infinite;
+        }
+        body::after {
+            content: " "; position: fixed; top: 0; left: 0; width: 2px; height: 2px; z-index: -1;
+            box-shadow:
+                10vw 18vh #fff, 22vw 35vh rgba(255,255,255,0.6), 38vw 10vh #fff, 52vw 48vh rgba(255,255,255,0.8),
+                62vw 25vh #fff, 78vw 15vh rgba(255,255,255,0.5), 88vw 55vh #fff, 15vw 70vh rgba(255,255,255,0.7),
+                25vw 85vh #fff, 45vw 68vh rgba(255,255,255,0.4), 55vw 80vh #fff, 75vw 88vh rgba(255,255,255,0.6),
+                85vw 75vh #fff, 5vw 90vh #fff, 95vw 15vh rgba(255,255,255,0.8);
+            animation: starlight-alt 5s ease-in-out infinite alternate;
+        }
+        @keyframes starlight     { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }
+        @keyframes starlight-alt { 0%, 100% { opacity: 0.7; } 50% { opacity: 0.1; } }
+
+        /* ── CLICK EFFECT ───────────────────────────────────────────────────────── */
+        .click-effect {
+            position: fixed; pointer-events: none; width: 40px; height: 40px;
+            border: 2px solid var(--theme-color); border-radius: 50%;
+            transform: translate(-50%, -50%); animation: clickPulse 0.4s ease-out forwards;
+            z-index: 2147483647; box-shadow: 0 0 10px var(--theme-color);
+        }
+        @keyframes clickPulse {
+            0%   { transform: translate(-50%,-50%) scale(0.2); opacity: 1; border-width: 5px; }
+            100% { transform: translate(-50%,-50%) scale(2.5); opacity: 0; border-width: 0; }
+        }
+
+        /* ── CURSOR GLOW ────────────────────────────────────────────────────────── */
+        #cursor-glow {
+            position: fixed; top: -50px; left: -50px; width: 70px; height: 70px;
+            border-radius: 50%; background: var(--theme-color); filter: blur(35px);
+            opacity: 0.15; pointer-events: none; z-index: 9999; transform: translate(-50%,-50%);
+        }
+
+        /* ── GLOBAL HEADER ──────────────────────────────────────────────────────── */
+        .global-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #020812; border-bottom: 2px solid var(--theme-color);
+            padding: 0 30px; height: 66px; position: sticky; top: 0; z-index: 6000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.95);
+        }
+        .logo-section { display: flex; align-items: center; }
+        .logo-section h1 { color: var(--theme-accent); margin: 0; font-size: 1.8em; letter-spacing: 4px; text-shadow: 0 0 10px var(--theme-color); }
+        #header-planet-canvas { width: 36px; height: 36px; border-radius: 50%; vertical-align: middle; margin-right: 8px; flex-shrink: 0; }
+        @keyframes hp-fadeout { 0%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
+
+        /* Nav */
+        .nav-links { display: flex; gap: 10px; }
+        .nav-btn { background: transparent; color: #888; border: 1px solid transparent; padding: 8px 16px; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; font-weight: bold; font-size: 0.9em; text-decoration: none; cursor: pointer; transition: all 0.3s; text-transform: uppercase; border-radius: 6px; }
+        .nav-btn:hover { color: var(--theme-color); border-color: var(--theme-color); }
+        .nav-btn.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); box-shadow: var(--theme-shadow); }
+        .nav-dropdown-wrap { position: relative; display: inline-block; }
+        .nav-dropdown-btn { background: transparent; color: #888; border: 1px solid transparent; padding: 8px 16px; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; font-weight: bold; font-size: 0.9em; cursor: pointer; transition: all 0.3s; text-transform: uppercase; border-radius: 6px; letter-spacing: 1px; }
+        .nav-dropdown-btn:hover { color: var(--theme-color); border-color: var(--theme-color); }
+        .nav-dropdown-btn.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); box-shadow: var(--theme-shadow); }
+        .nav-dropdown-menu { display: none; position: absolute; top: 100%; left: 0; z-index: 7000; background: rgba(2,8,18,0.98); border: 1px solid var(--theme-color); min-width: 160px; padding: 8px 0 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.9); backdrop-filter: blur(6px); }
+        .nav-dropdown-wrap:hover .nav-dropdown-menu { display: block; }
+        .nav-dropdown-item { display: block; padding: 8px 16px; color: #888; text-decoration: none; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; font-size: 0.85em; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; white-space: nowrap; }
+        .nav-dropdown-item:hover { color: var(--theme-color); background: rgba(255,255,255,0.04); }
+        .nav-dropdown-item.active { color: var(--theme-color); font-weight: bold; }
+
+        /* Wallet */
+        .wallet-section { position: relative; display: flex; gap: 6px; align-items: center; }
+        .wallet-btn { background: #111; color: var(--theme-color); border: 1px dashed var(--theme-color); padding: 10px 20px; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        .wallet-btn:hover { background: var(--theme-hover); box-shadow: var(--theme-shadow); }
+        .wallet-btn.logged-in { background: var(--theme-color); color: #000; border: 1px solid #fff; }
+
+        /* Hamburger / mobile nav */
+        #hamburger-btn { display: none; background: transparent; border: 1px solid var(--theme-color); color: var(--theme-color); padding: 6px 10px; font-size: 1.2em; cursor: pointer; }
+        #nav-dropdown { display: none; flex-direction: column; gap: 4px; padding: 10px; background: #020812; border-bottom: 1px solid var(--theme-color); }
+        #nav-dropdown.open { display: flex; }
+
+        /* ── TITLE BAR ──────────────────────────────────────────────────────────── */
+        .title-bar {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+            padding: 14px 30px; background: #020812; border-bottom: 2px solid var(--theme-color);
+            position: sticky; top: 66px; z-index: 5000; box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        }
+        .title-bar-left h1 { color: var(--theme-accent); font-size: 1.5em; letter-spacing: 5px; margin: 0; text-shadow: 0 0 12px var(--theme-color); }
+        .title-bar-left p { color: #7a90b0; margin: 4px 0 0; font-size: 0.78em; letter-spacing: 2px; }
+        .status-alpha { display: inline-block; background: #050e20; color: var(--theme-color); border: 1px solid var(--theme-color); padding: 4px 14px; font-size: 0.75em; letter-spacing: 3px; white-space: nowrap; }
+
+        /* ── SECTION NAV ────────────────────────────────────────────────────────── */
+        .section-nav {
+            display: flex; gap: 8px; flex-wrap: wrap;
+            padding: 10px 30px; background: rgba(2,8,18,0.97);
+            border-bottom: 1px solid rgba(232,160,32,0.18);
+            position: sticky; top: 132px; z-index: 4000;
+        }
+        .section-pill {
+            background: transparent; color: #7a90b0;
+            border: 1px solid rgba(232,160,32,0.2); border-radius: 20px;
+            padding: 5px 16px; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+            font-size: 0.76em; letter-spacing: 2px; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap; text-transform: uppercase;
+        }
+        .section-pill:hover { border-color: var(--theme-color); color: var(--theme-color); }
+        .section-pill.active { background: var(--theme-color); color: #000; border-color: var(--theme-color); font-weight: bold; }
+
+        /* ── WIKI CONTENT ───────────────────────────────────────────────────────── */
+        .wiki-main { max-width: 1400px; margin: 0 auto; padding: 50px 30px 100px; width: 100%; flex: 1; }
+
+        .wiki-section { margin-bottom: 70px; scroll-margin-top: 220px; }
+        .wiki-section-title {
+            color: var(--theme-accent); font-size: 1.15em; letter-spacing: 5px;
+            text-transform: uppercase; text-shadow: 0 0 10px var(--theme-color);
+            padding-bottom: 14px; margin-bottom: 22px;
+            border-bottom: 1px solid rgba(232,160,32,0.3);
+        }
+
+        .wiki-intro { max-width: 860px; color: #a8b8d0; font-size: 0.88em; line-height: 1.9; margin-bottom: 24px; }
+        .wiki-intro strong { color: var(--theme-accent); }
+
+        /* Card grid */
+        .wiki-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+        .wiki-card {
+            background: rgba(8,16,40,0.7); border: 1px solid rgba(232,160,32,0.2);
+            border-radius: 8px; padding: 20px; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .wiki-card:hover { border-color: rgba(232,160,32,0.6); box-shadow: 0 0 14px rgba(232,160,32,0.12); }
+        .wiki-card.placeholder { border-style: dashed; opacity: 0.45; }
+        .wiki-card-title { color: var(--theme-accent); font-size: 0.95em; letter-spacing: 3px; margin-bottom: 10px; text-transform: uppercase; }
+        .wiki-card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+        .wiki-tag { background: rgba(232,160,32,0.1); border: 1px solid rgba(232,160,32,0.3); padding: 2px 8px; font-size: 0.7em; letter-spacing: 1px; border-radius: 3px; color: var(--theme-color); text-transform: uppercase; }
+        .wiki-card-body { color: #9ab0c8; font-size: 0.84em; line-height: 1.65; }
+        .wiki-card-stats { margin-top: 14px; border-top: 1px solid rgba(232,160,32,0.12); padding-top: 10px; }
+        .wiki-stat-row { display: flex; justify-content: space-between; font-size: 0.78em; padding: 3px 0; }
+        .wiki-stat-label { color: #6a80a0; letter-spacing: 1px; }
+        .wiki-stat-value { color: var(--theme-accent); font-weight: bold; }
+
+        /* Stat explainers */
+        .stat-list { display: flex; flex-direction: column; gap: 12px; max-width: 960px; }
+        .stat-explainer {
+            display: grid; grid-template-columns: 170px 1fr 2fr; gap: 18px; align-items: center;
+            padding: 14px 20px; background: rgba(8,16,40,0.6); border: 1px solid rgba(232,160,32,0.15); border-radius: 6px;
+            transition: border-color 0.2s;
+        }
+        .stat-explainer:hover { border-color: rgba(232,160,32,0.4); }
+        .stat-explainer.placeholder { opacity: 0.4; border-style: dashed; }
+        .stat-explainer-name { color: var(--theme-accent); font-size: 0.88em; letter-spacing: 2px; text-transform: uppercase; }
+        .stat-bar-wrap { background: rgba(232,160,32,0.1); height: 5px; border-radius: 3px; }
+        .stat-bar-fill { height: 100%; background: linear-gradient(90deg, var(--theme-color), var(--theme-accent)); border-radius: 3px; }
+        .stat-explainer-desc { color: #9ab0c8; font-size: 0.82em; line-height: 1.55; }
+
+        /* Content pending */
+        .content-pending {
+            display: inline-block; border: 1px dashed rgba(232,160,32,0.35);
+            color: rgba(232,160,32,0.45); padding: 10px 20px; font-size: 0.78em;
+            letter-spacing: 2px; border-radius: 4px; margin: 8px 0;
+        }
+
+        /* Section divider */
+        .wiki-divider { border: none; border-top: 1px solid rgba(232,160,32,0.1); margin: 55px 0; }
+
+        /* ── FOOTER ─────────────────────────────────────────────────────────────── */
+        .codex-footer {
+            text-align: center; padding: 40px 20px 60px;
+            display: flex; flex-direction: column; align-items: center; gap: 14px;
+            border-top: 1px solid rgba(232,160,32,0.15);
+        }
+        .footer-text { color: var(--theme-color); font-weight: bold; letter-spacing: 2px; font-size: 0.85em; }
+        #codex-disclaimer { font-size: 0.78em; color: #3a4a5a; line-height: 1.55; text-align: left; border: 1px dashed #1a2a3a; padding: 15px; max-width: 800px; }
+
+        /* ── RESPONSIVE ─────────────────────────────────────────────────────────── */
+        @media (max-width: 800px) {
+            .global-header { height: auto !important; padding: 8px 15px !important; min-height: 52px; }
+            .logo-section h1 { font-size: 1.1em !important; }
+            .nav-links { display: none !important; }
+            #hamburger-btn { display: flex; align-items: center; justify-content: center; }
+            .title-bar { top: 52px; padding: 10px 15px; }
+            .title-bar-left h1 { font-size: 1.2em; letter-spacing: 3px; }
+            .section-nav { top: 116px; padding: 8px 12px; gap: 6px; }
+            .wiki-main { padding: 24px 15px 60px; }
+            .stat-explainer { grid-template-columns: 1fr; gap: 8px; }
+            .wiki-card-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="cursor-glow"></div>
+
+<!-- ══ GLOBAL HEADER ═══════════════════════════════════════════════════════════ -->
+<header class="global-header">
+    <div class="logo-section">
+        <canvas id="header-planet-canvas" width="36" height="36"></canvas>
+        <h1>NARON CODEX</h1>
+    </div>
+    <nav class="nav-links">
+        <a href="index.html" class="nav-btn"><img src="NCico.png" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">HUB</a>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">AW &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="crew.worlds.html" class="nav-dropdown-item">CREW</a>
+                <a href="arms.worlds.html" class="nav-dropdown-item">ARMS</a>
+                <a href="tools.worlds.html" class="nav-dropdown-item">TOOLS</a>
+                <a href="faces.worlds.html" class="nav-dropdown-item">FACES</a>
+                <a href="land.worlds.html" class="nav-dropdown-item">LAND</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.onerror=null;this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="pd.units.html" class="nav-dropdown-item">PD UNITS</a>
+                <a href="pd.materials.html" class="nav-dropdown-item">PD MATS</a>
+                <a href="army.html" class="nav-dropdown-item">ARMY BUILDER</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn active">ALE &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="ale.html" class="nav-dropdown-item">⚔ STATS</a>
+                <a href="alewiki.html" class="nav-dropdown-item active">◈ WIKI</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">UTILITY &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="stash.html" class="nav-dropdown-item">&#11041; STASH</a>
+                <a href="outpost.html" class="nav-dropdown-item"><img src="Shards.png" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;" alt=""> OUTPOST</a>
+            </div>
+        </div>
+    </nav>
+    <div class="wallet-section">
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="disconnectWallet()" style="display:none;"></button>
+        <button id="wallet-btn-anchor" class="wallet-btn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
+        <button id="wallet-btn-wcc" class="wallet-btn" onclick="loginWithWCC()">[ &#9729; CLOUD WALLET ]</button>
+    </div>
+    <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
+</header>
+<nav id="nav-dropdown">
+    <a href="index.html" class="nav-btn">HUB</a>
+    <a href="crew.worlds.html" class="nav-btn">CREW</a>
+    <a href="arms.worlds.html" class="nav-btn">ARMS</a>
+    <a href="tools.worlds.html" class="nav-btn">TOOLS</a>
+    <a href="faces.worlds.html" class="nav-btn">FACES</a>
+    <a href="land.worlds.html" class="nav-btn">LAND</a>
+    <a href="pd.units.html" class="nav-btn">PD UNITS</a>
+    <a href="pd.materials.html" class="nav-btn">PD MATS</a>
+    <a href="army.html" class="nav-btn">ARMY BUILDER</a>
+    <a href="ale.html" class="nav-btn">⚔ ALE STATS</a>
+    <a href="alewiki.html" class="nav-btn">◈ ALE WIKI</a>
+    <a href="stash.html" class="nav-btn">&#11041; STASH</a>
+    <a href="outpost.html" class="nav-btn"><img src="Shards.png" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;" alt=""> OUTPOST</a>
+</nav>
+
+<!-- ══ TITLE BAR ════════════════════════════════════════════════════════════════ -->
+<div class="title-bar">
+    <div class="title-bar-left">
+        <h1>◈ ALIEN LEGENDS WIKI</h1>
+        <p>RACES · CLASSES · STATS · BUILDINGS · ASCENSION</p>
+    </div>
+    <span class="status-alpha">OPEN ALPHA</span>
+</div>
+
+<!-- ══ SECTION NAV ══════════════════════════════════════════════════════════════ -->
+<div class="section-nav" id="section-nav">
+    <button class="section-pill active" onclick="scrollToSection('overview')">OVERVIEW</button>
+    <button class="section-pill" onclick="scrollToSection('races')">RACES</button>
+    <button class="section-pill" onclick="scrollToSection('classes')">CLASSES</button>
+    <button class="section-pill" onclick="scrollToSection('stats')">STATS</button>
+    <button class="section-pill" onclick="scrollToSection('buildings')">BUILDINGS</button>
+    <button class="section-pill" onclick="scrollToSection('dungeons')">DUNGEONS</button>
+    <button class="section-pill" onclick="scrollToSection('taverns')">TAVERNS</button>
+    <button class="section-pill" onclick="scrollToSection('arenas')">ARENAS</button>
+    <button class="section-pill" onclick="scrollToSection('ascension')">ASCENSION</button>
+</div>
+
+<!-- ══ WIKI MAIN ════════════════════════════════════════════════════════════════ -->
+<div class="wiki-main">
+
+    <!-- ═══════════════════════════════════════════════════ OVERVIEW -->
+    <section class="wiki-section" id="sec-overview">
+        <div class="wiki-section-title">◈ OVERVIEW</div>
+        <!-- CONTENT: Edit or expand the intro text below as needed. -->
+        <div class="wiki-intro">
+            <strong>Alien Legends</strong> is a browser-based battle RPG built within the Alien Worlds universe. Players recruit and develop <strong>Fighters</strong> — each with a unique race, class, and stat profile — and send them into dungeons, arenas, and tavern competitions to earn rewards and reputation.
+            <br><br>
+            The core game loop: travel to a <strong>Tavern</strong> to recruit new Fighters (costs Energy + Coins), then send a team of 5 into a <strong>Dungeon</strong> to battle enemies, earn XP, and collect Coins and Gems. As Fighters level up toward Level 10 they unlock greater power — at which point <strong>Ascension</strong> resets their level in exchange for permanent ability upgrades. Eventually, <strong>Arenas</strong> open PvP play between players' teams.
+            <br><br>
+            Owning <strong>Alien Worlds Arms and Crew NFTs</strong> grants battle modifier bonuses. The strength of each bonus scales with the card's rarity and shine tier — a single arms card and single crew card may be applied per battle. See the <a href="ale.html" style="color:var(--theme-color);">ALE STATS page</a> for the full modifier table.
+            <br><br>
+            Each Fighter and ability belongs to one of six <strong>Elements</strong>: <strong>Air · Fire · Gem · Metal · Nature · Neutral</strong>. A planetwide <strong>Weather</strong> system rotates element buffs (e.g. +35% Gem damage), so checking the current weather before choosing a dungeon team can provide a meaningful edge.
+            <br><br>
+            Fighters grow through experience, levelling up to a cap of <strong>Level 10</strong>, after which they may undergo <strong>Ascension</strong> — a prestige mechanic that resets level but unlocks powerful new abilities and raises the power ceiling significantly.
+        </div>
+
+        <!-- ── CURRENCIES ── -->
+        <div class="wiki-section-title" style="font-size:0.9em;margin-top:32px;margin-bottom:14px;">◎ CURRENCIES &amp; RESOURCES</div>
+        <div class="wiki-card-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+            <div class="wiki-card">
+                <div class="wiki-card-title">🔋 ENERGY</div>
+                <div class="wiki-card-body">The main action resource — used for everything. Enter a dungeon (<strong>10 Energy</strong>), hire a fighter at a tavern (<strong>100 Energy</strong>), and travel between planets to reach buildings on other worlds. Regenerates over time.</div>
+            </div>
+            <div class="wiki-card">
+                <div class="wiki-card-title">🟡 COINS</div>
+                <div class="wiki-card-body">In-game currency earned from dungeon runs and selling levelled fighters. Used to reveal fighters at taverns, pay wages, and level up fighters. Spendable in-world.</div>
+            </div>
+            <div class="wiki-card">
+                <div class="wiki-card-title">💎 GEMS</div>
+                <div class="wiki-card-body">Premium currency. Can be used to purchase Coins, boost buildings, and accelerate progression. Earned from top-tier dungeon pools and special events.</div>
+            </div>
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ RACES -->
+    <section class="wiki-section" id="sec-races">
+        <div class="wiki-section-title">⬡ RACES</div>
+        <p class="wiki-intro">Each Fighter belongs to a Race. Races provide passive stat modifiers and flavour the fighter's lore. When building a team, consider how racial bonuses complement your chosen class roles. Note: race data is being compiled — individual race entries will be filled in as details are confirmed.</p>
+        <!-- CONTENT: Replace placeholder cards with real race data.
+             One wiki-card per race. Add: name, element tag(s), lore description, and stat modifiers in wiki-card-stats.
+             Example stat modifier format:
+             <div class="wiki-stat-row"><span class="wiki-stat-label">STRENGTH</span><span class="wiki-stat-value">+15%</span></div>
+        -->
+        <!-- CONTENT: Stat modifiers per race are pending confirmation — add them to wiki-card-stats when available. -->
+        <div class="wiki-card-grid">
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">HUMAN</div>
+                <div class="wiki-card-body">Adaptable survivors from across the Alien Worlds colonies. Humans carry no extreme racial advantages or weaknesses — what they lack in raw power they compensate for with versatility and the widest class compatibility of any race.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">MODIFIERS</span><span class="wiki-stat-value">Data pending</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">ROBOTRON</div>
+                <div class="wiki-card-body">Synthetic beings of mechanical origin. Robotrons are built rather than born — their chassis grant natural resilience against physical damage. Their artificial construction makes them resistant to biological debuffs but may limit their compatibility with some ability types.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">MODIFIERS</span><span class="wiki-stat-value">Data pending</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">ELGEM</div>
+                <div class="wiki-card-body">Small crystalline beings with a deep connection to the Gem element. Elgem fighters channel raw crystal energy through their bodies and are among the most naturally gifted magic-users in the Alien Worlds universe.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">MODIFIERS</span><span class="wiki-stat-value">Data pending</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">KHAURED</div>
+                <div class="wiki-card-body">A fierce, combat-hardened race renowned throughout the colonised worlds for their martial prowess. Khaured are natural frontline fighters — aggressive, durable, and difficult to route once committed to a battle.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">MODIFIERS</span><span class="wiki-stat-value">Data pending</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">LOPATI</div>
+                <div class="wiki-card-body">Nimble and quick, the Lopati thrive where speed matters. Their slight frames make them fragile in prolonged slugging matches, but their exceptional agility lets them act earlier and more frequently than most opponents expect.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">MODIFIERS</span><span class="wiki-stat-value">Data pending</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">ALTAN</div>
+                <div class="wiki-card-body">Tall and composed, the Altan carry an ancient connection to the natural world. They are measured fighters who prefer sustained battles over all-out rushes, drawing strength from a deep attunement with the Nature element.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">MODIFIERS</span><span class="wiki-stat-value">Data pending</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">ONOROS</div>
+                <div class="wiki-card-body">Powerful and imposing, the Onoros are built for raw force. Their sheer size and physicality make them formidable in the frontline, though their bulk comes at the cost of speed. An Onoros fighter hits hard — and keeps hitting.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">MODIFIERS</span><span class="wiki-stat-value">Data pending</span></div>
+                </div>
+            </div>
+
+            <!-- CONTENT: Add stat modifiers to each race card once confirmed. -->
+
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ CLASSES -->
+    <section class="wiki-section" id="sec-classes">
+        <div class="wiki-section-title">⚔ CLASSES</div>
+        <p class="wiki-intro">Classes define a Fighter's combat role — whether they excel at dealing damage, absorbing hits, supporting allies, or disrupting enemies. Pair a class with a complementary race to maximise effectiveness.</p>
+        <!-- CONTENT: Replace placeholder cards with real class data.
+             One wiki-card per class. Include: name, role tag, role description (what it does in battle, what it's strong/weak against).
+        -->
+        <div class="wiki-card-grid">
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🛡 VOIDWARDEN</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">MAIN TANK</span><span class="wiki-tag">FRONTLINE</span></div>
+                <div class="wiki-card-body">Ancient guardians bound to the portals between worlds. Boasts very high survivability and very high taunt — almost every enemy strike will be drawn to the Voidwarden instead of your backline. Damage output is very low. Uniquely capable of "true damage" that bypasses enemy resistances entirely.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">SURVIVABILITY</span><span class="wiki-stat-value">Very High</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DAMAGE</span><span class="wiki-stat-value">Very Low</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TAUNT</span><span class="wiki-stat-value">Very High</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">💪 JUGGERNAUT</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">OFFENSIVE MELEE</span><span class="wiki-tag">FRONTLINE</span></div>
+                <div class="wiki-card-body">Juggernauts wade through crossfire as if born for it. A durable frontline fighter that balances high taunt and solid survivability with respectable medium damage. The reliable all-rounder of the frontline — less extreme than a Voidwarden but far more threatening.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">SURVIVABILITY</span><span class="wiki-stat-value">High</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DAMAGE</span><span class="wiki-stat-value">Medium</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TAUNT</span><span class="wiki-stat-value">High</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🤪 LUNATIC</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">ROGUE MELEE</span><span class="wiki-tag">BURST</span></div>
+                <div class="wiki-card-body">Driven mad by high doses of experimental Trilium. Acts first in every battle and frontloads massive burst damage — but is extremely fragile and will fall quickly after the opening round. Best treated as a sacrificial opener that softens a priority target.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">SURVIVABILITY</span><span class="wiki-stat-value">Very Low</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DAMAGE</span><span class="wiki-stat-value">High (burst)</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">PRIORITY</span><span class="wiki-stat-value">Acts First</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🔥 ARCANIST</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">RANGED</span><span class="wiki-tag">GLASS CANNON</span></div>
+                <div class="wiki-card-body">Arcanists twist volatile Trilium shards into devastating elemental blasts. Very high sustained damage, but very low health and very low taunt means they rely entirely on tanks to survive long enough to deal it. The classical glass cannon — protect at all costs.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">SURVIVABILITY</span><span class="wiki-stat-value">Very Low</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DAMAGE</span><span class="wiki-stat-value">Very High</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TAUNT</span><span class="wiki-stat-value">Very Low</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🔫 SHARPSHOOTER</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">ASSASSIN</span><span class="wiki-tag">RANGED</span></div>
+                <div class="wiki-card-body">Methodical and merciless. Specialises in targeting and eliminating low-health, low-taunt enemies first — typically the enemy's own glass cannons. Strong non-taunt targeting ability lets them pick targets the tanks would otherwise shield.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TARGETING</span><span class="wiki-stat-value">Squishies First</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DAMAGE</span><span class="wiki-stat-value">High (burst)</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TAUNT BYPASS</span><span class="wiki-stat-value">Good</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">💣 EXPLOSIONEER</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">RANGED</span><span class="wiki-tag">GLASS CANNON</span></div>
+                <div class="wiki-card-body">Explosioneers are walking hazards — erratic, destructive, and impossible to predict. Their strikes occasionally bypass tanks entirely via random targeting, making them effective at chip-damaging glass cannons that hide behind a taunt line. Medium damage, very squishy.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">SURVIVABILITY</span><span class="wiki-stat-value">Low</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TARGETING</span><span class="wiki-stat-value">Random/Erratic</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TAUNT BYPASS</span><span class="wiki-stat-value">Occasional</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🧠🗡 MINDBLADE</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">MELEE ASSASSIN</span><span class="wiki-tag">TAUNT BYPASS</span></div>
+                <div class="wiki-card-body">Through discipline and rare triactor tech, Mindblades project mental blades that bypass physical taunt — the only melee class able to do so. Low raw damage, but the ability to strike the enemy's unprotected backline makes them uniquely disruptive. High taunt, medium health.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TAUNT BYPASS</span><span class="wiki-stat-value">Full (melee)</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DAMAGE</span><span class="wiki-stat-value">Low</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TAUNT</span><span class="wiki-stat-value">High</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🃏 DESPERADO</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">WILDCARD</span><span class="wiki-tag">DEBUFFER</span></div>
+                <div class="wiki-card-body">Every squad's wildcard — equal parts menace and miracle. Desperados have the widest stat variance of any class: their results range from spectacular to catastrophic. They sometimes ignore resistances and carry secondary debuff abilities, but their unpredictability cuts both ways.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">STAT RANGE</span><span class="wiki-stat-value">Widest</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">RESIST BYPASS</span><span class="wiki-stat-value">Occasional</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DEBUFF</span><span class="wiki-stat-value">Secondary</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🙏 ASTRAL KNIGHT</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">SECONDARY TANK</span><span class="wiki-tag">SUPPORT</span></div>
+                <div class="wiki-card-body">Masters of the stars. A secondary frontline tank that supports the team by healing allies each time they land a hit. Medium-high health and high taunt make them durable, while their on-hit heals can sustain the team through prolonged fights. Low damage — their value is in keeping the team alive.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">SURVIVABILITY</span><span class="wiki-stat-value">Medium-High</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ON-HIT HEAL</span><span class="wiki-stat-value">Yes</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TAUNT</span><span class="wiki-stat-value">High</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🧙 MYSTIC</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">RANGED</span><span class="wiki-tag">BUFFER</span></div>
+                <div class="wiki-card-body">They walk the edge of reality. Half glass cannon, half group buffer — Mystics deal medium-high damage and can amplify the effectiveness of the whole team. Low health and low taunt means they're fragile, but a well-protected Mystic dramatically raises the ceiling of an already strong roster.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DAMAGE</span><span class="wiki-stat-value">Medium-High</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">GROUP BUFF</span><span class="wiki-stat-value">Secondary</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">SURVIVABILITY</span><span class="wiki-stat-value">Low</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🌀 VOIDCALLER</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">DEBUFFER</span><span class="wiki-tag">RANGED</span></div>
+                <div class="wiki-card-body">Voidcallers are the bane of light-armoured foes. They stay at the back, applying powerful group debuffs that weaken the entire enemy team. Low damage and minimal taunt-bypass targeting, but their debuffs significantly reduce what the enemy can output — ideal against enemies stacking resistances or damage.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">GROUP DEBUFF</span><span class="wiki-stat-value">Strong</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DAMAGE</span><span class="wiki-stat-value">Low</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ROLE</span><span class="wiki-stat-value">Backline Only</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🤓 TACTICIAN</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">MAIN BUFFER</span><span class="wiki-tag">SUPPORT</span></div>
+                <div class="wiki-card-body">Always an opportunist. The Tactician's strategy is simple: buff the team first, then unleash a slow but devastating AoE nuke. Low single-target damage and slow initiative, but the team buffs stack to make every other fighter hit harder before the Tactician even swings.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">GROUP BUFF</span><span class="wiki-stat-value">Primary</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DAMAGE TYPE</span><span class="wiki-stat-value">Slow AoE</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">SPEED</span><span class="wiki-stat-value">Slow</span></div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ STATS -->
+    <section class="wiki-section" id="sec-stats">
+        <div class="wiki-section-title">◉ STATS</div>
+        <p class="wiki-intro">Every Fighter has a set of core stats that determine performance in battle. Stats grow as the Fighter levels up and are further modified by Race bonuses and equipped AW NFTs. Below is a plain-English explanation of what each stat does.</p>
+        <!-- CONTENT: Replace placeholder rows with real stats.
+             For each stat: name (uppercase), bar fill percentage (0–100), plain-English description.
+             Example:
+             <div class="stat-explainer">
+                 <div class="stat-explainer-name">STRENGTH</div>
+                 <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:80%"></div></div>
+                 <div class="stat-explainer-desc">Determines physical damage dealt per hit. High Strength fighters hit hard but may sacrifice speed or defence.</div>
+             </div>
+        -->
+        <div class="stat-list">
+
+            <div class="stat-explainer">
+                <div class="stat-explainer-name">❤️ HEALTH</div>
+                <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:85%"></div></div>
+                <div class="stat-explainer-desc">The total amount of damage a Fighter can absorb before being defeated. High Health fighters withstand punishment; low Health fighters fall quickly under focused fire. Tanks are built around maximising this alongside Taunt. <strong>Higher is better.</strong></div>
+            </div>
+
+            <div class="stat-explainer">
+                <div class="stat-explainer-name">💥 DAMAGE</div>
+                <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:75%"></div></div>
+                <div class="stat-explainer-desc">The base amount of damage dealt per attack. Modified by the target's elemental resistance for the attacker's element. Some abilities scale off Damage or add bonus flat damage on top of it. <strong>Higher is better.</strong></div>
+            </div>
+
+            <div class="stat-explainer">
+                <div class="stat-explainer-name">🛡 TAUNT</div>
+                <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:70%"></div></div>
+                <div class="stat-explainer-desc">How strongly a Fighter attracts enemy targeting. Enemies preferentially attack the highest-Taunt Fighter in range. Taunt <strong>decreases each time the fighter is attacked</strong>, so tanks gradually become less magnetic as a fight wears on. Some abilities bypass Taunt entirely. <strong>Higher is better.</strong></div>
+            </div>
+
+            <div class="stat-explainer">
+                <div class="stat-explainer-name">⚡ WINDUP <span style="color:#ff9966;font-size:0.85em;font-weight:normal;">(lower is better)</span></div>
+                <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:55%;background:linear-gradient(90deg,#ff9966,#ffcc66);"></div></div>
+                <div class="stat-explainer-desc">Determines attack order — who moves first at the start of a round. The Fighter with the <strong>lowest Windup acts first</strong>. A low Windup value means your Fighter strikes earlier, getting off damage and abilities before the enemy can respond. Think of it as initiative or speed.</div>
+            </div>
+
+            <div class="stat-explainer">
+                <div class="stat-explainer-name">🌀 COOLDOWN <span style="color:#ffcc66;font-size:0.85em;font-weight:normal;">(lower is better)</span></div>
+                <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:60%;background:linear-gradient(90deg,#ffcc66,#ffe0a0);"></div></div>
+                <div class="stat-explainer-desc">The interval between a Fighter's attacks — how long they wait before acting again after each action. A <strong>lower Cooldown means faster re-activation</strong> and more frequent turns. High Cooldown (large number) means the Fighter waits longer between attacks. Think of it as attack speed in reverse: the number is the delay, not the rate.</div>
+            </div>
+
+            <div class="stat-explainer">
+                <div class="stat-explainer-name">🔮 ELEMENTAL RESISTANCES</div>
+                <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:45%"></div></div>
+                <div class="stat-explainer-desc">Every Fighter has six separate resistance values — one for each element: <strong>Fire · Nature · Air · Gem · Metal · Neutral</strong>. A higher resistance value for a given element reduces the incoming damage from attacks of that type. For example, a high Fire resistance makes Fire-element attacks deal less damage to that Fighter. Some abilities can reduce an enemy's resistance, or ignore resistances entirely (resistance bypass). <strong>Higher is better for all six.</strong></div>
+            </div>
+
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ BUILDINGS -->
+    <section class="wiki-section" id="sec-buildings">
+        <div class="wiki-section-title">⬛ BUILDINGS</div>
+        <p class="wiki-intro">Buildings are the core infrastructure of your Alien Legends base. Each building type unlocks or improves different aspects of fighter management and progression.</p>
+        <!-- CONTENT: Replace placeholder cards with real building types.
+             For each building: name, what it unlocks/does, any upgrade tiers if relevant.
+        -->
+        <div class="wiki-intro">Buildings are constructed by <strong>landowners</strong> on their Alien Worlds land plots. You don't build them yourself — you visit them. Two types exist at launch. Location matters: buildings on high-traffic tiles near portals attract more visitors, which increases footfall and shared reward payouts for the landowner.</div>
+        <div class="wiki-card-grid">
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">⬡ TAVERN</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">RECRUITMENT</span><span class="wiki-tag">PER PLANET</span></div>
+                <div class="wiki-card-body">
+                    The primary source of new Fighters. Each Tavern is registered to a specific land plot on a specific planet. You travel to the Tavern coordinates, <strong>Reveal</strong> up to 3 fighter cards (costs Coins), then <strong>Hire</strong> one for <strong>100 Energy</strong>.<br><br>
+                    Taverns support <strong>filter criteria</strong> that can reduce the hire discount: schema, rarity, shine, element, type, race, and stat thresholds. Match the criteria and your hire costs less. One recruit is permitted per Tavern per day — if you Reveal and walk away, a refresh may sometimes be needed before the next visit.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">REVEAL COST</span><span class="wiki-stat-value">Coins</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">HIRE COST</span><span class="wiki-stat-value">100 Energy</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">LIMIT</span><span class="wiki-stat-value">1 hire / tavern / day</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">◌ DUNGEON</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">PvE</span><span class="wiki-tag">XP &amp; REWARDS</span></div>
+                <div class="wiki-card-body">
+                    The primary combat venue. Navigate to a Dungeon's coordinates, commit a team of 5 Fighters, and enter a run for <strong>10 Energy</strong>. Each dungeon has tiered difficulty levels — higher tiers award more XP and better loot. Running a nearby dungeon also contributes to the <strong>building owner's reward pool</strong>, making well-placed dungeons valuable community hubs.<br><br>
+                    Watch the current planet <strong>Weather</strong> before choosing your team: elemental buffs rotate regularly and a +35% damage bonus to your team's primary element can make or break a run.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ENTRY COST</span><span class="wiki-stat-value">10 Energy per run</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TEAM SIZE</span><span class="wiki-stat-value">5 fighters</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">XP PER TIER STEP</span><span class="wiki-stat-value">+5 XP</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">REWARD POOL</span><span class="wiki-stat-value">Player + Building owner</span></div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ DUNGEONS -->
+    <section class="wiki-section" id="sec-dungeons">
+        <div class="wiki-section-title">◌ DUNGEONS</div>
+        <p class="wiki-intro">Dungeons are the primary PvE content in Alien Legends. Send your Fighters in to defeat waves of enemies and earn experience, items, and rewards. Difficulty scales with dungeon tier.</p>
+        <!-- CONTENT: Replace placeholder cards with real dungeon types or tiers.
+             For each dungeon: name/tier, recommended fighter level/stats, enemy types if known, reward types.
+        -->
+        <div class="wiki-card-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">⚔ HOW TO RUN A DUNGEON</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">MECHANICS</span></div>
+                <div class="wiki-card-body">
+                    1. <strong>Travel</strong> to the dungeon's planet/coordinates (costs Energy if off-planet).<br>
+                    2. <strong>Select your team</strong> of 5 fighters. Consider current Weather and enemy element type.<br>
+                    3. <strong>Enter</strong> — costs <strong>10 Energy</strong>. Battle resolves automatically based on fighter stats.<br>
+                    4. Collect rewards from the <strong>dual reward pool</strong> (player pool + building owner share).
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">📈 DIFFICULTY TIERS &amp; XP</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">PROGRESSION</span></div>
+                <div class="wiki-card-body">
+                    Dungeons scale across multiple difficulty tiers. Each step up in difficulty awards <strong>+5 XP</strong> per run and a more valuable reward pool. Running the highest tier your team can reliably clear is the most efficient path to levelling fighters. Attempting a tier above your team's power will result in a loss and reduced rewards.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ENTRY COST</span><span class="wiki-stat-value">10 Energy (all tiers)</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">XP SCALING</span><span class="wiki-stat-value">+5 XP per tier step</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🌦 WEATHER SYSTEM</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">STRATEGY</span></div>
+                <div class="wiki-card-body">
+                    A planetwide <strong>Weather</strong> system rotates element buffs continuously. For example, "Gem Weather" grants all Gem-element attacks a significant damage bonus (up to +35%). Always check the current weather before committing your team — swapping in fighters whose element matches the current weather can dramatically improve your run outcome.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ELEMENTS</span><span class="wiki-stat-value">Air · Fire · Gem · Metal · Nature</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">WEATHER BUFF</span><span class="wiki-stat-value">Up to +35% dmg</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">💰 REWARDS</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">LOOT</span></div>
+                <div class="wiki-card-body">
+                    Each dungeon run draws from a <strong>dual reward pool</strong>: the player earns Coins and potentially Gems, while a share also flows to the dungeon building's owner. Higher difficulty tiers and more player traffic through a dungeon increase the overall pool. Running regularly on a high-traffic dungeon maximises both your payout and the building owner's income.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">PLAYER REWARDS</span><span class="wiki-stat-value">Coins · Gems (higher tiers)</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">BUILDING SHARE</span><span class="wiki-stat-value">Yes — passive for landowner</span></div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ TAVERNS -->
+    <section class="wiki-section" id="sec-taverns">
+        <div class="wiki-section-title">⬡ TAVERNS</div>
+        <p class="wiki-intro">Taverns serve as social hubs and secondary activity centres in Alien Legends. Fighters can rest here to recover, take on special quests, or compete in smaller-scale contests.</p>
+        <div class="wiki-intro">Taverns are where you find and recruit new fighters. Each one is tied to a specific land plot and planet — you must travel there to use it. Fighter availability differs between taverns, so visiting multiple can help you find the fighter type you need.</div>
+
+        <div class="wiki-card-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🗺 STEP 1 — TRAVEL</div>
+                <div class="wiki-card-body">Navigate to the Tavern's planet and coordinates. If it's on another planet, this costs <strong>Energy</strong> to travel. The Tavern is owned by a landowner — high-traffic taverns near portals will have more visitors and may cycle fighters more frequently.</div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🃏 STEP 2 — REVEAL</div>
+                <div class="wiki-card-body">Pay <strong>Coins</strong> to reveal up to <strong>3 fighter cards</strong>. Each revealed card shows the fighter's class, race, element, rarity, and stats. You're not committed yet — you can look before you decide whether to hire.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">COST</span><span class="wiki-stat-value">Coins</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">CARDS SHOWN</span><span class="wiki-stat-value">Up to 3</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">✅ STEP 3 — HIRE</div>
+                <div class="wiki-card-body">Select one of the revealed fighters and pay <strong>100 Energy</strong> to hire them. Only one hire is permitted per Tavern per day. If you walk away without hiring, you may need to refresh the page before the Tavern resets for your next visit.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">HIRE COST</span><span class="wiki-stat-value">100 Energy</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">LIMIT</span><span class="wiki-stat-value">1 per tavern / day</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🎯 FILTER CRITERIA</div>
+                <div class="wiki-card-body">
+                    Taverns can have <strong>filter criteria</strong> set by their owner that provide a hire discount when matched. Criteria include:<br><br>
+                    <strong>Schema · Rarity · Shine · Element · Type · Race · Stat thresholds</strong><br><br>
+                    If your selected fighter meets the active filter, the hire costs less. Check criteria before choosing which fighter to hire — sometimes a less ideal fighter that matches the filter is the better economic choice.
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ ARENAS -->
+    <section class="wiki-section" id="sec-arenas">
+        <div class="wiki-section-title">⚔ ARENAS</div>
+        <p class="wiki-intro">Arenas host PvP combat between players. Enter your Fighters to test builds against real opponents, climb the seasonal rankings, and earn exclusive rewards.</p>
+        <div class="wiki-intro">Arenas are the PvP layer of Alien Legends — players pit their teams against each other for rankings and seasonal rewards. Arenas are <strong>not yet available in Open Alpha</strong>; this section will be expanded at launch.</div>
+        <!-- CONTENT: Fill in Arena format, ranking/ladder, season info, and reward tiers when available. -->
+        <span class="content-pending">◌ COMING SOON — Arenas unlock post-alpha. Format, ranking structure, and rewards TBA.</span>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ ASCENSION -->
+    <section class="wiki-section" id="sec-ascension">
+        <div class="wiki-section-title">✦ ASCENSION</div>
+        <p class="wiki-intro">At Level 10, a Fighter can undergo <strong>Ascension</strong> — a prestige mechanic that resets their level but permanently unlocks new abilities and significantly raises their long-term power ceiling. Ascending is a major strategic decision: the fighter becomes temporarily weaker, but the unlocked abilities can be game-changing.</p>
+        <!-- CONTENT: Replace the pending badge with:
+             - Exact requirements to trigger Ascension
+             - What happens to stats on reset
+             - What new abilities are unlocked (one wiki-card per ability or ascension tier is recommended)
+             - Strategic tips: when is it worth ascending?
+        -->
+        <span class="content-pending">◌ CONTENT PENDING — supply Ascension requirements, stat reset details, ability unlocks, and strategy tips</span>
+    </section>
+
+</div>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════════════════════ -->
+<footer class="codex-footer">
+    <div class="footer-text">// NARON CODEX · ALIEN LEGENDS WIKI // ©@Spectral.Sky 2026 //</div>
+    <div id="codex-disclaimer">
+        <strong>NOTICE:</strong> Naron Codex is an informational fan resource. This site is <strong>NOT</strong> affiliated with Dacoco GmbH, Alien Worlds, or the Alien Legends development team. All content is for educational and fan purposes only and should <strong>NOT</strong> be considered financial advice. All game names, mechanics, and assets belong to their respective owners. © 2026 @Spectral.Sky.
+    </div>
+</footer>
+
+<script>
+(function() {
+    // ── CURSOR GLOW ──────────────────────────────────────────────────────────────
+    var glow = document.getElementById('cursor-glow');
+    document.addEventListener('mousemove', function(e) {
+        if (glow) { glow.style.left = e.clientX + 'px'; glow.style.top = e.clientY + 'px'; }
+    });
+
+    // ── CLICK EFFECT ─────────────────────────────────────────────────────────────
+    document.addEventListener('click', function(e) {
+        var el = document.createElement('div');
+        el.className = 'click-effect';
+        el.style.left = e.clientX + 'px';
+        el.style.top  = e.clientY + 'px';
+        document.body.appendChild(el);
+        setTimeout(function() { if (el.parentNode) el.remove(); }, 400);
+    });
+
+    // ── WALLET ───────────────────────────────────────────────────────────────────
+    var wax = new WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
+
+    function checkWalletState() {
+        updateWalletUI(localStorage.getItem('naron_wallet') || null);
+    }
+    window.loginWithAnchor = async function() {
+        try {
+            var r = await window.walletKit.login();
+            window.walletSession = r.session;
+            localStorage.setItem('naron_wallet', String(r.session.actor));
+            checkWalletState();
+        } catch(e) { console.error('Anchor login failed:', e); }
+    };
+    window.loginWithWCC = async function() {
+        try {
+            var account = await wax.login();
+            localStorage.setItem('naron_wallet', account);
+            checkWalletState();
+        } catch(e) { console.error('WCC login failed:', e); }
+    };
+    window.disconnectWallet = function() {
+        if (window.walletKit && window.walletSession) {
+            window.walletKit.logout(window.walletSession).catch(function(){});
+            window.walletSession = null;
+        }
+        localStorage.removeItem('naron_wallet');
+        if (wax) wax.userAccount = '';
+        checkWalletState();
+    };
+    function updateWalletUI(account) {
+        var btnA = document.getElementById('wallet-connect-btn');
+        var btnAnc = document.getElementById('wallet-btn-anchor');
+        var btnWCC = document.getElementById('wallet-btn-wcc');
+        if (account) {
+            if (btnA)   { btnA.textContent = '[ ' + account + ' ]'; btnA.style.display = ''; btnA.classList.add('logged-in'); }
+            if (btnAnc) btnAnc.style.display = 'none';
+            if (btnWCC) btnWCC.style.display = 'none';
+        } else {
+            if (btnA)   { btnA.style.display = 'none'; btnA.classList.remove('logged-in'); }
+            if (btnAnc) btnAnc.style.display = '';
+            if (btnWCC) btnWCC.style.display = '';
+        }
+    }
+    checkWalletState();
+
+    // ── HAMBURGER ────────────────────────────────────────────────────────────────
+    window.toggleHamburger = function() {
+        var dd = document.getElementById('nav-dropdown');
+        if (dd) dd.classList.toggle('open');
+    };
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#nav-dropdown') && !e.target.closest('#hamburger-btn')) {
+            var dd = document.getElementById('nav-dropdown');
+            if (dd) dd.classList.remove('open');
+        }
+    });
+
+    // ── SECTION SCROLL ───────────────────────────────────────────────────────────
+    window.scrollToSection = function(id) {
+        var el = document.getElementById('sec-' + id);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // IntersectionObserver: update active pill as sections scroll into view
+    var sectionIds = ['overview','races','classes','stats','buildings','dungeons','taverns','arenas','ascension'];
+    var pills = document.querySelectorAll('.section-pill');
+    var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                var id = entry.target.id.replace('sec-', '');
+                var idx = sectionIds.indexOf(id);
+                pills.forEach(function(p) { p.classList.remove('active'); });
+                if (idx >= 0 && pills[idx]) pills[idx].classList.add('active');
+            }
+        });
+    }, { threshold: 0.15, rootMargin: '-180px 0px -50% 0px' });
+    sectionIds.forEach(function(id) {
+        var el = document.getElementById('sec-' + id);
+        if (el) observer.observe(el);
+    });
+
+    // ── HEADER PLANET ────────────────────────────────────────────────────────────
+    (function() {
+        var hc = document.getElementById('header-planet-canvas');
+        if (!hc || typeof THREE === 'undefined') return;
+        var R = new THREE.WebGLRenderer({ canvas: hc, antialias: true, alpha: true });
+        R.setClearColor(0x000000, 0);
+        R.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        R.setSize(36, 36);
+        var sc  = new THREE.Scene();
+        var cam = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+        cam.position.z = 4;
+        sc.add(new THREE.AmbientLight(0xffffff, 0.5));
+        var sl = new THREE.DirectionalLight(0xffffff, 2.0);
+        sl.position.set(3, 3, 5); sc.add(sl);
+        var tx = new THREE.TextureLoader().load('planets/naron.jpg');
+        tx.minFilter = THREE.LinearFilter; tx.generateMipmaps = false;
+        var pm = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 32, 32),
+            new THREE.MeshStandardMaterial({ map: tx })
+        );
+        sc.add(pm);
+        var spd = 0.008;
+        hc.addEventListener('click', function(e) {
+            e.stopPropagation();
+            spd = Math.min(spd + 0.35, 1.2);
+            var m = document.createElement('div');
+            m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#020812;border:1px solid var(--theme-color,#e8a020);padding:32px 48px;font-family:monospace;color:var(--theme-color,#e8a020);text-align:center;animation:hp-fadeout 2.8s forwards;pointer-events:none;';
+            m.innerHTML = '<div style="font-size:1.2em;letter-spacing:4px;margin-bottom:12px;">// SIGNAL DETECTED //</div><div style="color:#444;font-size:0.75em;letter-spacing:2px;line-height:2;">NARON SECTOR · ENCRYPTED CHANNEL<br><span style="color:var(--theme-color,#e8a020);">[ REWARD POOL: CLASSIFIED ]</span></div>';
+            document.body.appendChild(m);
+            setTimeout(function() { if (m.parentNode) m.remove(); }, 2800);
+        });
+        (function _anim() {
+            requestAnimationFrame(_anim);
+            spd -= (spd - 0.008) * 0.018;
+            if (spd < 0.008) spd = 0.008;
+            pm.rotation.y += spd;
+            R.render(sc, cam);
+        })();
+    })();
+// ── END HEADER PLANET ────────────────────────────────────────────────────────────
+})();
+</script>
+</body>
+</html>
