@@ -121,16 +121,17 @@
         .tab-content.active { display: block; }
 
         /* --- PREVIEW DECKS & MARKET INTEL --- */
-        #deck-toggle-tab { position: fixed; top: 240px; left: 298px; width: 30px; height: 400px; box-sizing: border-box; background: var(--theme-dark); border: 2px solid var(--theme-color); border-left: none; color: var(--theme-color); display: flex; align-items: center; justify-content: center; font-size: 1.2em; font-weight: bold; cursor: pointer; z-index: 3005; pointer-events: auto !important; transition: transform 0.4s ease-out, background-color 0.2s, color 0.2s; border-radius: 0 8px 8px 0; box-shadow: 5px 0 15px rgba(0,0,0,0.8); user-select: none; }
+        #deck-toggle-tab { position: fixed; top: 240px; left: 298px; width: 30px; height: 460px; box-sizing: border-box; background: var(--theme-dark); border: 2px solid var(--theme-color); border-left: none; color: var(--theme-color); display: flex; align-items: center; justify-content: center; font-size: 1.2em; font-weight: bold; cursor: pointer; z-index: 3005; pointer-events: auto !important; transition: transform 0.4s ease-out, background-color 0.2s, color 0.2s; border-radius: 0 8px 8px 0; box-shadow: 5px 0 15px rgba(0,0,0,0.8); user-select: none; }
         #deck-toggle-tab:hover { background: var(--theme-color); color: #000; }
         #deck-toggle-tab.minimized { transform: translateX(-298px); }
 
-        #preview-frame { position: fixed; top: 240px; left: 20px; width: 280px; height: 400px; border: 2px solid var(--theme-color); background: var(--theme-dark); box-shadow: var(--theme-shadow); z-index: 3000; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.4s, opacity 0.4s; transform: translateX(0); opacity: 1; pointer-events: none; }
+        #preview-frame { position: fixed; top: 240px; left: 20px; width: 280px; height: 460px; border: 2px solid var(--theme-color); background: var(--theme-dark); box-shadow: var(--theme-shadow); z-index: 3000; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.4s, opacity 0.4s; transform: translateX(0); opacity: 1; pointer-events: none; }
         #preview-frame.minimized { transform: translateX(-400px); opacity: 0; }
-        #preview-img { width: 90%; height: auto; max-height: 80%; object-fit: contain; border: 1px solid #333; display: none; }
-        #preview-label { margin-top: 10px; color: #fff; font-weight: bold; font-size: 0.9em; text-align: center; letter-spacing: 1px; width: 90%; border-top: 1px dashed #333; padding-top: 5px; }
+        #preview-img { width: 90%; height: auto; max-height: 65%; object-fit: contain; border: 1px solid #333; display: none; }
+        #preview-label { margin-top: 8px; color: #fff; font-weight: bold; font-size: 0.9em; text-align: center; letter-spacing: 1px; width: 90%; border-top: 1px dashed #333; padding-top: 5px; }
+        #preview-ability { display: none; margin-top: 8px; padding: 6px 8px; border-top: 1px dashed #333; font-size: 0.75em; color: #c8b880; white-space: normal; text-align: left; line-height: 1.4; font-weight: normal; width: 90%; }
 
-        #market-frame { position: fixed; top: 655px; left: 20px; width: 280px; height: auto; border: 2px solid var(--theme-color); background: #000; box-sizing: border-box; box-shadow: var(--theme-shadow); z-index: 3000; padding: 10px; transition: transform 0.4s, opacity 0.4s; transform: translateX(0); opacity: 1; }
+        #market-frame { position: fixed; top: 720px; left: 20px; width: 280px; height: auto; border: 2px solid var(--theme-color); background: #000; box-sizing: border-box; box-shadow: var(--theme-shadow); z-index: 3000; padding: 10px; transition: transform 0.4s, opacity 0.4s; transform: translateX(0); opacity: 1; }
         #market-frame.minimized { transform: translateX(-400px); opacity: 0; }
         .intel-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding: 6px 0; font-size: 0.9em; }
         .intel-label { color: #888; }
@@ -171,7 +172,8 @@
         .waffle img { height: 46px !important; width: auto !important; display: block; margin: 0 auto; object-fit: contain !important; border: none !important; cursor: pointer; border-radius:4px; }
 
         /* --- STAT COLORS & TAGS --- */
-        [class*="tag-"] { font-weight: bold !important; padding: 2px 6px; display: inline-block; width: 100%; text-align: center; }
+        [class*="tag-"] { font-weight: bold !important; padding: 2px 6px; display: inline-block; text-align: center; }
+        td [class*="tag-"] { display: block; margin: -4px -10px; padding: 4px 10px; }
         .tag-stone     { box-shadow: inset 4px 0 0 #777, inset -4px 0 0 #777 !important; color: #aaa !important; }
         .tag-gold      { box-shadow: inset 4px 0 0 #ffd700, inset -4px 0 0 #ffd700 !important; color: #ffe44d !important; }
         .tag-stardust  { box-shadow: inset 4px 0 0 #da70d6, inset -4px 0 0 #da70d6 !important; color: #ee82ee !important; }
@@ -247,6 +249,7 @@
             <span id="label-shine" class="tag-stone" style="margin-top:4px;"></span>
             <span id="label-id" style="font-size:0.7em; color:#666; display:block; margin-top:4px;"></span>
         </div>
+        <div id="preview-ability"></div>
     </div>
 
     <div id="market-frame">
@@ -438,6 +441,28 @@
         tbl.innerHTML = html;
     }
 
+    // ── IMAGE CACHE & LOADER ─────────────────────────────────────────────────────
+    var ALE_IMG_CACHE = {};
+
+    async function loadTableImages() {
+        const allIds = [...new Set([...ALE_ARMS.map(r=>r[0]), ...ALE_CREW.map(r=>r[0])])];
+        try {
+            const res = await fetch(`https://wax.api.atomicassets.io/atomicassets/v1/templates?collection_name=alien.worlds&ids=${allIds.join(',')}&limit=1000`);
+            const data = await res.json();
+            if (data.data) {
+                data.data.forEach(t => {
+                    const hash = t.immutable_data && t.immutable_data.img ? t.immutable_data.img : '';
+                    if (hash) {
+                        ALE_IMG_CACHE[t.template_id] = hash;
+                        document.querySelectorAll(`img[data-tid="${t.template_id}"]`).forEach(img => {
+                            img.src = `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/'+hash)}&w=40&h=60&output=webp&fit=cover`;
+                        });
+                    }
+                });
+            }
+        } catch(e) { console.log('ALE image fetch failed:', e); }
+    }
+
     // ── TABLE RENDER (from ale_data.js arrays) ───────────────────────────────────
     function renderTable(tbodyId, rows, isCrew) {
         const tbody = document.getElementById(tbodyId);
@@ -446,11 +471,9 @@
             if (!row[0]) return;
             const tr = document.createElement('tr');
             const templateId = row[0];
-            let nft = (typeof NFT_DATA !== 'undefined') ? NFT_DATA[templateId] : null;
-            let imgHash = nft ? (nft.img || nft.icon || '') : '';
-            let imgHtml = imgHash ? `<img src="https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/'+imgHash)}&w=40&h=60&output=webp&fit=cover" loading="lazy">` : '';
+            let imgHtml = `<img data-tid="${templateId}" style="height:46px!important;width:auto!important;display:block;margin:0 auto;border-radius:4px;" loading="lazy">`;
 
-            tr.onclick = () => openDeck(templateId, row[1], row[2], row[3], imgHash);
+            tr.onclick = () => openDeck(templateId, row[1], row[2], row[3], row[17]);
 
             const tag = v => v ? `<span class="tag-${String(v).toLowerCase().replace(/[^a-z]/g,'')}">${v}</span>` : '-';
             const n = v => (v !== '' && v !== undefined) ? v : '-';
@@ -490,12 +513,18 @@
     }
 
     // ── DECK & MARKET LOGIC ──────────────────────────────────────────────────────
-    window.openDeck = function(id, name, rarity, shine, imgHash) {
+    window.openDeck = function(id, name, rarity, shine, ability) {
         document.getElementById('preview-label').style.display = 'block';
         document.getElementById('label-id').textContent = '#' + id;
         document.getElementById('label-name').textContent = name;
         document.getElementById('label-shine').textContent = shine;
         document.getElementById('label-shine').className = 'tag-' + (shine || '').toLowerCase().replace(/[^a-z]/g,'');
+        // ability
+        const abilEl = document.getElementById('preview-ability');
+        if (ability) { abilEl.textContent = ability; abilEl.style.display = 'block'; }
+        else { abilEl.style.display = 'none'; }
+        // image from cache
+        const imgHash = ALE_IMG_CACHE[id] || '';
         let imgSrc = imgHash ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/'+imgHash)}&w=250&h=350&output=webp&fit=contain` : '';
         document.getElementById('preview-img').src = imgSrc;
         document.getElementById('preview-img').style.display = imgSrc ? 'block' : 'none';
@@ -607,11 +636,12 @@
 
     if (typeof ALE_ARMS !== 'undefined') {
         buildTables();
+        loadTableImages();
     } else {
         let attempts = 0;
         let ival = setInterval(() => {
             if (typeof ALE_ARMS !== 'undefined' || attempts > 20) {
-                clearInterval(ival); buildTables();
+                clearInterval(ival); buildTables(); loadTableImages();
             }
             attempts++;
         }, 100);
