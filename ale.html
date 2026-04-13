@@ -643,6 +643,14 @@
         tbl.innerHTML = html;
     }
 
+    // ── ELEMENT EMOJIS ───────────────────────────────────────────────────────────
+    const ELEMENT_EMOJI = { fire:'🔥', nature:'🍃', air:'🌪️', gem:'💎', metal:'🤘', neutral:'💠' };
+    function emojifyAbility(text) {
+        if (!text) return text;
+        return String(text).replace(/\b(fire|nature|air|gem|metal|neutral)\b/gi,
+            m => ELEMENT_EMOJI[m.toLowerCase()] + ' ' + m);
+    }
+
     // ── SORT WEIGHTS ─────────────────────────────────────────────────────────────
     const RARITY_ORDER = { Abundant:0, Common:1, Rare:2, Epic:3, Legendary:4, Mythical:5 };
     const SHINE_ORDER  = { Stone:0, Gold:1, Stardust:2, Antimatter:3, XDimension:4 };
@@ -717,7 +725,7 @@
                 <td class="stat-res" style="color:#cc99ff">${n(row[14])}</td>
                 <td class="stat-res" style="color:#a0a0a0">${n(row[15])}</td>
                 <td class="stat-res" style="color:#4169e1">${n(row[16])}</td>
-                <td>${row[17] || ''}</td>
+                <td>${emojifyAbility(row[17]) || ''}</td>
             `;
             tr.innerHTML = html;
             tbody.appendChild(tr);
@@ -740,7 +748,7 @@
         document.getElementById('label-shine').className = 'tag-' + (shine || '').toLowerCase().replace(/[^a-z]/g,'');
         // ability
         const abilEl = document.getElementById('preview-ability');
-        if (ability) { abilEl.textContent = ability; abilEl.style.display = 'block'; }
+        if (ability) { abilEl.textContent = emojifyAbility(ability); abilEl.style.display = 'block'; }
         else { abilEl.style.display = 'none'; }
         // image from cache
         const imgHash = ALE_IMG_CACHE[id] || '';
