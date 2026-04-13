@@ -233,9 +233,42 @@
             .tab-bar { top: 110px; padding: 0 10px; overflow-x: auto; }
             .live-header { top: 155px !important; }
         }
+
+        /* --- SPLASH SCREEN --- */
+        #ale-splash { position:fixed; inset:0; z-index:99999; background:#000; overflow:hidden; display:none; cursor:crosshair; }
+        #splash-stars-canvas { position:absolute; inset:0; width:100%; height:100%; }
+        #splash-planet-canvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+        #splash-atmo {
+            position:absolute; inset:0; pointer-events:none; opacity:0;
+            transition: opacity 1.5s ease-in;
+            background: radial-gradient(ellipse at 50% 65%, rgba(220,110,20,0.35) 0%, rgba(120,50,5,0.2) 40%, transparent 75%);
+        }
+        #splash-atmo.active { opacity:1; }
+        #splash-logo {
+            position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+            opacity:0; transition:opacity 1s ease-in; pointer-events:none;
+        }
+        #splash-logo img {
+            max-width:55%; max-height:38%; object-fit:contain;
+            filter: drop-shadow(0 0 50px rgba(232,160,32,0.95)) drop-shadow(0 0 20px rgba(255,200,80,0.6));
+        }
+        #splash-skip {
+            position:absolute; bottom:28px; right:28px; color:rgba(255,255,255,0.25);
+            font-family:'Courier New',monospace; font-size:0.7em; letter-spacing:2px;
+            cursor:pointer; transition:color 0.2s; user-select:none;
+        }
+        #splash-skip:hover { color:rgba(255,255,255,0.6); }
     </style>
 </head>
 <body class="deck-open">
+
+    <div id="ale-splash">
+        <canvas id="splash-stars-canvas"></canvas>
+        <canvas id="splash-planet-canvas"></canvas>
+        <div id="splash-atmo"></div>
+        <div id="splash-logo"><img src="ALElogo.png" alt="Alien Legends"></div>
+        <div id="splash-skip" onclick="skipSplash()">[ SKIP ]</div>
+    </div>
 
     <div id="mobile-backdrop" onclick="closeDeckMobile()"></div>
     <div id="cursor-glow"></div>
@@ -403,6 +436,185 @@
     <footer class="codex-footer">
         <div class="footer-text">// NARON CODEX · ALE STATS // ©@Spectral.Sky 2026 //</div>
     </footer>
+
+<script>
+// ── ALE SPLASH SCREEN ────────────────────────────────────────────────────────
+(function() {
+    // Gate: wallet must be known + not yet seen today
+    function shouldShow() {
+        var w = localStorage.getItem('naron_wallet') || '';
+        if (!w) return false;
+        var d = new Date().toISOString().slice(0, 10);
+        var k = 'ale_splash_' + w + '_' + d;
+        if (localStorage.getItem(k)) return false;
+        localStorage.setItem(k, '1');
+        return true;
+    }
+    if (!shouldShow()) return;
+
+    var splash = document.getElementById('ale-splash');
+    splash.style.display = 'block';
+    var ended = false;
+
+    function endSplash() {
+        if (ended) return;
+        ended = true;
+        splash.style.transition = 'opacity 0.8s';
+        splash.style.opacity = '0';
+        setTimeout(function() { splash.style.display = 'none'; }, 800);
+    }
+    window.skipSplash = endSplash;
+    // Allow click anywhere after logo appears to skip
+    setTimeout(function() {
+        splash.addEventListener('click', endSplash);
+    }, 4000);
+
+    // ── WARP STARS ───────────────────────────────────────────────────────────
+    var sc = document.getElementById('splash-stars-canvas');
+    var sctx = sc.getContext('2d');
+    var W = sc.width  = window.innerWidth;
+    var H = sc.height = window.innerHeight;
+    var cx = W / 2, cy = H / 2;
+    var warpSpeed = 5.5;
+
+    var stars = [];
+    for (var i = 0; i < 210; i++) {
+        stars.push({ angle: Math.random() * Math.PI * 2, r: 1 + Math.random() * 4, spd: 0.4 + Math.random() * 0.6 });
+    }
+
+    function starFrame() {
+        if (ended) return;
+        requestAnimationFrame(starFrame);
+        sctx.fillStyle = 'rgba(0,0,0,0.22)';
+        sctx.fillRect(0, 0, W, H);
+        for (var s, j = 0; j < stars.length; j++) {
+            s = stars[j];
+            var pr = s.r;
+            s.r += warpSpeed * s.spd;
+            var x0 = cx + Math.cos(s.angle) * pr,  y0 = cy + Math.sin(s.angle) * pr;
+            var x1 = cx + Math.cos(s.angle) * s.r, y1 = cy + Math.sin(s.angle) * s.r;
+            var alpha = Math.min(1, s.r / (Math.min(W, H) * 0.25));
+            sctx.strokeStyle = 'rgba(255,255,255,' + (alpha * 0.85) + ')';
+            sctx.lineWidth = Math.min(1.8, s.r / 90);
+            sctx.beginPath(); sctx.moveTo(x0, y0); sctx.lineTo(x1, y1); sctx.stroke();
+            if (s.r > Math.max(W, H) * 0.75) {
+                s.r = 1 + Math.random() * 3;
+                s.angle = Math.random() * Math.PI * 2;
+            }
+        }
+    }
+    starFrame();
+
+    // Decelerate stars at t=1.5s over 2.2s: 5.5 → 0.4
+    setTimeout(function() {
+        var t0 = performance.now();
+        (function decel(now) {
+            var t = Math.min(1, (now - t0) / 2200);
+            var e = 1 - Math.pow(1 - t, 3);
+            warpSpeed = 5.5 - e * 5.1;
+            if (t < 1) requestAnimationFrame(decel);
+        })(performance.now());
+    }, 1500);
+
+    // ── PLANET FLYBY ─────────────────────────────────────────────────────────
+    function initPlanet() {
+        if (typeof THREE === 'undefined') return;
+        var pc = document.getElementById('splash-planet-canvas');
+        var PW = window.innerWidth, PH = window.innerHeight;
+
+        var renderer = new THREE.WebGLRenderer({ canvas: pc, antialias: true, alpha: true });
+        renderer.setClearColor(0x000000, 0);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(PW, PH);
+
+        var scene  = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(55, PW / PH, 0.1, 500);
+        camera.position.set(0.2, -0.15, 50);
+        camera.lookAt(0, 0, 0);
+
+        scene.add(new THREE.AmbientLight(0xfff0cc, 0.5));
+        var sun = new THREE.DirectionalLight(0xffe090, 3.2);
+        sun.position.set(5, 3, 10); scene.add(sun);
+        var rim = new THREE.DirectionalLight(0xff7010, 0.45);
+        rim.position.set(-4, -2, -5); scene.add(rim);
+
+        // Procedural warm amber planet texture — no external file needed
+        var tc = document.createElement('canvas');
+        tc.width = 512; tc.height = 256;
+        var tctx = tc.getContext('2d');
+        tctx.fillStyle = '#2a1004'; tctx.fillRect(0, 0, 512, 256);
+        for (var li = 0; li < 12; li++) {
+            var gx = Math.random()*512, gy = Math.random()*256;
+            var g = tctx.createRadialGradient(gx, gy, 0, gx, gy, 55 + Math.random()*130);
+            var lr = 55 + Math.random()*90 | 0, lgb = 20 + Math.random()*28 | 0;
+            g.addColorStop(0, 'rgba(' + lr + ',' + lgb + ',4,0.65)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            tctx.fillStyle = g; tctx.fillRect(0, 0, 512, 256);
+        }
+        for (var di = 0; di < 700; di++) {
+            tctx.fillStyle = 'rgba(' + (110+Math.random()*90|0) + ',' + (40+Math.random()*38|0) + ',' + (8+Math.random()*18|0) + ',' + (Math.random()*0.13) + ')';
+            tctx.beginPath(); tctx.arc(Math.random()*512, Math.random()*256, Math.random()*5+0.5, 0, Math.PI*2); tctx.fill();
+        }
+        var tex = new THREE.CanvasTexture(tc);
+
+        var planet = new THREE.Mesh(
+            new THREE.SphereGeometry(2.2, 64, 64),
+            new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0.05 })
+        );
+        scene.add(planet);
+
+        // Thin atmosphere halo
+        var atmoMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(2.38, 32, 32),
+            new THREE.MeshBasicMaterial({ color: 0xe86010, transparent: true, opacity: 0, side: THREE.BackSide })
+        );
+        scene.add(atmoMesh);
+
+        var zStart = 50, zEnd = 2.7, DURATION = 3800;
+        var tStart = null, atmoCalled = false;
+
+        function pframe(ts) {
+            if (ended) { renderer.dispose(); return; }
+            requestAnimationFrame(pframe);
+            planet.rotation.y += 0.00065;
+
+            if (!tStart) tStart = ts;
+            var t = Math.min(1, (ts - tStart) / DURATION);
+            // Fast in, quintic decel at end
+            var ease = t < 0.68
+                ? Math.pow(t / 0.68, 2) * 0.68
+                : 0.68 + 0.32 * (1 - Math.pow(1 - (t - 0.68) / 0.32, 5));
+            camera.position.z = zStart - ease * (zStart - zEnd);
+
+            // Atmosphere glow grows as we close in
+            if (camera.position.z < 14) {
+                var at = Math.min(1, (14 - camera.position.z) / 11);
+                atmoMesh.material.opacity = at * 0.28;
+                if (!atmoCalled && camera.position.z < 5.5) {
+                    atmoCalled = true;
+                    document.getElementById('splash-atmo').classList.add('active');
+                }
+            }
+            renderer.render(scene, camera);
+        }
+        requestAnimationFrame(pframe);
+    }
+    initPlanet();
+
+    // Show logo at t=4s (planet just arrived)
+    setTimeout(function() {
+        document.getElementById('splash-logo').style.opacity = '1';
+    }, 4000);
+
+    // End splash at t=6s
+    setTimeout(endSplash, 6000);
+
+    window.addEventListener('resize', function() {
+        W = sc.width = window.innerWidth; H = sc.height = window.innerHeight;
+        cx = W / 2; cy = H / 2;
+    });
+})();
+</script>
 
 <script>
 (function() {
