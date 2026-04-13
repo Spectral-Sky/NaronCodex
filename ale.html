@@ -235,21 +235,21 @@
         }
 
         /* --- SPLASH SCREEN --- */
-        #ale-splash { position:fixed; inset:0; z-index:99999; background:#000; overflow:hidden; display:none; cursor:crosshair; }
-        #splash-stars-canvas { position:absolute; inset:0; width:100%; height:100%; }
-        #splash-planet-canvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+        #ale-splash { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:99999; background:#000; overflow:hidden; display:none; cursor:crosshair; }
+        #splash-stars-canvas { position:absolute; top:0; left:0; width:100vw; height:100vh; }
+        #splash-planet-canvas { position:absolute; top:0; left:0; width:100vw; height:100vh; pointer-events:none; }
         #splash-atmo {
-            position:absolute; inset:0; pointer-events:none; opacity:0;
+            position:absolute; top:0; left:0; width:100vw; height:100vh; pointer-events:none; opacity:0;
             transition: opacity 1.5s ease-in;
             background: radial-gradient(ellipse at 50% 65%, rgba(220,110,20,0.35) 0%, rgba(120,50,5,0.2) 40%, transparent 75%);
         }
         #splash-atmo.active { opacity:1; }
         #splash-logo {
-            position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+            position:absolute; top:0; left:0; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center;
             opacity:0; transition:opacity 1s ease-in; pointer-events:none;
         }
         #splash-logo img {
-            max-width:55%; max-height:38%; object-fit:contain;
+            max-width:82.5%; max-height:57%; object-fit:contain;
             filter: drop-shadow(0 0 50px rgba(232,160,32,0.95)) drop-shadow(0 0 20px rgba(255,200,80,0.6));
         }
         #splash-skip {
@@ -443,12 +443,15 @@
     var splash = document.getElementById('ale-splash');
     // 1/20 chance: planet spins like crazy
     var FAST_SPIN = Math.random() < 0.05;
+    document.body.style.overflowX = 'hidden';
+    window.scrollTo(0, 0);
     splash.style.display = 'block';
     var ended = false;
 
     function endSplash() {
         if (ended) return;
         ended = true;
+        document.body.style.overflowX = 'auto';
         splash.style.transition = 'opacity 0.8s';
         splash.style.opacity = '0';
         setTimeout(function() { splash.style.display = 'none'; }, 800);

@@ -232,6 +232,32 @@
         .footer-text { color: var(--theme-color); font-weight: bold; letter-spacing: 2px; font-size: 0.85em; }
         #codex-disclaimer { font-size: 0.78em; color: #3a4a5a; line-height: 1.55; text-align: left; border: 1px dashed #1a2a3a; padding: 15px; max-width: 800px; }
 
+        /* ── PAGE-LEVEL TABS ────────────────────────────────────────────────────── */
+        .page-tabs {
+            display: flex; gap: 4px; padding: 10px 20px;
+            background: rgba(0,0,0,0.5); border-bottom: 1px solid rgba(232,160,32,0.2);
+        }
+        .page-tab {
+            background: transparent; color: #888;
+            border: 1px solid transparent; padding: 9px 22px;
+            font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9em;
+            cursor: crosshair; transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px; border-radius: 4px;
+        }
+        .page-tab:hover { color: var(--theme-color); border-color: var(--theme-color); }
+        .page-tab.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); box-shadow: var(--theme-shadow); }
+        /* ── WALKTHROUGH ELEMENTS ────────────────────────────────────────────────── */
+        .wt-wip {
+            display: inline-block; margin: 8px 0 24px;
+            background: rgba(232,160,32,0.08); border: 1px dashed rgba(232,160,32,0.4);
+            color: #e8a020; font-family: 'Courier New', monospace; font-size: 0.78em;
+            padding: 6px 14px; letter-spacing: 2px; border-radius: 3px;
+        }
+        .wt-img-slot {
+            margin: 28px 0; border: 1px solid rgba(232,160,32,0.15);
+            background: rgba(3,6,15,0.6); overflow: hidden; border-radius: 2px;
+        }
+        .wt-img-slot img { display: block; width: 100%; height: auto; }
+
         /* ── RESPONSIVE ─────────────────────────────────────────────────────────── */
         @media (max-width: 800px) {
             .global-header { height: auto !important; padding: 8px 15px !important; min-height: 52px; }
@@ -324,6 +350,15 @@
     <span class="status-alpha">OPEN ALPHA</span>
 </div>
 
+<!-- ══ PAGE TABS ═════════════════════════════════════════════════════════════════ -->
+<div class="page-tabs">
+    <button class="page-tab active" id="ptab-wiki" onclick="switchPageTab('wiki')">◈ WIKI</button>
+    <button class="page-tab" id="ptab-walkthrough" onclick="switchPageTab('walkthrough')">◈ WALKTHROUGH</button>
+</div>
+
+<!-- ══ WIKI PANE ═════════════════════════════════════════════════════════════════ -->
+<div id="page-pane-wiki">
+
 <!-- ══ SECTION NAV ══════════════════════════════════════════════════════════════ -->
 <div class="section-nav" id="section-nav">
     <button class="section-pill active" onclick="scrollToSection('overview')">OVERVIEW</button>
@@ -342,10 +377,17 @@
 
     <!-- ═══════════════════════════════════════════════════ OVERVIEW -->
     <section class="wiki-section" id="sec-overview">
-        <div class="wiki-section-title">◈ ALIEN LEGENDS WALKTHROUGH</div>
-        <!-- CONTENT: Edit or expand the intro text below as needed. -->
+        <div class="wiki-section-title">◈ OVERVIEW</div>
         <div class="wiki-intro">
-            Welcome to <strong>Alien Legends (ALE)</strong>! You are among the first explorers to walk the lands of Alien Worlds in the search of glory. Landowners will construct a building on their land to enable explorers to recruit, train, and compete with their fighters in search of grand rewards. Here you will find the process to begin your journey, and it starts now. In this walkthrough, we'll lay out the basics of game flow first, touch on some strategies, and then get into some of the technical stuff.
+            <strong>Alien Legends</strong> is a browser-based battle RPG built within the Alien Worlds universe. Players recruit and develop <strong>Fighters</strong> — each with a unique race, class, and stat profile — and send them into dungeons, arenas, and tavern competitions to earn rewards and reputation.
+            <br><br>
+            The core game loop: travel to a <strong>Tavern</strong> to recruit new Fighters (costs Energy + Coins), then send a team of 5 into a <strong>Dungeon</strong> to battle enemies, earn XP, and collect Coins and Gems. As Fighters level up toward Level 10 they unlock greater power — at which point <strong>Ascension</strong> resets their level in exchange for permanent ability upgrades. Eventually, <strong>Arenas</strong> open PvP play between players' teams.
+            <br><br>
+            Owning <strong>Alien Worlds Arms and Crew NFTs</strong> grants battle modifier bonuses. The strength of each bonus scales with the card's rarity and shine tier — a single arms card and single crew card may be applied per battle. See the <a href="ale.html" style="color:var(--theme-color);">ALE STATS page</a> for the full modifier table.
+            <br><br>
+            Each Fighter and ability belongs to one of six <strong>Elements</strong>: <strong>Air · Fire · Gem · Metal · Nature · Neutral</strong>. A planetwide <strong>Weather</strong> system rotates element buffs (e.g. +35% Gem damage), so checking the current weather before choosing a dungeon team can provide a meaningful edge.
+            <br><br>
+            Fighters grow through experience, levelling up to a cap of <strong>Level 10</strong>, after which they may undergo <strong>Ascension</strong> — a prestige mechanic that resets level but unlocks powerful new abilities and raises the power ceiling significantly.
         </div>
 
         <!-- ── CURRENCIES ── -->
@@ -819,7 +861,30 @@
         <span class="content-pending">◌ CONTENT PENDING — supply Ascension requirements, stat reset details, ability unlocks, and strategy tips</span>
     </section>
 
-</div>
+</div><!-- /wiki-main -->
+</div><!-- /page-pane-wiki -->
+
+<!-- ══ WALKTHROUGH PANE ══════════════════════════════════════════════════════════ -->
+<div id="page-pane-walkthrough" style="display:none;">
+    <div class="wiki-main">
+        <section class="wiki-section" id="sec-walkthrough">
+            <div class="wiki-section-title">◈ ALIEN LEGENDS WALKTHROUGH</div>
+            <div class="wt-wip">⚒ WORK IN PROGRESS — more steps and images coming soon</div>
+            <div class="wiki-intro">
+                Welcome to <strong>Alien Legends (ALE)</strong>! You are among the first explorers to walk the lands of Alien Worlds in the search of glory. Landowners will construct a building on their land to enable explorers to recruit, train, and compete with their fighters in search of grand rewards. Here you will find the process to begin your journey, and it starts now. In this walkthrough, we'll lay out the basics of game flow first, touch on some strategies, and then get into some of the technical stuff.
+            </div>
+            <!-- Image slot 1 — drop ALE_WT_1.png into the repo to make it appear here -->
+            <div class="wt-img-slot">
+                <img src="ALE_WT_1.png" alt="Walkthrough Step 1"
+                     onerror="this.closest('.wt-img-slot').style.display='none'">
+            </div>
+            <!-- Add more text paragraphs + wt-img-slot pairs below as the walkthrough grows -->
+            <div class="content-pending" style="margin-top:40px;">
+                ◌ Additional walkthrough steps will appear here
+            </div>
+        </section>
+    </div>
+</div><!-- /page-pane-walkthrough -->
 
 <!-- ══ FOOTER ════════════════════════════════════════════════════════════════════ -->
 <footer class="codex-footer">
@@ -904,6 +969,15 @@
             if (dd) dd.classList.remove('open');
         }
     });
+
+    // ── PAGE-LEVEL TAB SWITCH ────────────────────────────────────────────────────
+    window.switchPageTab = function(tab) {
+        document.getElementById('page-pane-wiki').style.display        = tab === 'wiki'        ? '' : 'none';
+        document.getElementById('page-pane-walkthrough').style.display = tab === 'walkthrough' ? '' : 'none';
+        document.querySelectorAll('.page-tab').forEach(function(b) { b.classList.remove('active'); });
+        document.getElementById('ptab-' + tab).classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     // ── SECTION SCROLL ───────────────────────────────────────────────────────────
     window.scrollToSection = function(id) {
