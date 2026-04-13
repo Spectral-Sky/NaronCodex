@@ -440,19 +440,9 @@
 <script>
 // ── ALE SPLASH SCREEN ────────────────────────────────────────────────────────
 (function() {
-    // Gate: wallet must be known + not yet seen today
-    function shouldShow() {
-        var w = localStorage.getItem('naron_wallet') || '';
-        if (!w) return false;
-        var d = new Date().toISOString().slice(0, 10);
-        var k = 'ale_splash_' + w + '_' + d;
-        if (localStorage.getItem(k)) return false;
-        localStorage.setItem(k, '1');
-        return true;
-    }
-    if (!shouldShow()) return;
-
     var splash = document.getElementById('ale-splash');
+    // 1/20 chance: planet spins like crazy
+    var FAST_SPIN = Math.random() < 0.05;
     splash.style.display = 'block';
     var ended = false;
 
@@ -570,13 +560,13 @@
         );
         scene.add(atmoMesh);
 
-        var zStart = 50, zEnd = 2.7, DURATION = 3800;
+        var zStart = 50, zEnd = 5.0, DURATION = 4200;
         var tStart = null, atmoCalled = false;
 
         function pframe(ts) {
             if (ended) { renderer.dispose(); return; }
             requestAnimationFrame(pframe);
-            planet.rotation.y += 0.00065;
+            planet.rotation.y += FAST_SPIN ? 0.12 : 0.00065;
 
             if (!tStart) tStart = ts;
             var t = Math.min(1, (ts - tStart) / DURATION);
@@ -587,10 +577,10 @@
             camera.position.z = zStart - ease * (zStart - zEnd);
 
             // Atmosphere glow grows as we close in
-            if (camera.position.z < 14) {
-                var at = Math.min(1, (14 - camera.position.z) / 11);
+            if (camera.position.z < 16) {
+                var at = Math.min(1, (16 - camera.position.z) / 11);
                 atmoMesh.material.opacity = at * 0.28;
-                if (!atmoCalled && camera.position.z < 5.5) {
+                if (!atmoCalled && camera.position.z < 7) {
                     atmoCalled = true;
                     document.getElementById('splash-atmo').classList.add('active');
                 }
