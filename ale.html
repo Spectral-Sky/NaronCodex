@@ -643,6 +643,16 @@
         tbl.innerHTML = html;
     }
 
+    // ── SORT WEIGHTS ─────────────────────────────────────────────────────────────
+    const RARITY_ORDER = { Abundant:0, Common:1, Rare:2, Epic:3, Legendary:4, Mythical:5 };
+    const SHINE_ORDER  = { Stone:0, Gold:1, Stardust:2, Antimatter:3, XDimension:4 };
+
+    function customWeight(v) {
+        const r = RARITY_ORDER[v]; if (r !== undefined) return r;
+        const s = SHINE_ORDER[v];  if (s !== undefined) return s;
+        return null;
+    }
+
     // ── IMAGE CACHE & LOADER ─────────────────────────────────────────────────────
     var ALE_IMG_CACHE = {};
 
@@ -669,7 +679,14 @@
     function renderTable(tbodyId, rows, isCrew) {
         const tbody = document.getElementById(tbodyId);
         tbody.innerHTML = '';
-        rows.forEach(row => {
+        // Default sort: rarity asc, then shine asc
+        const sorted = rows.slice().sort((a, b) => {
+            const ra = RARITY_ORDER[a[2]] ?? 99, rb = RARITY_ORDER[b[2]] ?? 99;
+            if (ra !== rb) return ra - rb;
+            const sa = SHINE_ORDER[a[3]] ?? 99, sb = SHINE_ORDER[b[3]] ?? 99;
+            return sa - sb;
+        });
+        sorted.forEach(row => {
             if (!row[0]) return;
             const tr = document.createElement('tr');
             const templateId = row[0];
@@ -810,6 +827,9 @@
         rows.sort((a, b) => {
             let av = a.cells[colIdx].textContent.trim();
             let bv = b.cells[colIdx].textContent.trim();
+            // Custom ordering for rarity / shine columns
+            const aw = customWeight(av), bw = customWeight(bv);
+            if (aw !== null && bw !== null) return asc ? aw - bw : bw - aw;
             let an = parseFloat(av), bn = parseFloat(bv);
             if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
             return asc ? av.localeCompare(bv) : bv.localeCompare(av);
