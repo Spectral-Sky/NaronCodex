@@ -259,6 +259,64 @@
         }
         .wt-img-slot img { display: block; width: 100%; height: auto; }
 
+        /* ── ARTICLE MARQUEE ────────────────────────────────────────────────────── */
+        .article-marquee-outer {
+            overflow: hidden;
+            background: rgba(0,0,0,0.55);
+            border-bottom: 1px solid rgba(232,160,32,0.18);
+            padding: 10px 0 12px;
+            position: relative;
+        }
+        .article-marquee-outer::before,
+        .article-marquee-outer::after {
+            content: ''; position: absolute; top: 0; bottom: 0; width: 80px; z-index: 2; pointer-events: none;
+        }
+        .article-marquee-outer::before { left: 0; background: linear-gradient(to right, rgba(0,0,0,0.55), transparent); }
+        .article-marquee-outer::after  { right: 0; background: linear-gradient(to left,  rgba(0,0,0,0.55), transparent); }
+        .article-marquee-label {
+            padding: 0 20px 8px;
+            font-family: 'Courier New', monospace; font-size: 0.6em;
+            color: rgba(232,160,32,0.45); letter-spacing: 3px; text-transform: uppercase;
+        }
+        .article-marquee-track {
+            display: flex; gap: 14px; width: max-content;
+            animation: ale-marquee 55s linear infinite;
+            padding: 0 20px;
+        }
+        .article-marquee-outer:hover .article-marquee-track { animation-play-state: paused; }
+        @keyframes ale-marquee {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .article-card {
+            display: flex; flex-direction: column; gap: 5px;
+            background: rgba(232,160,32,0.04); border: 1px solid rgba(232,160,32,0.18);
+            border-radius: 4px; padding: 11px 16px;
+            min-width: 240px; max-width: 265px;
+            text-decoration: none; flex-shrink: 0;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .article-card:hover {
+            border-color: var(--theme-color); background: rgba(232,160,32,0.09);
+            box-shadow: 0 0 10px rgba(232,160,32,0.12);
+        }
+        .article-card-date {
+            font-family: 'Courier New', monospace; font-size: 0.6em;
+            color: rgba(232,160,32,0.45); letter-spacing: 2px; text-transform: uppercase;
+        }
+        .article-card-new {
+            display: inline-block; background: var(--theme-color); color: #000;
+            font-family: 'Courier New', monospace; font-size: 0.55em; font-weight: bold;
+            padding: 1px 6px; letter-spacing: 2px; border-radius: 2px; vertical-align: middle; margin-left: 6px;
+        }
+        .article-card-title {
+            font-size: 0.84em; color: #c8d8f0; font-weight: 600; line-height: 1.35;
+        }
+        .article-card-src {
+            font-family: 'Courier New', monospace; font-size: 0.57em;
+            color: rgba(232,160,32,0.33); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px;
+        }
+
         /* ── RESPONSIVE ─────────────────────────────────────────────────────────── */
         @media (max-width: 800px) {
             .global-header { height: auto !important; padding: 8px 15px !important; min-height: 52px; }
@@ -349,6 +407,65 @@
         <p>RACES · CLASSES · STATS · BUILDINGS · ASCENSION</p>
     </div>
     <span class="status-alpha">OPEN ALPHA</span>
+</div>
+
+<!-- ══ ARTICLE MARQUEE ════════════════════════════════════════════════════════ -->
+<div class="article-marquee-outer">
+    <div class="article-marquee-label">◈ FROM THE CHRONICLES · OFFICIAL ALIEN LEGENDS ARTICLES</div>
+    <div class="article-marquee-track">
+        <!-- Set A -->
+        <a class="article-card" href="https://medium.com/mining-matters/alien-legends-ready-for-alpha-5657d30f7b25" target="_blank" rel="noopener">
+            <div class="article-card-date">Apr 12, 2026 <span class="article-card-new">NEW</span></div>
+            <div class="article-card-title">Alien Legends: Ready for Alpha</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+        <a class="article-card" href="https://medium.com/mining-matters/alien-legends-open-alpha-details-1f0ea996a43a" target="_blank" rel="noopener">
+            <div class="article-card-date">Mar 14, 2026</div>
+            <div class="article-card-title">Alien Legends Open Alpha Details</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+        <a class="article-card" href="https://medium.com/mining-matters/alien-legends-basic-guide-for-landowners-a605a595764c" target="_blank" rel="noopener">
+            <div class="article-card-date">Feb 28, 2026</div>
+            <div class="article-card-title">Alien Legends: Basic Guide for Landowners</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+        <a class="article-card" href="https://medium.com/mining-matters/alien-legends-new-trainer-walkthrough-c2f5a6249b8f" target="_blank" rel="noopener">
+            <div class="article-card-date">Dec 23, 2025</div>
+            <div class="article-card-title">Alien Legends: New Trainer Walkthrough</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+        <a class="article-card" href="https://medium.com/mining-matters/preview-alien-legends-98688d634ec7" target="_blank" rel="noopener">
+            <div class="article-card-date">May 23, 2025</div>
+            <div class="article-card-title">Preview: Alien Legends</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+        <!-- Set B (duplicate for seamless loop) -->
+        <a class="article-card" href="https://medium.com/mining-matters/alien-legends-ready-for-alpha-5657d30f7b25" target="_blank" rel="noopener">
+            <div class="article-card-date">Apr 12, 2026 <span class="article-card-new">NEW</span></div>
+            <div class="article-card-title">Alien Legends: Ready for Alpha</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+        <a class="article-card" href="https://medium.com/mining-matters/alien-legends-open-alpha-details-1f0ea996a43a" target="_blank" rel="noopener">
+            <div class="article-card-date">Mar 14, 2026</div>
+            <div class="article-card-title">Alien Legends Open Alpha Details</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+        <a class="article-card" href="https://medium.com/mining-matters/alien-legends-basic-guide-for-landowners-a605a595764c" target="_blank" rel="noopener">
+            <div class="article-card-date">Feb 28, 2026</div>
+            <div class="article-card-title">Alien Legends: Basic Guide for Landowners</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+        <a class="article-card" href="https://medium.com/mining-matters/alien-legends-new-trainer-walkthrough-c2f5a6249b8f" target="_blank" rel="noopener">
+            <div class="article-card-date">Dec 23, 2025</div>
+            <div class="article-card-title">Alien Legends: New Trainer Walkthrough</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+        <a class="article-card" href="https://medium.com/mining-matters/preview-alien-legends-98688d634ec7" target="_blank" rel="noopener">
+            <div class="article-card-date">May 23, 2025</div>
+            <div class="article-card-title">Preview: Alien Legends</div>
+            <div class="article-card-src">◈ Mining Matters · Medium</div>
+        </a>
+    </div>
 </div>
 
 <!-- ══ PAGE TABS ═════════════════════════════════════════════════════════════════ -->
