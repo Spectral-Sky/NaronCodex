@@ -236,6 +236,7 @@
         .page-tabs {
             display: flex; gap: 4px; padding: 10px 20px;
             background: rgba(0,0,0,0.5); border-bottom: 1px solid rgba(232,160,32,0.2);
+            position: relative; z-index: 4500;
         }
         .page-tab {
             background: transparent; color: #888;
@@ -356,10 +357,7 @@
     <button class="page-tab" id="ptab-walkthrough" onclick="switchPageTab('walkthrough')">◈ WALKTHROUGH</button>
 </div>
 
-<!-- ══ WIKI PANE ═════════════════════════════════════════════════════════════════ -->
-<div id="page-pane-wiki">
-
-<!-- ══ SECTION NAV ══════════════════════════════════════════════════════════════ -->
+<!-- ══ SECTION NAV (outside pane — hides when Walkthrough tab active) ═══════════ -->
 <div class="section-nav" id="section-nav">
     <button class="section-pill active" onclick="scrollToSection('overview')">OVERVIEW</button>
     <button class="section-pill" onclick="scrollToSection('races')">RACES</button>
@@ -371,6 +369,9 @@
     <button class="section-pill" onclick="scrollToSection('arenas')">ARENAS</button>
     <button class="section-pill" onclick="scrollToSection('ascension')">ASCENSION</button>
 </div>
+
+<!-- ══ WIKI PANE ═════════════════════════════════════════════════════════════════ -->
+<div id="page-pane-wiki">
 
 <!-- ══ WIKI MAIN ════════════════════════════════════════════════════════════════ -->
 <div class="wiki-main">
@@ -974,6 +975,7 @@
     window.switchPageTab = function(tab) {
         document.getElementById('page-pane-wiki').style.display        = tab === 'wiki'        ? '' : 'none';
         document.getElementById('page-pane-walkthrough').style.display = tab === 'walkthrough' ? '' : 'none';
+        document.getElementById('section-nav').style.display           = tab === 'wiki'        ? '' : 'none';
         document.querySelectorAll('.page-tab').forEach(function(b) { b.classList.remove('active'); });
         document.getElementById('ptab-' + tab).classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
