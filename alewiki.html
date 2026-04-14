@@ -519,7 +519,6 @@
     <button class="section-pill" onclick="scrollToSection('buildings')">BUILDINGS</button>
     <button class="section-pill" onclick="scrollToSection('dungeons')">DUNGEONS</button>
     <button class="section-pill" onclick="scrollToSection('taverns')">TAVERNS</button>
-    <button class="section-pill" onclick="scrollToSection('arenas')">ARENAS</button>
     <button class="section-pill" onclick="scrollToSection('ascension')">ASCENSION</button>
 </div>
 
@@ -880,6 +879,14 @@
                 </div>
             </div>
 
+            <div class="wiki-card placeholder">
+                <div class="wiki-card-title">⚔ ARENA</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">PvP</span><span class="wiki-tag">COMING SOON</span></div>
+                <div class="wiki-card-body">
+                    The PvP layer of Alien Legends — players pit their teams against each other for rankings and seasonal rewards. Arenas are <strong>not yet available in Open Alpha</strong>; format, ranking structure, and rewards will be documented at launch.
+                </div>
+            </div>
+
         </div>
     </section>
 
@@ -987,17 +994,6 @@
             </div>
 
         </div>
-    </section>
-
-    <hr class="wiki-divider">
-
-    <!-- ═══════════════════════════════════════════════════ ARENAS -->
-    <section class="wiki-section" id="sec-arenas">
-        <div class="wiki-section-title">⚔ ARENAS</div>
-        <p class="wiki-intro">Arenas host PvP combat between players. Enter your Fighters to test builds against real opponents, climb the seasonal rankings, and earn exclusive rewards.</p>
-        <div class="wiki-intro">Arenas are the PvP layer of Alien Legends — players pit their teams against each other for rankings and seasonal rewards. Arenas are <strong>not yet available in Open Alpha</strong>; this section will be expanded at launch.</div>
-        <!-- CONTENT: Fill in Arena format, ranking/ladder, season info, and reward tiers when available. -->
-        <span class="content-pending">◌ COMING SOON — Arenas unlock post-alpha. Format, ranking structure, and rewards TBA.</span>
     </section>
 
     <hr class="wiki-divider">
@@ -1141,7 +1137,7 @@
     };
 
     // IntersectionObserver: update active pill as sections scroll into view
-    var sectionIds = ['overview','races','classes','stats','buildings','dungeons','taverns','arenas','ascension'];
+    var sectionIds = ['overview','races','classes','stats','buildings','dungeons','taverns','ascension'];
     var pills = document.querySelectorAll('.section-pill');
     var observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
