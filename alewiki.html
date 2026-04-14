@@ -914,7 +914,7 @@
     });
 
     // ── WALLET ───────────────────────────────────────────────────────────────────
-    var wax = new WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
+    var wax = typeof WaxJS !== 'undefined' ? new WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false }) : null;
 
     function checkWalletState() {
         updateWalletUI(localStorage.getItem('naron_wallet') || null);
