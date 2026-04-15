@@ -111,6 +111,25 @@
         .outpost-btn:hover { background:var(--theme-color); color:#000; box-shadow:0 0 20px rgba(0,255,204,0.55), inset 0 0 10px rgba(0,255,204,0.15); }
         .outpost-btn:disabled { opacity:0.4; cursor:default; background:rgba(0,0,0,0.82); color:var(--theme-color); box-shadow:none; }
 
+        /* UPLINK BUTTON — highlighted archive access */
+        .outpost-btn-uplink {
+            border-radius: 20px; padding: 11px 30px;
+            background: rgba(0,255,204,0.06);
+            border: 1px solid var(--theme-color); color: var(--theme-color);
+            cursor: pointer; font-family: 'Courier New', monospace;
+            font-size: 0.88em; letter-spacing: 2px; text-transform: uppercase;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+            animation: uplink-pulse 2.6s ease-in-out infinite;
+        }
+        .outpost-btn-uplink:hover {
+            background: var(--theme-color); color: #000;
+            box-shadow: 0 0 30px rgba(0,255,204,0.6); animation: none;
+        }
+        @keyframes uplink-pulse {
+            0%, 100% { box-shadow: 0 0 8px rgba(0,255,204,0.18), inset 0 0 6px rgba(0,255,204,0.05); }
+            50%       { box-shadow: 0 0 22px rgba(0,255,204,0.5), inset 0 0 14px rgba(0,255,204,0.14); }
+        }
+
         /* STATUS */
         #scan-status { font-size:0.72em; color:#444; letter-spacing:1.5px; }
 
@@ -396,10 +415,7 @@
             <button class="term-close" onclick="closeArchive()">[ DISCONNECT ]</button>
         </div>
         <div id="term-body"></div>
-        <div id="term-prompt-row" style="display:none;">
-            <button class="term-ynb" onclick="confirmArchivePull()">[ Y ] INITIATE</button>
-            <button class="term-ynb no" onclick="closeArchive()">[ N ] ABORT</button>
-        </div>
+        <div id="term-prompt-row" style="display:none;"></div>
     </div>
 </div>
 
@@ -409,7 +425,7 @@
     <!-- Top action bar — hidden until wares are revealed -->
     <div class="action-bar" id="top-action-bar" style="display:none;">
         <a href="https://play.alienworlds.io/outpost" target="_blank" rel="noopener" class="outpost-btn">[ &#9654; VISIT OUTPOST ]</a>
-        <button class="outpost-btn" id="archive-btn" onclick="openArchive()">[ &#9650; HISTORICAL DATA &amp; MARKET COMPARISON ]</button>
+        <button class="outpost-btn-uplink" id="archive-btn" onclick="openArchive()">[ ◈ BURIED UPLINK &nbsp;&middot;&nbsp; SHARD PRICE HISTORY ]</button>
         <span id="scan-status"></span>
     </div>
     <div id="outpost-content"></div>
@@ -748,7 +764,7 @@
         // Fetch template details + floor prices concurrently (up to 5 at a time each)
         var allIds = active.concat(upcoming).map(function(e){ return e.tmplId; });
         var uniqueIds = allIds.filter(function(v, i, a){ return a.indexOf(v) === i; });
-        var minWarpEnd = Date.now() + 5500; // minimum 5.5s warp flight from button press
+        var minWarpEnd = Date.now() + 6000; // minimum 6s warp flight
         setStatus('LOADING ' + uniqueIds.length + ' TEMPLATE' + (uniqueIds.length !== 1 ? 'S' : '') + '\u2026');
         await pLimit(uniqueIds.map(function(id){ return function(){ return fetchTemplateInfo(id); }; }), 5);
         setStatus('LOADING MARKET PRICES\u2026');
@@ -837,7 +853,6 @@
         { t:'',       s:'FULL ARCHIVE PULL REQUIRED \u2014 SCANNING ALL RELAY NODES.' },
         { t:'',       s:'ESTIMATED RELAY HOPS: 15\u201320 \u00b7 ETA: ~10 SECONDS.' },
         { t:'dim',    s:' ' },
-        { t:'bright', s:'INITIATE ARCHIVE PULL? CONFIRM RELAY SEQUENCE:' },
     ];
 
     function termLine(cls, text) {
@@ -882,7 +897,9 @@
         await typeLines(INTRO_LINES, 42);
 
         if (_archiveState === 'confirming') {
-            document.getElementById('term-prompt-row').style.display = 'flex';
+            termLine('bright', '>> RELAY HANDSHAKE ACCEPTED \u00b7 AUTO-INITIATING ARCHIVE PULL\u2026');
+            await new Promise(function(r){ setTimeout(r, 700); });
+            confirmArchivePull();
         }
     }
 
@@ -896,8 +913,6 @@
         _archiveState = 'pulling';
         document.getElementById('term-prompt-row').style.display = 'none';
 
-        termLine('dim', '');
-        termLine('bright', '>> RELAY SEQUENCE CONFIRMED. PULLING ARCHIVE\u2026');
         termLine('dim', '');
 
         // Progress indicators
@@ -1341,8 +1356,8 @@
     document.addEventListener('DOMContentLoaded', function() {
         checkWalletState();
         initStars();
-        loadLibrary(); // async, non-blocking — caches before warp is engaged
-        showNavConsole();
+        loadLibrary(); // async, non-blocking — caches before warp arrives
+        setTimeout(engageWarp, 120); // auto-engage warp on load
         document.getElementById('archive-overlay').addEventListener('click', function(e) {
             if (e.target === this && _archiveState !== 'pulling') closeArchive();
         });
