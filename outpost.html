@@ -764,7 +764,7 @@
         // Fetch template details + floor prices concurrently (up to 5 at a time each)
         var allIds = active.concat(upcoming).map(function(e){ return e.tmplId; });
         var uniqueIds = allIds.filter(function(v, i, a){ return a.indexOf(v) === i; });
-        var minWarpEnd = Date.now() + 6000; // minimum 6s warp flight
+        var minWarpEnd = Date.now() + 3000; // minimum 3s warp flight
         setStatus('LOADING ' + uniqueIds.length + ' TEMPLATE' + (uniqueIds.length !== 1 ? 'S' : '') + '\u2026');
         await pLimit(uniqueIds.map(function(id){ return function(){ return fetchTemplateInfo(id); }; }), 5);
         setStatus('LOADING MARKET PRICES\u2026');
