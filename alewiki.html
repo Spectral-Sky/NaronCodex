@@ -221,11 +221,18 @@
         .menu-card {
             background:rgba(8,16,40,0.7); border:1px solid rgba(232,160,32,0.2);
             border-radius:8px; padding:16px 10px 14px; text-align:center;
-            transition:border-color 0.2s, box-shadow 0.2s;
+            transition:border-color 0.2s, box-shadow 0.2s; cursor:crosshair;
         }
         .menu-card:hover { border-color:rgba(232,160,32,0.5); box-shadow:0 0 12px rgba(232,160,32,0.1); }
+        .menu-card.expanded { border-color:var(--theme-color); box-shadow:0 0 14px rgba(232,160,32,0.18); }
         .menu-card-icon { display:block; width:48px; height:48px; object-fit:contain; margin:0 auto 10px; }
         .menu-card-label { color:var(--theme-accent); font-size:0.72em; letter-spacing:2px; text-transform:uppercase; line-height:1.4; }
+        .menu-card-desc {
+            display:none; margin-top:10px; padding-top:9px;
+            border-top:1px solid rgba(232,160,32,0.15);
+            color:#9ab0c8; font-size:0.71em; line-height:1.6; text-align:left; letter-spacing:0.3px;
+        }
+        .menu-card.expanded .menu-card-desc { display:block; }
 
         /* Content pending */
         .content-pending {
@@ -528,6 +535,7 @@
 <div class="section-nav" id="section-nav">
     <button class="section-pill active" onclick="scrollToSection('overview')">OVERVIEW</button>
     <button class="section-pill" onclick="scrollToSection('menu')">MENU</button>
+    <button class="section-pill" onclick="scrollToSection('fighters')">FIGHTERS</button>
     <button class="section-pill" onclick="scrollToSection('races')">RACES</button>
     <button class="section-pill" onclick="scrollToSection('classes')">CLASSES</button>
     <button class="section-pill" onclick="scrollToSection('stats')">STATS</button>
@@ -586,55 +594,128 @@
     <section class="wiki-section" id="sec-menu">
         <div class="wiki-section-title">◈ MENU</div>
         <p class="wiki-intro">The game menu gives access to all core features of Alien Legends. Below are the main menu items and what each one does.</p>
+        <p class="wiki-intro" style="font-size:0.78em;color:#5a7a6a;margin-bottom:16px;">Click any item to expand its description.</p>
         <div class="menu-grid">
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/sword.png" alt="My Fighters">
                 <div class="menu-card-label">My Fighters</div>
+                <div class="menu-card-desc">View and manage your full fighter roster. Check each fighter's level, stats, abilities, element, and wage status. Assign fighters to dungeon or arena runs from here.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/ascension.png" alt="Ascension">
                 <div class="menu-card-label">Ascension</div>
+                <div class="menu-card-desc">Ascend fighters who have reached Level 10. Each ascension grants a permanent stat increase. The 5th ascension is special — it unlocks the fighter's third ability. Ascensions are unlimited.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/quests.png" alt="Quests">
                 <div class="menu-card-label">Quests</div>
+                <div class="menu-card-desc">Complete daily and special quests for Credits, XP, and other rewards. Check here regularly to stay on top of available objectives.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/candle.png" alt="Candle">
                 <div class="menu-card-label">Candle</div>
+                <div class="menu-card-desc">◌ Details coming soon.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/leaderboard.png" alt="Leaderboard">
                 <div class="menu-card-label">Leaderboard</div>
+                <div class="menu-card-desc">View current player rankings across dungeons and arenas. Top leaderboard positions earn daily rewards — check regularly to track your standing.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/tournament.png" alt="Tournament">
                 <div class="menu-card-label">Tournament</div>
+                <div class="menu-card-desc">Weekly tournament — the highest-stakes PvP mode in the game, with the strongest weather effects of any content type. Coming later in Open Alpha.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/market.png" alt="Market">
                 <div class="menu-card-label">Market</div>
+                <div class="menu-card-desc">Browse and trade items and resources with other players through the in-game marketplace.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/world.png" alt="World Shop">
                 <div class="menu-card-label">World Shop</div>
+                <div class="menu-card-desc">Purchase items available within the current world context, using world-specific currency and resources.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/coin.png" alt="Shop">
                 <div class="menu-card-label">Shop</div>
+                <div class="menu-card-desc">The general in-game shop. Spend Credits to buy fighters, items, and upgrades.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/my-land.png" alt="My Lands">
                 <div class="menu-card-label">My Lands</div>
+                <div class="menu-card-desc">Landowners can view and manage their Alien Worlds land plots, and configure Taverns and Dungeons for other players to visit and earn from.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/settings.png" alt="Trainer">
                 <div class="menu-card-label">Trainer</div>
+                <div class="menu-card-desc">Configure your trainer profile, account settings, and preferences.</div>
             </div>
-            <div class="menu-card">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/card.png" alt="Farming">
                 <div class="menu-card-label">Farming</div>
+                <div class="menu-card-desc">Manage your TLM farming operations across your Alien Worlds land plots.</div>
             </div>
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ FIGHTERS -->
+    <section class="wiki-section" id="sec-fighters">
+        <div class="wiki-section-title">⚔ FIGHTERS</div>
+        <div class="wiki-intro">
+            Every fighter available in a Tavern is <strong>randomly generated</strong> — meaning each one has the same chance to be an exceptional long-term team member. No two fighters are identical. Your potential fighter will be one unique combination drawn from 12 classes, 7 races, 6 elements, and up to three abilities from a pool of hundreds. These define the <em>frame</em> for your fighter. Beyond that, 17 individual stats fill that frame — determining how they perform in actual combat.
+        </div>
+        <div class="wiki-card-grid">
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🎲 RANDOMLY GENERATED</div>
+                <div class="wiki-card-body">Each fighter in a Tavern is procedurally generated at the moment they appear. The same potential applies to every applicant — any one could turn out to be a star recruit for quite some time to come. There is no way to predict or engineer a specific fighter; exploration and judgement are key.</div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">⚔ CLASS</div>
+                <div class="wiki-card-body">A fighter's class is one of the primary factors shaping their combat role — determining stat growth patterns, ability access, and team synergy potential.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TOTAL CLASSES</span><span class="wiki-stat-value">12</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">⬡ RACE</div>
+                <div class="wiki-card-body">Each fighter belongs to one of 7 races. Races provide passive stat modifiers and lore flavour. Racial bonuses interact with class choice to shape a fighter's overall combat profile.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TOTAL RACES</span><span class="wiki-stat-value">7</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">◈ ELEMENT</div>
+                <div class="wiki-card-body">Each fighter and their abilities belong to one of 6 elements. Element interacts directly with the Weather system — choosing fighters whose element matches the current weather can provide a significant combat edge.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ELEMENTS</span><span class="wiki-stat-value">Air · Fire · Gem · Metal · Nature · Neutral</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">✦ ABILITIES</div>
+                <div class="wiki-card-body">Each fighter has up to 3 abilities drawn from a pool of hundreds. The combination of abilities a fighter carries is often the single biggest factor in their long-term value — two fighters of the same class can be vastly different based on abilities alone.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ABILITIES PER FIGHTER</span><span class="wiki-stat-value">Up to 3</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ABILITY POOL</span><span class="wiki-stat-value">Hundreds</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">📊 STATS</div>
+                <div class="wiki-card-body">Fighters have <strong>17 stats</strong> — including Health, Damage, Windup, Cooldown, and Taunt — that define their combat performance. Each stat is expressed as a <strong>range</strong> rather than a fixed value. At the start of every fight, one value is randomly selected from each range, meaning no two fights play out exactly the same.</div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">TOTAL STATS</span><span class="wiki-stat-value">17</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">FORMAT</span><span class="wiki-stat-value">Each stat is a range, rolled per fight</span></div>
+                </div>
+            </div>
+
         </div>
     </section>
 
@@ -1286,7 +1367,7 @@
     };
 
     // IntersectionObserver: update active pill as sections scroll into view
-    var sectionIds = ['overview','menu','races','classes','stats','buildings','dungeons','taverns','weather','ascension'];
+    var sectionIds = ['overview','menu','fighters','races','classes','stats','buildings','dungeons','taverns','weather','ascension'];
     var pills = document.querySelectorAll('.section-pill');
     var observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
