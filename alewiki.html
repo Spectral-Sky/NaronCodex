@@ -213,6 +213,9 @@
         .stat-bar-fill { height: 100%; background: linear-gradient(90deg, var(--theme-color), var(--theme-accent)); border-radius: 3px; }
         .stat-explainer-desc { color: #9ab0c8; font-size: 0.82em; line-height: 1.55; }
 
+        /* Currency icons */
+        .wiki-card-icon { display:block; width:54px; height:54px; object-fit:contain; margin:0 auto 12px; }
+
         /* Content pending */
         .content-pending {
             display: inline-block; border: 1px dashed rgba(232,160,32,0.35);
@@ -547,16 +550,19 @@
         <div class="wiki-section-title" style="font-size:0.9em;margin-top:32px;margin-bottom:14px;">◎ CURRENCIES &amp; RESOURCES</div>
         <div class="wiki-card-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
             <div class="wiki-card">
-                <div class="wiki-card-title">🔋 ENERGY</div>
+                <img class="wiki-card-icon" src="Ale images/energy.png" alt="Energy">
+                <div class="wiki-card-title">ENERGY</div>
                 <div class="wiki-card-body">The main action resource — used for everything. Enter a dungeon (<strong>10 Energy</strong>), hire a fighter at a tavern (<strong>100 Energy</strong>), and travel between planets to reach buildings on other worlds. Regenerates over time.</div>
             </div>
             <div class="wiki-card">
-                <div class="wiki-card-title">🟡 COINS</div>
+                <img class="wiki-card-icon" src="Ale images/credits.png" alt="Credits">
+                <div class="wiki-card-title">CREDITS</div>
                 <div class="wiki-card-body">In-game currency earned from dungeon runs and selling levelled fighters. Used to reveal fighters at taverns, pay wages, and level up fighters. Spendable in-world.</div>
             </div>
             <div class="wiki-card">
-                <div class="wiki-card-title">💎 GEMS</div>
-                <div class="wiki-card-body">Premium currency. Can be used to purchase Coins, boost buildings, and accelerate progression. Earned from top-tier dungeon pools and special events.</div>
+                <img class="wiki-card-icon" src="Ale images/gems.png" alt="Gems">
+                <div class="wiki-card-title">GEMS</div>
+                <div class="wiki-card-body">Premium currency. Can be used to purchase Credits, boost buildings, and accelerate progression. Earned from top-tier dungeon pools and special events.</div>
             </div>
         </div>
     </section>
