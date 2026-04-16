@@ -281,11 +281,19 @@
         .wt-img-slot img { display: block; width: 100%; height: auto; }
 
         /* ── WALKTHROUGH STEP ELEMENTS ───────────────────────────────────────── */
+        .wt-intro-row {
+            display: flex; gap: 24px; align-items: flex-start; margin: 20px 0 28px;
+        }
         .wt-video-wrap {
-            margin: 24px 0 28px; border: 1px solid rgba(232,160,32,0.2);
+            flex: 0 0 42%; border: 1px solid rgba(232,160,32,0.2);
             background: #000; overflow: hidden; border-radius: 4px;
         }
-        .wt-video { display: block; width: 100%; height: auto; max-height: 70vh; }
+        .wt-video { display: block; width: 100%; height: auto; }
+        .wt-intro-text { flex: 1; color: #b8c8d8; line-height: 1.75; }
+        @media (max-width: 640px) {
+            .wt-intro-row { flex-direction: column; }
+            .wt-video-wrap { flex: none; width: 100%; }
+        }
         .wt-step {
             display: flex; align-items: center; gap: 16px;
             margin: 44px 0 16px; padding-bottom: 10px;
@@ -1324,15 +1332,16 @@
             <div class="wiki-section-title">◈ ALIEN LEGENDS WALKTHROUGH</div>
             <div class="wt-wip">⚒ WORK IN PROGRESS — more steps and images coming soon</div>
 
-            <!-- ── INTRO VIDEO ─────────────────────────────────────────────────── -->
-            <div class="wt-video-wrap">
-                <video controls playsinline class="wt-video" src="Ale%20images/onoros%20walk.mov">
-                    <p style="color:#888;padding:20px;text-align:center;">Your browser does not support this video format.</p>
-                </video>
-            </div>
-
-            <div class="wiki-intro">
-                Welcome to <strong>Alien Legends (ALE)</strong>! You are among the first explorers to walk the lands of Alien Worlds in the search of glory. Landowners will construct a building on their land to enable explorers to recruit, train, and compete with their fighters in search of grand rewards. Here you will find the process to begin your journey, and it starts now. In this walkthrough, we'll lay out the basics of game flow first, touch on some strategies, and then get into some of the technical stuff.
+            <!-- ── INTRO VIDEO + TEXT ──────────────────────────────────────────── -->
+            <div class="wt-intro-row">
+                <div class="wt-video-wrap">
+                    <video autoplay muted loop playsinline controls class="wt-video" src="Ale%20images/onoros%20walk.mov">
+                        <p style="color:#888;padding:20px;text-align:center;">Your browser does not support this video format.</p>
+                    </video>
+                </div>
+                <div class="wt-intro-text">
+                    Welcome to <strong>Alien Legends (ALE)</strong>! You are among the first explorers to walk the lands of Alien Worlds in the search of glory. Landowners will construct a building on their land to enable explorers to recruit, train, and compete with their fighters in search of grand rewards. Here you will find the process to begin your journey, and it starts now. In this walkthrough, we'll lay out the basics of game flow first, touch on some strategies, and then get into some of the technical stuff.
+                </div>
             </div>
 
             <!-- ── STEP 1 ───────────────────────────────────────────────────────── -->
