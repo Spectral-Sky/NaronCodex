@@ -533,8 +533,8 @@
 
 <!-- ══ SECTION NAV (outside pane — hides when Walkthrough tab active) ═══════════ -->
 <div class="section-nav" id="section-nav">
-    <button class="section-pill active" onclick="scrollToSection('overview')">OVERVIEW</button>
-    <button class="section-pill" onclick="scrollToSection('menu')">MENU</button>
+    <button class="section-pill active" onclick="scrollToSection('menu')">MENU</button>
+    <button class="section-pill" onclick="scrollToSection('overview')">OVERVIEW</button>
     <button class="section-pill" onclick="scrollToSection('fighters')">FIGHTERS</button>
     <button class="section-pill" onclick="scrollToSection('races')">RACES</button>
     <button class="section-pill" onclick="scrollToSection('classes')">CLASSES</button>
@@ -551,6 +551,77 @@
 
 <!-- ══ WIKI MAIN ════════════════════════════════════════════════════════════════ -->
 <div class="wiki-main">
+
+    <!-- ═══════════════════════════════════════════════════ MENU -->
+    <section class="wiki-section" id="sec-menu">
+        <div class="wiki-section-title">◈ MENU</div>
+        <p class="wiki-intro">The game menu gives access to all core features of Alien Legends. Below are the main menu items and what each one does.</p>
+        <p class="wiki-intro" style="font-size:0.78em;color:#5a7a6a;margin-bottom:16px;">Click any item to expand its description.</p>
+        <div class="menu-grid">
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/world.png" alt="World Map">
+                <div class="menu-card-label">World Map</div>
+                <div class="menu-card-desc">Explore the world map to find and travel to buildings — Taverns, Dungeons, and Arenas — across all planets in the Alien Worlds universe.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/coin.png" alt="Shop">
+                <div class="menu-card-label">Shop</div>
+                <div class="menu-card-desc">The general in-game shop. Spend Credits to buy fighters, items, and upgrades.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/leaderboard.png" alt="Leaderboards">
+                <div class="menu-card-label">Leaderboards</div>
+                <div class="menu-card-desc">View current player rankings across dungeons and arenas. Top leaderboard positions earn daily rewards — check regularly to track your standing.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/sword.png" alt="My Fighters">
+                <div class="menu-card-label">My Fighters</div>
+                <div class="menu-card-desc">View and manage your full fighter roster. Check each fighter's level, stats, abilities, element, and wage status. Assign fighters to dungeon or arena runs from here.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/ascension.png" alt="Ascension">
+                <div class="menu-card-label">Ascension</div>
+                <div class="menu-card-desc">Ascend fighters who have reached Level 10. Each ascension grants a permanent stat increase. The 5th ascension is special — it unlocks the fighter's third ability. Ascensions are unlimited.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/quests.png" alt="Quests">
+                <div class="menu-card-label">Quests</div>
+                <div class="menu-card-desc">Complete daily and special quests for Credits, XP, and other rewards. Check here regularly to stay on top of available objectives.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/candle.png" alt="Candle">
+                <div class="menu-card-label">Candle</div>
+                <div class="menu-card-desc">◌ Details coming soon.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/tournament.png" alt="Tournament">
+                <div class="menu-card-label">Tournament</div>
+                <div class="menu-card-desc">Weekly tournament — the highest-stakes PvP mode in the game, with the strongest weather effects of any content type. Coming later in Open Alpha.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/market.png" alt="Market">
+                <div class="menu-card-label">Market</div>
+                <div class="menu-card-desc">Browse and trade items and resources with other players through the in-game marketplace.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/my-land.png" alt="My Lands">
+                <div class="menu-card-label">My Lands</div>
+                <div class="menu-card-desc">Landowners can view and manage their Alien Worlds land plots, and configure Taverns and Dungeons for other players to visit and earn from.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/settings.png" alt="Trainer">
+                <div class="menu-card-label">Trainer</div>
+                <div class="menu-card-desc">Configure your trainer profile, account settings, and preferences.</div>
+            </div>
+            <div class="menu-card" onclick="this.classList.toggle('expanded')">
+                <img class="menu-card-icon" src="Ale%20images/card.png" alt="Farming">
+                <div class="menu-card-label">Farming</div>
+                <div class="menu-card-desc">Manage your TLM farming operations across your Alien Worlds land plots.</div>
+            </div>
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
 
     <!-- ═══════════════════════════════════════════════════ OVERVIEW -->
     <section class="wiki-section" id="sec-overview">
@@ -584,77 +655,6 @@
                 <img class="wiki-card-icon" src="Ale%20images/energy.png" alt="Energy">
                 <div class="wiki-card-title">ENERGY</div>
                 <div class="wiki-card-body">The main action resource — used for everything. Enter a dungeon (<strong>10 Energy</strong>), hire a fighter at a tavern (<strong>100 Energy</strong>), and travel between planets to reach buildings on other worlds. Regenerates over time.</div>
-            </div>
-        </div>
-    </section>
-
-    <hr class="wiki-divider">
-
-    <!-- ═══════════════════════════════════════════════════ MENU -->
-    <section class="wiki-section" id="sec-menu">
-        <div class="wiki-section-title">◈ MENU</div>
-        <p class="wiki-intro">The game menu gives access to all core features of Alien Legends. Below are the main menu items and what each one does.</p>
-        <p class="wiki-intro" style="font-size:0.78em;color:#5a7a6a;margin-bottom:16px;">Click any item to expand its description.</p>
-        <div class="menu-grid">
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/sword.png" alt="My Fighters">
-                <div class="menu-card-label">My Fighters</div>
-                <div class="menu-card-desc">View and manage your full fighter roster. Check each fighter's level, stats, abilities, element, and wage status. Assign fighters to dungeon or arena runs from here.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/ascension.png" alt="Ascension">
-                <div class="menu-card-label">Ascension</div>
-                <div class="menu-card-desc">Ascend fighters who have reached Level 10. Each ascension grants a permanent stat increase. The 5th ascension is special — it unlocks the fighter's third ability. Ascensions are unlimited.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/quests.png" alt="Quests">
-                <div class="menu-card-label">Quests</div>
-                <div class="menu-card-desc">Complete daily and special quests for Credits, XP, and other rewards. Check here regularly to stay on top of available objectives.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/candle.png" alt="Candle">
-                <div class="menu-card-label">Candle</div>
-                <div class="menu-card-desc">◌ Details coming soon.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/leaderboard.png" alt="Leaderboard">
-                <div class="menu-card-label">Leaderboard</div>
-                <div class="menu-card-desc">View current player rankings across dungeons and arenas. Top leaderboard positions earn daily rewards — check regularly to track your standing.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/tournament.png" alt="Tournament">
-                <div class="menu-card-label">Tournament</div>
-                <div class="menu-card-desc">Weekly tournament — the highest-stakes PvP mode in the game, with the strongest weather effects of any content type. Coming later in Open Alpha.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/market.png" alt="Market">
-                <div class="menu-card-label">Market</div>
-                <div class="menu-card-desc">Browse and trade items and resources with other players through the in-game marketplace.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/world.png" alt="World Shop">
-                <div class="menu-card-label">World Shop</div>
-                <div class="menu-card-desc">Purchase items available within the current world context, using world-specific currency and resources.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/coin.png" alt="Shop">
-                <div class="menu-card-label">Shop</div>
-                <div class="menu-card-desc">The general in-game shop. Spend Credits to buy fighters, items, and upgrades.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/my-land.png" alt="My Lands">
-                <div class="menu-card-label">My Lands</div>
-                <div class="menu-card-desc">Landowners can view and manage their Alien Worlds land plots, and configure Taverns and Dungeons for other players to visit and earn from.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/settings.png" alt="Trainer">
-                <div class="menu-card-label">Trainer</div>
-                <div class="menu-card-desc">Configure your trainer profile, account settings, and preferences.</div>
-            </div>
-            <div class="menu-card" onclick="this.classList.toggle('expanded')">
-                <img class="menu-card-icon" src="Ale%20images/card.png" alt="Farming">
-                <div class="menu-card-label">Farming</div>
-                <div class="menu-card-desc">Manage your TLM farming operations across your Alien Worlds land plots.</div>
             </div>
         </div>
     </section>
@@ -1367,7 +1367,7 @@
     };
 
     // IntersectionObserver: update active pill as sections scroll into view
-    var sectionIds = ['overview','menu','fighters','races','classes','stats','buildings','dungeons','taverns','weather','ascension'];
+    var sectionIds = ['menu','overview','fighters','races','classes','stats','buildings','dungeons','taverns','weather','ascension'];
     var pills = document.querySelectorAll('.section-pill');
     var observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
