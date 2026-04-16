@@ -335,8 +335,14 @@
         }
         .wt-currency-desc { color: #9ab0c8; font-size: 0.8em; line-height: 1.55; }
         .wt-stat-color-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            display: grid; grid-template-columns: repeat(3, 1fr);
             gap: 10px; margin: 16px 0;
+        }
+        @media (min-width: 1200px) {
+            .wt-stat-color-grid { grid-template-columns: repeat(6, 1fr); }
+        }
+        @media (max-width: 640px) {
+            .wt-stat-color-grid { grid-template-columns: 1fr; }
         }
         .wt-stat-color-item {
             display: flex; align-items: flex-start; gap: 12px;
