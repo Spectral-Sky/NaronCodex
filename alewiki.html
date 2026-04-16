@@ -216,6 +216,17 @@
         /* Currency icons */
         .wiki-card-icon { display:block; width:54px; height:54px; object-fit:contain; margin:0 auto 12px; }
 
+        /* Menu section grid */
+        .menu-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:12px; }
+        .menu-card {
+            background:rgba(8,16,40,0.7); border:1px solid rgba(232,160,32,0.2);
+            border-radius:8px; padding:16px 10px 14px; text-align:center;
+            transition:border-color 0.2s, box-shadow 0.2s;
+        }
+        .menu-card:hover { border-color:rgba(232,160,32,0.5); box-shadow:0 0 12px rgba(232,160,32,0.1); }
+        .menu-card-icon { display:block; width:38px; height:38px; object-fit:contain; margin:0 auto 10px; }
+        .menu-card-label { color:var(--theme-accent); font-size:0.72em; letter-spacing:2px; text-transform:uppercase; line-height:1.4; }
+
         /* Content pending */
         .content-pending {
             display: inline-block; border: 1px dashed rgba(232,160,32,0.35);
@@ -516,12 +527,14 @@
 <!-- ══ SECTION NAV (outside pane — hides when Walkthrough tab active) ═══════════ -->
 <div class="section-nav" id="section-nav">
     <button class="section-pill active" onclick="scrollToSection('overview')">OVERVIEW</button>
+    <button class="section-pill" onclick="scrollToSection('menu')">MENU</button>
     <button class="section-pill" onclick="scrollToSection('races')">RACES</button>
     <button class="section-pill" onclick="scrollToSection('classes')">CLASSES</button>
     <button class="section-pill" onclick="scrollToSection('stats')">STATS</button>
     <button class="section-pill" onclick="scrollToSection('buildings')">BUILDINGS</button>
     <button class="section-pill" onclick="scrollToSection('dungeons')">DUNGEONS</button>
     <button class="section-pill" onclick="scrollToSection('taverns')">TAVERNS</button>
+    <button class="section-pill" onclick="scrollToSection('weather')">WEATHER</button>
     <button class="section-pill" onclick="scrollToSection('ascension')">ASCENSION</button>
 </div>
 
@@ -550,19 +563,77 @@
         <div class="wiki-section-title" style="font-size:0.9em;margin-top:32px;margin-bottom:14px;">◎ CURRENCIES &amp; RESOURCES</div>
         <div class="wiki-card-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
             <div class="wiki-card">
-                <img class="wiki-card-icon" src="Ale images/energy.png" alt="Energy">
-                <div class="wiki-card-title">ENERGY</div>
-                <div class="wiki-card-body">The main action resource — used for everything. Enter a dungeon (<strong>10 Energy</strong>), hire a fighter at a tavern (<strong>100 Energy</strong>), and travel between planets to reach buildings on other worlds. Regenerates over time.</div>
+                <img class="wiki-card-icon" src="Ale%20images/gems.png" alt="Gems">
+                <div class="wiki-card-title">GEMS</div>
+                <div class="wiki-card-body">Premium currency. Can be used to purchase Credits, boost buildings, and accelerate progression. Earned from top-tier dungeon pools and special events.</div>
             </div>
             <div class="wiki-card">
-                <img class="wiki-card-icon" src="Ale images/credits.png" alt="Credits">
+                <img class="wiki-card-icon" src="Ale%20images/credits.png" alt="Credits">
                 <div class="wiki-card-title">CREDITS</div>
                 <div class="wiki-card-body">In-game currency earned from dungeon runs and selling levelled fighters. Used to reveal fighters at taverns, pay wages, and level up fighters. Spendable in-world.</div>
             </div>
             <div class="wiki-card">
-                <img class="wiki-card-icon" src="Ale images/gems.png" alt="Gems">
-                <div class="wiki-card-title">GEMS</div>
-                <div class="wiki-card-body">Premium currency. Can be used to purchase Credits, boost buildings, and accelerate progression. Earned from top-tier dungeon pools and special events.</div>
+                <img class="wiki-card-icon" src="Ale%20images/energy.png" alt="Energy">
+                <div class="wiki-card-title">ENERGY</div>
+                <div class="wiki-card-body">The main action resource — used for everything. Enter a dungeon (<strong>10 Energy</strong>), hire a fighter at a tavern (<strong>100 Energy</strong>), and travel between planets to reach buildings on other worlds. Regenerates over time.</div>
+            </div>
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ MENU -->
+    <section class="wiki-section" id="sec-menu">
+        <div class="wiki-section-title">◈ MENU</div>
+        <p class="wiki-intro">The game menu gives access to all core features of Alien Legends. Below are the main menu items and what each one does.</p>
+        <div class="menu-grid">
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/sword.png" alt="My Fighters">
+                <div class="menu-card-label">My Fighters</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/ascension.png" alt="Ascension">
+                <div class="menu-card-label">Ascension</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/quests.png" alt="Quests">
+                <div class="menu-card-label">Quests</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/candle.png" alt="Candle">
+                <div class="menu-card-label">Candle</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/leaderboard.png" alt="Leaderboard">
+                <div class="menu-card-label">Leaderboard</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/tournament.png" alt="Tournament">
+                <div class="menu-card-label">Tournament</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/market.png" alt="Market">
+                <div class="menu-card-label">Market</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/world.png" alt="World Shop">
+                <div class="menu-card-label">World Shop</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/coin.png" alt="Shop">
+                <div class="menu-card-label">Shop</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/my-land.png" alt="My Lands">
+                <div class="menu-card-label">My Lands</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/settings.png" alt="Trainer">
+                <div class="menu-card-label">Trainer</div>
+            </div>
+            <div class="menu-card">
+                <img class="menu-card-icon" src="Ale%20images/card.png" alt="Farming">
+                <div class="menu-card-label">Farming</div>
             </div>
         </div>
     </section>
@@ -885,11 +956,17 @@
                 </div>
             </div>
 
-            <div class="wiki-card placeholder">
+            <div class="wiki-card">
                 <div class="wiki-card-title">⚔ ARENA</div>
-                <div class="wiki-card-tags"><span class="wiki-tag">PvP</span><span class="wiki-tag">COMING SOON</span></div>
+                <div class="wiki-card-tags"><span class="wiki-tag">PvP</span><span class="wiki-tag">LIVE</span></div>
                 <div class="wiki-card-body">
-                    The PvP layer of Alien Legends — players pit their teams against each other for rankings and seasonal rewards. Arenas are <strong>not yet available in Open Alpha</strong>; format, ranking structure, and rewards will be documented at launch.
+                    The PvP layer of Alien Legends. Enter an arena, view a snapshot of the defenders, select your squad and send your team in. Unlike dungeons, if you lose you must leave — the arena is inaccessible again until you win a different arena fight (or some days pass).<br><br>
+                    When you win, one of your victorious fighters is stationed as a new defender, replacing the fighter who has defended the longest. That fighter cannot be used elsewhere while defending. Winning also earns <strong>mining power</strong> from a separate arena mining pool.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ON LOSS</span><span class="wiki-stat-value">Must vacate until cooldown or win elsewhere</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ON WIN</span><span class="wiki-stat-value">1 fighter stationed as defender</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">REWARDS</span><span class="wiki-stat-value">Arena mining pool share</span></div>
                 </div>
             </div>
 
@@ -901,44 +978,41 @@
     <!-- ═══════════════════════════════════════════════════ DUNGEONS -->
     <section class="wiki-section" id="sec-dungeons">
         <div class="wiki-section-title">◌ DUNGEONS</div>
-        <p class="wiki-intro">Dungeons are the primary PvE content in Alien Legends. Send your Fighters in to defeat waves of enemies and earn experience, items, and rewards. Difficulty scales with dungeon tier.</p>
-        <!-- CONTENT: Replace placeholder cards with real dungeon types or tiers.
-             For each dungeon: name/tier, recommended fighter level/stats, enemy types if known, reward types.
-        -->
+        <p class="wiki-intro">Dungeons are the primary PvE content in Alien Legends. Travel to a dungeon tile, select your squad and difficulty, and send your fighters in. The higher the dungeon's rating shown on the map, the better the TLM and Shard rewards for winning.</p>
+
         <div class="wiki-card-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
 
             <div class="wiki-card">
-                <div class="wiki-card-title">⚔ HOW TO RUN A DUNGEON</div>
+                <div class="wiki-card-title">⚙ PRE-COMBAT MATH</div>
                 <div class="wiki-card-tags"><span class="wiki-tag">MECHANICS</span></div>
                 <div class="wiki-card-body">
-                    1. <strong>Travel</strong> to the dungeon's planet/coordinates (costs Energy if off-planet).<br>
-                    2. <strong>Select your team</strong> of 5 fighters. Consider current Weather and enemy element type.<br>
-                    3. <strong>Enter</strong> — costs <strong>10 Energy</strong>. Battle resolves automatically based on fighter stats.<br>
-                    4. Collect rewards from the <strong>dual reward pool</strong> (player pool + building owner share).
+                    Before a fight starts, the exact values for that combat are calculated. Fighters don't have fixed stats — each has a <strong>range</strong> for Health, Damage, Windup, Cooldown, and Taunt. One value is randomly selected from each range at the start of every fight.<br><br>
+                    On top of that, all buffs and debuffs from both teams are applied before the first action. This means every fight plays out slightly differently, even with the same team.
                 </div>
             </div>
 
             <div class="wiki-card">
-                <div class="wiki-card-title">📈 DIFFICULTY TIERS &amp; XP</div>
-                <div class="wiki-card-tags"><span class="wiki-tag">PROGRESSION</span></div>
+                <div class="wiki-card-title">◌ DUNGEON FUNCTIONALITY</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">HOW TO PLAY</span></div>
                 <div class="wiki-card-body">
-                    Dungeons scale across multiple difficulty tiers. Each step up in difficulty awards <strong>+5 XP</strong> per run and a more valuable reward pool. Running the highest tier your team can reliably clear is the most efficient path to levelling fighters. Attempting a tier above your team's power will result in a loss and reduced rewards.
+                    Move to a dungeon tile, select your combatants and a difficulty. Enemies are drawn randomly from the top of the leaderboard — the higher the difficulty, the harder the fight and the greater the rewards. Difficulty works like fighter level and can go above level 10. Dungeons at difficulty below level 5 have reduced enemy strength.<br><br>
+                    <strong>One dungeon can only be cleared once per day</strong> — choose your difficulty wisely.
                 </div>
                 <div class="wiki-card-stats">
                     <div class="wiki-stat-row"><span class="wiki-stat-label">ENTRY COST</span><span class="wiki-stat-value">10 Energy (all tiers)</span></div>
-                    <div class="wiki-stat-row"><span class="wiki-stat-label">XP SCALING</span><span class="wiki-stat-value">+5 XP per tier step</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">LIMIT</span><span class="wiki-stat-value">1 clear per dungeon / day</span></div>
                 </div>
             </div>
 
             <div class="wiki-card">
-                <div class="wiki-card-title">🌦 WEATHER SYSTEM</div>
-                <div class="wiki-card-tags"><span class="wiki-tag">STRATEGY</span></div>
+                <div class="wiki-card-title">📈 DIFFICULTY &amp; XP</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">PROGRESSION</span></div>
                 <div class="wiki-card-body">
-                    A planetwide <strong>Weather</strong> system rotates element buffs continuously. For example, "Gem Weather" grants all Gem-element attacks a significant damage bonus (up to +35%). Always check the current weather before committing your team — swapping in fighters whose element matches the current weather can dramatically improve your run outcome.
+                    Higher difficulty awards more XP to participating fighters and increases the reward pool. Winning also earns <strong>dungeon mining points</strong> based on your selected mining gear, the dungeon's rating, and the difficulty level cleared. You also earn <strong>leaderboard points</strong> for each dungeon level cleared, with daily rewards for top positions.
                 </div>
                 <div class="wiki-card-stats">
-                    <div class="wiki-stat-row"><span class="wiki-stat-label">ELEMENTS</span><span class="wiki-stat-value">Air · Fire · Gem · Metal · Nature</span></div>
-                    <div class="wiki-stat-row"><span class="wiki-stat-label">WEATHER BUFF</span><span class="wiki-stat-value">Up to +35% dmg</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">XP SCALING</span><span class="wiki-stat-value">+5 XP per tier step</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">MINING POINTS</span><span class="wiki-stat-value">Based on gear · rating · difficulty</span></div>
                 </div>
             </div>
 
@@ -946,10 +1020,10 @@
                 <div class="wiki-card-title">💰 REWARDS</div>
                 <div class="wiki-card-tags"><span class="wiki-tag">LOOT</span></div>
                 <div class="wiki-card-body">
-                    Each dungeon run draws from a <strong>dual reward pool</strong>: the player earns Coins and potentially Gems, while a share also flows to the dungeon building's owner. Higher difficulty tiers and more player traffic through a dungeon increase the overall pool. Running regularly on a high-traffic dungeon maximises both your payout and the building owner's income.
+                    Each dungeon run draws from a <strong>dual reward pool</strong>: the player earns TLM, Shards, and Credits, while a share also flows to the building owner. Higher difficulty and more player traffic increase the overall pool. Running regularly on a high-traffic dungeon maximises both your payout and the landowner's passive income.
                 </div>
                 <div class="wiki-card-stats">
-                    <div class="wiki-stat-row"><span class="wiki-stat-label">PLAYER REWARDS</span><span class="wiki-stat-value">Coins · Gems (higher tiers)</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">PLAYER REWARDS</span><span class="wiki-stat-value">TLM · Shards · Credits</span></div>
                     <div class="wiki-stat-row"><span class="wiki-stat-label">BUILDING SHARE</span><span class="wiki-stat-value">Yes — passive for landowner</span></div>
                 </div>
             </div>
@@ -962,8 +1036,7 @@
     <!-- ═══════════════════════════════════════════════════ TAVERNS -->
     <section class="wiki-section" id="sec-taverns">
         <div class="wiki-section-title">⬡ TAVERNS</div>
-        <p class="wiki-intro">Taverns serve as social hubs and secondary activity centres in Alien Legends. Fighters can rest here to recover, take on special quests, or compete in smaller-scale contests.</p>
-        <div class="wiki-intro">Taverns are where you find and recruit new fighters. Each one is tied to a specific land plot and planet — you must travel there to use it. Fighter availability differs between taverns, so visiting multiple can help you find the fighter type you need.</div>
+        <p class="wiki-intro">Taverns are where you find and recruit new fighters. Each one is tied to a specific land plot and planet — you must travel there to use it. Upon visiting a highlighted tavern with an applicant inside, you can see all details about your potential new fighter.</p>
 
         <div class="wiki-card-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
 
@@ -973,29 +1046,64 @@
             </div>
 
             <div class="wiki-card">
-                <div class="wiki-card-title">🃏 STEP 2 — REVEAL</div>
-                <div class="wiki-card-body">Pay <strong>Coins</strong> to reveal up to <strong>3 fighter cards</strong>. Each revealed card shows the fighter's class, race, element, rarity, and stats. You're not committed yet — you can look before you decide whether to hire.</div>
+                <div class="wiki-card-title">👁 STEP 2 — INSPECT</div>
+                <div class="wiki-card-body">When a tavern has an applicant inside, you can view all details about the potential fighter — class, race, element, rarity, and full stats — before committing anything. If interested, you can hire them immediately for <strong>100 Energy</strong>.</div>
                 <div class="wiki-card-stats">
-                    <div class="wiki-stat-row"><span class="wiki-stat-label">COST</span><span class="wiki-stat-value">Coins</span></div>
-                    <div class="wiki-stat-row"><span class="wiki-stat-label">CARDS SHOWN</span><span class="wiki-stat-value">Up to 3</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">DIRECT HIRE</span><span class="wiki-stat-value">100 Energy</span></div>
                 </div>
             </div>
 
             <div class="wiki-card">
-                <div class="wiki-card-title">✅ STEP 3 — HIRE</div>
-                <div class="wiki-card-body">Select one of the revealed fighters and pay <strong>100 Energy</strong> to hire them. Only one hire is permitted per Tavern per day. If you walk away without hiring, you may need to refresh the page before the Tavern resets for your next visit.</div>
+                <div class="wiki-card-title">🎲 STEP 3 — THE SIDE GAME</div>
+                <div class="wiki-card-body">
+                    Instead of paying full price, you can play a <strong>side game</strong> to reduce the one-time hire cost. The applicant has criteria they want their new employer to meet. Present up to <strong>three Alien Worlds NFTs</strong> you own and try to fulfill as many of their requirements as possible — the more you satisfy, the bigger the discount.
+                </div>
                 <div class="wiki-card-stats">
-                    <div class="wiki-stat-row"><span class="wiki-stat-label">HIRE COST</span><span class="wiki-stat-value">100 Energy</span></div>
-                    <div class="wiki-stat-row"><span class="wiki-stat-label">LIMIT</span><span class="wiki-stat-value">1 per tavern / day</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">NFTs PRESENTABLE</span><span class="wiki-stat-value">Up to 3</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">LIMIT</span><span class="wiki-stat-value">1 hire per tavern / day</span></div>
                 </div>
             </div>
 
             <div class="wiki-card">
                 <div class="wiki-card-title">🎯 FILTER CRITERIA</div>
                 <div class="wiki-card-body">
-                    Taverns can have <strong>filter criteria</strong> set by their owner that provide a hire discount when matched. Criteria include:<br><br>
+                    Tavern owners can set <strong>filter criteria</strong> that reward matching players with a hire discount. Criteria include:<br><br>
                     <strong>Schema · Rarity · Shine · Element · Type · Race · Stat thresholds</strong><br><br>
-                    If your selected fighter meets the active filter, the hire costs less. Check criteria before choosing which fighter to hire — sometimes a less ideal fighter that matches the filter is the better economic choice.
+                    Check the active filter before deciding which fighter to hire — sometimes a less ideal fighter that matches the filter is the better economic choice.
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <hr class="wiki-divider">
+
+    <!-- ═══════════════════════════════════════════════════ WEATHER -->
+    <section class="wiki-section" id="sec-weather">
+        <div class="wiki-section-title">🌦 WEATHER</div>
+        <p class="wiki-intro">All fights are subject to the current weather effects, which are shown before you enter a fight. Weather per building changes once per day. Effects range from minor buffs — like increased damage or reduced haste for a few fighters — all the way to total game-changers. Weather tends to be weakest in dungeons and strongest in the weekly tournament.</p>
+
+        <div class="wiki-card-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">⚡ HOW WEATHER WORKS</div>
+                <div class="wiki-card-body">
+                    Before entering any fight, the active weather effects for that building are displayed. Effects apply to one or more elements and can include damage bonuses, haste reductions, defence changes, and more. Always check the weather and adjust your team accordingly — the right element matchup under favourable weather can decide the fight.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">CHANGES</span><span class="wiki-stat-value">Once per day per building</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ELEMENTS</span><span class="wiki-stat-value">Air · Fire · Gem · Metal · Nature · Neutral</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">📊 WEATHER INTENSITY</div>
+                <div class="wiki-card-body">
+                    Weather effects scale with the type of content. <strong>Dungeons</strong> have the mildest weather effects, making them a safer environment to ignore weather. <strong>Arenas</strong> have moderate effects. The <strong>weekly tournament</strong> has the strongest weather of all — teams not built around the current weather will be at a significant disadvantage.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">WEAKEST</span><span class="wiki-stat-value">Dungeons</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">STRONGEST</span><span class="wiki-stat-value">Weekly Tournament</span></div>
                 </div>
             </div>
 
@@ -1006,15 +1114,50 @@
 
     <!-- ═══════════════════════════════════════════════════ ASCENSION -->
     <section class="wiki-section" id="sec-ascension">
-        <div class="wiki-section-title">✦ ASCENSION</div>
-        <p class="wiki-intro">At Level 10, a Fighter can undergo <strong>Ascension</strong> — a prestige mechanic that resets their level but permanently unlocks new abilities and significantly raises their long-term power ceiling. Ascending is a major strategic decision: the fighter becomes temporarily weaker, but the unlocked abilities can be game-changing.</p>
-        <!-- CONTENT: Replace the pending badge with:
-             - Exact requirements to trigger Ascension
-             - What happens to stats on reset
-             - What new abilities are unlocked (one wiki-card per ability or ascension tier is recommended)
-             - Strategic tips: when is it worth ascending?
-        -->
-        <span class="content-pending">◌ CONTENT PENDING — supply Ascension requirements, stat reset details, ability unlocks, and strategy tips</span>
+        <div class="wiki-section-title">✦ FIGHTER PROGRESSION &amp; ASCENSION</div>
+        <p class="wiki-intro">Fighters begin at <strong>Level 1</strong> when recruited. Winning dungeon fights earns them XP, and once they have enough they can be levelled up — all the way to the cap of <strong>Level 10</strong>, at which point Ascension becomes available.</p>
+
+        <div class="wiki-card-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">📈 LEVELLING UP</div>
+                <div class="wiki-card-body">
+                    Fighters earn XP from winning dungeon fights, with more XP awarded at higher difficulty levels. Once enough XP has accumulated you can manually level the fighter up. This increases their stat ranges and unlocks more powerful ability scaling. The maximum level before Ascension is <strong>Level 10</strong>.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">MAX LEVEL</span><span class="wiki-stat-value">10 (before ascension)</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">XP SOURCE</span><span class="wiki-stat-value">Dungeon wins · scales with difficulty</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">✦ ASCENSION</div>
+                <div class="wiki-card-body">
+                    At Level 10, a fighter can Ascend. Most ascensions grant a small but <strong>permanent</strong> increase to stats. The <strong>fifth ascension</strong> is special — it unlocks the fighter's <strong>third ability</strong>. In theory, the number of ascensions per fighter is unlimited, so repeated ascending continues to grow a fighter's power ceiling over time.
+                </div>
+                <div class="wiki-card-stats">
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ASCENSION 5</span><span class="wiki-stat-value">Unlocks 3rd ability</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">ALL OTHERS</span><span class="wiki-stat-value">Permanent stat increase</span></div>
+                    <div class="wiki-stat-row"><span class="wiki-stat-label">LIMIT</span><span class="wiki-stat-value">Unlimited</span></div>
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">💸 WAGES &amp; AGING</div>
+                <div class="wiki-card-body">
+                    Fighters expect to be paid regularly. If you fail to pay wages for too long, the fighter will eventually <strong>leave without compensation</strong>. Separately, fighters grow older over time — their stats slowly decline as they age. Both mechanics incentivise active roster management and keeping fighters productive.
+                </div>
+            </div>
+
+            <div class="wiki-card">
+                <div class="wiki-card-title">🏆 WEEKLY TOURNAMENT</div>
+                <div class="wiki-card-tags"><span class="wiki-tag">COMING SOON</span></div>
+                <div class="wiki-card-body">
+                    Weekly tournaments are planned for later in Open Alpha or towards the end of it. They represent the highest-stakes PvP competition in Alien Legends, with the strongest weather effects of any game mode. Details on format and rewards will be added when available.
+                </div>
+            </div>
+
+        </div>
     </section>
 
 </div><!-- /wiki-main -->
@@ -1143,7 +1286,7 @@
     };
 
     // IntersectionObserver: update active pill as sections scroll into view
-    var sectionIds = ['overview','races','classes','stats','buildings','dungeons','taverns','ascension'];
+    var sectionIds = ['overview','menu','races','classes','stats','buildings','dungeons','taverns','weather','ascension'];
     var pills = document.querySelectorAll('.section-pill');
     var observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
