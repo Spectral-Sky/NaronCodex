@@ -367,6 +367,25 @@
         .wt-rank-img { width: 44px; height: auto; display: block; }
         .wt-rank-label { font-family: 'Courier New', monospace; font-size: 0.65em; color: #888; letter-spacing: 1.5px; text-align: center; }
         .wt-rank-arrow { color: rgba(232,160,32,0.4); font-size: 0.85em; flex-shrink: 0; }
+        /* Legend account block */
+        .wt-legend-block {
+            margin: 24px 0; padding: 20px 24px;
+            background: rgba(232,160,32,0.05);
+            border: 1px solid rgba(232,160,32,0.35);
+            border-radius: 6px;
+        }
+        .wt-legend-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+        .wt-legend-icon { width: 48px; height: 48px; object-fit: contain; flex-shrink: 0; }
+        .wt-legend-title {
+            font-family: 'Courier New', monospace; font-size: 1em; font-weight: bold;
+            color: var(--theme-color); letter-spacing: 3px;
+        }
+        .wt-legend-tiers { font-size: 0.75em; color: #888; letter-spacing: 1px; margin-top: 4px; }
+        .wt-legend-list {
+            margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 10px;
+        }
+        .wt-legend-list li { color: #b8c8d8; line-height: 1.6; font-size: 0.9em; }
+        .wt-asterisk { color: var(--theme-color); font-weight: bold; }
 
         /* ── ARTICLE MARQUEE ────────────────────────────────────────────────────── */
         .article-marquee-outer {
@@ -1393,7 +1412,7 @@
                 <div class="wt-currency-card">
                     <img src="Ale%20images/credits.png" alt="Credits" class="wt-currency-icon">
                     <div class="wt-currency-name">CREDITS</div>
-                    <div class="wt-currency-desc">In-game currency for revealing fighters at taverns, paying wages, and levelling up. Earned from dungeon runs and selling fighters.</div>
+                    <div class="wt-currency-desc">In-game currency for revealing fighters at taverns<a href="#legend-account" style="color:var(--theme-color);text-decoration:none;">*</a>, paying wages, and levelling up. Earned from dungeon runs and selling fighters.</div>
                 </div>
                 <div class="wt-currency-card">
                     <img src="Ale%20images/energy.png" alt="Energy" class="wt-currency-icon">
@@ -1404,6 +1423,23 @@
             <div class="wt-img-slot">
                 <img src="Ale%20images/2.png" alt="The Shop"
                      onerror="this.closest('.wt-img-slot').style.display='none'">
+            </div>
+
+            <!-- ── LEGEND ACCOUNT ──────────────────────────────────────────────── -->
+            <div class="wt-legend-block" id="legend-account">
+                <div class="wt-legend-header">
+                    <img src="Ale%20images/legendaccount.svg" alt="Legend Account" class="wt-legend-icon">
+                    <div>
+                        <div class="wt-legend-title">LEGEND ACCOUNT</div>
+                        <div class="wt-legend-tiers">Available in 1 month · 3 month · 6 month</div>
+                    </div>
+                </div>
+                <ul class="wt-legend-list">
+                    <li>Claim <strong>full rewards</strong> instead of the 10% limit on trial accounts</li>
+                    <li><strong>Auto-reveal fighters instantly and for free</strong> whenever you visit a tavern <span class="wt-asterisk">*</span></li>
+                    <li>Every day, stake a significant amount of <strong>CPU for you</strong> if needed</li>
+                    <li>Gain <strong>1,000 daily Energy</strong> in the shop for free <em>(10× the trial amount)</em></li>
+                </ul>
             </div>
 
             <!-- ── STEP 3 ───────────────────────────────────────────────────────── -->
