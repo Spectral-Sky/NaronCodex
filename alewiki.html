@@ -280,6 +280,79 @@
         }
         .wt-img-slot img { display: block; width: 100%; height: auto; }
 
+        /* ── WALKTHROUGH STEP ELEMENTS ───────────────────────────────────────── */
+        .wt-video-wrap {
+            margin: 24px 0 28px; border: 1px solid rgba(232,160,32,0.2);
+            background: #000; overflow: hidden; border-radius: 4px;
+        }
+        .wt-video { display: block; width: 100%; height: auto; max-height: 70vh; }
+        .wt-step {
+            display: flex; align-items: center; gap: 16px;
+            margin: 44px 0 16px; padding-bottom: 10px;
+            border-bottom: 1px solid rgba(232,160,32,0.25);
+        }
+        .wt-step-num {
+            font-family: 'Courier New', monospace; font-size: 2em; font-weight: bold;
+            color: rgba(232,160,32,0.3); line-height: 1; flex-shrink: 0; letter-spacing: 2px;
+        }
+        .wt-step-title {
+            font-family: 'Courier New', monospace; font-size: 1.05em; font-weight: bold;
+            color: var(--theme-color); letter-spacing: 3px; text-transform: uppercase;
+        }
+        .wt-text { color: #b8c8d8; line-height: 1.75; margin-bottom: 18px; }
+        .wt-subheading {
+            font-family: 'Courier New', monospace; font-size: 0.85em; font-weight: bold;
+            color: var(--theme-color); letter-spacing: 2px; margin: 36px 0 14px;
+            padding-left: 10px; border-left: 3px solid var(--theme-color);
+        }
+        .wt-building-badge {
+            display: inline-block; padding: 6px 18px; margin-bottom: 14px;
+            background: rgba(232,160,32,0.08); border: 1px solid rgba(232,160,32,0.35);
+            border-radius: 4px; color: var(--theme-color);
+            font-family: 'Courier New', monospace; font-size: 0.85em;
+            letter-spacing: 2px; font-weight: bold;
+        }
+        .wt-currency-row {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px; margin: 18px 0;
+        }
+        .wt-currency-card {
+            background: rgba(8,16,40,0.75); border: 1px solid rgba(232,160,32,0.2);
+            border-radius: 6px; padding: 18px 14px; text-align: center;
+        }
+        .wt-currency-icon { display: block; width: 52px; height: 52px; object-fit: contain; margin: 0 auto 10px; }
+        .wt-currency-name {
+            font-family: 'Courier New', monospace; font-size: 0.8em; font-weight: bold;
+            color: var(--theme-color); letter-spacing: 2px; margin-bottom: 8px;
+        }
+        .wt-currency-desc { color: #9ab0c8; font-size: 0.8em; line-height: 1.55; }
+        .wt-stat-color-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px; margin: 16px 0;
+        }
+        .wt-stat-color-item {
+            display: flex; align-items: flex-start; gap: 12px;
+            background: rgba(8,16,40,0.6); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 5px; padding: 12px 14px;
+        }
+        .wt-stat-dot {
+            width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 3px;
+        }
+        .wt-stat-color-name {
+            font-family: 'Courier New', monospace; font-size: 0.78em;
+            font-weight: bold; letter-spacing: 2px; margin-bottom: 4px;
+        }
+        .wt-stat-color-desc { color: #9ab0c8; font-size: 0.76em; line-height: 1.5; }
+        .wt-rank-strip {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+            background: rgba(8,16,40,0.6); border: 1px solid rgba(232,160,32,0.15);
+            border-radius: 6px; padding: 20px; margin: 16px 0;
+        }
+        .wt-rank-item { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 60px; }
+        .wt-rank-img { width: 44px; height: auto; display: block; }
+        .wt-rank-label { font-family: 'Courier New', monospace; font-size: 0.65em; color: #888; letter-spacing: 1.5px; text-align: center; }
+        .wt-rank-arrow { color: rgba(232,160,32,0.4); font-size: 0.85em; flex-shrink: 0; }
+
         /* ── ARTICLE MARQUEE ────────────────────────────────────────────────────── */
         .article-marquee-outer {
             overflow: hidden;
@@ -1250,18 +1323,199 @@
         <section class="wiki-section" id="sec-walkthrough">
             <div class="wiki-section-title">◈ ALIEN LEGENDS WALKTHROUGH</div>
             <div class="wt-wip">⚒ WORK IN PROGRESS — more steps and images coming soon</div>
+
+            <!-- ── INTRO VIDEO ─────────────────────────────────────────────────── -->
+            <div class="wt-video-wrap">
+                <video controls playsinline class="wt-video" src="Ale%20images/onoros%20walk.mov">
+                    <p style="color:#888;padding:20px;text-align:center;">Your browser does not support this video format.</p>
+                </video>
+            </div>
+
             <div class="wiki-intro">
                 Welcome to <strong>Alien Legends (ALE)</strong>! You are among the first explorers to walk the lands of Alien Worlds in the search of glory. Landowners will construct a building on their land to enable explorers to recruit, train, and compete with their fighters in search of grand rewards. Here you will find the process to begin your journey, and it starts now. In this walkthrough, we'll lay out the basics of game flow first, touch on some strategies, and then get into some of the technical stuff.
             </div>
-            <!-- Image slot 1 — drop ALE_WT_1.png into the repo to make it appear here -->
+
+            <!-- ── STEP 1 ───────────────────────────────────────────────────────── -->
+            <div class="wt-step">
+                <div class="wt-step-num">01</div>
+                <div class="wt-step-title">TRAINER CREATION</div>
+            </div>
+            <div class="wt-text">
+                Head to <a href="https://alienlegends.io" target="_blank" style="color:var(--theme-color);">alienlegends.io</a> to begin. Your first task is to <strong>create your Trainer</strong> — the identity you'll carry with you across every planet, dungeon, and arena in the game. Choose wisely: your Trainer name becomes your in-game handle for Alien Legends.
+            </div>
             <div class="wt-img-slot">
-                <img src="ALE_WT_1.png" alt="Walkthrough Step 1"
+                <img src="Ale%20images/1.png" alt="Trainer Creation"
                      onerror="this.closest('.wt-img-slot').style.display='none'">
             </div>
-            <!-- Add more text paragraphs + wt-img-slot pairs below as the walkthrough grows -->
-            <div class="content-pending" style="margin-top:40px;">
+
+            <!-- ── STEP 2 ───────────────────────────────────────────────────────── -->
+            <div class="wt-step">
+                <div class="wt-step-num">02</div>
+                <div class="wt-step-title">STOCK UP AT THE SHOP</div>
+            </div>
+            <div class="wt-text">
+                Before heading out into the world, visit the <strong>Shop</strong> to stock up on supplies for the journey ahead. Three currencies power everything you do in Alien Legends:
+            </div>
+            <div class="wt-currency-row">
+                <div class="wt-currency-card">
+                    <img src="Ale%20images/gems.png" alt="Gems" class="wt-currency-icon">
+                    <div class="wt-currency-name">GEMS</div>
+                    <div class="wt-currency-desc">Premium currency. Used to purchase Credits, boost buildings, and accelerate progression. Earned from top-tier dungeons and special events.</div>
+                </div>
+                <div class="wt-currency-card">
+                    <img src="Ale%20images/credits.png" alt="Credits" class="wt-currency-icon">
+                    <div class="wt-currency-name">CREDITS</div>
+                    <div class="wt-currency-desc">In-game currency for revealing fighters at taverns, paying wages, and levelling up. Earned from dungeon runs and selling fighters.</div>
+                </div>
+                <div class="wt-currency-card">
+                    <img src="Ale%20images/energy.png" alt="Energy" class="wt-currency-icon">
+                    <div class="wt-currency-name">ENERGY</div>
+                    <div class="wt-currency-desc">Your action resource. Enter dungeons <strong>(10)</strong>, hire fighters at taverns <strong>(100)</strong>, and travel between planets. Regenerates over time.</div>
+                </div>
+            </div>
+            <div class="wt-img-slot">
+                <img src="Ale%20images/2.png" alt="The Shop"
+                     onerror="this.closest('.wt-img-slot').style.display='none'">
+            </div>
+
+            <!-- ── STEP 3 ───────────────────────────────────────────────────────── -->
+            <div class="wt-step">
+                <div class="wt-step-num">03</div>
+                <div class="wt-step-title">OPEN THE WORLD MAP</div>
+            </div>
+            <div class="wt-text">
+                With supplies in hand, open the <strong>World Map</strong>. This is your navigation hub — from here you can see all active buildings (Taverns, Dungeons, Arenas) spread across the planets of Alien Worlds. Spend Energy to travel between locations and discover what each planet has to offer.
+            </div>
+            <div class="wt-img-slot">
+                <img src="Ale%20images/world.png" alt="World Map"
+                     onerror="this.closest('.wt-img-slot').style.display='none'">
+            </div>
+
+            <!-- ── STEP 4 ───────────────────────────────────────────────────────── -->
+            <div class="wt-step">
+                <div class="wt-step-num">04</div>
+                <div class="wt-step-title">LAND ON A PLANET</div>
+            </div>
+            <div class="wt-text">
+                Your journey takes you across <strong>six planets</strong> from the Alien Worlds universe. Each planet hosts its own set of Taverns and Dungeons — some may have better fighters available, others more rewarding dungeons. Use your Energy to travel across the lands, searching far and wide for each fighter to understand the power that's inside.
+            </div>
+            <div class="wt-img-slot">
+                <img src="Ale%20images/3.PNG" alt="Planets of Alien Worlds"
+                     onerror="this.closest('.wt-img-slot').style.display='none'">
+            </div>
+
+            <!-- ── STEP 5 ───────────────────────────────────────────────────────── -->
+            <div class="wt-step">
+                <div class="wt-step-num">05</div>
+                <div class="wt-step-title">TAVERNS — RECRUIT YOUR TEAM</div>
+            </div>
+            <div><span class="wt-building-badge">⬡ TAVERN</span></div>
+            <div class="wt-text">
+                Taverns are your next stop. Here, a <strong>side game</strong> lets you choose relevant Alien Worlds NFTs from your wallet to lower the hire cost in Energy for the fighter currently available. You can inspect the fighter's full stats before committing — but the more fighters you assemble, the stronger your team! Hire them on and move to the next Tavern to keep building your roster. Remember: <strong>fighters are randomly generated</strong>, with random stat rolls, class, race, and element.
+            </div>
+            <div class="wt-img-slot">
+                <img src="Ale%20images/4.png" alt="Tavern — Recruit a Fighter"
+                     onerror="this.closest('.wt-img-slot').style.display='none'">
+            </div>
+
+            <!-- ── STATS GUIDE ──────────────────────────────────────────────────── -->
+            <div class="wt-subheading">◉ READING YOUR FIGHTER'S STATS</div>
+            <div class="wt-text">
+                Every fighter card shows their core combat stats. Here's what each one means at a glance:
+            </div>
+            <div class="wt-stat-color-grid">
+                <div class="wt-stat-color-item">
+                    <div class="wt-stat-dot" style="background:#ffe040;box-shadow:0 0 8px #ffe040aa;"></div>
+                    <div>
+                        <div class="wt-stat-color-name" style="color:#ffe040;">DAMAGE</div>
+                        <div class="wt-stat-color-desc">Base damage dealt per attack. <strong>Higher is better.</strong></div>
+                    </div>
+                </div>
+                <div class="wt-stat-color-item">
+                    <div class="wt-stat-dot" style="background:#ff4444;box-shadow:0 0 8px #ff4444aa;"></div>
+                    <div>
+                        <div class="wt-stat-color-name" style="color:#ff5555;">HEALTH</div>
+                        <div class="wt-stat-color-desc">Total damage the fighter can absorb before defeat. <strong>Higher is better.</strong></div>
+                    </div>
+                </div>
+                <div class="wt-stat-color-item">
+                    <div class="wt-stat-dot" style="background:#50ff50;box-shadow:0 0 8px #50ff50aa;"></div>
+                    <div>
+                        <div class="wt-stat-color-name" style="color:#50ff50;">COOLDOWN</div>
+                        <div class="wt-stat-color-desc">Wait time between attacks. <strong>Lower is better</strong> — faster re-activation.</div>
+                    </div>
+                </div>
+                <div class="wt-stat-color-item">
+                    <div class="wt-stat-dot" style="background:#4169e1;box-shadow:0 0 8px #4169e1aa;"></div>
+                    <div>
+                        <div class="wt-stat-color-name" style="color:#6688ff;">WINDUP</div>
+                        <div class="wt-stat-color-desc">Attack order — who moves first. <strong>Lower is better</strong> — strikes earlier.</div>
+                    </div>
+                </div>
+                <div class="wt-stat-color-item">
+                    <div class="wt-stat-dot" style="background:#9955cc;box-shadow:0 0 8px #9955ccaa;"></div>
+                    <div>
+                        <div class="wt-stat-color-name" style="color:#bb77ff;">TAUNT</div>
+                        <div class="wt-stat-color-desc">How much enemy attention this fighter draws. <strong>Higher is better</strong> for tanks.</div>
+                    </div>
+                </div>
+                <div class="wt-stat-color-item">
+                    <div class="wt-stat-dot" style="background:#999;box-shadow:0 0 8px #999a;"></div>
+                    <div>
+                        <div class="wt-stat-color-name" style="color:#aaa;">TARGET</div>
+                        <div class="wt-stat-color-desc">Enemy targeting behaviour for this fighter's attacks.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="wt-subheading">◉ STAT RANKS — HOW STRONG IS THIS STAT?</div>
+            <div class="wt-text">
+                Stat values don't mean much in isolation — what matters is how they compare to all fighters of the same class and race. The rank icons show where a stat falls in that distribution, from exceptional to low:
+            </div>
+            <div class="wt-rank-strip">
+                <div class="wt-rank-item">
+                    <img src="Ale%20images/goldup.png" alt="Gold Up" class="wt-rank-img">
+                    <div class="wt-rank-label">EXCEPTIONAL</div>
+                </div>
+                <div class="wt-rank-arrow">▶</div>
+                <div class="wt-rank-item">
+                    <img src="Ale%20images/green2u.png" alt="Green 2 Up" class="wt-rank-img">
+                    <div class="wt-rank-label">GREAT</div>
+                </div>
+                <div class="wt-rank-arrow">▶</div>
+                <div class="wt-rank-item">
+                    <img src="Ale%20images/green1u.png" alt="Green 1 Up" class="wt-rank-img">
+                    <div class="wt-rank-label">GOOD</div>
+                </div>
+                <div class="wt-rank-arrow">▶</div>
+                <div class="wt-rank-item">
+                    <img src="Ale%20images/middle.png" alt="Middle" class="wt-rank-img">
+                    <div class="wt-rank-label">AVERAGE</div>
+                </div>
+                <div class="wt-rank-arrow">▶</div>
+                <div class="wt-rank-item">
+                    <img src="Ale%20images/red1d.png" alt="Red 1 Down" class="wt-rank-img">
+                    <div class="wt-rank-label">BELOW AVG</div>
+                </div>
+                <div class="wt-rank-arrow">▶</div>
+                <div class="wt-rank-item">
+                    <img src="Ale%20images/red2d.png" alt="Red 2 Down" class="wt-rank-img">
+                    <div class="wt-rank-label">LOW</div>
+                </div>
+            </div>
+
+            <!-- ── STEP 6 — COMING SOON ────────────────────────────────────────── -->
+            <div class="wt-step">
+                <div class="wt-step-num">06</div>
+                <div class="wt-step-title">DUNGEONS — COMING NEXT</div>
+            </div>
+            <div class="wt-text">
+                Once your team is assembled, it's time to enter the <strong>Dungeons</strong> — the heart of Alien Legends combat. More on this soon.
+            </div>
+            <div class="content-pending" style="margin-top:32px;">
                 ◌ Additional walkthrough steps will appear here
             </div>
+
         </section>
     </div>
 </div><!-- /page-pane-walkthrough -->
