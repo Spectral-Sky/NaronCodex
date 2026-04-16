@@ -367,6 +367,17 @@
         .wt-rank-img { width: 44px; height: auto; display: block; }
         .wt-rank-label { font-family: 'Courier New', monospace; font-size: 0.65em; color: #888; letter-spacing: 1.5px; text-align: center; }
         .wt-rank-arrow { color: rgba(232,160,32,0.4); font-size: 0.85em; flex-shrink: 0; }
+        /* Tips grid */
+        .wt-tips-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 10px; margin: 16px 0 32px;
+        }
+        .wt-tip {
+            background: rgba(8,16,40,0.6); border: 1px solid rgba(232,160,32,0.12);
+            border-left: 3px solid rgba(232,160,32,0.4);
+            border-radius: 4px; padding: 12px 14px;
+            color: #9ab0c8; font-size: 0.82em; line-height: 1.6;
+        }
         /* Legend account block */
         .wt-legend-block {
             margin: 24px 0; padding: 20px 24px;
@@ -668,62 +679,62 @@
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/world.png" alt="World Map">
                 <div class="menu-card-label">World Map</div>
-                <div class="menu-card-desc">Explore the world map to find and travel to buildings — Taverns, Dungeons, and Arenas — across all planets in the Alien Worlds universe.</div>
+                <div class="menu-card-desc">The main map. Travel between lands and planets to access buildings. This will be where trainers spend most of their time.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/coin.png" alt="Shop">
                 <div class="menu-card-label">Shop</div>
-                <div class="menu-card-desc">The general in-game shop. Spend Credits to buy fighters, items, and upgrades.</div>
+                <div class="menu-card-desc">Purchase various items to use in Alien Legends — Gems (premium currency), Credits (the main currency for most in-game purchases), Energy (required for every action as a trainer), and account upgrades from Trial to Legendary status.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/leaderboard.png" alt="Leaderboards">
                 <div class="menu-card-label">Leaderboards</div>
-                <div class="menu-card-desc">View current player rankings across dungeons and arenas. Top leaderboard positions earn daily rewards — check regularly to track your standing.</div>
+                <div class="menu-card-desc">An ongoing Dungeon leaderboard runs at all times with prizes to claim. There are also time-limited Arena domination leaderboards that pay out after the event ends.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/sword.png" alt="My Fighters">
                 <div class="menu-card-label">My Fighters</div>
-                <div class="menu-card-desc">View and manage your full fighter roster. Check each fighter's level, stats, abilities, element, and wage status. Assign fighters to dungeon or arena runs from here.</div>
+                <div class="menu-card-desc">A page to manage your fighters. View detailed stats, mark fighters for easier recognition, level them up once they gain enough experience, and pay or sell them.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/ascension.png" alt="Ascension">
                 <div class="menu-card-label">Ascension</div>
-                <div class="menu-card-desc">Ascend fighters who have reached Level 10. Each ascension grants a permanent stat increase. The 5th ascension is special — it unlocks the fighter's third ability. Ascensions are unlimited.</div>
+                <div class="menu-card-desc">Raise the stats of a fighter once they reach max level.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/quests.png" alt="Quests">
                 <div class="menu-card-label">Quests</div>
-                <div class="menu-card-desc">Complete daily and special quests for Credits, XP, and other rewards. Check here regularly to stay on top of available objectives.</div>
+                <div class="menu-card-desc">Complete daily, weekly &amp; monthly tasks. Always useful to visit and receive your quests before doing anything else.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/candle.png" alt="Candle">
                 <div class="menu-card-label">Candle</div>
-                <div class="menu-card-desc">◌ Details coming soon.</div>
+                <div class="menu-card-desc">If you have already cleared the specific achievement required, you can participate in the reward pool of the day to earn rewards.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/tournament.png" alt="Tournament">
                 <div class="menu-card-label">Tournament</div>
-                <div class="menu-card-desc">Weekly tournament — the highest-stakes PvP mode in the game, with the strongest weather effects of any content type. Coming later in Open Alpha.</div>
+                <div class="menu-card-desc"><em>Not available in Open Alpha.</em> The big weekly Tournament with exceptional fame and rewards for winners.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/market.png" alt="Market">
                 <div class="menu-card-label">Market</div>
-                <div class="menu-card-desc">Browse and trade items and resources with other players through the in-game marketplace.</div>
+                <div class="menu-card-desc"><em>Not available in Open Alpha.</em> Enables buying and selling of fighters between trainers.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/my-land.png" alt="My Lands">
                 <div class="menu-card-label">My Lands</div>
-                <div class="menu-card-desc">Landowners can view and manage their Alien Worlds land plots, and configure Taverns and Dungeons for other players to visit and earn from.</div>
+                <div class="menu-card-desc">If you own at least one AW land NFT, this is where you can construct and manage your buildings and earn from the actions of trainers on your lands.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/settings.png" alt="Trainer">
                 <div class="menu-card-label">Trainer</div>
-                <div class="menu-card-desc">Configure your trainer profile, account settings, and preferences.</div>
+                <div class="menu-card-desc">Here you can find settings, equip tools, achievements, mining and more.</div>
             </div>
             <div class="menu-card" onclick="this.classList.toggle('expanded')">
                 <img class="menu-card-icon" src="Ale%20images/card.png" alt="Farming">
                 <div class="menu-card-label">Farming</div>
-                <div class="menu-card-desc">Manage your TLM farming operations across your Alien Worlds land plots.</div>
+                <div class="menu-card-desc">An optional staking subgame where you can stake AW NFTs (tools, crew, and arms) to earn a share of the Credits pool over time.</div>
             </div>
         </div>
     </section>
@@ -751,17 +762,17 @@
             <div class="wiki-card">
                 <img class="wiki-card-icon" src="Ale%20images/gems.png" alt="Gems">
                 <div class="wiki-card-title">GEMS</div>
-                <div class="wiki-card-body">Premium currency. Can be used to purchase Credits, boost buildings, and accelerate progression. Earned from top-tier dungeon pools and special events.</div>
+                <div class="wiki-card-body">Premium currency. Used to purchase Credits, and stake Crew, Arms and Tools NFTs to passively mine Credits in Staking.</div>
             </div>
             <div class="wiki-card">
                 <img class="wiki-card-icon" src="Ale%20images/credits.png" alt="Credits">
                 <div class="wiki-card-title">CREDITS</div>
-                <div class="wiki-card-body">In-game currency for revealing fighters at taverns, paying wages, and levelling up. Earned from dungeon runs and selling fighters.</div>
+                <div class="wiki-card-body">In-game currency for revealing fighters at taverns<a href="#legend-account" style="color:var(--theme-color);text-decoration:none;">*</a>, paying fighters with "Payday", levelling them up, and boosting lands. Earned from selling fighters.</div>
             </div>
             <div class="wiki-card">
                 <img class="wiki-card-icon" src="Ale%20images/energy.png" alt="Energy">
                 <div class="wiki-card-title">ENERGY</div>
-                <div class="wiki-card-body">The main action resource — used for everything. Enter a dungeon (<strong>10 Energy</strong>), hire a fighter at a tavern (<strong>100 Energy</strong>), and travel between planets to reach buildings on other worlds. Regenerates over time.</div>
+                <div class="wiki-card-body">Your action resource. Enter dungeons (<strong>10</strong>), hire fighters at taverns (<strong>100</strong>), and travel between planets. Regenerates over time.</div>
             </div>
         </div>
     </section>
@@ -1407,12 +1418,12 @@
                 <div class="wt-currency-card">
                     <img src="Ale%20images/gems.png" alt="Gems" class="wt-currency-icon">
                     <div class="wt-currency-name">GEMS</div>
-                    <div class="wt-currency-desc">Premium currency. Used to purchase Credits, boost buildings, and accelerate progression. Earned from top-tier dungeons and special events.</div>
+                    <div class="wt-currency-desc">Premium currency. Used to purchase Credits, and stake Crew, Arms and Tools NFTs to passively mine Credits in Staking.</div>
                 </div>
                 <div class="wt-currency-card">
                     <img src="Ale%20images/credits.png" alt="Credits" class="wt-currency-icon">
                     <div class="wt-currency-name">CREDITS</div>
-                    <div class="wt-currency-desc">In-game currency for revealing fighters at taverns<a href="#legend-account" style="color:var(--theme-color);text-decoration:none;">*</a>, paying wages, and levelling up. Earned from dungeon runs and selling fighters.</div>
+                    <div class="wt-currency-desc">In-game currency for revealing fighters at taverns<a href="#legend-account" style="color:var(--theme-color);text-decoration:none;">*</a>, paying fighters with "Payday", levelling them up, and boosting lands. Earned from selling fighters.</div>
                 </div>
                 <div class="wt-currency-card">
                     <img src="Ale%20images/energy.png" alt="Energy" class="wt-currency-icon">
@@ -1560,6 +1571,27 @@
                     <img src="Ale%20images/red2d.png" alt="Red 2 Down" class="wt-rank-img">
                     <div class="wt-rank-label">LOW</div>
                 </div>
+            </div>
+
+            <!-- ── TIPS & NOTES ────────────────────────────────────────────────── -->
+            <div class="wt-subheading">◉ TIPS &amp; NOTES</div>
+            <div class="wt-tips-grid">
+                <div class="wt-tip">You get free Energy in the Shop every day (resets at UTC midnight).</div>
+                <div class="wt-tip">Trial Account status limits you to claiming 10% of your potential rewards. Upgrade to Legend to claim in full.</div>
+                <div class="wt-tip">To start a fight in Dungeon or Arena you need at least 5 Alien Legends fighters + one Crew and one Arms NFT from Alien Worlds.</div>
+                <div class="wt-tip">AW Crew &amp; Arms form your sixth fighter — their abilities and stats are based on your choice of NFT.</div>
+                <div class="wt-tip">Enemy teams in Dungeon have 5 fighters (not 6) up to difficulty level 4.</div>
+                <div class="wt-tip">Winning a Dungeon gives leaderboard points equal to the difficulty level you selected.</div>
+                <div class="wt-tip">The Dungeon leaderboard decays by 10% each day.</div>
+                <div class="wt-tip">The more Arenas you defend simultaneously, the greater your domination rewards per Arena.</div>
+                <div class="wt-tip">As you buy Gems in the Shop, a portion of your spending increases the future reward pool of Alien Legends.</div>
+                <div class="wt-tip">As fighters age, they get weaker.</div>
+                <div class="wt-tip">Staking or unstaking in Farming automatically triggers a claim.</div>
+                <div class="wt-tip">Equip better Tools to increase reward power from Dungeon and Arena victories.</div>
+                <div class="wt-tip">Most abilities can vary greatly in strength — two fighters with the same ability may have very different versions.</div>
+                <div class="wt-tip">Click a fighter's marker in My Fighters to see their full details.</div>
+                <div class="wt-tip">There is no feature in Alien Legends requiring you to stake NFTs outside of Farming.</div>
+                <div class="wt-tip">Quests reset daily, weekly, and monthly — always claim your active quests before playing.</div>
             </div>
 
             <!-- ── STEP 5 — COMING SOON ────────────────────────────────────────── -->
