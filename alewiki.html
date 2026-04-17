@@ -51,9 +51,19 @@
             background-image: radial-gradient(circle at 50% 30%, #070d1a 0%, #03060f 80%);
             color: #c8d8f0;
             font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+            font-size: 18px;
             margin: 0; padding: 0; min-height: 100vh;
             display: flex; flex-direction: column;
         }
+        .font-size-btns { display:flex; gap:4px; align-items:center; }
+        .font-size-btn {
+            background: transparent; color: #888;
+            border: 1px solid rgba(232,160,32,0.25); border-radius: 4px;
+            padding: 4px 10px; font-family: 'Courier New', monospace;
+            font-size: 0.75em; font-weight: bold; letter-spacing: 1px;
+            cursor: crosshair; transition: all 0.2s; line-height: 1;
+        }
+        .font-size-btn:hover { color: var(--theme-color); border-color: var(--theme-color); }
         a, button { cursor: crosshair !important; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #03060f; }
@@ -551,7 +561,13 @@
         <h1>◈ ALIEN LEGENDS WIKI</h1>
         <p>RACES · CLASSES · STATS · BUILDINGS · ASCENSION</p>
     </div>
-    <span class="status-alpha">OPEN ALPHA</span>
+    <div style="display:flex;align-items:center;gap:10px;">
+        <div class="font-size-btns">
+            <button class="font-size-btn" onclick="adjustFontSize(-1)" title="Decrease font size">A−</button>
+            <button class="font-size-btn" onclick="adjustFontSize(1)" title="Increase font size">A+</button>
+        </div>
+        <span class="status-alpha">OPEN ALPHA</span>
+    </div>
 </div>
 
 <!-- ══ ARTICLE MARQUEE ════════════════════════════════════════════════════════ -->
@@ -1768,6 +1784,20 @@
         })();
     })();
 // ── END HEADER PLANET ────────────────────────────────────────────────────────────
+})();
+
+window.adjustFontSize = function(delta) {
+    var current = parseFloat(getComputedStyle(document.body).fontSize) || 18;
+    var next = Math.min(26, Math.max(14, current + delta));
+    document.body.style.fontSize = next + 'px';
+    try { localStorage.setItem('naron_wiki_fontsize', next); } catch(e) {}
+};
+// restore saved font size
+(function() {
+    try {
+        var saved = localStorage.getItem('naron_wiki_fontsize');
+        if (saved) document.body.style.fontSize = parseFloat(saved) + 'px';
+    } catch(e) {}
 })();
 </script>
 </body>
