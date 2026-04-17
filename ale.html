@@ -279,6 +279,11 @@
         .dial-label { font-family:'Courier New',monospace; font-size:0.75em; font-weight:bold; letter-spacing:2px; }
         .dial-label-tlm    { color:#e8a020; }
         .dial-label-shards { color:#9b4dca; }
+        .dial-side { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:72px; }
+        .dial-currency-icon { width:48px; height:48px; object-fit:contain; }
+        .dial-pct { font-family:'Courier New',monospace; font-size:1.3em; font-weight:bold; letter-spacing:1px; }
+        .dial-pct-tlm    { color:#e8a020; text-shadow:0 0 10px rgba(232,160,32,0.5); }
+        .dial-pct-shards { color:#9b4dca; text-shadow:0 0 10px rgba(155,77,202,0.5); }
         #settings-dial { cursor:grab; display:block; touch-action:none; }
         #settings-dial:active { cursor:grabbing; }
         .settings-save-btn {
@@ -479,14 +484,21 @@
             <div class="settings-panel">
                 <h2>⚙ LANDOWNER SHARE</h2>
                 <p class="settings-desc">
-                    Set the percentage of rewards that go to you as the landowner in TLM.<br>
-                    The remaining percentage goes toward Shard rewards.<br>
-                    Fully left = 100% TLM &nbsp;·&nbsp; Fully right = 0% TLM (all Shards).
+                    Set your TLM reward share. The remainder goes to Shards.<br>
+                    Turn left for more TLM · Turn right for more Shards.
                 </p>
                 <div class="dial-wrap">
-                    <span class="dial-label dial-label-tlm">TLM</span>
+                    <div class="dial-side">
+                        <img src="https://alienlegends.io/assets/icons/tlm.png" alt="TLM" class="dial-currency-icon">
+                        <span class="dial-label dial-label-tlm">TLM</span>
+                        <span class="dial-pct dial-pct-tlm" id="settings-tlm-pct">50%</span>
+                    </div>
                     <canvas id="settings-dial" width="220" height="220"></canvas>
-                    <span class="dial-label dial-label-shards">SHARDS</span>
+                    <div class="dial-side">
+                        <img src="Shards.png" alt="Shards" class="dial-currency-icon">
+                        <span class="dial-label dial-label-shards">SHARDS</span>
+                        <span class="dial-pct dial-pct-shards" id="settings-shards-pct">50%</span>
+                    </div>
                 </div>
                 <button class="settings-save-btn" id="settings-save-btn" onclick="saveShareSettings()">SAVE</button>
                 <div class="settings-status" id="settings-status"></div>
@@ -947,19 +959,16 @@
 // ── SETTINGS DIAL ────────────────────────────────────────────────────────────
 (function() {
     var D2R = Math.PI / 180;
-    var START_DEG = -135, END_DEG = 135, RANGE_DEG = 270;
-    var START_RAD = START_DEG * D2R, END_RAD = END_DEG * D2R;
+    // Dial rotated 90° CCW: START=135° (lower-left), END=45° (lower-right)
+    // Arc travels clockwise from 135° → left → top → right → 45° (270° sweep)
+    // Dead zone: bottom gap between 45° and 135°
+    var START_DEG = 135, END_DEG = 45, RANGE_DEG = 270;
     var dialValue = 50;
     var dragging = false;
 
     function valueToAngle(v) {
-        // v=100 (full TLM) → START, v=0 (full Shards) → END
-        return (START_DEG + (100 - v) / 100 * RANGE_DEG) * D2R;
-    }
-
-    function angleDegToValue(deg) {
-        var clamped = Math.max(START_DEG, Math.min(END_DEG, deg));
-        return Math.round(100 - (clamped - START_DEG) / RANGE_DEG * 100);
+        // v=100 (full TLM) → 135°,  v=0 (full Shards) → 135°+270°=405°≡45°
+        return ((START_DEG + (100 - v) / 100 * RANGE_DEG) % 360) * D2R;
     }
 
     function lerpColor(t) {
@@ -978,21 +987,22 @@
         var cx = W / 2, cy = H / 2;
         var R = 80, TW = 16;
         var knob = valueToAngle(v);
+        var startRad = START_DEG * D2R, endRad = END_DEG * D2R;
 
         ctx.clearRect(0, 0, W, H);
 
-        // ── Background track
+        // ── Background track (135° → 45° clockwise = 270° arc)
         ctx.beginPath();
-        ctx.arc(cx, cy, R, START_RAD, END_RAD);
+        ctx.arc(cx, cy, R, startRad, endRad, false);
         ctx.strokeStyle = 'rgba(255,255,255,0.07)';
         ctx.lineWidth = TW + 2;
         ctx.lineCap = 'butt';
         ctx.stroke();
 
-        // ── Yellow arc — TLM portion (START to knob)
+        // ── Yellow arc — TLM (135° → knob, clockwise)
         if (v > 0) {
             ctx.beginPath();
-            ctx.arc(cx, cy, R, START_RAD, knob);
+            ctx.arc(cx, cy, R, startRad, knob, false);
             ctx.strokeStyle = '#e8a020';
             ctx.lineWidth = TW;
             ctx.lineCap = 'butt';
@@ -1002,10 +1012,10 @@
             ctx.shadowBlur = 0;
         }
 
-        // ── Purple arc — Shard portion (knob to END)
+        // ── Purple arc — Shards (knob → 45°, clockwise)
         if (v < 100) {
             ctx.beginPath();
-            ctx.arc(cx, cy, R, knob, END_RAD);
+            ctx.arc(cx, cy, R, knob, endRad, false);
             ctx.strokeStyle = '#9b4dca';
             ctx.lineWidth = TW;
             ctx.lineCap = 'butt';
@@ -1029,7 +1039,7 @@
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // ── Centre value
+        // ── Centre value (interpolated colour)
         var col = lerpColor(v / 100);
         ctx.font = 'bold 40px "Courier New",monospace';
         ctx.textAlign = 'center';
@@ -1037,11 +1047,15 @@
         ctx.fillStyle = col;
         ctx.shadowBlur = 10;
         ctx.shadowColor = col;
-        ctx.fillText(v, cx, cy - 8);
+        ctx.fillText(v, cx, cy);
         ctx.shadowBlur = 0;
-        ctx.font = '9px "Courier New",monospace';
-        ctx.fillStyle = '#4a6070';
-        ctx.fillText('TLM  SHARE', cx, cy + 16);
+    }
+
+    function updateSideLabels() {
+        var tlm = document.getElementById('settings-tlm-pct');
+        var shard = document.getElementById('settings-shards-pct');
+        if (tlm)   tlm.textContent   = dialValue + '%';
+        if (shard) shard.textContent = (100 - dialValue) + '%';
     }
 
     function getAngleDeg(canvas, e) {
@@ -1051,22 +1065,27 @@
         var scaleY = canvas.height / rect.height;
         var x = (src.clientX - rect.left) * scaleX - canvas.width  / 2;
         var y = (src.clientY - rect.top)  * scaleY - canvas.height / 2;
-        return Math.atan2(y, x) / D2R;
+        var deg = Math.atan2(y, x) / D2R;
+        return ((deg % 360) + 360) % 360; // normalise to [0, 360)
     }
 
     function applyAngle(deg) {
-        // Forbidden zone is > 135° or < -135° (the bottom gap)
-        // atan2 returns (-180, 180]; bottom-right gives >135, bottom-left <-135
-        if (deg > 135)  deg = 135;
-        if (deg < -135) deg = -135;
-        dialValue = angleDegToValue(deg);
+        // Offset from START (135°) going clockwise; valid = [0, 270]
+        var offset = ((deg - START_DEG) + 360) % 360;
+        if (offset > 270) {
+            // Dead zone — snap to nearest end
+            offset = (offset - 270) <= (360 - offset) ? 270 : 0;
+        }
+        dialValue = Math.round(100 - (offset / RANGE_DEG) * 100);
         drawDial(dialValue);
+        updateSideLabels();
     }
 
     function initDial() {
         var canvas = document.getElementById('settings-dial');
         if (!canvas) return;
         drawDial(dialValue);
+        updateSideLabels();
         canvas.addEventListener('mousedown',  function(e) { dragging = true; applyAngle(getAngleDeg(canvas, e)); });
         canvas.addEventListener('touchstart', function(e) { e.preventDefault(); dragging = true; applyAngle(getAngleDeg(canvas, e)); }, { passive: false });
         document.addEventListener('mousemove',  function(e) { if (dragging) applyAngle(getAngleDeg(canvas, e)); });
