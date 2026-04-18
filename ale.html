@@ -812,7 +812,7 @@
             // col indices: [0]=id [1]=name [2]=rarity [3]=shine [4]=race [5]=element [6]=hp [7]=dmg [8]=taunt [9]=windup [10]=cooldown [11-16]=res [17]=ability
             let html = `
                 <td>${row[0]}</td>
-                <td style="text-align:left;max-width:220px;">${emojifyAbility(row[17]) || ''}</td>
+                <td style="text-align:left;min-width:120px;max-width:200px;white-space:normal;word-break:break-word;font-size:0.82em;color:#a0b0c0;">${emojifyAbility(row[17]) || ''}</td>
                 <td>${imgHtml}</td>
                 <td style="font-weight:bold;color:var(--theme-color);text-align:left;">${row[1]}</td>
                 <td>${tag(row[2])}</td>
