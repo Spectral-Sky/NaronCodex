@@ -412,9 +412,9 @@
     <div class="tab-bar">
         <button class="tab-btn active" onclick="showTab('crew')">CREW</button>
         <button class="tab-btn" onclick="showTab('arms')">ARMS</button>
-        <button class="tab-btn" onclick="showTab('tools')">⚒ TOOLS</button>
-        <button class="tab-btn" onclick="showTab('minepower')">MINE POWER</button>
-        <button class="tab-btn" onclick="showTab('settings')">⚙ SETTINGS</button>
+        <button class="tab-btn" onclick="showTab('tools')">TOOLS</button>
+        <button class="tab-btn" onclick="showTab('farming')">FARMING</button>
+        <button class="tab-btn" onclick="showTab('settings')">SETTINGS</button>
     </div>
 
     <div id="tab-crew" class="tab-content active">
@@ -499,10 +499,10 @@
         </div>
     </div>
 
-    <div id="tab-minepower" class="tab-content">
+    <div id="tab-farming" class="tab-content">
         <div class="mp-section">
-            <h2>&#9889; Mine Power by Rarity &amp; Shine</h2>
-            <p>Alien Legends Mining Power value for each rarity / shine combination from Alien Worlds NFTs. Higher shine = higher mine power.</p>
+            <h2><img src="Ale%20images/card.png" alt="Farming" style="height:22px;vertical-align:middle;margin-right:8px;opacity:0.85;">Farming MP by Rarity &amp; Shine</h2>
+            <p>The Mining Power (MP) that Arms, Crew, and Tool NFTs contribute when staked in the <strong>Farming</strong> tab. MP determines your share of the Coins pool earned over time — higher rarity and shine yield greater Mining Power.</p>
             <table class="mp-table system-ready" id="mp-table"></table>
         </div>
     </div>
@@ -947,7 +947,7 @@
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-' + name).classList.add('active');
-        const label = name === 'minepower' ? 'mine' : name === 'tools' ? '⚒' : name;
+        const label = name;
         Array.from(document.querySelectorAll('.tab-btn')).find(b => b.textContent.toLowerCase().includes(label.toLowerCase())).classList.add('active');
     };
 
