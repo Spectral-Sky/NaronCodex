@@ -194,6 +194,12 @@
         .tag-legendary  { color: #ffcc00 !important; }
         .tag-mythical   { color: #ff6688 !important; }
 
+        .tag-stone      { color: #a0a0a0 !important; }
+        .tag-gold       { color: #e8c840 !important; }
+        .tag-stardust   { color: #88ccff !important; }
+        .tag-antimatter { color: #ff6688 !important; }
+        .tag-xdimension { color: #aa88ff !important; }
+
         .stat-health   { color: #66ff99 !important; font-weight: bold; }
         .stat-attack   { color: #ff4444 !important; font-weight: bold; }
         .stat-taunt    { color: #ffaa00 !important; font-weight: bold; }
@@ -404,35 +410,67 @@
     </div>
 
     <div class="tab-bar">
-        <button class="tab-btn active" onclick="showTab('arms')">⚔ ARMS</button>
-        <button class="tab-btn" onclick="showTab('crew')">CREW</button>
+        <button class="tab-btn active" onclick="showTab('crew')">CREW</button>
+        <button class="tab-btn" onclick="showTab('arms')">ARMS</button>
+        <button class="tab-btn" onclick="showTab('tools')">⚒ TOOLS</button>
         <button class="tab-btn" onclick="showTab('minepower')">MINE POWER</button>
         <button class="tab-btn" onclick="showTab('settings')">⚙ SETTINGS</button>
     </div>
 
-    <div id="tab-arms" class="tab-content active">
+    <div id="tab-crew" class="tab-content active">
+        <div class="grid-container">
+            <table class="waffle" id="crew-table">
+                <thead>
+                    <tr>
+                        <th class="live-header" onclick="sortTable('crew-table',0)">ID</th>
+                        <th class="live-header">ABILITY</th>
+                        <th class="live-header">IMG</th>
+                        <th class="live-header" onclick="sortTable('crew-table',3)">NAME</th>
+                        <th class="live-header" onclick="sortTable('crew-table',4)">RARITY</th>
+                        <th class="live-header" onclick="sortTable('crew-table',5)">SHINE</th>
+                        <th class="live-header" onclick="sortTable('crew-table',6)">RACE</th>
+                        <th class="live-header" onclick="sortTable('crew-table',7)">ELEMENT</th>
+                        <th class="live-header" onclick="sortTable('crew-table',8)">HP <span class="info-icon">ⓘ<span class="tooltip-box">Maximum hit points. Higher is better.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',9)">DMG <span class="info-icon">ⓘ<span class="tooltip-box">Base damage per attack. Higher is better.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',10)">TAUNT <span class="info-icon">ⓘ<span class="tooltip-box">Likelihood of being targeted. Higher = targeted more.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',11)">WINDUP <span class="info-icon">ⓘ<span class="tooltip-box">Initiative speed. Lower = attacks sooner.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',12)">COOLDOWN <span class="info-icon">ⓘ<span class="tooltip-box">Attack interval. Lower = attacks more frequently.</span></span></th>
+                        <th class="live-header" onclick="sortTable('crew-table',13)">FIRE</th>
+                        <th class="live-header" onclick="sortTable('crew-table',14)">NATURE</th>
+                        <th class="live-header" onclick="sortTable('crew-table',15)">AIR</th>
+                        <th class="live-header" onclick="sortTable('crew-table',16)">GEM</th>
+                        <th class="live-header" onclick="sortTable('crew-table',17)">METAL</th>
+                        <th class="live-header" onclick="sortTable('crew-table',18)">NEUTRAL</th>
+                    </tr>
+                </thead>
+                <tbody id="crew-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-arms" class="tab-content">
         <div class="grid-container">
             <table class="waffle" id="arms-table">
                 <thead>
                     <tr>
                         <th class="live-header" onclick="sortTable('arms-table',0)">ID</th>
-                        <th class="live-header">IMG</th>
-                        <th class="live-header" onclick="sortTable('arms-table',2)">NAME</th>
-                        <th class="live-header" onclick="sortTable('arms-table',3)">RARITY</th>
-                        <th class="live-header" onclick="sortTable('arms-table',4)">SHINE</th>
-                        <th class="live-header" onclick="sortTable('arms-table',5)">ELEMENT</th>
-                        <th class="live-header" onclick="sortTable('arms-table',6)">HP <span class="info-icon">ⓘ<span class="tooltip-box">Maximum hit points. Higher is better.</span></span></th>
-                        <th class="live-header" onclick="sortTable('arms-table',7)">DMG <span class="info-icon">ⓘ<span class="tooltip-box">Base damage per attack. Higher is better.</span></span></th>
-                        <th class="live-header" onclick="sortTable('arms-table',8)">TAUNT <span class="info-icon">ⓘ<span class="tooltip-box">Likelihood of being targeted. Higher = targeted more.</span></span></th>
-                        <th class="live-header" onclick="sortTable('arms-table',9)">WINDUP <span class="info-icon">ⓘ<span class="tooltip-box">Initiative speed. Lower = attacks sooner.</span></span></th>
-                        <th class="live-header" onclick="sortTable('arms-table',10)">COOLDOWN <span class="info-icon">ⓘ<span class="tooltip-box">Attack interval. Lower = attacks more frequently.</span></span></th>
-                        <th class="live-header" onclick="sortTable('arms-table',11)">FIRE</th>
-                        <th class="live-header" onclick="sortTable('arms-table',12)">NATURE</th>
-                        <th class="live-header" onclick="sortTable('arms-table',13)">AIR</th>
-                        <th class="live-header" onclick="sortTable('arms-table',14)">GEM</th>
-                        <th class="live-header" onclick="sortTable('arms-table',15)">METAL</th>
-                        <th class="live-header" onclick="sortTable('arms-table',16)">NEUTRAL</th>
                         <th class="live-header">ABILITY</th>
+                        <th class="live-header">IMG</th>
+                        <th class="live-header" onclick="sortTable('arms-table',3)">NAME</th>
+                        <th class="live-header" onclick="sortTable('arms-table',4)">RARITY</th>
+                        <th class="live-header" onclick="sortTable('arms-table',5)">SHINE</th>
+                        <th class="live-header" onclick="sortTable('arms-table',6)">ELEMENT</th>
+                        <th class="live-header" onclick="sortTable('arms-table',7)">HP <span class="info-icon">ⓘ<span class="tooltip-box">Maximum hit points. Higher is better.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',8)">DMG <span class="info-icon">ⓘ<span class="tooltip-box">Base damage per attack. Higher is better.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',9)">TAUNT <span class="info-icon">ⓘ<span class="tooltip-box">Likelihood of being targeted. Higher = targeted more.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',10)">WINDUP <span class="info-icon">ⓘ<span class="tooltip-box">Initiative speed. Lower = attacks sooner.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',11)">COOLDOWN <span class="info-icon">ⓘ<span class="tooltip-box">Attack interval. Lower = attacks more frequently.</span></span></th>
+                        <th class="live-header" onclick="sortTable('arms-table',12)">FIRE</th>
+                        <th class="live-header" onclick="sortTable('arms-table',13)">NATURE</th>
+                        <th class="live-header" onclick="sortTable('arms-table',14)">AIR</th>
+                        <th class="live-header" onclick="sortTable('arms-table',15)">GEM</th>
+                        <th class="live-header" onclick="sortTable('arms-table',16)">METAL</th>
+                        <th class="live-header" onclick="sortTable('arms-table',17)">NEUTRAL</th>
                     </tr>
                 </thead>
                 <tbody id="arms-tbody"></tbody>
@@ -440,33 +478,23 @@
         </div>
     </div>
 
-    <div id="tab-crew" class="tab-content">
+    <div id="tab-tools" class="tab-content">
         <div class="grid-container">
-            <table class="waffle" id="crew-table">
+            <table class="waffle system-ready" id="tools-table">
                 <thead>
                     <tr>
-                        <th class="live-header" onclick="sortTable('crew-table',0)">ID</th>
+                        <th class="live-header" onclick="sortTable('tools-table',0)">ID</th>
                         <th class="live-header">IMG</th>
-                        <th class="live-header" onclick="sortTable('crew-table',2)">NAME</th>
-                        <th class="live-header" onclick="sortTable('crew-table',3)">RARITY</th>
-                        <th class="live-header" onclick="sortTable('crew-table',4)">SHINE</th>
-                        <th class="live-header" onclick="sortTable('crew-table',5)">RACE</th>
-                        <th class="live-header" onclick="sortTable('crew-table',6)">ELEMENT</th>
-                        <th class="live-header" onclick="sortTable('crew-table',7)">HP <span class="info-icon">ⓘ<span class="tooltip-box">Maximum hit points. Higher is better.</span></span></th>
-                        <th class="live-header" onclick="sortTable('crew-table',8)">DMG <span class="info-icon">ⓘ<span class="tooltip-box">Base damage per attack. Higher is better.</span></span></th>
-                        <th class="live-header" onclick="sortTable('crew-table',9)">TAUNT <span class="info-icon">ⓘ<span class="tooltip-box">Likelihood of being targeted. Higher = targeted more.</span></span></th>
-                        <th class="live-header" onclick="sortTable('crew-table',10)">WINDUP <span class="info-icon">ⓘ<span class="tooltip-box">Initiative speed. Lower = attacks sooner.</span></span></th>
-                        <th class="live-header" onclick="sortTable('crew-table',11)">COOLDOWN <span class="info-icon">ⓘ<span class="tooltip-box">Attack interval. Lower = attacks more frequently.</span></span></th>
-                        <th class="live-header" onclick="sortTable('crew-table',12)">FIRE</th>
-                        <th class="live-header" onclick="sortTable('crew-table',13)">NATURE</th>
-                        <th class="live-header" onclick="sortTable('crew-table',14)">AIR</th>
-                        <th class="live-header" onclick="sortTable('crew-table',15)">GEM</th>
-                        <th class="live-header" onclick="sortTable('crew-table',16)">METAL</th>
-                        <th class="live-header" onclick="sortTable('crew-table',17)">NEUTRAL</th>
-                        <th class="live-header">ABILITY</th>
+                        <th class="live-header" onclick="sortTable('tools-table',2)">NAME</th>
+                        <th class="live-header" onclick="sortTable('tools-table',3)">RARITY</th>
+                        <th class="live-header" onclick="sortTable('tools-table',4)">SHINE</th>
+                        <th class="live-header" onclick="sortTable('tools-table',5)">SHARDS MP <span class="info-icon">ⓘ<span class="tooltip-box">Shards mine power — amount of Shards earned per mine.</span></span></th>
+                        <th class="live-header" onclick="sortTable('tools-table',6)">TLM MP <span class="info-icon">ⓘ<span class="tooltip-box">TLM mine power — amount of TLM earned per mine.</span></span></th>
+                        <th class="live-header" onclick="sortTable('tools-table',7)">LUCK <span class="info-icon">ⓘ<span class="tooltip-box">Luck stat. Affects chance of bonus rewards.</span></span></th>
+                        <th class="live-header" onclick="sortTable('tools-table',8)">EASE <span class="info-icon">ⓘ<span class="tooltip-box">Ease stat. Affects mining speed modifier.</span></span></th>
                     </tr>
                 </thead>
-                <tbody id="crew-tbody"></tbody>
+                <tbody id="tools-tbody"></tbody>
             </table>
         </div>
     </div>
@@ -729,7 +757,7 @@
 
     // ── SORT WEIGHTS ─────────────────────────────────────────────────────────────
     const RARITY_ORDER = { Abundant:0, Common:1, Rare:2, Epic:3, Legendary:4, Mythical:5 };
-    const SHINE_ORDER  = { Stone:0, Gold:1, Stardust:2, Antimatter:3, XDimension:4 };
+    const SHINE_ORDER  = { Stone:0, Gold:1, Stardust:2, Antimatter:3, XDimension:4, Xdimension:4 };
 
     function customWeight(v) {
         const r = RARITY_ORDER[v]; if (r !== undefined) return r;
@@ -784,6 +812,7 @@
             // col indices: [0]=id [1]=name [2]=rarity [3]=shine [4]=race [5]=element [6]=hp [7]=dmg [8]=taunt [9]=windup [10]=cooldown [11-16]=res [17]=ability
             let html = `
                 <td>${row[0]}</td>
+                <td style="text-align:left;max-width:220px;">${emojifyAbility(row[17]) || ''}</td>
                 <td>${imgHtml}</td>
                 <td style="font-weight:bold;color:var(--theme-color);text-align:left;">${row[1]}</td>
                 <td>${tag(row[2])}</td>
@@ -801,7 +830,6 @@
                 <td class="stat-res" style="color:#cc99ff">${n(row[14])}</td>
                 <td class="stat-res" style="color:#a0a0a0">${n(row[15])}</td>
                 <td class="stat-res" style="color:#4169e1">${n(row[16])}</td>
-                <td>${emojifyAbility(row[17]) || ''}</td>
             `;
             tr.innerHTML = html;
             tbody.appendChild(tr);
@@ -811,8 +839,41 @@
     function buildTables() {
         renderTable('arms-tbody', ALE_ARMS, false);
         renderTable('crew-tbody', ALE_CREW, true);
+        renderToolsTable();
         document.getElementById('arms-table').classList.add('system-ready');
         document.getElementById('crew-table').classList.add('system-ready');
+    }
+
+    function renderToolsTable() {
+        const tbody = document.getElementById('tools-tbody');
+        tbody.innerHTML = '';
+        const sorted = ALE_TOOLS.slice().sort((a, b) => {
+            const ra = RARITY_ORDER[a[2]] ?? 99, rb = RARITY_ORDER[b[2]] ?? 99;
+            if (ra !== rb) return ra - rb;
+            const sa = SHINE_ORDER[a[3]] ?? 99, sb = SHINE_ORDER[b[3]] ?? 99;
+            return sa - sb;
+        });
+        const tag = v => v ? `<span class="tag-${String(v).toLowerCase().replace(/[^a-z]/g,'')}">${v}</span>` : '-';
+        const n = v => (v !== '' && v !== undefined && v !== '0') ? v : (v === 0 || v === '0') ? '0' : '-';
+        sorted.forEach(row => {
+            if (!row[0]) return;
+            const tr = document.createElement('tr');
+            const cid = row[4];
+            const imgSrc = cid ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/'+cid)}&w=40&h=60&output=webp&fit=cover` : '';
+            const imgHtml = imgSrc ? `<img src="${imgSrc}" style="height:46px!important;width:auto!important;display:block;margin:0 auto;border-radius:4px;" loading="lazy" onerror="this.onerror=null;this.src='https://ipfs.io/ipfs/${cid}';">` : '';
+            tr.innerHTML = `
+                <td>${row[0]}</td>
+                <td>${imgHtml}</td>
+                <td style="font-weight:bold;color:var(--theme-color);text-align:left;">${row[1]}</td>
+                <td>${tag(row[2])}</td>
+                <td>${tag(row[3])}</td>
+                <td class="stat-attack">${row[5]}</td>
+                <td class="stat-health">${row[6]}</td>
+                <td>${row[7]}</td>
+                <td>${row[8]}</td>
+            `;
+            tbody.appendChild(tr);
+        });
     }
 
     // ── DECK & MARKET LOGIC ──────────────────────────────────────────────────────
@@ -886,13 +947,14 @@
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-' + name).classList.add('active');
-        Array.from(document.querySelectorAll('.tab-btn')).find(b => b.textContent.toLowerCase().includes(name === 'minepower' ? 'mine' : name)).classList.add('active');
+        const label = name === 'minepower' ? 'mine' : name === 'tools' ? '⚒' : name;
+        Array.from(document.querySelectorAll('.tab-btn')).find(b => b.textContent.toLowerCase().includes(label.toLowerCase())).classList.add('active');
     };
 
     window.filterTable = function() {
         const q = document.getElementById('searchInput').value.toLowerCase();
         const activeId = document.querySelector('.tab-content.active').id;
-        const map = { 'tab-arms': 'arms-tbody', 'tab-crew': 'crew-tbody' };
+        const map = { 'tab-arms': 'arms-tbody', 'tab-crew': 'crew-tbody', 'tab-tools': 'tools-tbody' };
         const tbodyId = map[activeId];
         if (!tbodyId) return;
         document.getElementById(tbodyId).querySelectorAll('tr').forEach(row => {
