@@ -860,8 +860,10 @@
             if (!row[0]) return;
             const tr = document.createElement('tr');
             const cid = row[4];
+            if (cid) ALE_IMG_CACHE[row[0]] = cid;
             const imgSrc = cid ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/'+cid)}&w=40&h=60&output=webp&fit=cover` : '';
             const imgHtml = imgSrc ? `<img src="${imgSrc}" style="height:46px!important;width:auto!important;display:block;margin:0 auto;border-radius:4px;" loading="lazy" onerror="this.onerror=null;this.src='https://ipfs.io/ipfs/${cid}';">` : '';
+            tr.onclick = () => openDeck(row[0], row[1], row[2], row[3], null);
             tr.innerHTML = `
                 <td>${row[0]}</td>
                 <td>${imgHtml}</td>
