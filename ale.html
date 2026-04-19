@@ -168,6 +168,13 @@
         td:last-child { max-width: 240px; white-space: normal !important; text-align:left; font-size: 0.8em !important; color: #a0b0c0; }
         td.ability-td { white-space: normal !important; word-break: break-word; font-size: 0.8em !important; color: #a0b0c0; text-align: left; min-width: 120px; max-width: 200px; }
 
+        /* ── WALLET SCAN ─────────────────────────────────────────────────────────── */
+        #scan-wallet-btn.scan-active { background: var(--theme-color); color: #000; border-color: var(--theme-color); }
+        .scan-divider-row td { white-space: normal !important; font-size: 0.8em !important; }
+        .scan-divider-btn { background: transparent; border: 1px solid rgba(232,160,32,0.35); color: #888; font-family: 'Courier New', monospace; font-size: 0.75em; letter-spacing: 1px; padding: 4px 16px; text-transform: uppercase; transition: all 0.2s; }
+        .scan-divider-btn:hover { color: var(--theme-color); border-color: var(--theme-color); }
+        .qty-badge-cell { display: inline-block; margin-left: 5px; background: var(--theme-color); color: #000; font-size: 0.68em; font-weight: bold; padding: 1px 5px; border-radius: 2px; vertical-align: middle; }
+
         .waffle tr { height: 52px !important; transition: background-color 0.1s; }
         .waffle tr:hover td { background-color: var(--theme-hover) !important; color: #fff !important; }
         .waffle img { height: 46px !important; width: auto !important; display: block; margin: 0 auto; object-fit: contain !important; border: none !important; cursor: pointer; border-radius:4px; }
@@ -402,6 +409,7 @@
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="SEARCH...">
                 <button class="cyber-btn" onclick="resetSort()">[ RESET SORT ]</button>
+                <button class="cyber-btn" id="scan-wallet-btn" onclick="scanWallet()" style="display:none;">[ ◈ SCAN WALLET ]</button>
             </div>
         </div>
         <div style="text-align:right;">
@@ -961,12 +969,14 @@
         const tbodyId = map[activeId];
         if (!tbodyId) return;
         document.getElementById(tbodyId).querySelectorAll('tr').forEach(row => {
+            if (row.classList.contains('scan-divider-row')) return;
             row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
         });
     };
 
     var _sortState = {};
     window.sortTable = function(tableId, colIdx) {
+        if (_walletScanActive) return;
         const tbl = document.getElementById(tableId);
         const tbody = tbl.querySelector('tbody');
         const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -1007,17 +1017,21 @@
 
     function checkWalletState() { updateWalletUI(localStorage.getItem('naron_wallet') || null); }
     function updateWalletUI(account) {
-        var btnA   = document.getElementById('wallet-connect-btn');
-        var btnAnc = document.getElementById('wallet-btn-anchor');
-        var btnWCC = document.getElementById('wallet-btn-wcc');
+        var btnA    = document.getElementById('wallet-connect-btn');
+        var btnAnc  = document.getElementById('wallet-btn-anchor');
+        var btnWCC  = document.getElementById('wallet-btn-wcc');
+        var btnScan = document.getElementById('scan-wallet-btn');
         if (account) {
-            if (btnA)   { btnA.textContent = '[ ' + account + ' ]'; btnA.style.display = ''; btnA.classList.add('logged-in'); }
-            if (btnAnc) btnAnc.style.display = 'none';
-            if (btnWCC) btnWCC.style.display = 'none';
+            if (btnA)    { btnA.textContent = '[ ' + account + ' ]'; btnA.style.display = ''; btnA.classList.add('logged-in'); }
+            if (btnAnc)  btnAnc.style.display = 'none';
+            if (btnWCC)  btnWCC.style.display = 'none';
+            if (btnScan) btnScan.style.display = '';
         } else {
-            if (btnA)   { btnA.style.display = 'none'; btnA.classList.remove('logged-in'); }
-            if (btnAnc) btnAnc.style.display = '';
-            if (btnWCC) btnWCC.style.display = '';
+            if (btnA)    { btnA.style.display = 'none'; btnA.classList.remove('logged-in'); }
+            if (btnAnc)  btnAnc.style.display = '';
+            if (btnWCC)  btnWCC.style.display = '';
+            if (btnScan) btnScan.style.display = 'none';
+            clearWalletScan();
         }
     }
     window.loginWithAnchor = async function() {
@@ -1042,6 +1056,7 @@
         }
         localStorage.removeItem('naron_wallet');
         if (wax) wax.userAccount = '';
+        clearWalletScan();
         checkWalletState();
     };
     window.toggleHamburger = function() {
@@ -1055,6 +1070,101 @@
         }
     });
     checkWalletState();
+
+    // ── WALLET SCAN ──────────────────────────────────────────────────────────────
+    var _walletScanActive = false;
+    var _ownedMap = {};
+
+    window.scanWallet = async function() {
+        const wallet = localStorage.getItem('naron_wallet');
+        if (!wallet) return;
+        const btn = document.getElementById('scan-wallet-btn');
+        if (_walletScanActive) { clearWalletScan(); return; }
+        btn.textContent = '[ ◈ SCANNING... ]';
+        btn.disabled = true;
+        try {
+            const owned = {};
+            let page = 1;
+            while (true) {
+                const res = await fetch(
+                    `https://wax.api.atomicassets.io/atomicassets/v1/assets?owner=${encodeURIComponent(wallet)}&collection_name=alien.worlds&schema_name=arms,crew,mining.tools&limit=1000&page=${page}`
+                );
+                const data = await res.json();
+                if (!data.success || !data.data || !data.data.length) break;
+                data.data.forEach(nft => {
+                    const tid = String(nft.template?.template_id || '');
+                    if (tid) owned[tid] = (owned[tid] || 0) + 1;
+                });
+                if (data.data.length < 1000) break;
+                page++;
+            }
+            _ownedMap = owned;
+            _walletScanActive = true;
+            applyWalletScan();
+            btn.textContent = '[ ◈ CLEAR SCAN ]';
+            btn.classList.add('scan-active');
+        } catch(e) {
+            btn.textContent = '[ ◈ SCAN WALLET ]';
+            console.error('Wallet scan failed:', e);
+        }
+        btn.disabled = false;
+    };
+
+    function applyWalletScan() {
+        ['crew-tbody', 'arms-tbody', 'tools-tbody'].forEach(tbodyId => {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
+            const rows = Array.from(tbody.querySelectorAll('tr:not(.scan-divider-row)'));
+            const owned = [], unowned = [];
+            rows.forEach(tr => {
+                const tid = String((tr.cells[0]?.textContent || '').trim());
+                const qty = _ownedMap[tid];
+                if (qty) {
+                    tr.cells[0].innerHTML = tid + `<span class="qty-badge-cell">×${qty}</span>`;
+                    owned.push(tr);
+                } else {
+                    unowned.push(tr);
+                }
+            });
+            const colCount = tbody.closest('table').querySelector('thead tr')?.querySelectorAll('th').length || 10;
+            tbody.innerHTML = '';
+            // Owned section header
+            const ownedHdr = document.createElement('tr');
+            ownedHdr.className = 'scan-divider-row';
+            ownedHdr.innerHTML = `<td colspan="${colCount}" style="color:var(--theme-color);font-family:'Courier New',monospace;letter-spacing:2px;padding:6px 14px!important;background:rgba(232,160,32,0.08)!important;">◈ YOUR COLLECTION — ${owned.length} card${owned.length !== 1 ? 's' : ''}</td>`;
+            tbody.appendChild(ownedHdr);
+            owned.forEach(tr => tbody.appendChild(tr));
+            // Unowned toggle row
+            const toggleRow = document.createElement('tr');
+            toggleRow.className = 'scan-divider-row';
+            toggleRow.innerHTML = `<td colspan="${colCount}" style="text-align:center;padding:8px!important;background:rgba(0,0,0,0.4)!important;"><button class="scan-divider-btn" onclick="toggleUnowned(this)">▼ SHOW UNOWNED (${unowned.length})</button></td>`;
+            tbody.appendChild(toggleRow);
+            unowned.forEach(tr => {
+                tr.classList.add('unowned-row');
+                tr.style.display = 'none';
+                tbody.appendChild(tr);
+            });
+        });
+    }
+
+    window.toggleUnowned = function(btn) {
+        const tbody = btn.closest('tbody');
+        if (!tbody) return;
+        const rows = tbody.querySelectorAll('tr.unowned-row');
+        const hiding = rows.length && rows[0].style.display !== 'none';
+        rows.forEach(tr => tr.style.display = hiding ? 'none' : '');
+        btn.textContent = hiding ? `▼ SHOW UNOWNED (${rows.length})` : `▲ HIDE UNOWNED (${rows.length})`;
+    };
+
+    function clearWalletScan() {
+        if (!_walletScanActive) return;
+        _walletScanActive = false;
+        _ownedMap = {};
+        buildTables();
+        loadTableImages();
+        const btn = document.getElementById('scan-wallet-btn');
+        if (btn) { btn.textContent = '[ ◈ SCAN WALLET ]'; btn.classList.remove('scan-active'); btn.disabled = false; }
+    }
 
     // ── INITIALIZE ───────────────────────────────────────────────────────────────
     buildMinePower();
