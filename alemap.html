@@ -104,6 +104,16 @@
         .title-bar h1 { color:var(--theme-color); font-family:'Courier New',monospace; font-size:1.1em; letter-spacing:4px; text-transform:uppercase; margin:0; text-shadow:0 0 8px var(--theme-color); }
         #player-pos-display { margin-left:auto; font-family:'Courier New',monospace; font-size:0.78em; color:#a09060; letter-spacing:1px; }
 
+        /* player data bar */
+        .player-data-bar { display:flex; align-items:stretch; flex-wrap:wrap; background:rgba(8,6,2,0.94); border-bottom:1px solid rgba(232,160,32,0.14); font-family:'Courier New',monospace; font-size:0.73em; }
+        .pd-block { display:flex; align-items:center; gap:7px; padding:7px 18px; border-right:1px solid rgba(232,160,32,0.1); white-space:nowrap; }
+        .pd-block:last-child { border-right:none; }
+        .pd-label { color:#485868; font-size:0.9em; letter-spacing:1px; text-transform:uppercase; }
+        .pd-value { color:#c8b060; font-weight:bold; letter-spacing:1px; }
+        .pd-tag-val { color:var(--theme-color); font-weight:bold; letter-spacing:2px; font-size:1.08em; text-shadow:0 0 6px rgba(232,160,32,0.4); }
+        .pd-legend-active { color:#50c870 !important; }
+        .pd-legend-inactive { color:#c05050 !important; }
+
         /* confirm mode toggle */
         .confirm-toggle-btn { background:transparent; border:1px solid rgba(64,192,80,0.55); color:#50b060; padding:4px 13px; font-family:'Courier New',monospace; font-size:0.72em; letter-spacing:1px; cursor:crosshair; transition:all 0.2s; border-radius:2px; white-space:nowrap; }
         .confirm-toggle-btn:hover { background:rgba(64,192,80,0.08); }
@@ -299,6 +309,18 @@
     <button class="planet-tab"        data-planet="veles"  onclick="switchPlanet('veles')">VELES</button>
 </div>
 
+<!-- ══ PLAYER DATA BAR ════════════════════════════════════════════════════ -->
+<div id="player-data-bar" class="player-data-bar" style="display:none;">
+    <div class="pd-block"><span class="pd-tag-val" id="pd-tag"></span></div>
+    <div class="pd-block"><span class="pd-label">Credits</span><span class="pd-value" id="pd-credits">—</span></div>
+    <div class="pd-block"><span class="pd-label">Gems</span><span class="pd-value" id="pd-gems">—</span></div>
+    <div class="pd-block"><span class="pd-label">AP</span><span class="pd-value" id="pd-ap">—</span></div>
+    <div class="pd-block"><span class="pd-label">Dungeons</span><span class="pd-value" id="pd-dungeons">—</span></div>
+    <div class="pd-block"><span class="pd-label">Arenas</span><span class="pd-value" id="pd-arenas">—</span></div>
+    <div class="pd-block"><span class="pd-label">Portals Used</span><span class="pd-value" id="pd-portals">—</span></div>
+    <div class="pd-block" id="pd-legend-block" style="display:none;"><span class="pd-value" id="pd-legend"></span></div>
+</div>
+
 <!-- ══ MAP AREA ═══════════════════════════════════════════════════════════ -->
 <div class="map-outer-wrap">
     <div class="map-scroll">
@@ -448,6 +470,7 @@
     var _routeRunning  = false;
     var _confirmMode   = true;   // true = show confirm strip; false = instant travel
     var _portalArt     = 'emoji'; // 'emoji' | 'image' | 'none'
+    var _playerData    = null;   // full players.ale row
 
     // ── PORTAL ART SELECTOR ──────────────────────────────────────────────────
     function getPortalIconHtml() {
@@ -793,8 +816,8 @@
         el.className = cls;
     }
 
-    // ── PLAYER POSITION ──────────────────────────────────────────────────────
-    async function fetchPlayerPos(wallet) {
+    // ── PLAYER DATA ──────────────────────────────────────────────────────────
+    async function fetchPlayerData(wallet) {
         try {
             var res = await fetch('https://wax.greymass.com/v1/chain/get_table_rows', {
                 method: 'POST',
@@ -806,7 +829,9 @@
             });
             var data = await res.json();
             if (data.rows && data.rows.length > 0 && data.rows[0].wallet === wallet) {
-                var row    = data.rows[0];
+                var row = data.rows[0];
+                _playerData = row;
+                // Position
                 var planet = normalizePlanet(row.planet);
                 if (planet) {
                     _playerPos = { planet: planet, x: row.x, y: row.y };
@@ -814,6 +839,10 @@
                     updatePlayerPosDisplay();
                     switchPlanet(planet);
                 }
+                // Populate tavern icons from active_taverns
+                populatePlayerLocations(row);
+                // Show player info bar
+                updatePlayerPanel(row);
             }
         } catch(e) { /* silent */ }
     }
@@ -835,6 +864,89 @@
         } else {
             el.textContent = '';
         }
+    }
+
+    // ── PLAYER LOCATION POPULATION ───────────────────────────────────────────
+    // Reads active_taverns from the players.ale row and stamps 🍺 icons on maps
+    function populatePlayerLocations(row) {
+        Object.keys(ALE_LOCATIONS).forEach(function(p) { ALE_LOCATIONS[p].taverns = []; });
+        if (row.active_taverns && row.active_taverns.length) {
+            row.active_taverns.forEach(function(t) {
+                var p = normalizePlanet(t.planet);
+                if (p && ALE_LOCATIONS[p]) {
+                    var dup = ALE_LOCATIONS[p].taverns.some(function(e) { return e.x === t.x && e.y === t.y; });
+                    if (!dup) ALE_LOCATIONS[p].taverns.push({ x: t.x, y: t.y });
+                }
+            });
+        }
+        // Re-render every already-built map so tavern icons appear
+        Object.keys(_rendered).forEach(function(planet) {
+            if (_rendered[planet]) {
+                _rendered[planet] = false;
+                if (planet === _activePlanet) buildMap(planet);
+            }
+        });
+    }
+
+    // ── PLAYER PANEL ─────────────────────────────────────────────────────────
+    function updatePlayerPanel(row) {
+        var bar = document.getElementById('player-data-bar');
+        if (!bar) return;
+
+        // Tag / name
+        var tagEl = document.getElementById('pd-tag');
+        if (tagEl) tagEl.textContent = row.playertag || row.wallet;
+
+        // activestats: credits, gems, action_points
+        var stats = row.activestats || {};
+        var setVal = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = Number(v || 0).toLocaleString(); };
+        setVal('pd-credits', stats.credits);
+        setVal('pd-gems',    stats.gems);
+        setVal('pd-ap',      stats.action_points);
+
+        // permstats: dungeons_played/won, arenas_played/won, portals_used
+        var perm = {};
+        if (row.permstats) {
+            row.permstats.forEach(function(s) { perm[s.first] = s.second; });
+        }
+        var dungEl = document.getElementById('pd-dungeons');
+        if (dungEl) dungEl.textContent = (perm['dungeons_won'] || 0) + ' / ' + (perm['dungeons_played'] || 0);
+        var arenaEl = document.getElementById('pd-arenas');
+        if (arenaEl) arenaEl.textContent = (perm['arenas_won'] || 0) + ' / ' + (perm['arenas_played'] || 0);
+        var portEl = document.getElementById('pd-portals');
+        if (portEl) portEl.textContent = (perm['portals_used'] || 0).toLocaleString();
+
+        // Legend access
+        var legendBlock = document.getElementById('pd-legend-block');
+        var legendEl    = document.getElementById('pd-legend');
+        var expiry      = row.legend_access_expiry;
+        if (expiry && expiry !== '1970-01-01T00:00:00') {
+            var expDate = new Date(expiry + 'Z');
+            var active  = expDate > new Date();
+            if (legendEl) {
+                legendEl.textContent = (active ? '🏆 LEGEND ' : '🏆 EXPIRED ') +
+                    expDate.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
+                legendEl.className = 'pd-value ' + (active ? 'pd-legend-active' : 'pd-legend-inactive');
+            }
+            if (legendBlock) legendBlock.style.display = '';
+        } else {
+            if (legendBlock) legendBlock.style.display = 'none';
+        }
+
+        bar.style.display = 'flex';
+    }
+
+    function clearPlayerData() {
+        _playerData = null;
+        Object.keys(ALE_LOCATIONS).forEach(function(p) { ALE_LOCATIONS[p].taverns = []; });
+        Object.keys(_rendered).forEach(function(planet) {
+            if (_rendered[planet]) {
+                _rendered[planet] = false;
+                if (planet === _activePlanet) buildMap(planet);
+            }
+        });
+        var bar = document.getElementById('player-data-bar');
+        if (bar) bar.style.display = 'none';
     }
 
     // ── ROUTE PLANNER ────────────────────────────────────────────────────────
@@ -932,7 +1044,7 @@
     function checkWalletState() {
         var account = localStorage.getItem('naron_wallet') || null;
         updateWalletUI(account);
-        if (account) fetchPlayerPos(account);
+        if (account) fetchPlayerData(account);
     }
 
     function updateWalletUI(account) {
@@ -949,6 +1061,7 @@
             if (btnWCC) btnWCC.style.display = '';
             _playerPos = null;
             updatePlayerPosDisplay();
+            clearPlayerData();
         }
     }
 
