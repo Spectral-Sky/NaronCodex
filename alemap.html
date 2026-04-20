@@ -54,7 +54,6 @@
         ::-webkit-scrollbar-thumb { background: #333; border: 1px solid var(--theme-color); }
         ::-webkit-scrollbar-thumb:hover { background: var(--theme-color); }
 
-        /* starfield */
         body::before {
             content: " "; position: fixed; top: 0; left: 0; width: 1px; height: 1px; z-index: -1;
             box-shadow: 5vw 10vh #fff, 15vw 25vh rgba(255,255,255,0.4), 25vw 5vh #fff, 35vw 45vh rgba(255,255,255,0.6),
@@ -66,7 +65,6 @@
         }
         @keyframes starlight { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.8; } }
 
-        /* click + glow */
         .click-effect { position:fixed; pointer-events:none; width:40px; height:40px; border:2px solid var(--theme-color); border-radius:50%; transform:translate(-50%,-50%); animation:clickPulse 0.4s ease-out forwards; z-index:2147483647; }
         @keyframes clickPulse { 0% { transform:translate(-50%,-50%) scale(0.2); opacity:1; } 100% { transform:translate(-50%,-50%) scale(2.5); opacity:0; } }
         #cursor-glow { position:fixed; top:-50px; left:-50px; width:70px; height:70px; border-radius:50%; background:var(--theme-color); filter:blur(35px); opacity:0.22; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); }
@@ -106,6 +104,12 @@
         .title-bar h1 { color:var(--theme-color); font-family:'Courier New',monospace; font-size:1.1em; letter-spacing:4px; text-transform:uppercase; margin:0; text-shadow:0 0 8px var(--theme-color); }
         #player-pos-display { margin-left:auto; font-family:'Courier New',monospace; font-size:0.78em; color:#a09060; letter-spacing:1px; }
 
+        /* confirm mode toggle */
+        .confirm-toggle-btn { background:transparent; border:1px solid rgba(64,192,80,0.55); color:#50b060; padding:4px 13px; font-family:'Courier New',monospace; font-size:0.72em; letter-spacing:1px; cursor:crosshair; transition:all 0.2s; border-radius:2px; white-space:nowrap; }
+        .confirm-toggle-btn:hover { background:rgba(64,192,80,0.08); }
+        .confirm-toggle-btn.off { border-color:rgba(180,90,90,0.55); color:#b06060; }
+        .confirm-toggle-btn.off:hover { background:rgba(180,90,90,0.08); }
+
         /* planet tabs */
         .planet-tabs-bar { display:flex; gap:2px; padding:10px 20px 0; background:#07060f; border-bottom:2px solid rgba(232,160,32,0.15); position:sticky; top:113px; z-index:4500; }
         .planet-tab { background:transparent; border:1px solid rgba(232,160,32,0.3); border-bottom:none; color:#777; padding:8px 22px 10px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.82em; letter-spacing:2px; text-transform:uppercase; cursor:crosshair; transition:all 0.2s; border-radius:4px 4px 0 0; position:relative; bottom:-2px; }
@@ -113,28 +117,48 @@
         .planet-tab.active { color:#000; background:var(--theme-color); border-color:var(--theme-color); }
 
         /* map area */
-        .map-outer-wrap { background:#07060f; padding:0 0 0 0; }
+        .map-outer-wrap { background:#07060f; }
         .map-scroll { overflow-x:auto; overflow-y:hidden; padding:0; }
-        .map-status-bar { display:flex; align-items:center; gap:20px; padding:6px 20px; background:rgba(0,0,0,0.6); border-bottom:1px solid rgba(232,160,32,0.1); font-family:'Courier New',monospace; font-size:0.78em; min-width:1200px; }
-        #coord-display { color:var(--theme-color); letter-spacing:1px; min-width:120px; }
+        .map-status-bar { display:flex; align-items:center; gap:16px; padding:6px 20px; background:rgba(0,0,0,0.6); border-bottom:1px solid rgba(232,160,32,0.1); font-family:'Courier New',monospace; font-size:0.78em; min-width:1260px; }
+        #coord-display { color:var(--theme-color); letter-spacing:1px; min-width:130px; }
         #active-planet-label { color:#a09060; letter-spacing:2px; }
         #portal-hint { color:#607080; font-size:0.9em; margin-left:auto; }
 
-        .ale-map { display:none; width:1200px; height:600px; background-size:cover; background-position:center; position:relative; }
+        /* ruler layout */
+        .map-ruler-outer { display:flex; flex-direction:row; min-width:1260px; }
+        .ruler-y { width:28px; padding-top:22px; display:flex; flex-direction:column; flex-shrink:0; background:rgba(0,0,0,0.35); border-right:1px solid rgba(232,160,32,0.08); }
+        .ruler-y .ruler-cell { height:30px; display:flex; align-items:center; justify-content:flex-end; padding-right:4px; font-size:8px; font-family:'Courier New',monospace; color:#3a5060; flex-shrink:0; line-height:1; }
+        .ruler-y .ruler-cell.marker { color:#607880; }
+        .map-right-col { display:flex; flex-direction:column; }
+        .ruler-x { display:flex; flex-direction:row; height:22px; background:rgba(0,0,0,0.35); border-bottom:1px solid rgba(232,160,32,0.08); }
+        .ruler-x .ruler-cell { width:30px; height:22px; display:flex; align-items:center; justify-content:center; font-size:8px; font-family:'Courier New',monospace; color:#3a5060; flex-shrink:0; line-height:1; }
+        .ruler-x .ruler-cell.marker { color:#607880; }
+        .maps-stack { width:1200px; position:relative; }
+
+        /* planet maps */
+        .ale-map { display:none; width:1200px; height:600px; background-size:cover; background-position:center; }
         .ale-map.active-map { display:grid; grid-template-columns:repeat(40, 30px); grid-template-rows:repeat(20, 30px); }
 
+        /* cells */
         .ale-cell { width:30px; height:30px; border:1px solid rgba(255,255,255,0.06); cursor:crosshair !important; transition:background 0.08s, border-color 0.08s; position:relative; }
         .ale-cell:hover { background:rgba(232,160,32,0.18); border-color:rgba(232,160,32,0.5); z-index:2; }
         .ale-cell.selected { background:rgba(232,160,32,0.15) !important; border-color:var(--theme-color) !important; box-shadow:inset 0 0 8px rgba(232,160,32,0.35); z-index:3; }
         .ale-portal { border-width:1px; }
-        .ale-me { background:rgba(232,160,32,0.2) !important; border-color:var(--theme-color) !important; z-index:4; }
-        .ale-me::after { content:'◈'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; color:var(--theme-color); text-shadow:0 0 6px var(--theme-color); pointer-events:none; }
 
-        /* portal tooltip */
-        #portal-tip { position:fixed; pointer-events:none; background:rgba(8,6,18,0.95); border:1px solid var(--theme-color); padding:4px 10px; font-family:'Courier New',monospace; font-size:0.72em; color:var(--theme-color); letter-spacing:1px; z-index:7000; white-space:nowrap; display:none; border-radius:3px; }
+        /* player marker */
+        .ale-me { background:rgba(232,160,32,0.15) !important; border-color:var(--theme-color) !important; z-index:4; }
+        .ale-me::after { content:'📍'; position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); font-size:15px; pointer-events:none; filter:drop-shadow(0 0 4px rgba(232,160,32,0.8)); }
+
+        /* cell icons (portals, dungeons, taverns, arenas) */
+        .cell-icon { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; display:flex; align-items:center; justify-content:center; width:22px; height:22px; }
+        .cell-icon img { width:22px; height:22px; opacity:0.88; }
+        .cell-icon-emoji { font-size:14px; line-height:1; }
+
+        /* hover tooltip */
+        #cell-tip { position:fixed; pointer-events:none; background:rgba(8,6,18,0.96); border:1px solid rgba(232,160,32,0.6); padding:4px 10px; font-family:'Courier New',monospace; font-size:0.72em; color:var(--theme-color); letter-spacing:1px; z-index:7000; white-space:nowrap; display:none; border-radius:3px; line-height:1.6; }
 
         /* confirm strip */
-        .confirm-strip { min-width:1200px; background:rgba(4,8,20,0.96); border-top:1px solid rgba(232,160,32,0.4); padding:10px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+        .confirm-strip { min-width:1260px; background:rgba(4,8,20,0.96); border-top:1px solid rgba(232,160,32,0.4); padding:10px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
         .confirm-strip.hidden { display:none; }
         #confirm-content { font-family:'Courier New',monospace; font-size:0.88em; color:#c8c0a0; flex:1; }
         #confirm-content strong { color:var(--theme-color); }
@@ -181,13 +205,13 @@
         /* legend */
         .map-legend { display:flex; gap:14px; flex-wrap:wrap; padding:10px 20px; background:#06050e; border-top:1px solid rgba(232,160,32,0.08); font-family:'Courier New',monospace; font-size:0.7em; }
         .legend-item { display:flex; align-items:center; gap:6px; color:#606070; }
-        .legend-swatch { width:14px; height:14px; border:1px solid; border-radius:2px; flex-shrink:0; }
+        .legend-swatch { width:16px; height:16px; border:1px solid; border-radius:2px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; }
     </style>
 </head>
 <body>
 
 <div id="cursor-glow"></div>
-<div id="portal-tip"></div>
+<div id="cell-tip"></div>
 
 <!-- ══ GLOBAL HEADER ══════════════════════════════════════════════════════ -->
 <header class="global-header">
@@ -237,7 +261,6 @@
     <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Navigation">&#9776;</button>
 </header>
 
-<!-- mobile nav -->
 <div id="nav-dropdown" class="mobile-nav">
     <a href="index.html" class="nav-btn">HUB</a>
     <a href="crew.worlds.html" class="nav-btn">CREW</a>
@@ -250,6 +273,7 @@
 <!-- ══ TITLE BAR ══════════════════════════════════════════════════════════ -->
 <div class="title-bar">
     <h1>⬡ ALIEN LEGENDS — TRAVEL MAP</h1>
+    <button id="confirm-toggle-btn" class="confirm-toggle-btn" onclick="toggleConfirmMode()">CONFIRM: ON</button>
     <span id="player-pos-display"></span>
 </div>
 
@@ -266,18 +290,32 @@
 <!-- ══ MAP AREA ═══════════════════════════════════════════════════════════ -->
 <div class="map-outer-wrap">
     <div class="map-scroll">
+
         <div class="map-status-bar">
             <span id="coord-display">X:— &nbsp;Y:—</span>
             <span id="active-planet-label">MAGOR</span>
             <span id="portal-hint"></span>
         </div>
 
-        <div id="map-magor"  class="ale-map active-map" style="background-image:url('planets/magor.jpg')"></div>
-        <div id="map-naron"  class="ale-map"            style="background-image:url('planets/naron.jpg')"></div>
-        <div id="map-eyeke"  class="ale-map"            style="background-image:url('planets/eyeke.jpg')"></div>
-        <div id="map-kavian" class="ale-map"            style="background-image:url('planets/kavian.jpg')"></div>
-        <div id="map-neri"   class="ale-map"            style="background-image:url('planets/neri.jpg')"></div>
-        <div id="map-veles"  class="ale-map"            style="background-image:url('planets/veles.jpg')"></div>
+        <div class="map-ruler-outer">
+            <!-- Y-axis ruler (left) -->
+            <div class="ruler-y" id="ruler-y"></div>
+
+            <div class="map-right-col">
+                <!-- X-axis ruler (top) -->
+                <div class="ruler-x" id="ruler-x"></div>
+
+                <!-- Planet maps -->
+                <div class="maps-stack">
+                    <div id="map-magor"  class="ale-map active-map" style="background-image:url('planets/magor.jpg')"></div>
+                    <div id="map-naron"  class="ale-map"            style="background-image:url('planets/naron.jpg')"></div>
+                    <div id="map-eyeke"  class="ale-map"            style="background-image:url('planets/eyeke.jpg')"></div>
+                    <div id="map-kavian" class="ale-map"            style="background-image:url('planets/kavian.jpg')"></div>
+                    <div id="map-neri"   class="ale-map"            style="background-image:url('planets/neri.jpg')"></div>
+                    <div id="map-veles"  class="ale-map"            style="background-image:url('planets/veles.jpg')"></div>
+                </div>
+            </div>
+        </div>
 
         <div id="confirm-strip" class="confirm-strip hidden">
             <div id="confirm-content"></div>
@@ -286,13 +324,17 @@
             <span id="strip-status"></span>
             <button class="conf-btn cancel" onclick="hideStrip()">✕</button>
         </div>
+
     </div>
 </div>
 
 <!-- ══ MAP LEGEND ═════════════════════════════════════════════════════════ -->
 <div class="map-legend">
-    <div class="legend-item"><div class="legend-swatch" style="background:rgba(232,160,32,0.2);border-color:var(--theme-color)"></div> Your Position (◈)</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:rgba(96,184,80,0.15);border-color:#60b850"></div> Portal (destination planet color)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(232,160,32,0.15);border-color:var(--theme-color)">📍</div> Your Position</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(80,160,232,0.1);border-color:#5090e0"><img src="https://alienlegends.io/assets/maps/portal.webp" style="width:12px;height:12px;opacity:0.85" alt="🌀"></div> Portal</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(80,160,80,0.1);border-color:#508050">⛏</div> Dungeon</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(180,120,60,0.1);border-color:#b07840">🍺</div> Tavern</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(180,60,60,0.1);border-color:#c04040">⚔</div> Arena</div>
     <div class="legend-item"><div class="legend-swatch" style="background:rgba(232,160,32,0.15);border-color:var(--theme-color)"></div> Selected destination</div>
 </div>
 
@@ -316,7 +358,7 @@
 
 <script>
 (function() {
-    // ── PLANET & PORTAL DATA ─────────────────────────────────────────────────
+    // ── PLANET DATA ──────────────────────────────────────────────────────────
     var PLANETS = {
         magor:  { color: '#e05030', name: 'Magor'  },
         naron:  { color: '#30a060', name: 'Naron'  },
@@ -326,6 +368,31 @@
         veles:  { color: '#40c0c0', name: 'Veles'  },
     };
 
+    // Numeric planet IDs from chain (0-indexed and 1-indexed variants)
+    var PLANET_ID_MAP = {
+        0:'magor',  1:'naron',  2:'eyeke',  3:'kavian',  4:'neri',  5:'veles',
+        '0':'magor','1':'naron','2':'eyeke','3':'kavian','4':'neri','5':'veles',
+        // 1-indexed fallback
+        6:'magor',  // unlikely but cover it
+    };
+
+    function normalizePlanet(p) {
+        if (p === null || p === undefined) return null;
+        var s = String(p).toLowerCase().trim();
+        if (PLANETS[s]) return s;
+        // numeric ID
+        if (PLANET_ID_MAP[s]) return PLANET_ID_MAP[s];
+        var n = parseInt(s);
+        if (!isNaN(n)) {
+            // try 0-indexed first
+            if (n >= 0 && n <= 5) return ['magor','naron','eyeke','kavian','neri','veles'][n];
+            // try 1-indexed
+            if (n >= 1 && n <= 6) return ['magor','naron','eyeke','kavian','neri','veles'][n - 1];
+        }
+        return null;
+    }
+
+    // ── PORTAL DATA ──────────────────────────────────────────────────────────
     var ALE_PORTALS = {
         magor:  [
             { x:2,  y:2,  to:'naron'  },
@@ -334,47 +401,114 @@
             { x:38, y:3,  to:'neri'   },
             { x:37, y:18, to:'veles'  },
         ],
-        naron:  [], // pending
-        eyeke:  [], // pending
-        kavian: [], // pending
-        neri:   [], // pending
-        veles:  [], // pending
+        naron:  [],
+        eyeke:  [],
+        kavian: [],
+        neri:   [],
+        veles:  [],
+    };
+
+    // ── LOCATION DATA (dungeons / taverns / arenas) ──────────────────────────
+    // Fill these with { x, y } objects when coordinates are available
+    var ALE_LOCATIONS = {
+        magor:  { dungeons:[], taverns:[], arenas:[] },
+        naron:  { dungeons:[], taverns:[], arenas:[] },
+        eyeke:  { dungeons:[], taverns:[], arenas:[] },
+        kavian: { dungeons:[], taverns:[], arenas:[] },
+        neri:   { dungeons:[], taverns:[], arenas:[] },
+        veles:  { dungeons:[], taverns:[], arenas:[] },
     };
 
     // ── STATE ────────────────────────────────────────────────────────────────
-    var _activePlanet = 'magor';
-    var _selection    = null;   // { x, y, portal }
-    var _playerPos    = null;   // { planet, x, y }
-    var _rendered     = {};
-    var _routeSteps   = [];
-    var _routeRunning = false;
+    var _activePlanet  = 'magor';
+    var _selection     = null;
+    var _playerPos     = null;
+    var _rendered      = {};
+    var _routeSteps    = [];
+    var _routeRunning  = false;
+    var _confirmMode   = true;   // true = show confirm strip; false = instant travel
+
+    // ── CONFIRM MODE TOGGLE ──────────────────────────────────────────────────
+    window.toggleConfirmMode = function() {
+        _confirmMode = !_confirmMode;
+        var btn = document.getElementById('confirm-toggle-btn');
+        if (_confirmMode) {
+            btn.textContent = 'CONFIRM: ON';
+            btn.classList.remove('off');
+        } else {
+            btn.textContent = 'CONFIRM: OFF';
+            btn.classList.add('off');
+        }
+    };
+
+    // ── RULER BUILDER ────────────────────────────────────────────────────────
+    function buildRulers() {
+        var xEl = document.getElementById('ruler-x');
+        var yEl = document.getElementById('ruler-y');
+        if (!xEl || !yEl) return;
+        var xHtml = '', yHtml = '';
+        for (var i = 1; i <= 40; i++) {
+            var cls = (i % 5 === 0) ? 'ruler-cell marker' : 'ruler-cell';
+            xHtml += '<div class="' + cls + '">' + i + '</div>';
+        }
+        for (var j = 1; j <= 20; j++) {
+            var cls2 = (j % 5 === 0) ? 'ruler-cell marker' : 'ruler-cell';
+            yHtml += '<div class="' + cls2 + '">' + j + '</div>';
+        }
+        xEl.innerHTML = xHtml;
+        yEl.innerHTML = yHtml;
+    }
 
     // ── MAP RENDERING ────────────────────────────────────────────────────────
     function buildMap(planet) {
         if (_rendered[planet]) return;
         var container = document.getElementById('map-' + planet);
         var portals   = ALE_PORTALS[planet] || [];
-        var portalMap = {};
+        var locs      = ALE_LOCATIONS[planet] || {};
+        var portalMap = {}, dungeonSet = {}, tavernSet = {}, arenaSet = {};
         portals.forEach(function(p) { portalMap[p.x + ',' + p.y] = p; });
+        (locs.dungeons || []).forEach(function(d) { dungeonSet[d.x + ',' + d.y] = true; });
+        (locs.taverns  || []).forEach(function(t) { tavernSet[t.x + ',' + t.y] = true; });
+        (locs.arenas   || []).forEach(function(a) { arenaSet[a.x + ',' + a.y] = true; });
 
         var cells = [];
         for (var y = 1; y <= 20; y++) {
             for (var x = 1; x <= 40; x++) {
-                var key = x + ',' + y;
+                var key    = x + ',' + y;
                 var portal = portalMap[key];
-                var cls = 'ale-cell';
-                var style = '';
+                var cls    = 'ale-cell';
+                var style  = '';
                 var dataTo = '';
+                var icon   = '';
+
                 if (portal) {
-                    cls += ' ale-portal';
-                    var c = PLANETS[portal.to].color;
-                    style = ' style="border-color:' + c + '90;box-shadow:inset 0 0 7px ' + c + '60"';
+                    cls   += ' ale-portal';
+                    var c  = PLANETS[portal.to].color;
+                    style  = ' style="border-color:' + c + '90;box-shadow:inset 0 0 7px ' + c + '60"';
                     dataTo = ' data-to="' + portal.to + '"';
+                    icon   = '<span class="cell-icon"><img src="https://alienlegends.io/assets/maps/portal.webp" alt="🌀" onerror="this.outerHTML=\'<span class=\\\"cell-icon-emoji\\\">🌀</span>\'"></span>';
+                } else if (dungeonSet[key]) {
+                    cls  += ' ale-dungeon';
+                    style = ' style="border-color:#508050a0;box-shadow:inset 0 0 5px #50805060"';
+                    icon  = '<span class="cell-icon"><span class="cell-icon-emoji">⛏</span></span>';
+                } else if (tavernSet[key]) {
+                    cls  += ' ale-tavern';
+                    style = ' style="border-color:#b0784090;box-shadow:inset 0 0 5px #b0784050"';
+                    icon  = '<span class="cell-icon"><span class="cell-icon-emoji">🍺</span></span>';
+                } else if (arenaSet[key]) {
+                    cls  += ' ale-arena';
+                    style = ' style="border-color:#c0404090;box-shadow:inset 0 0 5px #c0404050"';
+                    icon  = '<span class="cell-icon"><span class="cell-icon-emoji">⚔</span></span>';
                 }
-                cells.push('<div class="' + cls + '" data-x="' + x + '" data-y="' + y + '"' + dataTo + style +
+
+                cells.push(
+                    '<div class="' + cls + '" data-x="' + x + '" data-y="' + y + '"' +
+                    dataTo + style +
                     ' onmouseenter="onCellHover(this,' + x + ',' + y + ')"' +
                     ' onmouseleave="onCellLeave()"' +
-                    ' onclick="cellClick(' + x + ',' + y + ')"></div>');
+                    ' onclick="cellClick(' + x + ',' + y + ')">' +
+                    icon + '</div>'
+                );
             }
         }
         container.innerHTML = cells.join('');
@@ -398,37 +532,46 @@
     // ── HOVER ────────────────────────────────────────────────────────────────
     window.onCellHover = function(el, x, y) {
         document.getElementById('coord-display').textContent = 'X:' + x + '  Y:' + y;
-        var tip = document.getElementById('portal-tip');
+        var tip = document.getElementById('cell-tip');
+        var html = 'X:' + x + ' &nbsp; Y:' + y;
+        tip.style.borderColor = 'rgba(232,160,32,0.6)';
+
         if (el.classList.contains('ale-portal')) {
-            var to = el.dataset.to;
+            var to    = el.dataset.to;
             var color = PLANETS[to].color;
-            tip.textContent = '▸ Portal to ' + PLANETS[to].name.toUpperCase();
-            tip.style.color = color;
+            html += '<br><span style="color:' + color + '">▸ Portal to ' + PLANETS[to].name.toUpperCase() + '</span>';
             tip.style.borderColor = color;
-            tip.style.display = 'block';
-        } else {
-            tip.style.display = 'none';
+        } else if (el.classList.contains('ale-dungeon')) {
+            html += '<br><span style="color:#70a870">⛏ Dungeon</span>';
+            tip.style.borderColor = '#508050';
+        } else if (el.classList.contains('ale-tavern')) {
+            html += '<br><span style="color:#c09060">🍺 Tavern</span>';
+            tip.style.borderColor = '#b07840';
+        } else if (el.classList.contains('ale-arena')) {
+            html += '<br><span style="color:#c06060">⚔ Arena</span>';
+            tip.style.borderColor = '#c04040';
         }
-        document.getElementById('portal-hint').textContent = '';
+        tip.innerHTML = html;
+        tip.style.display = 'block';
     };
 
     window.onCellLeave = function() {
-        document.getElementById('portal-tip').style.display = 'none';
+        var tip = document.getElementById('cell-tip');
+        if (tip) tip.style.display = 'none';
     };
 
     document.addEventListener('mousemove', function(e) {
         var glow = document.getElementById('cursor-glow');
         if (glow) { glow.style.left = e.clientX + 'px'; glow.style.top = e.clientY + 'px'; }
-        var tip = document.getElementById('portal-tip');
+        var tip = document.getElementById('cell-tip');
         if (tip && tip.style.display !== 'none') {
             tip.style.left = (e.clientX + 14) + 'px';
-            tip.style.top  = (e.clientY - 28) + 'px';
+            tip.style.top  = (e.clientY - 44) + 'px';
         }
     });
 
     // ── CELL CLICK ───────────────────────────────────────────────────────────
     window.cellClick = function(x, y) {
-        // clear previous selection highlight
         if (_selection) {
             var prev = document.querySelector('#map-' + _activePlanet + ' .ale-cell.selected');
             if (prev) prev.classList.remove('selected');
@@ -440,8 +583,52 @@
 
         var portal = (ALE_PORTALS[_activePlanet] || []).find(function(p) { return p.x === x && p.y === y; });
         _selection = { x: x, y: y, portal: portal || null };
-        showStrip();
+
+        if (!_confirmMode) {
+            instantTravel();
+        } else {
+            showStrip();
+        }
     };
+
+    // ── INSTANT TRAVEL ───────────────────────────────────────────────────────
+    async function instantTravel() {
+        var wallet = localStorage.getItem('naron_wallet');
+        if (!wallet) {
+            showStripBrief('err', '✗ Please log in to travel.');
+            return;
+        }
+        if (!_selection) return;
+        var sel = _selection;
+        try {
+            await sendTravel(wallet, sel.x, sel.y);
+            var destPlanet = sel.portal ? sel.portal.to : _activePlanet;
+            _playerPos = { planet: destPlanet, x: sel.x, y: sel.y };
+            applyPlayerMarker();
+            updatePlayerPosDisplay();
+            showStripBrief('ok', '✓ Travelled to ' + PLANETS[destPlanet].name + ' (' + sel.x + ', ' + sel.y + ')');
+            if (sel.portal) switchPlanet(sel.portal.to);
+        } catch(e) {
+            var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
+            showStripBrief('err', '✗ ' + msg.substring(0, 120));
+        }
+    }
+
+    function showStripBrief(cls, text) {
+        var strip   = document.getElementById('confirm-strip');
+        var content = document.getElementById('confirm-content');
+        var confBtn = document.getElementById('confirm-travel-btn');
+        var viewBtn = document.getElementById('view-map-btn');
+        content.textContent = '';
+        confBtn.style.display = 'none';
+        viewBtn.style.display = 'none';
+        setStripStatus(cls, text);
+        strip.classList.remove('hidden');
+        setTimeout(function() {
+            confBtn.style.display = '';
+            hideStrip();
+        }, 2200);
+    }
 
     // ── CONFIRM STRIP ────────────────────────────────────────────────────────
     function showStrip() {
@@ -450,12 +637,13 @@
         var viewBtn = document.getElementById('view-map-btn');
         var confBtn = document.getElementById('confirm-travel-btn');
         var status  = document.getElementById('strip-status');
+        confBtn.style.display = '';
         status.textContent = '';
-        status.className = 'strip-status';
+        status.className = '';
         strip.classList.remove('hidden');
 
         if (_selection.portal) {
-            var dest = _selection.portal.to;
+            var dest  = _selection.portal.to;
             var color = PLANETS[dest].color;
             content.innerHTML = 'Portal &rarr; <strong style="color:' + color + '">' +
                 PLANETS[dest].name.toUpperCase() + '</strong>' +
@@ -478,12 +666,12 @@
             if (prev) prev.classList.remove('selected');
         }
         _selection = null;
+        var confBtn = document.getElementById('confirm-travel-btn');
+        if (confBtn) confBtn.style.display = '';
     };
 
     window.viewDestMap = function() {
-        if (_selection && _selection.portal) {
-            switchPlanet(_selection.portal.to);
-        }
+        if (_selection && _selection.portal) switchPlanet(_selection.portal.to);
     };
 
     // ── TRAVEL TRANSACTION ───────────────────────────────────────────────────
@@ -505,10 +693,7 @@
 
     window.executeTravel = async function() {
         var wallet = localStorage.getItem('naron_wallet');
-        if (!wallet) {
-            setStripStatus('err', '✗ Please log in to travel.');
-            return;
-        }
+        if (!wallet) { setStripStatus('err', '✗ Please log in to travel.'); return; }
         if (!_selection) return;
         var btn = document.getElementById('confirm-travel-btn');
         btn.disabled = true;
@@ -516,11 +701,16 @@
         setStripStatus('', '');
         try {
             await sendTravel(wallet, _selection.x, _selection.y);
+            var destPlanet = _selection.portal ? _selection.portal.to : _activePlanet;
             setStripStatus('ok', '✓ Travelled to (' + _selection.x + ', ' + _selection.y + ')');
-            _playerPos = { planet: _activePlanet, x: _selection.x, y: _selection.y };
+            _playerPos = { planet: destPlanet, x: _selection.x, y: _selection.y };
             applyPlayerMarker();
             updatePlayerPosDisplay();
-            setTimeout(hideStrip, 3000);
+            if (_selection.portal) {
+                setTimeout(function() { switchPlanet(destPlanet); }, 1200);
+            } else {
+                setTimeout(hideStrip, 2800);
+            }
         } catch(e) {
             var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
             setStripStatus('err', '✗ ' + msg.substring(0, 120));
@@ -549,18 +739,19 @@
             });
             var data = await res.json();
             if (data.rows && data.rows.length > 0 && data.rows[0].wallet === wallet) {
-                var row = data.rows[0];
-                _playerPos = { planet: row.planet, x: row.x, y: row.y };
-                applyPlayerMarker();
-                updatePlayerPosDisplay();
-                // auto-switch to player's planet
-                if (row.planet && PLANETS[row.planet]) switchPlanet(row.planet);
+                var row    = data.rows[0];
+                var planet = normalizePlanet(row.planet);
+                if (planet) {
+                    _playerPos = { planet: planet, x: row.x, y: row.y };
+                    applyPlayerMarker();
+                    updatePlayerPosDisplay();
+                    switchPlanet(planet);
+                }
             }
         } catch(e) { /* silent */ }
     }
 
     function applyPlayerMarker() {
-        // Remove old markers
         document.querySelectorAll('.ale-me').forEach(function(el) { el.classList.remove('ale-me'); });
         if (!_playerPos) return;
         var map = document.getElementById('map-' + _playerPos.planet);
@@ -572,7 +763,7 @@
     function updatePlayerPosDisplay() {
         var el = document.getElementById('player-pos-display');
         if (_playerPos && PLANETS[_playerPos.planet]) {
-            el.textContent = '◈ ' + PLANETS[_playerPos.planet].name.toUpperCase() +
+            el.textContent = '📍 ' + PLANETS[_playerPos.planet].name.toUpperCase() +
                 ' (' + _playerPos.x + ', ' + _playerPos.y + ')';
         } else {
             el.textContent = '';
@@ -588,10 +779,10 @@
     };
 
     function renderRouteSteps() {
-        var list = document.getElementById('route-steps-list');
+        var list    = document.getElementById('route-steps-list');
         var execBtn = document.getElementById('execute-route-btn');
         if (_routeSteps.length === 0) {
-            list.innerHTML = '<div class="route-empty" id="route-empty-msg">No steps added. Select a cell and click + ADD TO ROUTE.</div>';
+            list.innerHTML = '<div class="route-empty">No steps added. Select a cell and click + ADD TO ROUTE.</div>';
             execBtn.disabled = true;
             execBtn.textContent = '▶ EXECUTE ROUTE (0)';
             return;
@@ -601,8 +792,7 @@
         list.innerHTML = _routeSteps.map(function(step, i) {
             var statusIcon = step.status === 'done' ? '<span style="color:#40c070">✓</span>'
                            : step.status === 'fail' ? '<span style="color:#c04040">✗</span>'
-                           : step.status === 'run'  ? '<span style="color:var(--theme-color)">...</span>'
-                           : '';
+                           : step.status === 'run'  ? '<span style="color:var(--theme-color)">...</span>' : '';
             var delBtn = step.status ? '' : '<button class="del-step" onclick="removeRouteStep(' + i + ')">✕</button>';
             var info = '<strong>' + PLANETS[step.planet].name.toUpperCase() + '</strong>' +
                 ' (' + step.x + ', ' + step.y + ')' +
@@ -617,10 +807,7 @@
     }
 
     window.addToRoute = function() {
-        if (!_selection) {
-            alert('Select a cell on the map first.');
-            return;
-        }
+        if (!_selection) { alert('Select a cell on the map first.'); return; }
         _routeSteps.push({
             planet: _activePlanet,
             x: _selection.x,
@@ -629,20 +816,12 @@
             status: null
         });
         renderRouteSteps();
-        // open planner if not already
         var panel = document.getElementById('route-panel');
         if (!panel.classList.contains('open')) toggleRoutePlanner();
     };
 
-    window.removeRouteStep = function(i) {
-        _routeSteps.splice(i, 1);
-        renderRouteSteps();
-    };
-
-    window.clearRoute = function() {
-        _routeSteps = [];
-        renderRouteSteps();
-    };
+    window.removeRouteStep = function(i) { _routeSteps.splice(i, 1); renderRouteSteps(); };
+    window.clearRoute      = function()  { _routeSteps = []; renderRouteSteps(); };
 
     window.executeRoute = async function() {
         var wallet = localStorage.getItem('naron_wallet');
@@ -650,28 +829,26 @@
         if (_routeRunning || _routeSteps.length === 0) return;
         _routeRunning = true;
         document.getElementById('execute-route-btn').disabled = true;
-
         for (var i = 0; i < _routeSteps.length; i++) {
             var step = _routeSteps[i];
-            if (step.status === 'done') continue; // skip already done
+            if (step.status === 'done') continue;
             step.status = 'run';
             renderRouteSteps();
             try {
                 await sendTravel(wallet, step.x, step.y);
                 step.status = 'done';
-                _playerPos = { planet: step.planet, x: step.x, y: step.y };
+                var destPlanet = step.portal ? step.portal : step.planet;
+                _playerPos = { planet: destPlanet, x: step.x, y: step.y };
                 applyPlayerMarker();
                 updatePlayerPosDisplay();
                 renderRouteSteps();
                 if (i < _routeSteps.length - 1) {
-                    // wait between transactions
                     await new Promise(function(r) { setTimeout(r, 2500); });
                 }
             } catch(e) {
                 step.status = 'fail';
-                step.error = (e && (e.message || e.toString())) || 'Failed';
                 renderRouteSteps();
-                break; // stop on failure
+                break;
             }
         }
         _routeRunning = false;
@@ -751,6 +928,7 @@
     });
 
     // ── INIT ─────────────────────────────────────────────────────────────────
+    buildRulers();
     buildMap('magor');
     checkWalletState();
 
