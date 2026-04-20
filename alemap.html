@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-48CCMEYHXG');
+    </script>
+    <title>ALE Travel Map // Naron Codex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="NCico.png">
+    <script src="waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor()],
+        });
+        window.walletKit = kit;
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+                if (typeof checkWalletState === 'function') checkWalletState();
+            }
+        } catch(e) {}
+    </script>
+    <style>
+        :root {
+            --theme-color: #e8a020;
+            --theme-shadow: 0 0 15px rgba(232,160,32,0.4);
+            --theme-dark: #120d05;
+            --theme-hover: #261b0a;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            cursor: crosshair;
+            background: #050510;
+            background-image: radial-gradient(circle at 50% 50%, #120d05 0%, #050510 80%);
+            color: #d0d0d0;
+            font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+            margin: 0; padding: 0; overflow-x: auto; min-height: 100vh;
+        }
+        a, button { cursor: crosshair !important; }
+        ::-webkit-scrollbar { height: 10px; width: 10px; }
+        ::-webkit-scrollbar-track { background: #050510; }
+        ::-webkit-scrollbar-thumb { background: #333; border: 1px solid var(--theme-color); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--theme-color); }
+
+        /* starfield */
+        body::before {
+            content: " "; position: fixed; top: 0; left: 0; width: 1px; height: 1px; z-index: -1;
+            box-shadow: 5vw 10vh #fff, 15vw 25vh rgba(255,255,255,0.4), 25vw 5vh #fff, 35vw 45vh rgba(255,255,255,0.6),
+                45vw 15vh #fff, 55vw 65vh #fff, 65vw 20vh rgba(255,255,255,0.3), 75vw 55vh #fff,
+                85vw 12vh rgba(255,255,255,0.7), 95vw 40vh #fff, 10vw 60vh #fff, 20vw 80vh rgba(255,255,255,0.5),
+                30vw 90vh #fff, 40vw 75vh rgba(255,255,255,0.4), 50vw 85vh #fff, 60vw 95vh rgba(255,255,255,0.6),
+                70vw 80vh #fff, 80vw 95vh rgba(255,255,255,0.3), 90vw 70vh #fff;
+            animation: starlight 4s ease-in-out infinite;
+        }
+        @keyframes starlight { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.8; } }
+
+        /* click + glow */
+        .click-effect { position:fixed; pointer-events:none; width:40px; height:40px; border:2px solid var(--theme-color); border-radius:50%; transform:translate(-50%,-50%); animation:clickPulse 0.4s ease-out forwards; z-index:2147483647; }
+        @keyframes clickPulse { 0% { transform:translate(-50%,-50%) scale(0.2); opacity:1; } 100% { transform:translate(-50%,-50%) scale(2.5); opacity:0; } }
+        #cursor-glow { position:fixed; top:-50px; left:-50px; width:70px; height:70px; border-radius:50%; background:var(--theme-color); filter:blur(35px); opacity:0.22; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); }
+
+        /* global header */
+        .global-header { display:flex; justify-content:space-between; align-items:center; background:#0a0802; border-bottom:2px solid var(--theme-color); padding:0 30px; height:66px; position:sticky; top:0; z-index:6000; box-shadow:0 5px 20px rgba(0,0,0,0.9); }
+        .logo-section { display:flex; align-items:center; gap:8px; }
+        .logo-section h1 { color:var(--theme-color); margin:0; font-size:1.8em; letter-spacing:4px; text-transform:uppercase; text-shadow:0 0 10px var(--theme-color); font-family:'Courier New',monospace; }
+        .nav-links { display:flex; gap:10px; }
+        .nav-btn { background:transparent; color:#888; border:1px solid transparent; padding:8px 16px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.9em; text-decoration:none; cursor:pointer; transition:all 0.3s; text-transform:uppercase; border-radius:6px; }
+        .nav-btn:hover { color:var(--theme-color); border-color:var(--theme-color); }
+        .nav-btn.active { color:#000; background:var(--theme-color); border-color:var(--theme-color); }
+        .nav-dropdown-wrap { position:relative; display:inline-block; }
+        .nav-dropdown-btn { background:transparent; color:#888; border:1px solid transparent; padding:8px 16px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.9em; cursor:pointer; transition:all 0.3s; text-transform:uppercase; border-radius:6px; letter-spacing:1px; }
+        .nav-dropdown-btn:hover, .nav-dropdown-btn.active { color:var(--theme-color); border-color:var(--theme-color); }
+        .nav-dropdown-menu { display:none; position:absolute; top:100%; left:0; z-index:5000; background:rgba(10,8,2,0.98); border:1px solid var(--theme-color); min-width:160px; padding:8px 0 4px; box-shadow:0 8px 24px rgba(0,0,0,0.9); backdrop-filter:blur(6px); }
+        .nav-dropdown-wrap:hover .nav-dropdown-menu { display:block; }
+        .nav-dropdown-item { display:block; padding:8px 16px; color:#888; text-decoration:none; font-family:'Courier New',monospace; font-size:0.85em; letter-spacing:1px; text-transform:uppercase; transition:all 0.2s; white-space:nowrap; }
+        .nav-dropdown-item:hover { color:var(--theme-color); background:rgba(255,255,255,0.04); }
+        .nav-dropdown-item.active { color:var(--theme-color); font-weight:bold; }
+        .wallet-section { display:flex; gap:6px; align-items:center; }
+        .wallet-btn { background:#111; color:var(--theme-color); border:1px dashed var(--theme-color); padding:10px 16px; font-family:'Courier New',monospace; font-weight:bold; cursor:pointer; transition:all 0.3s; font-size:0.85em; }
+        .wallet-btn:hover { background:var(--theme-hover); box-shadow:var(--theme-shadow); }
+        .wallet-btn.logged-in { background:var(--theme-color); color:#000; border-style:solid; }
+        #hamburger-btn { display:none; background:transparent; border:1px solid var(--theme-color); color:var(--theme-color); font-size:1.4em; padding:6px 12px; cursor:pointer; }
+        .mobile-nav { display:none; flex-direction:column; background:#0a0802; border-bottom:1px solid var(--theme-color); padding:10px 20px; gap:8px; position:sticky; top:66px; z-index:5900; }
+        .mobile-nav.open { display:flex; }
+        .mobile-nav .nav-btn { text-align:left; }
+        @media (max-width: 900px) {
+            .nav-links { display:none; }
+            #hamburger-btn { display:block; }
+            .logo-section h1 { font-size:1.2em; }
+        }
+
+        /* title bar */
+        .title-bar { display:flex; align-items:center; gap:14px; background:#09080f; border-bottom:1px solid rgba(232,160,32,0.3); padding:10px 30px; position:sticky; top:66px; z-index:5000; }
+        .title-bar h1 { color:var(--theme-color); font-family:'Courier New',monospace; font-size:1.1em; letter-spacing:4px; text-transform:uppercase; margin:0; text-shadow:0 0 8px var(--theme-color); }
+        #player-pos-display { margin-left:auto; font-family:'Courier New',monospace; font-size:0.78em; color:#a09060; letter-spacing:1px; }
+
+        /* planet tabs */
+        .planet-tabs-bar { display:flex; gap:2px; padding:10px 20px 0; background:#07060f; border-bottom:2px solid rgba(232,160,32,0.15); position:sticky; top:113px; z-index:4500; }
+        .planet-tab { background:transparent; border:1px solid rgba(232,160,32,0.3); border-bottom:none; color:#777; padding:8px 22px 10px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.82em; letter-spacing:2px; text-transform:uppercase; cursor:crosshair; transition:all 0.2s; border-radius:4px 4px 0 0; position:relative; bottom:-2px; }
+        .planet-tab:hover { color:var(--theme-color); border-color:var(--theme-color); }
+        .planet-tab.active { color:#000; background:var(--theme-color); border-color:var(--theme-color); }
+
+        /* map area */
+        .map-outer-wrap { background:#07060f; padding:0 0 0 0; }
+        .map-scroll { overflow-x:auto; overflow-y:hidden; padding:0; }
+        .map-status-bar { display:flex; align-items:center; gap:20px; padding:6px 20px; background:rgba(0,0,0,0.6); border-bottom:1px solid rgba(232,160,32,0.1); font-family:'Courier New',monospace; font-size:0.78em; min-width:1200px; }
+        #coord-display { color:var(--theme-color); letter-spacing:1px; min-width:120px; }
+        #active-planet-label { color:#a09060; letter-spacing:2px; }
+        #portal-hint { color:#607080; font-size:0.9em; margin-left:auto; }
+
+        .ale-map { display:none; width:1200px; height:600px; background-size:cover; background-position:center; position:relative; }
+        .ale-map.active-map { display:grid; grid-template-columns:repeat(40, 30px); grid-template-rows:repeat(20, 30px); }
+
+        .ale-cell { width:30px; height:30px; border:1px solid rgba(255,255,255,0.06); cursor:crosshair !important; transition:background 0.08s, border-color 0.08s; position:relative; }
+        .ale-cell:hover { background:rgba(232,160,32,0.18); border-color:rgba(232,160,32,0.5); z-index:2; }
+        .ale-cell.selected { background:rgba(232,160,32,0.15) !important; border-color:var(--theme-color) !important; box-shadow:inset 0 0 8px rgba(232,160,32,0.35); z-index:3; }
+        .ale-portal { border-width:1px; }
+        .ale-me { background:rgba(232,160,32,0.2) !important; border-color:var(--theme-color) !important; z-index:4; }
+        .ale-me::after { content:'◈'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; color:var(--theme-color); text-shadow:0 0 6px var(--theme-color); pointer-events:none; }
+
+        /* portal tooltip */
+        #portal-tip { position:fixed; pointer-events:none; background:rgba(8,6,18,0.95); border:1px solid var(--theme-color); padding:4px 10px; font-family:'Courier New',monospace; font-size:0.72em; color:var(--theme-color); letter-spacing:1px; z-index:7000; white-space:nowrap; display:none; border-radius:3px; }
+
+        /* confirm strip */
+        .confirm-strip { min-width:1200px; background:rgba(4,8,20,0.96); border-top:1px solid rgba(232,160,32,0.4); padding:10px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+        .confirm-strip.hidden { display:none; }
+        #confirm-content { font-family:'Courier New',monospace; font-size:0.88em; color:#c8c0a0; flex:1; }
+        #confirm-content strong { color:var(--theme-color); }
+        .conf-btn { background:transparent; border:1px solid; padding:7px 18px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.8em; letter-spacing:1px; cursor:crosshair; transition:all 0.2s; border-radius:2px; }
+        .conf-btn.confirm  { color:var(--theme-color); border-color:var(--theme-color); }
+        .conf-btn.confirm:hover  { background:var(--theme-color); color:#000; }
+        .conf-btn.view-map { color:#5090e0; border-color:#5090e0; }
+        .conf-btn.view-map:hover { background:#5090e0; color:#000; }
+        .conf-btn.cancel   { color:#666; border-color:#444; }
+        .conf-btn.cancel:hover   { color:#ccc; border-color:#888; }
+        #strip-status { font-family:'Courier New',monospace; font-size:0.82em; }
+        #strip-status.ok  { color:#40c070; }
+        #strip-status.err { color:#c04040; }
+
+        /* route planner */
+        .route-section { padding:16px 20px; background:#06050e; border-top:1px solid rgba(232,160,32,0.1); }
+        .route-toggle-btn { background:transparent; border:1px solid rgba(232,160,32,0.4); color:#9a8860; padding:8px 20px; font-family:'Courier New',monospace; font-size:0.8em; letter-spacing:2px; text-transform:uppercase; cursor:crosshair; transition:all 0.2s; border-radius:2px; }
+        .route-toggle-btn:hover { color:var(--theme-color); border-color:var(--theme-color); }
+        .route-toggle-btn.open { color:#000; background:var(--theme-color); border-color:var(--theme-color); }
+        .route-panel { display:none; margin-top:14px; background:rgba(0,0,0,0.5); border:1px solid rgba(232,160,32,0.2); border-radius:4px; padding:14px 18px; max-width:700px; }
+        .route-panel.open { display:block; }
+        .route-header { display:flex; justify-content:space-between; align-items:center; font-family:'Courier New',monospace; font-size:0.78em; color:var(--theme-color); letter-spacing:3px; text-transform:uppercase; border-bottom:1px solid rgba(232,160,32,0.15); padding-bottom:8px; margin-bottom:10px; }
+        .route-clear-btn { background:transparent; border:none; color:#555; font-family:'Courier New',monospace; font-size:0.85em; cursor:crosshair; }
+        .route-clear-btn:hover { color:#c04040; }
+        .route-steps { display:flex; flex-direction:column; gap:5px; min-height:30px; margin-bottom:12px; }
+        .route-step { display:flex; align-items:center; gap:10px; padding:6px 10px; background:rgba(232,160,32,0.04); border:1px solid rgba(232,160,32,0.12); border-radius:2px; font-family:'Courier New',monospace; font-size:0.78em; }
+        .route-step-num { color:#556; min-width:24px; }
+        .route-step-info { flex:1; color:#a0a0b8; }
+        .route-step-info strong { color:var(--theme-color); }
+        .route-step-status { min-width:20px; font-size:1em; }
+        .route-step .del-step { background:transparent; border:none; color:#444; cursor:crosshair; font-size:0.9em; padding:0 4px; }
+        .route-step .del-step:hover { color:#c04040; }
+        .route-step.done { opacity:0.6; }
+        .route-step.running { border-color:var(--theme-color); }
+        .route-step.failed { border-color:#c04040; }
+        .route-actions { display:flex; gap:10px; flex-wrap:wrap; }
+        .conf-btn.add-btn  { color:#60a0c0; border-color:#60a0c0; }
+        .conf-btn.add-btn:hover  { background:#60a0c0; color:#000; }
+        .conf-btn.exec-btn { color:var(--theme-color); border-color:var(--theme-color); }
+        .conf-btn.exec-btn:hover { background:var(--theme-color); color:#000; }
+        .conf-btn.exec-btn:disabled { opacity:0.4; cursor:not-allowed !important; }
+        .route-empty { color:#445; font-family:'Courier New',monospace; font-size:0.76em; padding:8px 0; }
+
+        /* legend */
+        .map-legend { display:flex; gap:14px; flex-wrap:wrap; padding:10px 20px; background:#06050e; border-top:1px solid rgba(232,160,32,0.08); font-family:'Courier New',monospace; font-size:0.7em; }
+        .legend-item { display:flex; align-items:center; gap:6px; color:#606070; }
+        .legend-swatch { width:14px; height:14px; border:1px solid; border-radius:2px; flex-shrink:0; }
+    </style>
+</head>
+<body>
+
+<div id="cursor-glow"></div>
+<div id="portal-tip"></div>
+
+<!-- ══ GLOBAL HEADER ══════════════════════════════════════════════════════ -->
+<header class="global-header">
+    <div class="logo-section">
+        <h1>NARON CODEX</h1>
+    </div>
+    <nav class="nav-links">
+        <a href="index.html" class="nav-btn">HUB</a>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">AW &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="crew.worlds.html" class="nav-dropdown-item">CREW</a>
+                <a href="arms.worlds.html" class="nav-dropdown-item">ARMS</a>
+                <a href="tools.worlds.html" class="nav-dropdown-item">TOOLS</a>
+                <a href="faces.worlds.html" class="nav-dropdown-item">FACES</a>
+                <a href="land.worlds.html" class="nav-dropdown-item">LAND</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">PD &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="pd.units.html" class="nav-dropdown-item">PD UNITS</a>
+                <a href="pd.materials.html" class="nav-dropdown-item">PD MATS</a>
+                <a href="army.html" class="nav-dropdown-item">ARMY BUILDER</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn active">ALE &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="ale.html" class="nav-dropdown-item">⚔ STATS</a>
+                <a href="alewiki.html" class="nav-dropdown-item">◈ WIKI</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">UTILITY &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="stash.html" class="nav-dropdown-item">&#11041; STASH</a>
+                <a href="outpost.html" class="nav-dropdown-item">OUTPOST</a>
+            </div>
+        </div>
+    </nav>
+    <div class="wallet-section">
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="disconnectWallet()" style="display:none;"></button>
+        <button id="wallet-btn-anchor" class="wallet-btn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
+        <button id="wallet-btn-wcc" class="wallet-btn" onclick="loginWithWCC()">[ &#9729; CLOUD WALLET ]</button>
+    </div>
+    <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Navigation">&#9776;</button>
+</header>
+
+<!-- mobile nav -->
+<div id="nav-dropdown" class="mobile-nav">
+    <a href="index.html" class="nav-btn">HUB</a>
+    <a href="crew.worlds.html" class="nav-btn">CREW</a>
+    <a href="arms.worlds.html" class="nav-btn">ARMS</a>
+    <a href="ale.html" class="nav-btn">ALE STATS</a>
+    <a href="alewiki.html" class="nav-btn">ALE WIKI</a>
+    <a href="stash.html" class="nav-btn">STASH</a>
+</div>
+
+<!-- ══ TITLE BAR ══════════════════════════════════════════════════════════ -->
+<div class="title-bar">
+    <h1>⬡ ALIEN LEGENDS — TRAVEL MAP</h1>
+    <span id="player-pos-display"></span>
+</div>
+
+<!-- ══ PLANET TABS ════════════════════════════════════════════════════════ -->
+<div class="planet-tabs-bar">
+    <button class="planet-tab active" data-planet="magor"  onclick="switchPlanet('magor')">MAGOR</button>
+    <button class="planet-tab"        data-planet="naron"  onclick="switchPlanet('naron')">NARON</button>
+    <button class="planet-tab"        data-planet="eyeke"  onclick="switchPlanet('eyeke')">EYEKE</button>
+    <button class="planet-tab"        data-planet="kavian" onclick="switchPlanet('kavian')">KAVIAN</button>
+    <button class="planet-tab"        data-planet="neri"   onclick="switchPlanet('neri')">NERI</button>
+    <button class="planet-tab"        data-planet="veles"  onclick="switchPlanet('veles')">VELES</button>
+</div>
+
+<!-- ══ MAP AREA ═══════════════════════════════════════════════════════════ -->
+<div class="map-outer-wrap">
+    <div class="map-scroll">
+        <div class="map-status-bar">
+            <span id="coord-display">X:— &nbsp;Y:—</span>
+            <span id="active-planet-label">MAGOR</span>
+            <span id="portal-hint"></span>
+        </div>
+
+        <div id="map-magor"  class="ale-map active-map" style="background-image:url('planets/magor.jpg')"></div>
+        <div id="map-naron"  class="ale-map"            style="background-image:url('planets/naron.jpg')"></div>
+        <div id="map-eyeke"  class="ale-map"            style="background-image:url('planets/eyeke.jpg')"></div>
+        <div id="map-kavian" class="ale-map"            style="background-image:url('planets/kavian.jpg')"></div>
+        <div id="map-neri"   class="ale-map"            style="background-image:url('planets/neri.jpg')"></div>
+        <div id="map-veles"  class="ale-map"            style="background-image:url('planets/veles.jpg')"></div>
+
+        <div id="confirm-strip" class="confirm-strip hidden">
+            <div id="confirm-content"></div>
+            <button id="confirm-travel-btn" class="conf-btn confirm" onclick="executeTravel()">CONFIRM TRAVEL</button>
+            <button id="view-map-btn"       class="conf-btn view-map" style="display:none;" onclick="viewDestMap()">VIEW MAP</button>
+            <span id="strip-status"></span>
+            <button class="conf-btn cancel" onclick="hideStrip()">✕</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MAP LEGEND ═════════════════════════════════════════════════════════ -->
+<div class="map-legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(232,160,32,0.2);border-color:var(--theme-color)"></div> Your Position (◈)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(96,184,80,0.15);border-color:#60b850"></div> Portal (destination planet color)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(232,160,32,0.15);border-color:var(--theme-color)"></div> Selected destination</div>
+</div>
+
+<!-- ══ ROUTE PLANNER ══════════════════════════════════════════════════════ -->
+<div class="route-section">
+    <button class="route-toggle-btn" id="route-toggle-btn" onclick="toggleRoutePlanner()">⬡ ROUTE PLANNER</button>
+    <div class="route-panel" id="route-panel">
+        <div class="route-header">
+            ROUTE QUEUE
+            <button class="route-clear-btn" onclick="clearRoute()">✕ CLEAR ALL</button>
+        </div>
+        <div id="route-steps-list" class="route-steps">
+            <div class="route-empty" id="route-empty-msg">No steps added. Select a cell and click + ADD TO ROUTE.</div>
+        </div>
+        <div class="route-actions">
+            <button class="conf-btn add-btn" onclick="addToRoute()">+ ADD SELECTION</button>
+            <button class="conf-btn exec-btn" id="execute-route-btn" onclick="executeRoute()" disabled>▶ EXECUTE ROUTE (0)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ── PLANET & PORTAL DATA ─────────────────────────────────────────────────
+    var PLANETS = {
+        magor:  { color: '#e05030', name: 'Magor'  },
+        naron:  { color: '#30a060', name: 'Naron'  },
+        eyeke:  { color: '#5090e0', name: 'Eyeke'  },
+        kavian: { color: '#c060d0', name: 'Kavian' },
+        neri:   { color: '#e0b030', name: 'Neri'   },
+        veles:  { color: '#40c0c0', name: 'Veles'  },
+    };
+
+    var ALE_PORTALS = {
+        magor:  [
+            { x:2,  y:2,  to:'naron'  },
+            { x:3,  y:18, to:'kavian' },
+            { x:2,  y:19, to:'eyeke'  },
+            { x:38, y:3,  to:'neri'   },
+            { x:37, y:18, to:'veles'  },
+        ],
+        naron:  [], // pending
+        eyeke:  [], // pending
+        kavian: [], // pending
+        neri:   [], // pending
+        veles:  [], // pending
+    };
+
+    // ── STATE ────────────────────────────────────────────────────────────────
+    var _activePlanet = 'magor';
+    var _selection    = null;   // { x, y, portal }
+    var _playerPos    = null;   // { planet, x, y }
+    var _rendered     = {};
+    var _routeSteps   = [];
+    var _routeRunning = false;
+
+    // ── MAP RENDERING ────────────────────────────────────────────────────────
+    function buildMap(planet) {
+        if (_rendered[planet]) return;
+        var container = document.getElementById('map-' + planet);
+        var portals   = ALE_PORTALS[planet] || [];
+        var portalMap = {};
+        portals.forEach(function(p) { portalMap[p.x + ',' + p.y] = p; });
+
+        var cells = [];
+        for (var y = 1; y <= 20; y++) {
+            for (var x = 1; x <= 40; x++) {
+                var key = x + ',' + y;
+                var portal = portalMap[key];
+                var cls = 'ale-cell';
+                var style = '';
+                var dataTo = '';
+                if (portal) {
+                    cls += ' ale-portal';
+                    var c = PLANETS[portal.to].color;
+                    style = ' style="border-color:' + c + '90;box-shadow:inset 0 0 7px ' + c + '60"';
+                    dataTo = ' data-to="' + portal.to + '"';
+                }
+                cells.push('<div class="' + cls + '" data-x="' + x + '" data-y="' + y + '"' + dataTo + style +
+                    ' onmouseenter="onCellHover(this,' + x + ',' + y + ')"' +
+                    ' onmouseleave="onCellLeave()"' +
+                    ' onclick="cellClick(' + x + ',' + y + ')"></div>');
+            }
+        }
+        container.innerHTML = cells.join('');
+        _rendered[planet] = true;
+        applyPlayerMarker();
+    }
+
+    // ── PLANET SWITCH ────────────────────────────────────────────────────────
+    window.switchPlanet = function(planet) {
+        _activePlanet = planet;
+        document.querySelectorAll('.ale-map').forEach(function(m) { m.classList.remove('active-map'); });
+        document.getElementById('map-' + planet).classList.add('active-map');
+        document.querySelectorAll('.planet-tab').forEach(function(t) {
+            t.classList.toggle('active', t.dataset.planet === planet);
+        });
+        document.getElementById('active-planet-label').textContent = PLANETS[planet].name.toUpperCase();
+        hideStrip();
+        buildMap(planet);
+    };
+
+    // ── HOVER ────────────────────────────────────────────────────────────────
+    window.onCellHover = function(el, x, y) {
+        document.getElementById('coord-display').textContent = 'X:' + x + '  Y:' + y;
+        var tip = document.getElementById('portal-tip');
+        if (el.classList.contains('ale-portal')) {
+            var to = el.dataset.to;
+            var color = PLANETS[to].color;
+            tip.textContent = '▸ Portal to ' + PLANETS[to].name.toUpperCase();
+            tip.style.color = color;
+            tip.style.borderColor = color;
+            tip.style.display = 'block';
+        } else {
+            tip.style.display = 'none';
+        }
+        document.getElementById('portal-hint').textContent = '';
+    };
+
+    window.onCellLeave = function() {
+        document.getElementById('portal-tip').style.display = 'none';
+    };
+
+    document.addEventListener('mousemove', function(e) {
+        var glow = document.getElementById('cursor-glow');
+        if (glow) { glow.style.left = e.clientX + 'px'; glow.style.top = e.clientY + 'px'; }
+        var tip = document.getElementById('portal-tip');
+        if (tip && tip.style.display !== 'none') {
+            tip.style.left = (e.clientX + 14) + 'px';
+            tip.style.top  = (e.clientY - 28) + 'px';
+        }
+    });
+
+    // ── CELL CLICK ───────────────────────────────────────────────────────────
+    window.cellClick = function(x, y) {
+        // clear previous selection highlight
+        if (_selection) {
+            var prev = document.querySelector('#map-' + _activePlanet + ' .ale-cell.selected');
+            if (prev) prev.classList.remove('selected');
+        }
+        var cell = document.querySelector(
+            '#map-' + _activePlanet + ' .ale-cell[data-x="' + x + '"][data-y="' + y + '"]'
+        );
+        if (cell) cell.classList.add('selected');
+
+        var portal = (ALE_PORTALS[_activePlanet] || []).find(function(p) { return p.x === x && p.y === y; });
+        _selection = { x: x, y: y, portal: portal || null };
+        showStrip();
+    };
+
+    // ── CONFIRM STRIP ────────────────────────────────────────────────────────
+    function showStrip() {
+        var strip   = document.getElementById('confirm-strip');
+        var content = document.getElementById('confirm-content');
+        var viewBtn = document.getElementById('view-map-btn');
+        var confBtn = document.getElementById('confirm-travel-btn');
+        var status  = document.getElementById('strip-status');
+        status.textContent = '';
+        status.className = 'strip-status';
+        strip.classList.remove('hidden');
+
+        if (_selection.portal) {
+            var dest = _selection.portal.to;
+            var color = PLANETS[dest].color;
+            content.innerHTML = 'Portal &rarr; <strong style="color:' + color + '">' +
+                PLANETS[dest].name.toUpperCase() + '</strong>' +
+                '&nbsp;&nbsp;<span style="color:#667;font-size:0.88em">(' + _selection.x + ', ' + _selection.y + ')</span>';
+            confBtn.textContent = 'TRAVEL TO PORTAL';
+            viewBtn.style.display = '';
+            viewBtn.textContent = 'VIEW ' + PLANETS[dest].name.toUpperCase() + ' MAP';
+        } else {
+            content.innerHTML = 'Travel to <strong>' + PLANETS[_activePlanet].name.toUpperCase() + '</strong>' +
+                ' &nbsp;<span style="color:var(--theme-color);font-family:\'Courier New\',monospace">(' + _selection.x + ', ' + _selection.y + ')</span>';
+            confBtn.textContent = 'CONFIRM TRAVEL';
+            viewBtn.style.display = 'none';
+        }
+    }
+
+    window.hideStrip = function() {
+        document.getElementById('confirm-strip').classList.add('hidden');
+        if (_selection) {
+            var prev = document.querySelector('#map-' + _activePlanet + ' .ale-cell.selected');
+            if (prev) prev.classList.remove('selected');
+        }
+        _selection = null;
+    };
+
+    window.viewDestMap = function() {
+        if (_selection && _selection.portal) {
+            switchPlanet(_selection.portal.to);
+        }
+    };
+
+    // ── TRAVEL TRANSACTION ───────────────────────────────────────────────────
+    async function sendTravel(wallet, x, y) {
+        var actions = [{
+            account: 'players.ale',
+            name: 'travel',
+            authorization: [{ actor: wallet, permission: 'active' }],
+            data: { wallet: wallet, x: x, y: y }
+        }];
+        if (window.walletSession) {
+            await window.walletSession.transact({ actions });
+        } else if (typeof wax !== 'undefined' && wax && wax.userAccount) {
+            await wax.api.transact({ actions }, { blocksBehind: 3, expireSeconds: 30 });
+        } else {
+            throw new Error('Not logged in. Please connect your wallet.');
+        }
+    }
+
+    window.executeTravel = async function() {
+        var wallet = localStorage.getItem('naron_wallet');
+        if (!wallet) {
+            setStripStatus('err', '✗ Please log in to travel.');
+            return;
+        }
+        if (!_selection) return;
+        var btn = document.getElementById('confirm-travel-btn');
+        btn.disabled = true;
+        btn.textContent = '...';
+        setStripStatus('', '');
+        try {
+            await sendTravel(wallet, _selection.x, _selection.y);
+            setStripStatus('ok', '✓ Travelled to (' + _selection.x + ', ' + _selection.y + ')');
+            _playerPos = { planet: _activePlanet, x: _selection.x, y: _selection.y };
+            applyPlayerMarker();
+            updatePlayerPosDisplay();
+            setTimeout(hideStrip, 3000);
+        } catch(e) {
+            var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
+            setStripStatus('err', '✗ ' + msg.substring(0, 120));
+        } finally {
+            btn.disabled = false;
+            btn.textContent = _selection && _selection.portal ? 'TRAVEL TO PORTAL' : 'CONFIRM TRAVEL';
+        }
+    };
+
+    function setStripStatus(cls, text) {
+        var el = document.getElementById('strip-status');
+        el.textContent = text;
+        el.className = cls;
+    }
+
+    // ── PLAYER POSITION ──────────────────────────────────────────────────────
+    async function fetchPlayerPos(wallet) {
+        try {
+            var res = await fetch('https://wax.greymass.com/v1/chain/get_table_rows', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: 'players.ale', scope: 'players.ale', table: 'players',
+                    lower_bound: wallet, upper_bound: wallet, limit: 1, json: true
+                })
+            });
+            var data = await res.json();
+            if (data.rows && data.rows.length > 0 && data.rows[0].wallet === wallet) {
+                var row = data.rows[0];
+                _playerPos = { planet: row.planet, x: row.x, y: row.y };
+                applyPlayerMarker();
+                updatePlayerPosDisplay();
+                // auto-switch to player's planet
+                if (row.planet && PLANETS[row.planet]) switchPlanet(row.planet);
+            }
+        } catch(e) { /* silent */ }
+    }
+
+    function applyPlayerMarker() {
+        // Remove old markers
+        document.querySelectorAll('.ale-me').forEach(function(el) { el.classList.remove('ale-me'); });
+        if (!_playerPos) return;
+        var map = document.getElementById('map-' + _playerPos.planet);
+        if (!map) return;
+        var cell = map.querySelector('.ale-cell[data-x="' + _playerPos.x + '"][data-y="' + _playerPos.y + '"]');
+        if (cell) cell.classList.add('ale-me');
+    }
+
+    function updatePlayerPosDisplay() {
+        var el = document.getElementById('player-pos-display');
+        if (_playerPos && PLANETS[_playerPos.planet]) {
+            el.textContent = '◈ ' + PLANETS[_playerPos.planet].name.toUpperCase() +
+                ' (' + _playerPos.x + ', ' + _playerPos.y + ')';
+        } else {
+            el.textContent = '';
+        }
+    }
+
+    // ── ROUTE PLANNER ────────────────────────────────────────────────────────
+    window.toggleRoutePlanner = function() {
+        var btn   = document.getElementById('route-toggle-btn');
+        var panel = document.getElementById('route-panel');
+        var open  = panel.classList.toggle('open');
+        btn.classList.toggle('open', open);
+    };
+
+    function renderRouteSteps() {
+        var list = document.getElementById('route-steps-list');
+        var execBtn = document.getElementById('execute-route-btn');
+        if (_routeSteps.length === 0) {
+            list.innerHTML = '<div class="route-empty" id="route-empty-msg">No steps added. Select a cell and click + ADD TO ROUTE.</div>';
+            execBtn.disabled = true;
+            execBtn.textContent = '▶ EXECUTE ROUTE (0)';
+            return;
+        }
+        execBtn.disabled = _routeRunning;
+        execBtn.textContent = '▶ EXECUTE ROUTE (' + _routeSteps.length + ')';
+        list.innerHTML = _routeSteps.map(function(step, i) {
+            var statusIcon = step.status === 'done' ? '<span style="color:#40c070">✓</span>'
+                           : step.status === 'fail' ? '<span style="color:#c04040">✗</span>'
+                           : step.status === 'run'  ? '<span style="color:var(--theme-color)">...</span>'
+                           : '';
+            var delBtn = step.status ? '' : '<button class="del-step" onclick="removeRouteStep(' + i + ')">✕</button>';
+            var info = '<strong>' + PLANETS[step.planet].name.toUpperCase() + '</strong>' +
+                ' (' + step.x + ', ' + step.y + ')' +
+                (step.portal ? ' <span style="color:' + PLANETS[step.portal].color + '"> &rarr; ' + PLANETS[step.portal].name.toUpperCase() + '</span>' : '');
+            var rowCls = 'route-step' + (step.status === 'done' ? ' done' : step.status === 'run' ? ' running' : step.status === 'fail' ? ' failed' : '');
+            return '<div class="' + rowCls + '">' +
+                '<span class="route-step-num">' + (i + 1) + '.</span>' +
+                '<span class="route-step-info">' + info + '</span>' +
+                '<span class="route-step-status">' + statusIcon + '</span>' +
+                delBtn + '</div>';
+        }).join('');
+    }
+
+    window.addToRoute = function() {
+        if (!_selection) {
+            alert('Select a cell on the map first.');
+            return;
+        }
+        _routeSteps.push({
+            planet: _activePlanet,
+            x: _selection.x,
+            y: _selection.y,
+            portal: _selection.portal ? _selection.portal.to : null,
+            status: null
+        });
+        renderRouteSteps();
+        // open planner if not already
+        var panel = document.getElementById('route-panel');
+        if (!panel.classList.contains('open')) toggleRoutePlanner();
+    };
+
+    window.removeRouteStep = function(i) {
+        _routeSteps.splice(i, 1);
+        renderRouteSteps();
+    };
+
+    window.clearRoute = function() {
+        _routeSteps = [];
+        renderRouteSteps();
+    };
+
+    window.executeRoute = async function() {
+        var wallet = localStorage.getItem('naron_wallet');
+        if (!wallet) { alert('Please log in to execute a route.'); return; }
+        if (_routeRunning || _routeSteps.length === 0) return;
+        _routeRunning = true;
+        document.getElementById('execute-route-btn').disabled = true;
+
+        for (var i = 0; i < _routeSteps.length; i++) {
+            var step = _routeSteps[i];
+            if (step.status === 'done') continue; // skip already done
+            step.status = 'run';
+            renderRouteSteps();
+            try {
+                await sendTravel(wallet, step.x, step.y);
+                step.status = 'done';
+                _playerPos = { planet: step.planet, x: step.x, y: step.y };
+                applyPlayerMarker();
+                updatePlayerPosDisplay();
+                renderRouteSteps();
+                if (i < _routeSteps.length - 1) {
+                    // wait between transactions
+                    await new Promise(function(r) { setTimeout(r, 2500); });
+                }
+            } catch(e) {
+                step.status = 'fail';
+                step.error = (e && (e.message || e.toString())) || 'Failed';
+                renderRouteSteps();
+                break; // stop on failure
+            }
+        }
+        _routeRunning = false;
+        document.getElementById('execute-route-btn').disabled = false;
+    };
+
+    // ── WALLET ───────────────────────────────────────────────────────────────
+    var wax = new waxjs.WaxJS({
+        rpcEndpoint: 'https://wax.greymass.com',
+        userAccount: localStorage.getItem('naron_wallet') || '',
+        tryAutoLogin: false
+    });
+
+    function checkWalletState() {
+        var account = localStorage.getItem('naron_wallet') || null;
+        updateWalletUI(account);
+        if (account) fetchPlayerPos(account);
+    }
+
+    function updateWalletUI(account) {
+        var btnA   = document.getElementById('wallet-connect-btn');
+        var btnAnc = document.getElementById('wallet-btn-anchor');
+        var btnWCC = document.getElementById('wallet-btn-wcc');
+        if (account) {
+            if (btnA)   { btnA.textContent = '[ ' + account + ' ]'; btnA.style.display = ''; btnA.classList.add('logged-in'); }
+            if (btnAnc) btnAnc.style.display = 'none';
+            if (btnWCC) btnWCC.style.display = 'none';
+        } else {
+            if (btnA)   { btnA.style.display = 'none'; btnA.classList.remove('logged-in'); }
+            if (btnAnc) btnAnc.style.display = '';
+            if (btnWCC) btnWCC.style.display = '';
+            _playerPos = null;
+            updatePlayerPosDisplay();
+        }
+    }
+
+    window.loginWithAnchor = async function() {
+        try {
+            var r = await window.walletKit.login();
+            window.walletSession = r.session;
+            localStorage.setItem('naron_wallet', String(r.session.actor));
+            checkWalletState();
+        } catch(e) { console.error('Anchor login failed:', e); }
+    };
+
+    window.loginWithWCC = async function() {
+        try {
+            var account = await wax.login();
+            localStorage.setItem('naron_wallet', account);
+            checkWalletState();
+        } catch(e) { console.error('WCC login failed:', e); }
+    };
+
+    window.disconnectWallet = function() {
+        if (window.walletKit && window.walletSession) {
+            window.walletKit.logout(window.walletSession).catch(function(){});
+            window.walletSession = null;
+        }
+        localStorage.removeItem('naron_wallet');
+        if (wax) wax.userAccount = '';
+        checkWalletState();
+    };
+
+    window.toggleHamburger = function() {
+        var dd = document.getElementById('nav-dropdown');
+        if (dd) dd.classList.toggle('open');
+    };
+
+    // ── CLICK EFFECT ─────────────────────────────────────────────────────────
+    document.addEventListener('click', function(e) {
+        var el = document.createElement('div');
+        el.className = 'click-effect';
+        el.style.left = e.clientX + 'px';
+        el.style.top  = e.clientY + 'px';
+        document.body.appendChild(el);
+        setTimeout(function() { if (el.parentNode) el.remove(); }, 400);
+    });
+
+    // ── INIT ─────────────────────────────────────────────────────────────────
+    buildMap('magor');
+    checkWalletState();
+
+})();
+</script>
+</body>
+</html>
