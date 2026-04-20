@@ -154,6 +154,18 @@
         .cell-icon img { width:22px; height:22px; opacity:0.88; }
         .cell-icon-emoji { font-size:14px; line-height:1; }
 
+        /* portal art selector */
+        .art-selector-wrap { position:relative; display:inline-flex; align-items:center; }
+        .art-selector-btn { background:transparent; border:1px solid rgba(232,160,32,0.3); color:#887755; padding:3px 10px; font-family:'Courier New',monospace; font-size:0.72em; letter-spacing:1px; cursor:crosshair; transition:all 0.2s; border-radius:2px; white-space:nowrap; }
+        .art-selector-btn:hover, .art-selector-btn.open { color:var(--theme-color); border-color:rgba(232,160,32,0.7); }
+        .portal-art-popout { display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:8500; background:rgba(6,4,16,0.98); border:1px solid rgba(232,160,32,0.55); min-width:170px; padding:5px 0; box-shadow:0 8px 24px rgba(0,0,0,0.9); backdrop-filter:blur(8px); border-radius:3px; }
+        .portal-art-popout.open { display:block; }
+        .art-opt { display:flex; align-items:center; gap:10px; padding:7px 14px; font-family:'Courier New',monospace; font-size:0.78em; color:#7a8a9a; cursor:crosshair; white-space:nowrap; transition:color 0.15s, background 0.15s; }
+        .art-opt:hover { color:var(--theme-color); background:rgba(255,255,255,0.04); }
+        .art-opt.active { color:var(--theme-color); }
+        .art-opt .art-preview { width:18px; height:18px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px; }
+        .art-opt .art-preview img { width:16px; height:16px; opacity:0.9; }
+
         /* hover tooltip */
         #cell-tip { position:fixed; pointer-events:none; background:rgba(8,6,18,0.96); border:1px solid rgba(232,160,32,0.6); padding:4px 10px; font-family:'Courier New',monospace; font-size:0.72em; color:var(--theme-color); letter-spacing:1px; z-index:7000; white-space:nowrap; display:none; border-radius:3px; line-height:1.6; }
 
@@ -294,7 +306,15 @@
         <div class="map-status-bar">
             <span id="coord-display">X:— &nbsp;Y:—</span>
             <span id="active-planet-label">MAGOR</span>
-            <span id="portal-hint"></span>
+            <div class="art-selector-wrap">
+                <button class="art-selector-btn" id="art-selector-btn" onclick="toggleArtSelector()">🌀 PORTAL ART ▾</button>
+                <div class="portal-art-popout" id="portal-art-popout">
+                    <div class="art-opt active" id="art-opt-emoji"  onclick="setPortalArt('emoji')"><span class="art-preview">🌀</span>Swirl Emoji</div>
+                    <div class="art-opt"         id="art-opt-image" onclick="setPortalArt('image')"><span class="art-preview"><img src="https://alienlegends.io/assets/maps/portal.webp" alt=""></span>Portal Art</div>
+                    <div class="art-opt"         id="art-opt-none"  onclick="setPortalArt('none')"><span class="art-preview" style="color:#445">—</span>Glow Only</div>
+                </div>
+            </div>
+            <span id="portal-hint" style="margin-left:auto"></span>
         </div>
 
         <div class="map-ruler-outer">
@@ -427,6 +447,53 @@
     var _routeSteps    = [];
     var _routeRunning  = false;
     var _confirmMode   = true;   // true = show confirm strip; false = instant travel
+    var _portalArt     = 'emoji'; // 'emoji' | 'image' | 'none'
+
+    // ── PORTAL ART SELECTOR ──────────────────────────────────────────────────
+    function getPortalIconHtml() {
+        if (_portalArt === 'image') {
+            return '<span class="cell-icon"><img src="https://alienlegends.io/assets/maps/portal.webp" alt="🌀"></span>';
+        } else if (_portalArt === 'emoji') {
+            return '<span class="cell-icon"><span class="cell-icon-emoji">🌀</span></span>';
+        }
+        return ''; // 'none' — just the glow border
+    }
+
+    window.toggleArtSelector = function() {
+        var popout = document.getElementById('portal-art-popout');
+        var btn    = document.getElementById('art-selector-btn');
+        var isOpen = popout.classList.toggle('open');
+        btn.classList.toggle('open', isOpen);
+    };
+
+    window.setPortalArt = function(art) {
+        _portalArt = art;
+        // update active state on options
+        ['emoji','image','none'].forEach(function(k) {
+            var el = document.getElementById('art-opt-' + k);
+            if (el) el.classList.toggle('active', k === art);
+        });
+        // close popout
+        document.getElementById('portal-art-popout').classList.remove('open');
+        document.getElementById('art-selector-btn').classList.remove('open');
+        // re-render all already-built maps
+        Object.keys(_rendered).forEach(function(planet) {
+            if (_rendered[planet]) {
+                _rendered[planet] = false;
+                if (planet === _activePlanet) buildMap(planet); // rebuild active immediately
+            }
+        });
+        // lazy-rebuild others when switched to
+    };
+
+    // close art selector when clicking outside
+    document.addEventListener('click', function(e) {
+        var wrap = document.querySelector('.art-selector-wrap');
+        if (wrap && !wrap.contains(e.target)) {
+            document.getElementById('portal-art-popout').classList.remove('open');
+            document.getElementById('art-selector-btn').classList.remove('open');
+        }
+    });
 
     // ── CONFIRM MODE TOGGLE ──────────────────────────────────────────────────
     window.toggleConfirmMode = function() {
@@ -486,7 +553,7 @@
                     var c  = PLANETS[portal.to].color;
                     style  = ' style="border-color:' + c + '90;box-shadow:inset 0 0 7px ' + c + '60"';
                     dataTo = ' data-to="' + portal.to + '"';
-                    icon   = '<span class="cell-icon"><img src="https://alienlegends.io/assets/maps/portal.webp" alt="🌀" onerror="this.outerHTML=\'<span class=\\\"cell-icon-emoji\\\">🌀</span>\'"></span>';
+                    icon   = getPortalIconHtml();
                 } else if (dungeonSet[key]) {
                     cls  += ' ale-dungeon';
                     style = ' style="border-color:#508050a0;box-shadow:inset 0 0 5px #50805060"';
