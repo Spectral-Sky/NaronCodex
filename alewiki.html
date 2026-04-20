@@ -13,6 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="NCico.png">
     <script src="waxjs.js"></script>
+    <script src="ale_ability_data.js" defer></script>
     <script type="module">
         import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
         import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
@@ -485,6 +486,31 @@
             .stat-explainer { grid-template-columns: 1fr; gap: 8px; }
             .wiki-card-grid { grid-template-columns: 1fr; }
         }
+        /* ── CLASS ABILITY INFOGRAPHIC ──────────────────────────────────────────── */
+        .ab-class-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 28px; }
+        .ab-class-btn { background: transparent; border: 1px solid rgba(232,160,32,0.25); color: #666; padding: 8px 18px; font-family: 'Courier New', monospace; font-size: 0.75em; letter-spacing: 2px; text-transform: uppercase; cursor: crosshair; transition: all 0.2s; border-radius: 2px; }
+        .ab-class-btn:hover { color: var(--theme-color); border-color: var(--theme-color); }
+        .ab-class-btn.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); }
+        .ab-slot-label { color: var(--theme-accent); font-family: 'Courier New', monospace; font-size: 0.75em; letter-spacing: 3px; text-transform: uppercase; margin: 28px 0 12px; border-bottom: 1px solid rgba(232,160,32,0.15); padding-bottom: 8px; }
+        .ab-sig-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; margin-bottom: 8px; }
+        .ab-sig-card { background: rgba(3,6,15,0.7); border: 1px solid rgba(232,160,32,0.18); padding: 14px 16px; border-radius: 2px; }
+        .ab-sig-name { color: var(--theme-color); font-weight: bold; font-size: 0.86em; letter-spacing: 1px; margin-bottom: 6px; }
+        .ab-sig-desc { color: #777; font-size: 0.74em; line-height: 1.55; margin-bottom: 10px; }
+        .ab-bar-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .ab-bar-bg { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+        .ab-bar-fill { height: 100%; background: var(--theme-color); border-radius: 3px; }
+        .ab-bar-pct { color: var(--theme-color); font-family: 'Courier New', monospace; font-size: 0.7em; min-width: 44px; text-align: right; }
+        .ab-rar-row { color: #484848; font-size: 0.68em; font-family: 'Courier New', monospace; margin-top: 2px; }
+        .ab-search { background: rgba(0,0,0,0.6); border: 1px solid rgba(232,160,32,0.3); color: var(--theme-color); padding: 8px 12px; font-family: 'Segoe UI', system-ui, Arial, sans-serif; width: 100%; max-width: 380px; outline: none; margin-bottom: 14px; border-radius: 2px; }
+        .ab-search:focus { border-color: var(--theme-color); }
+        .ab-pool-table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+        .ab-pool-table th { color: var(--theme-color); font-family: 'Courier New', monospace; font-size: 0.7em; letter-spacing: 2px; padding: 8px 12px; border-bottom: 1px solid rgba(232,160,32,0.25); text-align: left; background: rgba(0,0,0,0.5); white-space: nowrap; }
+        .ab-pool-table td { padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; color: #bbb; }
+        .ab-pool-table tr:hover td { background: rgba(232,160,32,0.04); }
+        .ab-pool-name { color: var(--theme-color); font-weight: bold; white-space: nowrap; }
+        .ab-pool-desc { color: #666; font-size: 0.9em; }
+        .ab-pool-pct { font-family: 'Courier New', monospace; color: #888; text-align: center; white-space: nowrap; }
+        .ab-note { font-size: 0.74em; color: #4a6a5a; font-style: italic; margin-bottom: 6px; }
     </style>
 </head>
 <body>
@@ -678,6 +704,7 @@
     <button class="section-pill" onclick="scrollToSection('taverns')">TAVERNS</button>
     <button class="section-pill" onclick="scrollToSection('weather')">WEATHER</button>
     <button class="section-pill" onclick="scrollToSection('ascension')">ASCENSION</button>
+    <button class="section-pill" onclick="scrollToSection('abilities')">ABILITIES</button>
 </div>
 
 <!-- ══ WIKI PANE ═════════════════════════════════════════════════════════════════ -->
@@ -1375,6 +1402,39 @@
         </div>
     </section>
 
+
+    <!-- ═══════════════════════════════════════════════════ ABILITIES -->
+    <section class="wiki-section" id="sec-abilities">
+        <div class="wiki-section-title">◈ CLASS ABILITIES</div>
+        <div class="wiki-intro">
+            Each fighter is created with <strong>3 ability slots</strong> rolled from weighted pools specific to their class.
+            <strong>Slot 1</strong> contains the class's signature abilities — fewer options, higher impact.
+            <strong>Slots 2 &amp; 3</strong> draw from a larger shared pool. Percentages are <strong>weight ÷ total weight</strong> for that slot, pulled live from the game contract.
+        </div>
+        <p class="ab-note">✦ in descriptions = a value that scales with the ability's rarity tier (Abundant → Legendary)</p>
+
+        <div class="ab-class-btns" id="ab-class-btns"></div>
+
+        <div id="ab-display" style="display:none;">
+            <div class="wiki-section-title" id="ab-selected-name" style="font-size:0.9em;margin:0 0 4px;"></div>
+
+            <div class="ab-slot-label">◎ SLOT 1 — SIGNATURE ABILITIES</div>
+            <div class="ab-sig-grid" id="ab-slot1-grid"></div>
+
+            <div class="ab-slot-label">◎ SLOTS 2 &amp; 3 — GENERAL ABILITY POOL</div>
+            <input type="text" class="ab-search" id="ab-search" placeholder="Filter abilities..." oninput="filterAbPool()">
+            <table class="ab-pool-table">
+                <thead><tr>
+                    <th style="width:180px;">ABILITY</th>
+                    <th>DESCRIPTION</th>
+                    <th style="width:72px;text-align:center;">SLOT 2</th>
+                    <th style="width:72px;text-align:center;">SLOT 3</th>
+                </tr></thead>
+                <tbody id="ab-pool-tbody"></tbody>
+            </table>
+        </div>
+    </section>
+
 </div><!-- /wiki-main -->
 </div><!-- /page-pane-wiki -->
 
@@ -1798,6 +1858,83 @@ window.adjustFontSize = function(delta) {
         var saved = localStorage.getItem('naron_wiki_fontsize');
         if (saved) document.body.style.fontSize = parseFloat(saved) + 'px';
     } catch(e) {}
+})();
+
+// ── CLASS ABILITY INFOGRAPHIC ─────────────────────────────────────────────────
+(function() {
+    var CLASS_DISPLAY = {
+        arcanist:'Arcanist', astralknight:'Astral Knight', desperado:'Desperado',
+        explosioneer:'Explosioneer', hunter:'Hunter', juggernaut:'Juggernaut',
+        lunatic:'Lunatic', mindblade:'Mindblade', mystic:'Mystic',
+        tactician:'Tactician', voidcaller:'Voidcaller', voidwarden:'Voidwarden'
+    };
+    var CLASS_ORDER = Object.keys(CLASS_DISPLAY);
+
+    function buildClassBtns() {
+        var el = document.getElementById('ab-class-btns');
+        if (!el) return;
+        el.innerHTML = CLASS_ORDER.map(function(c) {
+            return '<button class="ab-class-btn" data-cls="' + c + '" onclick="showClassAbilities(\'' + c + '\')">' + CLASS_DISPLAY[c] + '</button>';
+        }).join('');
+    }
+
+    function cleanDesc(d) {
+        return (d || '').replace(/\[bf:\d+:value\]/g, '[✦]').replace(/\[eof:\d+:value\]/g, '[✦]');
+    }
+
+    window.showClassAbilities = function(cls) {
+        var data = window.ALE_ABILITY_DATA;
+        if (!data || !data[cls]) return;
+        document.querySelectorAll('.ab-class-btn').forEach(function(b) {
+            b.classList.toggle('active', b.dataset.cls === cls);
+        });
+        document.getElementById('ab-display').style.display = '';
+        document.getElementById('ab-selected-name').textContent = (CLASS_DISPLAY[cls] || cls).toUpperCase();
+
+        // Slot 1 — signature ability cards
+        var slot1 = data[cls]['1'];
+        var maxPct = slot1.length ? slot1[0].pct : 1;
+        document.getElementById('ab-slot1-grid').innerHTML = slot1.map(function(ab) {
+            var barW = Math.round(ab.pct / maxPct * 100);
+            var rarStr = Object.entries(ab.rarities).map(function(e) { return e[0] + ': ' + e[1] + '%'; }).join(' · ');
+            return '<div class="ab-sig-card">'
+                + '<div class="ab-sig-name">' + ab.name + '</div>'
+                + '<div class="ab-sig-desc">' + cleanDesc(ab.desc) + '</div>'
+                + '<div class="ab-bar-wrap"><div class="ab-bar-bg"><div class="ab-bar-fill" style="width:' + barW + '%"></div></div>'
+                + '<span class="ab-bar-pct">' + ab.pct + '%</span></div>'
+                + '<div class="ab-rar-row">' + rarStr + '</div>'
+                + '</div>';
+        }).join('');
+
+        // Slots 2 + 3 — merge into combined pool
+        var pool = {};
+        (data[cls]['2'] || []).forEach(function(ab) { pool[ab.id] = {id:ab.id, name:ab.name, desc:ab.desc, s2:ab.pct, s3:null}; });
+        (data[cls]['3'] || []).forEach(function(ab) {
+            if (pool[ab.id]) pool[ab.id].s3 = ab.pct;
+            else pool[ab.id] = {id:ab.id, name:ab.name, desc:ab.desc, s2:null, s3:ab.pct};
+        });
+        window._abPool = Object.values(pool).sort(function(a,b) { return ((b.s2||0)+(b.s3||0)) - ((a.s2||0)+(a.s3||0)); });
+        document.getElementById('ab-search').value = '';
+        renderAbPool(window._abPool);
+    };
+
+    function renderAbPool(arr) {
+        var q = (document.getElementById('ab-search').value || '').toLowerCase();
+        var filtered = q ? arr.filter(function(ab) { return ab.name.toLowerCase().includes(q) || ab.desc.toLowerCase().includes(q); }) : arr;
+        document.getElementById('ab-pool-tbody').innerHTML = filtered.map(function(ab) {
+            return '<tr>'
+                + '<td class="ab-pool-name">' + ab.name + '</td>'
+                + '<td class="ab-pool-desc">' + cleanDesc(ab.desc) + '</td>'
+                + '<td class="ab-pool-pct">' + (ab.s2 != null ? ab.s2 + '%' : '—') + '</td>'
+                + '<td class="ab-pool-pct">' + (ab.s3 != null ? ab.s3 + '%' : '—') + '</td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    window.filterAbPool = function() { if (window._abPool) renderAbPool(window._abPool); };
+
+    // Build buttons immediately; data loads async via defer script
+    buildClassBtns();
 })();
 </script>
 </body>
