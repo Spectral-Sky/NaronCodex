@@ -271,8 +271,8 @@
             position: relative; z-index: 4500;
         }
         .page-tab {
-            background: transparent; color: #888;
-            border: 1px solid transparent; padding: 9px 22px;
+            background: transparent; color: #9090a8;
+            border: 1px solid rgba(232,160,32,0.35); padding: 9px 22px;
             font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9em;
             cursor: crosshair; transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px; border-radius: 4px;
         }
@@ -692,7 +692,7 @@
 </div>
 
 <!-- ══ SECTION NAV (outside pane — hides when Walkthrough tab active) ═══════════ -->
-<div class="section-nav" id="section-nav">
+<div class="section-nav" id="section-nav" style="display:none;">
     <button class="section-pill active" onclick="scrollToSection('menu')">MENU</button>
     <button class="section-pill" onclick="scrollToSection('overview')">OVERVIEW</button>
     <button class="section-pill" onclick="scrollToSection('fighters')">FIGHTERS</button>
@@ -1782,8 +1782,18 @@
 
     // ── SECTION SCROLL ───────────────────────────────────────────────────────────
     window.scrollToSection = function(id) {
-        var el = document.getElementById('sec-' + id);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        var wikiPane = document.getElementById('page-pane-wiki');
+        var onWalkthrough = wikiPane && wikiPane.style.display === 'none';
+        if (onWalkthrough) {
+            switchPageTab('wiki');
+            setTimeout(function() {
+                var el = document.getElementById('sec-' + id);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 60);
+        } else {
+            var el = document.getElementById('sec-' + id);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }
     };
 
     // IntersectionObserver: update active pill as sections scroll into view
