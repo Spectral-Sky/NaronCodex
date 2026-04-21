@@ -488,7 +488,13 @@
             { x:38, y:3,  to:'neri'   },
             { x:37, y:18, to:'veles'  },
         ],
-        naron:  [],
+        naron:  [
+            { x:3,  y:2,  to:'magor'  },
+            { x:2,  y:20, to:'neri'   },
+            { x:39, y:2,  to:'veles'  },
+            { x:38, y:3,  to:'eyeke'  },
+            { x:37, y:18, to:'kavian' },
+        ],
         eyeke:  [],
         kavian: [],
         neri:   [],
@@ -997,6 +1003,12 @@
         var panel = document.getElementById('route-panel');
         var open  = panel.classList.toggle('open');
         btn.classList.toggle('open', open);
+        // Opening the planner forces confirm mode ON so clicks add steps, not fire TXs
+        if (open && !_confirmMode) {
+            _confirmMode = true;
+            var ctBtn = document.getElementById('confirm-toggle-btn');
+            if (ctBtn) { ctBtn.textContent = 'CONFIRM: ON'; ctBtn.classList.remove('off'); }
+        }
     };
 
     function renderRouteSteps() {
@@ -1049,31 +1061,52 @@
         if (!wallet) { alert('Please log in to execute a route.'); return; }
         if (_routeRunning || _routeSteps.length === 0) return;
         _routeRunning = true;
-        document.getElementById('execute-route-btn').disabled = true;
-        for (var i = 0; i < _routeSteps.length; i++) {
-            var step = _routeSteps[i];
-            if (step.status === 'done') continue;
-            step.status = 'run';
-            renderRouteSteps();
-            try {
-                await sendTravel(wallet, step.x, step.y);
-                step.status = 'done';
-                var destPlanet = step.portal ? step.portal : step.planet;
-                _playerPos = { planet: destPlanet, x: step.x, y: step.y };
-                applyPlayerMarker();
-                updatePlayerPosDisplay();
-                renderRouteSteps();
-                if (i < _routeSteps.length - 1) {
-                    await new Promise(function(r) { setTimeout(r, 2500); });
-                }
-            } catch(e) {
-                step.status = 'fail';
-                renderRouteSteps();
-                break;
+        var execBtn = document.getElementById('execute-route-btn');
+        execBtn.disabled = true;
+
+        // Build all travel actions into one transaction
+        var actions = _routeSteps.map(function(step) {
+            return {
+                account: 'players.ale',
+                name: 'travel',
+                authorization: [{ actor: wallet, permission: 'active' }],
+                data: { wallet: wallet, x: step.x, y: step.y }
+            };
+        });
+
+        // Mark all as running so the user sees the whole queue light up
+        _routeSteps.forEach(function(s) { s.status = 'run'; });
+        renderRouteSteps();
+
+        try {
+            if (window.walletSession) {
+                await window.walletSession.transact({ actions });
+            } else if (typeof wax !== 'undefined' && wax && wax.userAccount) {
+                await wax.api.transact({ actions }, { blocksBehind: 3, expireSeconds: 30 });
+            } else {
+                throw new Error('Session not ready — please log out and log back in.');
             }
+
+            // All steps confirmed — mark done and update position to last step
+            _routeSteps.forEach(function(s) { s.status = 'done'; });
+            var last       = _routeSteps[_routeSteps.length - 1];
+            var destPlanet = last.portal ? last.portal : last.planet;
+            _playerPos = { planet: destPlanet, x: last.x, y: last.y };
+            applyPlayerMarker();
+            updatePlayerPosDisplay();
+            if (destPlanet !== _activePlanet) switchPlanet(destPlanet);
+
+        } catch(e) {
+            // Whole transaction failed — mark all pending as failed
+            _routeSteps.forEach(function(s) { if (s.status === 'run') s.status = 'fail'; });
+            var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
+            execBtn.textContent = '✗ ' + msg.substring(0, 60);
+            setTimeout(function() { renderRouteSteps(); }, 100);
         }
+
+        renderRouteSteps();
         _routeRunning = false;
-        document.getElementById('execute-route-btn').disabled = false;
+        execBtn.disabled = false;
     };
 
     // ── THREE.JS PLANET GLOBE ────────────────────────────────────────────────
