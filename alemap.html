@@ -166,12 +166,12 @@
 
         /* player marker */
         .ale-me { background:rgba(232,160,32,0.15) !important; border-color:var(--theme-color) !important; z-index:4; }
-        .ale-me::after { content:'📍'; position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); font-size:15px; pointer-events:none; filter:drop-shadow(0 0 4px rgba(232,160,32,0.8)); }
+        .ale-me::after { content:'📍'; position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); font-size:15px; pointer-events:none; z-index:5; filter:drop-shadow(0 0 4px rgba(232,160,32,0.8)); }
 
         /* cell icons (portals, dungeons, taverns, arenas) */
         .cell-icon { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; display:flex; align-items:center; justify-content:center; width:32px; height:32px; z-index:2; }
         .cell-icon img { width:32px; height:32px; opacity:0.95; filter:drop-shadow(0 0 3px rgba(0,0,0,0.9)); }
-        .cell-icon img.icon-portal { width:28px; height:28px; }
+        .cell-icon img.icon-portal { width:42px; height:42px; }
         .cell-icon-emoji { font-size:14px; line-height:1; }
 
         /* portal art selector */
