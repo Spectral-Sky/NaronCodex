@@ -12,6 +12,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="NCico.png">
     <script src="waxjs.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script type="module">
         import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
         import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
@@ -103,6 +104,14 @@
         .title-bar { display:flex; align-items:center; gap:14px; background:#09080f; border-bottom:1px solid rgba(232,160,32,0.3); padding:10px 30px; position:sticky; top:66px; z-index:5000; }
         .title-bar h1 { color:var(--theme-color); font-family:'Courier New',monospace; font-size:1.1em; letter-spacing:4px; text-transform:uppercase; margin:0; text-shadow:0 0 8px var(--theme-color); }
         #player-pos-display { margin-left:auto; font-family:'Courier New',monospace; font-size:0.78em; color:#a09060; letter-spacing:1px; }
+
+        /* globe sidebar */
+        .map-section-row { display:flex; align-items:stretch; background:#06050e; }
+        .planet-globe-sidebar { width:210px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px 10px; border-right:1px solid rgba(232,160,32,0.14); background:#060510; }
+        #planet-globe-canvas { width:180px; height:180px; }
+        #planet-globe-canvas canvas { border-radius:50%; display:block; }
+        .planet-globe-name { font-family:'Courier New',monospace; font-size:0.9em; letter-spacing:3px; text-transform:uppercase; color:var(--theme-color); text-shadow:0 0 8px rgba(232,160,32,0.5); }
+        .map-outer-wrap { flex:1; min-width:0; background:#07060f; }
 
         /* player data bar */
         .player-data-bar { display:flex; align-items:stretch; flex-wrap:wrap; background:rgba(8,6,2,0.94); border-bottom:1px solid rgba(232,160,32,0.14); font-family:'Courier New',monospace; font-size:0.73em; }
@@ -322,6 +331,13 @@
 </div>
 
 <!-- ══ MAP AREA ═══════════════════════════════════════════════════════════ -->
+<div class="map-section-row">
+
+<div class="planet-globe-sidebar" id="planet-globe-sidebar">
+    <div id="planet-globe-canvas"></div>
+    <div class="planet-globe-name" id="planet-globe-name">MAGOR</div>
+</div>
+
 <div class="map-outer-wrap">
     <div class="map-scroll">
 
@@ -368,7 +384,8 @@
         </div>
 
     </div>
-</div>
+</div><!-- end map-outer-wrap -->
+</div><!-- end map-section-row -->
 
 <!-- ══ MAP LEGEND ═════════════════════════════════════════════════════════ -->
 <div class="map-legend">
@@ -400,6 +417,34 @@
 
 <script>
 (function() {
+    // ── WAX API (CORS-friendly endpoints with fallback) ──────────────────────
+    var WAX_ENDPOINTS = [
+        'https://wax.eosusa.io',
+        'https://api.wax.alohaeos.com',
+        'https://wax.cryptolions.io',
+    ];
+    async function fetchTableRows(params) {
+        var lastErr;
+        for (var i = 0; i < WAX_ENDPOINTS.length; i++) {
+            try {
+                var r = await fetch(WAX_ENDPOINTS[i] + '/v1/chain/get_table_rows', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                if (r.ok) return await r.json();
+            } catch(e) { lastErr = e; }
+        }
+        throw lastErr || new Error('WAX API unavailable');
+    }
+
+    // Returns the active wallet from any auth source
+    function getActiveWallet() {
+        if (window.walletSession) return String(window.walletSession.actor);
+        if (typeof wax !== 'undefined' && wax && wax.userAccount) return wax.userAccount;
+        return localStorage.getItem('naron_wallet') || null;
+    }
+
     // ── PLANET DATA ──────────────────────────────────────────────────────────
     var PLANETS = {
         magor:  { color: '#e05030', name: 'Magor'  },
@@ -471,6 +516,7 @@
     var _confirmMode   = true;   // true = show confirm strip; false = instant travel
     var _portalArt     = 'emoji'; // 'emoji' | 'image' | 'none'
     var _playerData    = null;   // full players.ale row
+    var _globe         = null;   // Three.js planet sphere
 
     // ── PORTAL ART SELECTOR ──────────────────────────────────────────────────
     function getPortalIconHtml() {
@@ -617,6 +663,7 @@
         document.getElementById('active-planet-label').textContent = PLANETS[planet].name.toUpperCase();
         hideStrip();
         buildMap(planet);
+        loadGlobeTexture(planet);
     };
 
     // ── HOVER ────────────────────────────────────────────────────────────────
@@ -683,7 +730,7 @@
 
     // ── INSTANT TRAVEL ───────────────────────────────────────────────────────
     async function instantTravel() {
-        var wallet = localStorage.getItem('naron_wallet');
+        var wallet = getActiveWallet();
         if (!wallet) {
             showStripBrief('err', '✗ Please log in to travel.');
             return;
@@ -777,12 +824,12 @@
         } else if (typeof wax !== 'undefined' && wax && wax.userAccount) {
             await wax.api.transact({ actions }, { blocksBehind: 3, expireSeconds: 30 });
         } else {
-            throw new Error('Not logged in. Please connect your wallet.');
+            throw new Error('Session not ready — please log out and log back in.');
         }
     }
 
     window.executeTravel = async function() {
-        var wallet = localStorage.getItem('naron_wallet');
+        var wallet = getActiveWallet();
         if (!wallet) { setStripStatus('err', '✗ Please log in to travel.'); return; }
         if (!_selection) return;
         var btn = document.getElementById('confirm-travel-btn');
@@ -819,15 +866,10 @@
     // ── PLAYER DATA ──────────────────────────────────────────────────────────
     async function fetchPlayerData(wallet) {
         try {
-            var res = await fetch('https://wax.greymass.com/v1/chain/get_table_rows', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code: 'players.ale', scope: 'players.ale', table: 'players',
-                    lower_bound: wallet, upper_bound: wallet, limit: 1, json: true
-                })
+            var data = await fetchTableRows({
+                code: 'players.ale', scope: 'players.ale', table: 'players',
+                lower_bound: wallet, upper_bound: wallet, limit: 1, json: true
             });
-            var data = await res.json();
             if (data.rows && data.rows.length > 0 && data.rows[0].wallet === wallet) {
                 var row = data.rows[0];
                 _playerData = row;
@@ -1003,7 +1045,7 @@
     window.clearRoute      = function()  { _routeSteps = []; renderRouteSteps(); };
 
     window.executeRoute = async function() {
-        var wallet = localStorage.getItem('naron_wallet');
+        var wallet = getActiveWallet();
         if (!wallet) { alert('Please log in to execute a route.'); return; }
         if (_routeRunning || _routeSteps.length === 0) return;
         _routeRunning = true;
@@ -1033,6 +1075,79 @@
         _routeRunning = false;
         document.getElementById('execute-route-btn').disabled = false;
     };
+
+    // ── THREE.JS PLANET GLOBE ────────────────────────────────────────────────
+    function initGlobe() {
+        if (typeof THREE === 'undefined') return;
+        var container = document.getElementById('planet-globe-canvas');
+        if (!container) return;
+
+        var W = 180, H = 180;
+        var scene    = new THREE.Scene();
+        var camera   = new THREE.PerspectiveCamera(38, W / H, 0.1, 100);
+        camera.position.z = 2.9;
+
+        var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(W, H);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // Planet sphere
+        var geo  = new THREE.SphereGeometry(1, 64, 64);
+        var mat  = new THREE.MeshPhongMaterial({ color: 0x334455, shininess: 18 });
+        var mesh = new THREE.Mesh(geo, mat);
+        scene.add(mesh);
+
+        // Thin atmosphere shell
+        var atmGeo = new THREE.SphereGeometry(1.035, 32, 32);
+        var atmMat = new THREE.MeshPhongMaterial({
+            color: 0x6688bb, transparent: true, opacity: 0.13, side: THREE.BackSide
+        });
+        scene.add(new THREE.Mesh(atmGeo, atmMat));
+
+        // Lighting — warm sun from upper-right
+        var sun = new THREE.DirectionalLight(0xfff5e0, 1.5);
+        sun.position.set(5, 3, 4);
+        scene.add(sun);
+        scene.add(new THREE.AmbientLight(0x102030, 0.9));
+
+        var loader = new THREE.TextureLoader();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            mesh.rotation.y += 0.003;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        _globe = { mesh: mesh, mat: mat, loader: loader };
+        loadGlobeTexture(_activePlanet);
+    }
+
+    function loadGlobeTexture(planet) {
+        var nameEl = document.getElementById('planet-globe-name');
+        if (nameEl) {
+            nameEl.textContent = PLANETS[planet].name.toUpperCase();
+            nameEl.style.color = PLANETS[planet].color;
+            nameEl.style.textShadow = '0 0 10px ' + PLANETS[planet].color + '90';
+        }
+        if (!_globe) return;
+        var p = PLANETS[planet];
+        _globe.loader.load(
+            'planets/' + planet + '.jpg',
+            function(tex) {
+                _globe.mat.map = tex;
+                _globe.mat.color.setHex(0xffffff);
+                _globe.mat.needsUpdate = true;
+            },
+            undefined,
+            function() {  // no texture — use planet accent colour
+                _globe.mat.map = null;
+                _globe.mat.color.set(p.color);
+                _globe.mat.needsUpdate = true;
+            }
+        );
+    }
 
     // ── WALLET ───────────────────────────────────────────────────────────────
     var wax = new waxjs.WaxJS({
@@ -1110,6 +1225,7 @@
     // ── INIT ─────────────────────────────────────────────────────────────────
     buildRulers();
     buildMap('magor');
+    initGlobe();
     checkWalletState();
 
 })();
