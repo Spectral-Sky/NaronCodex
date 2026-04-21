@@ -169,8 +169,9 @@
         .ale-me::after { content:'📍'; position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); font-size:15px; pointer-events:none; filter:drop-shadow(0 0 4px rgba(232,160,32,0.8)); }
 
         /* cell icons (portals, dungeons, taverns, arenas) */
-        .cell-icon { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; display:flex; align-items:center; justify-content:center; width:22px; height:22px; }
-        .cell-icon img { width:22px; height:22px; opacity:0.88; }
+        .cell-icon { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; }
+        .cell-icon img { width:26px; height:26px; opacity:0.92; filter:drop-shadow(0 0 3px rgba(0,0,0,0.8)); }
+        .cell-icon img.icon-portal { width:22px; height:22px; }
         .cell-icon-emoji { font-size:14px; line-height:1; }
 
         /* portal art selector */
@@ -646,7 +647,7 @@
     // ── PORTAL ART SELECTOR ──────────────────────────────────────────────────
     function getPortalIconHtml() {
         if (_portalArt === 'image') {
-            return '<span class="cell-icon"><img src="https://alienlegends.io/assets/maps/portal.webp" alt="🌀"></span>';
+            return '<span class="cell-icon"><img src="https://alienlegends.io/assets/maps/portal.webp" alt="🌀" class="icon-portal"></span>';
         } else if (_portalArt === 'emoji') {
             return '<span class="cell-icon"><span class="cell-icon-emoji">🌀</span></span>';
         }
@@ -751,15 +752,15 @@
                 } else if (dungeonSet[key]) {
                     cls  += ' ale-dungeon';
                     style = ' style="border-color:#508050a0;box-shadow:inset 0 0 5px #50805060"';
-                    icon  = '<span class="cell-icon"><span class="cell-icon-emoji">⛏</span></span>';
+                    icon  = '<span class="cell-icon"><img src="ALE Images/dungeon.svg" alt="dungeon"></span>';
                 } else if (tavernSet[key]) {
                     cls  += ' ale-tavern';
                     style = ' style="border-color:#b0784090;box-shadow:inset 0 0 5px #b0784050"';
-                    icon  = '<span class="cell-icon"><span class="cell-icon-emoji">🍺</span></span>';
+                    icon  = '<span class="cell-icon"><img src="ALE Images/tavern.svg" alt="tavern"></span>';
                 } else if (arenaSet[key]) {
                     cls  += ' ale-arena';
                     style = ' style="border-color:#c0404090;box-shadow:inset 0 0 5px #c0404050"';
-                    icon  = '<span class="cell-icon"><span class="cell-icon-emoji">⚔</span></span>';
+                    icon  = '<span class="cell-icon"><img src="ALE Images/Arena.svg" alt="arena"></span>';
                 }
 
                 cells.push(
