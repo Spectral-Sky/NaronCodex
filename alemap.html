@@ -171,20 +171,10 @@
         /* cell icons (portals, dungeons, taverns, arenas) */
         .cell-icon { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; display:flex; align-items:center; justify-content:center; width:32px; height:32px; z-index:2; }
         .cell-icon img { width:32px; height:32px; opacity:0.95; filter:drop-shadow(0 0 3px rgba(0,0,0,0.9)); }
-        .cell-icon img.icon-portal { width:22px; height:22px; }
+        .cell-icon img.icon-portal { width:28px; height:28px; }
         .cell-icon-emoji { font-size:14px; line-height:1; }
 
         /* portal art selector */
-        .art-selector-wrap { position:relative; display:inline-flex; align-items:center; }
-        .art-selector-btn { background:transparent; border:1px solid rgba(232,160,32,0.3); color:#887755; padding:3px 10px; font-family:'Courier New',monospace; font-size:0.72em; letter-spacing:1px; cursor:crosshair; transition:all 0.2s; border-radius:2px; white-space:nowrap; }
-        .art-selector-btn:hover, .art-selector-btn.open { color:var(--theme-color); border-color:rgba(232,160,32,0.7); }
-        .portal-art-popout { display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:8500; background:rgba(6,4,16,0.98); border:1px solid rgba(232,160,32,0.55); min-width:170px; padding:5px 0; box-shadow:0 8px 24px rgba(0,0,0,0.9); backdrop-filter:blur(8px); border-radius:3px; }
-        .portal-art-popout.open { display:block; }
-        .art-opt { display:flex; align-items:center; gap:10px; padding:7px 14px; font-family:'Courier New',monospace; font-size:0.78em; color:#7a8a9a; cursor:crosshair; white-space:nowrap; transition:color 0.15s, background 0.15s; }
-        .art-opt:hover { color:var(--theme-color); background:rgba(255,255,255,0.04); }
-        .art-opt.active { color:var(--theme-color); }
-        .art-opt .art-preview { width:18px; height:18px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px; }
-        .art-opt .art-preview img { width:16px; height:16px; opacity:0.9; }
 
         /* hover tooltip */
         #cell-tip { position:fixed; pointer-events:none; background:rgba(8,6,18,0.96); border:1px solid rgba(232,160,32,0.6); padding:4px 10px; font-family:'Courier New',monospace; font-size:0.72em; color:var(--theme-color); letter-spacing:1px; z-index:7000; white-space:nowrap; display:none; border-radius:3px; line-height:1.6; }
@@ -347,14 +337,6 @@
         <div class="map-status-bar">
             <span id="coord-display">X:— &nbsp;Y:—</span>
             <span id="active-planet-label">MAGOR</span>
-            <div class="art-selector-wrap">
-                <button class="art-selector-btn" id="art-selector-btn" onclick="toggleArtSelector()">🌀 PORTAL ART ▾</button>
-                <div class="portal-art-popout" id="portal-art-popout">
-                    <div class="art-opt active" id="art-opt-emoji"  onclick="setPortalArt('emoji')"><span class="art-preview">🌀</span>Swirl Emoji</div>
-                    <div class="art-opt"         id="art-opt-image" onclick="setPortalArt('image')"><span class="art-preview"><img src="https://alienlegends.io/assets/maps/portal.webp" alt=""></span>Portal Art</div>
-                    <div class="art-opt"         id="art-opt-none"  onclick="setPortalArt('none')"><span class="art-preview" style="color:#445">—</span>Glow Only</div>
-                </div>
-            </div>
             <span id="portal-hint" style="margin-left:auto"></span>
         </div>
 
@@ -602,6 +584,55 @@
         }
     }
 
+    // Query lands.ale::lands to populate ALL tavern and arena locations globally
+    async function fetchAllBuildings() {
+        var planetList = ['magor','naron','eyeke','kavian','neri','veles'];
+        var added = 0;
+
+        for (var pi = 0; pi < planetList.length; pi++) {
+            var planet = planetList[pi];
+            var rows = [];
+            for (var si = 0; si < [planet, 'lands.ale'].length; si++) {
+                try {
+                    var d = await fetchTableRows({
+                        code: 'lands.ale', scope: [planet, 'lands.ale'][si],
+                        table: 'lands', limit: 1000, json: true
+                    });
+                    if (d.rows && d.rows.length) rows = rows.concat(d.rows);
+                } catch(e) {}
+            }
+
+            rows.forEach(function(row) {
+                var x = row.x, y = row.y;
+                if ((!x || !y) && row.land_id) {
+                    var c = decodeLandId(row.land_id);
+                    if (c) { x = c.x; y = c.y; }
+                }
+                if (!x || !y) return;
+                var rowPlanet = (row.planet !== undefined) ? normalizePlanet(row.planet) : planet;
+                if (!rowPlanet || !ALE_LOCATIONS[rowPlanet]) return;
+                var owner = row.owner || null;
+
+                // buildings may be an array of strings, array of objects, or a single value
+                var buildings = row.buildings || row.building || [];
+                if (!Array.isArray(buildings)) buildings = [buildings];
+                var bStr = JSON.stringify(buildings).toLowerCase();
+
+                if (bStr.indexOf('tavern') >= 0) {
+                    var dup = ALE_LOCATIONS[rowPlanet].taverns.some(function(t) { return t.x===x && t.y===y; });
+                    if (!dup) { ALE_LOCATIONS[rowPlanet].taverns.push({x:x, y:y, owner:owner}); added++; }
+                }
+                if (bStr.indexOf('arena') >= 0) {
+                    var dup = ALE_LOCATIONS[rowPlanet].arenas.some(function(a) { return a.x===x && a.y===y; });
+                    if (!dup) { ALE_LOCATIONS[rowPlanet].arenas.push({x:x, y:y, owner:owner}); added++; }
+                }
+            });
+        }
+
+        if (added > 0) _refreshDungeonMaps();
+        return added;
+    }
+
     // Called if chain table had no data — reads from player row's played_dungeons
     function populateDungeonsFromPlayer(playedDungeons) {
         if (!playedDungeons || !playedDungeons.length) return;
@@ -701,55 +732,12 @@
     var _routeClickSeq = 0;
     var _routeClickTimer = null;
     var _confirmMode   = true;   // true = show confirm strip; false = instant travel
-    var _portalArt     = 'emoji'; // 'emoji' | 'image' | 'none'
     var _playerData    = null;   // full players.ale row
     var _globe         = null;   // Three.js planet sphere
 
-    // ── PORTAL ART SELECTOR ──────────────────────────────────────────────────
     function getPortalIconHtml() {
-        if (_portalArt === 'image') {
-            return '<span class="cell-icon"><img src="https://alienlegends.io/assets/maps/portal.webp" alt="🌀" class="icon-portal"></span>';
-        } else if (_portalArt === 'emoji') {
-            return '<span class="cell-icon"><span class="cell-icon-emoji">🌀</span></span>';
-        }
-        return ''; // 'none' — just the glow border
+        return '<span class="cell-icon"><img src="https://alienlegends.io/assets/maps/portal.webp" alt="portal" class="icon-portal"></span>';
     }
-
-    window.toggleArtSelector = function() {
-        var popout = document.getElementById('portal-art-popout');
-        var btn    = document.getElementById('art-selector-btn');
-        var isOpen = popout.classList.toggle('open');
-        btn.classList.toggle('open', isOpen);
-    };
-
-    window.setPortalArt = function(art) {
-        _portalArt = art;
-        // update active state on options
-        ['emoji','image','none'].forEach(function(k) {
-            var el = document.getElementById('art-opt-' + k);
-            if (el) el.classList.toggle('active', k === art);
-        });
-        // close popout
-        document.getElementById('portal-art-popout').classList.remove('open');
-        document.getElementById('art-selector-btn').classList.remove('open');
-        // re-render all already-built maps
-        Object.keys(_rendered).forEach(function(planet) {
-            if (_rendered[planet]) {
-                _rendered[planet] = false;
-                if (planet === _activePlanet) buildMap(planet); // rebuild active immediately
-            }
-        });
-        // lazy-rebuild others when switched to
-    };
-
-    // close art selector when clicking outside
-    document.addEventListener('click', function(e) {
-        var wrap = document.querySelector('.art-selector-wrap');
-        if (wrap && !wrap.contains(e.target)) {
-            document.getElementById('portal-art-popout').classList.remove('open');
-            document.getElementById('art-selector-btn').classList.remove('open');
-        }
-    });
 
     // ── CONFIRM MODE TOGGLE ──────────────────────────────────────────────────
     window.toggleConfirmMode = function() {
@@ -1555,7 +1543,8 @@
     buildRulers();
     buildMap('magor');
     initGlobe();
-    fetchAllDungeons().then(enrichWithLandOwners); // async — dungeons then owner enrichment
+    fetchAllDungeons().then(enrichWithLandOwners); // dungeons → then owner enrichment
+    fetchAllBuildings();                           // taverns + arenas from lands.ale globally
     checkWalletState();
 
 })();
