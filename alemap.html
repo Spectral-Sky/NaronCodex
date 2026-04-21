@@ -199,6 +199,8 @@
         .conf-btn.confirm:hover  { background:var(--theme-color); color:#000; }
         .conf-btn.view-map { color:#5090e0; border-color:#5090e0; }
         .conf-btn.view-map:hover { background:#5090e0; color:#000; }
+        .conf-btn.hire { color:#c09a50; border-color:#c09a50; }
+        .conf-btn.hire:hover { background:#c09a50; color:#000; }
         .conf-btn.cancel   { color:#666; border-color:#444; }
         .conf-btn.cancel:hover   { color:#ccc; border-color:#888; }
         #strip-status { font-family:'Courier New',monospace; font-size:0.82em; }
@@ -378,8 +380,9 @@
 
         <div id="confirm-strip" class="confirm-strip hidden">
             <div id="confirm-content"></div>
-            <button id="confirm-travel-btn" class="conf-btn confirm" onclick="executeTravel()">CONFIRM TRAVEL</button>
-            <button id="view-map-btn"       class="conf-btn view-map" style="display:none;" onclick="viewDestMap()">VIEW MAP</button>
+            <button id="confirm-travel-btn" class="conf-btn confirm"  onclick="executeTravel()" style="display:none;">CONFIRM TRAVEL</button>
+            <button id="view-map-btn"        class="conf-btn view-map" style="display:none;" onclick="viewDestMap()">VIEW MAP</button>
+            <button id="hire-btn"            class="conf-btn hire"     style="display:none;" onclick="executeHire()">HIRE FIGHTER</button>
             <span id="strip-status"></span>
             <button class="conf-btn cancel" onclick="hideStrip()">✕</button>
         </div>
@@ -908,8 +911,9 @@
         );
         if (cell) cell.classList.add('selected');
 
-        var portal = (ALE_PORTALS[_activePlanet] || []).find(function(p) { return p.x === x && p.y === y; });
-        _selection = { x: x, y: y, portal: portal || null };
+        var portal   = (ALE_PORTALS[_activePlanet] || []).find(function(p) { return p.x === x && p.y === y; });
+        var isTavern = (ALE_LOCATIONS[_activePlanet].taverns || []).some(function(t) { return t.x === x && t.y === y; });
+        _selection = { x: x, y: y, portal: portal || null, tavern: isTavern };
 
         if (!_confirmMode) {
             instantTravel();
@@ -941,33 +945,39 @@
         }
     }
 
+    function _resetStripBtns() {
+        document.getElementById('confirm-travel-btn').style.display = 'none';
+        document.getElementById('view-map-btn').style.display       = 'none';
+        document.getElementById('hire-btn').style.display           = 'none';
+    }
+
     function showStripBrief(cls, text) {
         var strip   = document.getElementById('confirm-strip');
         var content = document.getElementById('confirm-content');
-        var confBtn = document.getElementById('confirm-travel-btn');
-        var viewBtn = document.getElementById('view-map-btn');
         content.textContent = '';
-        confBtn.style.display = 'none';
-        viewBtn.style.display = 'none';
+        _resetStripBtns();
         setStripStatus(cls, text);
         strip.classList.remove('hidden');
-        setTimeout(function() {
-            confBtn.style.display = '';
-            hideStrip();
-        }, 2200);
+        setTimeout(hideStrip, 2200);
     }
 
     // ── CONFIRM STRIP ────────────────────────────────────────────────────────
     function showStrip() {
         var strip   = document.getElementById('confirm-strip');
         var content = document.getElementById('confirm-content');
-        var viewBtn = document.getElementById('view-map-btn');
         var confBtn = document.getElementById('confirm-travel-btn');
+        var viewBtn = document.getElementById('view-map-btn');
+        var hireBtn = document.getElementById('hire-btn');
         var status  = document.getElementById('strip-status');
-        confBtn.style.display = '';
+        _resetStripBtns();
         status.textContent = '';
         status.className = '';
         strip.classList.remove('hidden');
+
+        var atThisCell = _playerPos &&
+            _playerPos.planet === _activePlanet &&
+            _playerPos.x === _selection.x &&
+            _playerPos.y === _selection.y;
 
         if (_selection.portal) {
             var dest  = _selection.portal.to;
@@ -975,14 +985,26 @@
             content.innerHTML = 'Portal &rarr; <strong style="color:' + color + '">' +
                 PLANETS[dest].name.toUpperCase() + '</strong>' +
                 '&nbsp;&nbsp;<span style="color:#667;font-size:0.88em">(' + _selection.x + ', ' + _selection.y + ')</span>';
-            confBtn.textContent = 'TRAVEL TO PORTAL';
+            confBtn.textContent  = 'TRAVEL TO PORTAL';
+            confBtn.style.display = '';
+            viewBtn.textContent  = 'VIEW ' + PLANETS[dest].name.toUpperCase() + ' MAP';
             viewBtn.style.display = '';
-            viewBtn.textContent = 'VIEW ' + PLANETS[dest].name.toUpperCase() + ' MAP';
+        } else if (_selection.tavern) {
+            var owner = _findLocOwner('taverns', _activePlanet, _selection.x, _selection.y);
+            content.innerHTML = '<img src="Ale%20images/tavern.svg" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;opacity:0.85;">' +
+                'Tavern' +
+                (owner ? '&nbsp;&nbsp;<span style="color:#8898a8;font-size:0.85em">' + owner + '</span>' : '') +
+                '&nbsp;&nbsp;<span style="color:#c09a50;font-family:\'Courier New\',monospace">(' + _selection.x + ', ' + _selection.y + ')</span>';
+            if (!atThisCell) {
+                confBtn.textContent   = 'TRAVEL THERE';
+                confBtn.style.display = '';
+            }
+            hireBtn.style.display = '';
         } else {
             content.innerHTML = 'Travel to <strong>' + PLANETS[_activePlanet].name.toUpperCase() + '</strong>' +
                 ' &nbsp;<span style="color:var(--theme-color);font-family:\'Courier New\',monospace">(' + _selection.x + ', ' + _selection.y + ')</span>';
-            confBtn.textContent = 'CONFIRM TRAVEL';
-            viewBtn.style.display = 'none';
+            confBtn.textContent   = 'CONFIRM TRAVEL';
+            confBtn.style.display = '';
         }
     }
 
@@ -993,8 +1015,7 @@
             if (prev) prev.classList.remove('selected');
         }
         _selection = null;
-        var confBtn = document.getElementById('confirm-travel-btn');
-        if (confBtn) confBtn.style.display = '';
+        _resetStripBtns();
     };
 
     window.viewDestMap = function() {
@@ -1044,6 +1065,43 @@
         } finally {
             btn.disabled = false;
             btn.textContent = _selection && _selection.portal ? 'TRAVEL TO PORTAL' : 'CONFIRM TRAVEL';
+        }
+    };
+
+    // ── HIRE TRANSACTION ─────────────────────────────────────────────────────
+    window.executeHire = async function() {
+        var wallet = getActiveWallet();
+        if (!wallet) { setStripStatus('err', '✗ Please log in.'); return; }
+        var btn = document.getElementById('hire-btn');
+        btn.disabled = true;
+        btn.textContent = '...';
+        setStripStatus('', '');
+        try {
+            var actions = [{
+                account: 'players.ale',
+                name: 'hire',
+                authorization: [{ actor: wallet, permission: 'active' }],
+                data: { wallet: wallet, asset_ids: [], cost_action_points: 100 }
+            }];
+            if (window.walletSession) {
+                await window.walletSession.transact({ actions });
+            } else if (typeof wax !== 'undefined' && wax && wax.userAccount) {
+                await wax.api.transact({ actions }, { blocksBehind: 3, expireSeconds: 30 });
+            } else {
+                throw new Error('Session not ready — please log out and log back in.');
+            }
+            setStripStatus('ok', '✓ Fighter hired! (-100 AP)');
+            setTimeout(function() {
+                // Refresh player data so AP updates in the bar
+                if (wallet) fetchPlayerData(wallet);
+                hideStrip();
+            }, 2000);
+        } catch(e) {
+            var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
+            setStripStatus('err', '✗ ' + msg.substring(0, 120));
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'HIRE FIGHTER';
         }
     };
 
