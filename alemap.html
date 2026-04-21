@@ -305,7 +305,7 @@
 <div class="title-bar">
     <h1>⬡ ALIEN LEGENDS — TRAVEL MAP</h1>
     <button id="confirm-toggle-btn" class="confirm-toggle-btn" onclick="toggleConfirmMode()">CONFIRM: ON</button>
-    <span id="player-pos-display"></span>
+    <span id="player-pos-display" onclick="_routeClickCount()" style="cursor:default;user-select:none;"></span>
 </div>
 
 <!-- ══ PLANET TABS ════════════════════════════════════════════════════════ -->
@@ -398,7 +398,7 @@
 </div>
 
 <!-- ══ ROUTE PLANNER ══════════════════════════════════════════════════════ -->
-<div class="route-section">
+<div class="route-section" id="route-section" style="display:none;">
     <button class="route-toggle-btn" id="route-toggle-btn" onclick="toggleRoutePlanner()">⬡ ROUTE PLANNER</button>
     <div class="route-panel" id="route-panel">
         <div class="route-header">
@@ -411,6 +411,22 @@
         <div class="route-actions">
             <button class="conf-btn add-btn" onclick="addToRoute()">+ ADD SELECTION</button>
             <button class="conf-btn exec-btn" id="execute-route-btn" onclick="executeRoute()" disabled>▶ EXECUTE ROUTE (0)</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ ROUTE UNLOCK MODAL ════════════════════════════════════════════════ -->
+<div id="route-unlock-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9000;align-items:center;justify-content:center;">
+    <div style="background:#060e1a;border:1px solid rgba(232,160,32,0.35);border-radius:4px;padding:28px 32px;min-width:300px;text-align:center;box-shadow:0 0 40px rgba(232,160,32,0.15);">
+        <div style="font-family:'Courier New',monospace;font-size:0.7em;letter-spacing:3px;color:#e8a020;margin-bottom:16px;">ACCESS RESTRICTED</div>
+        <input id="route-unlock-input" type="password" autocomplete="off"
+            style="background:#010810;border:1px solid rgba(232,160,32,0.4);color:#e8d090;font-family:'Courier New',monospace;font-size:1em;padding:8px 14px;width:180px;text-align:center;letter-spacing:4px;outline:none;border-radius:2px;"
+            onkeydown="if(event.key==='Enter')_routeUnlockSubmit();if(event.key==='Escape')_routeUnlockClose();"
+            placeholder="password">
+        <div id="route-unlock-err" style="color:#c04040;font-family:'Courier New',monospace;font-size:0.72em;letter-spacing:1px;margin-top:8px;min-height:1.2em;"></div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">
+            <button onclick="_routeUnlockSubmit()" style="background:transparent;border:1px solid rgba(232,160,32,0.5);color:#e8a020;font-family:'Courier New',monospace;font-size:0.78em;letter-spacing:2px;padding:7px 18px;cursor:crosshair;border-radius:2px;">UNLOCK</button>
+            <button onclick="_routeUnlockClose()" style="background:transparent;border:1px solid rgba(100,100,120,0.4);color:#667;font-family:'Courier New',monospace;font-size:0.78em;letter-spacing:2px;padding:7px 18px;cursor:crosshair;border-radius:2px;">CANCEL</button>
         </div>
     </div>
 </div>
@@ -443,6 +459,106 @@
         if (window.walletSession) return String(window.walletSession.actor);
         if (typeof wax !== 'undefined' && wax && wax.userAccount) return wax.userAccount;
         return localStorage.getItem('naron_wallet') || null;
+    }
+
+    // ── LAND ID DECODER ──────────────────────────────────────────────────────
+    // ALE encodes grid coords as letters: a=0, b=1, … j=9; 'x' is the separator.
+    // e.g. "daxe" → "da"=30, "e"=4 → { x:30, y:4 }
+    function decodeLandId(id) {
+        if (!id || typeof id !== 'string') return null;
+        var sep = id.indexOf('x');
+        if (sep < 1 || sep >= id.length - 1) return null;
+        var decodeDigits = function(s) {
+            var n = 0;
+            for (var k = 0; k < s.length; k++) {
+                var d = s.charCodeAt(k) - 97; // 'a'=97
+                if (d < 0 || d > 9) return NaN;
+                n = n * 10 + d;
+            }
+            return n;
+        };
+        var cx = decodeDigits(id.slice(0, sep));
+        var cy = decodeDigits(id.slice(sep + 1));
+        if (isNaN(cx) || isNaN(cy) || cx < 1 || cx > 40 || cy < 1 || cy > 20) return null;
+        return { x: cx, y: cy };
+    }
+
+    function _addDungeonCoord(planet, x, y) {
+        if (!planet || !x || !y || !ALE_LOCATIONS[planet]) return false;
+        var dup = ALE_LOCATIONS[planet].dungeons.some(function(d) { return d.x === x && d.y === y; });
+        if (!dup) { ALE_LOCATIONS[planet].dungeons.push({ x: x, y: y }); return true; }
+        return false;
+    }
+
+    function _parseDungeonRow(row, defaultPlanet) {
+        var x = row.x, y = row.y;
+        if ((!x || !y) && row.land_id) {
+            var c = decodeLandId(row.land_id);
+            if (c) { x = c.x; y = c.y; }
+        }
+        var planet = (row.planet !== undefined && row.planet !== null)
+            ? normalizePlanet(row.planet) : defaultPlanet;
+        return _addDungeonCoord(planet, x, y);
+    }
+
+    function _refreshDungeonMaps() {
+        Object.keys(_rendered).forEach(function(p) {
+            if (_rendered[p]) {
+                _rendered[p] = false;
+                if (p === _activePlanet) buildMap(p);
+            }
+        });
+    }
+
+    // Query dungeons.ale::dungeons — tries global scope then per-planet scopes.
+    // Falls back to player's played_dungeons array if the chain table yields nothing.
+    async function fetchAllDungeons() {
+        var planetList = ['magor','naron','eyeke','kavian','neri','veles'];
+        var added = 0;
+
+        // Global scope attempt
+        try {
+            var gd = await fetchTableRows({
+                code: 'dungeons.ale', scope: 'dungeons.ale', table: 'dungeons',
+                limit: 1000, json: true
+            });
+            if (gd.rows) gd.rows.forEach(function(r) { if (_parseDungeonRow(r, null)) added++; });
+        } catch(e) { /* skip */ }
+
+        // Per-planet scope attempts
+        for (var pi = 0; pi < planetList.length; pi++) {
+            try {
+                var pd = await fetchTableRows({
+                    code: 'dungeons.ale', scope: planetList[pi], table: 'dungeons',
+                    limit: 500, json: true
+                });
+                if (pd.rows) pd.rows.forEach(function(r) { if (_parseDungeonRow(r, planetList[pi])) added++; });
+            } catch(e) { /* skip */ }
+        }
+
+        if (added > 0) _refreshDungeonMaps();
+        return added;
+    }
+
+    // Called if chain table had no data — reads from player row's played_dungeons
+    function populateDungeonsFromPlayer(playedDungeons) {
+        if (!playedDungeons || !playedDungeons.length) return;
+        var added = 0;
+        playedDungeons.forEach(function(entry) {
+            var planet = null, landId = null;
+            if (typeof entry === 'string') {
+                var dot = entry.indexOf('.');
+                if (dot > 0) { planet = normalizePlanet(entry.slice(0, dot)); landId = entry.slice(dot + 1); }
+            } else if (entry && typeof entry === 'object') {
+                planet = normalizePlanet(entry.first || entry.planet);
+                landId = entry.second || entry.land_id;
+            }
+            if (planet && landId) {
+                var c = decodeLandId(landId);
+                if (c && _addDungeonCoord(planet, c.x, c.y)) added++;
+            }
+        });
+        if (added > 0) _refreshDungeonMaps();
     }
 
     // ── PLANET DATA ──────────────────────────────────────────────────────────
@@ -519,6 +635,9 @@
     var _rendered      = {};
     var _routeSteps    = [];
     var _routeRunning  = false;
+    var _routeUnlocked = false;
+    var _routeClickSeq = 0;
+    var _routeClickTimer = null;
     var _confirmMode   = true;   // true = show confirm strip; false = instant travel
     var _portalArt     = 'emoji'; // 'emoji' | 'image' | 'none'
     var _playerData    = null;   // full players.ale row
@@ -889,6 +1008,13 @@
                 }
                 // Populate tavern icons from active_taverns
                 populatePlayerLocations(row);
+                // Fallback: populate dungeon icons from played_dungeons if chain fetch found nothing
+                var dungeonCount = Object.keys(ALE_LOCATIONS).reduce(function(n, p) {
+                    return n + ALE_LOCATIONS[p].dungeons.length;
+                }, 0);
+                if (dungeonCount === 0 && row.played_dungeons && row.played_dungeons.length) {
+                    populateDungeonsFromPlayer(row.played_dungeons);
+                }
                 // Show player info bar
                 updatePlayerPanel(row);
             }
@@ -986,6 +1112,7 @@
 
     function clearPlayerData() {
         _playerData = null;
+        // Clear only player-specific locations (taverns); dungeon locations come from chain data and persist
         Object.keys(ALE_LOCATIONS).forEach(function(p) { ALE_LOCATIONS[p].taverns = []; });
         Object.keys(_rendered).forEach(function(planet) {
             if (_rendered[planet]) {
@@ -996,6 +1123,51 @@
         var bar = document.getElementById('player-data-bar');
         if (bar) bar.style.display = 'none';
     }
+
+    // ── ROUTE PLANNER UNLOCK ─────────────────────────────────────────────────
+    window._routeClickCount = function() {
+        if (_routeUnlocked) return; // already unlocked — do nothing
+        clearTimeout(_routeClickTimer);
+        _routeClickSeq++;
+        if (_routeClickSeq >= 5) {
+            _routeClickSeq = 0;
+            _routeUnlockOpen();
+        } else {
+            // Reset sequence if idle for 2s
+            _routeClickTimer = setTimeout(function() { _routeClickSeq = 0; }, 2000);
+        }
+    };
+
+    window._routeUnlockOpen = function() {
+        var overlay = document.getElementById('route-unlock-overlay');
+        var input   = document.getElementById('route-unlock-input');
+        var err     = document.getElementById('route-unlock-err');
+        err.textContent = '';
+        input.value = '';
+        overlay.style.display = 'flex';
+        setTimeout(function() { input.focus(); }, 50);
+    };
+
+    window._routeUnlockClose = function() {
+        document.getElementById('route-unlock-overlay').style.display = 'none';
+    };
+
+    window._routeUnlockSubmit = function() {
+        var input = document.getElementById('route-unlock-input');
+        var err   = document.getElementById('route-unlock-err');
+        if (input.value === 'N4R0N') {
+            _routeUnlocked = true;
+            document.getElementById('route-unlock-overlay').style.display = 'none';
+            document.getElementById('route-section').style.display = '';
+            // Remove the click trigger from the position display
+            var posEl = document.getElementById('player-pos-display');
+            if (posEl) posEl.removeAttribute('onclick');
+        } else {
+            err.textContent = 'INCORRECT';
+            input.value = '';
+            input.focus();
+        }
+    };
 
     // ── ROUTE PLANNER ────────────────────────────────────────────────────────
     window.toggleRoutePlanner = function() {
@@ -1259,6 +1431,7 @@
     buildRulers();
     buildMap('magor');
     initGlobe();
+    fetchAllDungeons(); // async — populates dungeon icons once data arrives
     checkWalletState();
 
 })();
