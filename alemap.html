@@ -169,8 +169,8 @@
         .ale-me::after { content:'📍'; position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); font-size:15px; pointer-events:none; filter:drop-shadow(0 0 4px rgba(232,160,32,0.8)); }
 
         /* cell icons (portals, dungeons, taverns, arenas) */
-        .cell-icon { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; }
-        .cell-icon img { width:26px; height:26px; opacity:0.92; filter:drop-shadow(0 0 3px rgba(0,0,0,0.8)); }
+        .cell-icon { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; display:flex; align-items:center; justify-content:center; width:28px; height:28px; }
+        .cell-icon img { width:28px; height:28px; opacity:0.95; filter:drop-shadow(0 0 3px rgba(0,0,0,0.9)); }
         .cell-icon img.icon-portal { width:22px; height:22px; }
         .cell-icon-emoji { font-size:14px; line-height:1; }
 
@@ -484,11 +484,27 @@
         return { x: cx, y: cy };
     }
 
-    function _addDungeonCoord(planet, x, y) {
+    function _addDungeonCoord(planet, x, y, owner) {
         if (!planet || !x || !y || !ALE_LOCATIONS[planet]) return false;
         var dup = ALE_LOCATIONS[planet].dungeons.some(function(d) { return d.x === x && d.y === y; });
-        if (!dup) { ALE_LOCATIONS[planet].dungeons.push({ x: x, y: y }); return true; }
+        if (!dup) { ALE_LOCATIONS[planet].dungeons.push({ x: x, y: y, owner: owner || null }); return true; }
         return false;
+    }
+
+    // Returns the owner string for a given type/planet/x/y, or null
+    function _findLocOwner(type, planet, x, y) {
+        var locs = ALE_LOCATIONS[planet] && ALE_LOCATIONS[planet][type];
+        if (!locs) return null;
+        var found = locs.find(function(l) { return l.x === x && l.y === y; });
+        return found ? (found.owner || null) : null;
+    }
+
+    // Sets owner on an existing location entry (used by enrichWithLandOwners)
+    function _setLocOwner(type, planet, x, y, owner) {
+        var locs = ALE_LOCATIONS[planet] && ALE_LOCATIONS[planet][type];
+        if (!locs) return;
+        var found = locs.find(function(l) { return l.x === x && l.y === y; });
+        if (found && !found.owner) found.owner = owner;
     }
 
     function _parseDungeonRow(row, defaultPlanet) {
@@ -499,7 +515,7 @@
         }
         var planet = (row.planet !== undefined && row.planet !== null)
             ? normalizePlanet(row.planet) : defaultPlanet;
-        return _addDungeonCoord(planet, x, y);
+        return _addDungeonCoord(planet, x, y, row.owner || row.account || null);
     }
 
     function _refreshDungeonMaps() {
@@ -539,6 +555,48 @@
 
         if (added > 0) _refreshDungeonMaps();
         return added;
+    }
+
+    // Query lands.ale::lands to fill in owner fields on known dungeon/tavern/arena coords
+    async function enrichWithLandOwners() {
+        var planetList = ['magor','naron','eyeke','kavian','neri','veles'];
+        var locationTypes = ['dungeons','taverns','arenas'];
+
+        for (var pi = 0; pi < planetList.length; pi++) {
+            var planet = planetList[pi];
+            // Skip if no locations on this planet
+            var hasAny = locationTypes.some(function(t) {
+                return (ALE_LOCATIONS[planet][t] || []).length > 0;
+            });
+            if (!hasAny) continue;
+
+            var rows = [];
+            // Try planet-name scope and global scope
+            for (var si = 0; si < [planet, 'lands.ale'].length; si++) {
+                try {
+                    var d = await fetchTableRows({
+                        code: 'lands.ale', scope: [planet, 'lands.ale'][si],
+                        table: 'lands', limit: 1000, json: true
+                    });
+                    if (d.rows && d.rows.length) rows = rows.concat(d.rows);
+                } catch(e) { /* skip */ }
+            }
+
+            rows.forEach(function(row) {
+                if (!row.owner) return;
+                var x = row.x, y = row.y;
+                if ((!x || !y) && row.land_id) {
+                    var c = decodeLandId(row.land_id);
+                    if (c) { x = c.x; y = c.y; }
+                }
+                if (!x || !y) return;
+                var rowPlanet = row.planet !== undefined ? normalizePlanet(row.planet) : planet;
+                if (!rowPlanet) return;
+                locationTypes.forEach(function(type) {
+                    _setLocOwner(type, rowPlanet, x, y, row.owner);
+                });
+            });
+        }
     }
 
     // Called if chain table had no data — reads from player row's played_dungeons
@@ -752,15 +810,15 @@
                 } else if (dungeonSet[key]) {
                     cls  += ' ale-dungeon';
                     style = ' style="border-color:#508050a0;box-shadow:inset 0 0 5px #50805060"';
-                    icon  = '<span class="cell-icon"><img src="ALE Images/dungeon.svg" alt="dungeon"></span>';
+                    icon  = '<span class="cell-icon"><img src="ALE%20Images/dungeon.svg" alt="dungeon"></span>';
                 } else if (tavernSet[key]) {
                     cls  += ' ale-tavern';
                     style = ' style="border-color:#b0784090;box-shadow:inset 0 0 5px #b0784050"';
-                    icon  = '<span class="cell-icon"><img src="ALE Images/tavern.svg" alt="tavern"></span>';
+                    icon  = '<span class="cell-icon"><img src="ALE%20Images/tavern.svg" alt="tavern"></span>';
                 } else if (arenaSet[key]) {
                     cls  += ' ale-arena';
                     style = ' style="border-color:#c0404090;box-shadow:inset 0 0 5px #c0404050"';
-                    icon  = '<span class="cell-icon"><img src="ALE Images/Arena.svg" alt="arena"></span>';
+                    icon  = '<span class="cell-icon"><img src="ALE%20Images/Arena.svg" alt="arena"></span>';
                 }
 
                 cells.push(
@@ -806,12 +864,18 @@
             tip.style.borderColor = color;
         } else if (el.classList.contains('ale-dungeon')) {
             html += '<br><span style="color:#70a870">⛏ Dungeon</span>';
+            var dOwner = _findLocOwner('dungeons', _activePlanet, x, y);
+            if (dOwner) html += '<br><span style="color:#8898a8;font-size:0.88em">' + dOwner + '</span>';
             tip.style.borderColor = '#508050';
         } else if (el.classList.contains('ale-tavern')) {
             html += '<br><span style="color:#c09060">🍺 Tavern</span>';
+            var tOwner = _findLocOwner('taverns', _activePlanet, x, y);
+            if (tOwner) html += '<br><span style="color:#8898a8;font-size:0.88em">' + tOwner + '</span>';
             tip.style.borderColor = '#b07840';
         } else if (el.classList.contains('ale-arena')) {
             html += '<br><span style="color:#c06060">⚔ Arena</span>';
+            var aOwner = _findLocOwner('arenas', _activePlanet, x, y);
+            if (aOwner) html += '<br><span style="color:#8898a8;font-size:0.88em">' + aOwner + '</span>';
             tip.style.borderColor = '#c04040';
         }
         tip.innerHTML = html;
@@ -1007,8 +1071,9 @@
                     updatePlayerPosDisplay();
                     switchPlanet(planet);
                 }
-                // Populate tavern icons from active_taverns
+                // Populate tavern icons from active_taverns then enrich owners from lands.ale
                 populatePlayerLocations(row);
+                enrichWithLandOwners();
                 // Fallback: populate dungeon icons from played_dungeons if chain fetch found nothing
                 var dungeonCount = Object.keys(ALE_LOCATIONS).reduce(function(n, p) {
                     return n + ALE_LOCATIONS[p].dungeons.length;
@@ -1042,15 +1107,16 @@
     }
 
     // ── PLAYER LOCATION POPULATION ───────────────────────────────────────────
-    // Reads active_taverns from the players.ale row and stamps 🍺 icons on maps
+    // Reads active_taverns from the players.ale row and stamps tavern icons on maps
     function populatePlayerLocations(row) {
         Object.keys(ALE_LOCATIONS).forEach(function(p) { ALE_LOCATIONS[p].taverns = []; });
         if (row.active_taverns && row.active_taverns.length) {
+            var wallet = row.wallet || null;
             row.active_taverns.forEach(function(t) {
                 var p = normalizePlanet(t.planet);
                 if (p && ALE_LOCATIONS[p]) {
                     var dup = ALE_LOCATIONS[p].taverns.some(function(e) { return e.x === t.x && e.y === t.y; });
-                    if (!dup) ALE_LOCATIONS[p].taverns.push({ x: t.x, y: t.y });
+                    if (!dup) ALE_LOCATIONS[p].taverns.push({ x: t.x, y: t.y, owner: wallet });
                 }
             });
         }
@@ -1432,7 +1498,7 @@
     buildRulers();
     buildMap('magor');
     initGlobe();
-    fetchAllDungeons(); // async — populates dungeon icons once data arrives
+    fetchAllDungeons().then(enrichWithLandOwners); // async — dungeons then owner enrichment
     checkWalletState();
 
 })();
