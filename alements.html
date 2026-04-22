@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-48CCMEYHXG');
+    </script>
+    <title>ALE Elements // Naron Codex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="NCico.png">
+    <script src="waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor()],
+        });
+        window.walletKit = kit;
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+            }
+        } catch(e) {}
+    </script>
+    <style>
+        :root {
+            --theme-color: #e8a020;
+            --theme-shadow: 0 0 15px rgba(232,160,32,0.4);
+            --theme-dark: #120d05;
+            --theme-hover: #261b0a;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            cursor: crosshair;
+            background: #03060f;
+            color: #d0d0d0;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0; padding: 0; min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+        a, button { cursor: crosshair !important; }
+
+        /* ── STARFIELD ─────────────────────────────────────────────────────── */
+        body::before {
+            content: " "; position: fixed; top: 0; left: 0;
+            width: 1px; height: 1px; z-index: -1;
+            box-shadow: 8vw 12vh #fff, 22vw 6vh rgba(255,255,255,0.5),
+                        38vw 34vh #fff, 52vw 18vh rgba(255,255,255,0.6),
+                        67vw 45vh #fff, 81vw 9vh rgba(255,255,255,0.4),
+                        14vw 58vh rgba(255,255,255,0.7), 44vw 72vh #fff,
+                        76vw 63vh rgba(255,255,255,0.5), 91vw 28vh #fff;
+        }
+
+        /* ── GLOBAL HEADER ─────────────────────────────────────────────────── */
+        .global-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #020a06; border-bottom: 2px solid var(--theme-color);
+            padding: 10px 24px; position: sticky; top: 0; z-index: 2000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.9);
+        }
+        .logo-section { display: flex; align-items: center; }
+        .logo-section h1 {
+            color: var(--theme-color); margin: 0; font-size: 1.4em;
+            letter-spacing: 4px; text-transform: uppercase;
+            text-shadow: 0 0 10px var(--theme-color);
+            font-family: 'Courier New', monospace;
+        }
+        .nav-links { display: flex; gap: 6px; align-items: center; }
+        .nav-btn {
+            background: transparent; color: #888; border: 1px solid transparent;
+            padding: 7px 14px; font-family: 'Courier New', monospace;
+            font-weight: bold; font-size: 0.82em; text-decoration: none;
+            cursor: pointer; transition: all 0.2s; text-transform: uppercase;
+            border-radius: 4px; letter-spacing: 1px;
+        }
+        .nav-btn:hover { color: var(--theme-color); border-color: var(--theme-color); }
+        .nav-btn.active { color: #000; background: var(--theme-color); border-color: var(--theme-color); }
+        .nav-dropdown-wrap { position: relative; }
+        .nav-dropdown-btn { white-space: nowrap; }
+        .nav-dropdown-menu {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0;
+            background: #020a06; border: 1px solid var(--theme-color);
+            min-width: 160px; z-index: 3000; box-shadow: 0 8px 20px rgba(0,0,0,0.9);
+        }
+        .nav-dropdown-wrap:hover .nav-dropdown-menu { display: block; }
+        .nav-dropdown-item {
+            display: block; padding: 10px 16px; color: #aaa; text-decoration: none;
+            font-family: 'Courier New', monospace; font-size: 0.82em;
+            font-weight: bold; letter-spacing: 1px; text-transform: uppercase;
+            border-bottom: 1px solid #1a1a1a; transition: all 0.15s;
+        }
+        .nav-dropdown-item:last-child { border-bottom: none; }
+        .nav-dropdown-item:hover { background: var(--theme-hover); color: var(--theme-color); }
+        .nav-dropdown-item.active { color: var(--theme-color); }
+        .wallet-section { position: relative; display: flex; gap: 6px; align-items: center; }
+        .wallet-btn {
+            background: #111; color: var(--theme-color); border: 1px dashed var(--theme-color);
+            padding: 8px 16px; font-family: 'Courier New', monospace;
+            font-weight: bold; font-size: 0.78em; cursor: pointer; transition: all 0.2s;
+            letter-spacing: 1px;
+        }
+        .wallet-btn:hover { background: var(--theme-hover); box-shadow: var(--theme-shadow); }
+        .wallet-btn.logged-in { background: var(--theme-color); color: #000; border-style: solid; }
+        #hamburger-btn {
+            display: none; background: transparent; border: 1px solid var(--theme-color);
+            color: var(--theme-color); padding: 6px 10px; font-size: 1.1em; cursor: pointer;
+        }
+        .mobile-nav { display: none; flex-direction: column; background: #020a06;
+            border-bottom: 1px solid var(--theme-color); }
+        .mobile-nav.open { display: flex; }
+        .mobile-nav .nav-btn { border-radius: 0; border-bottom: 1px solid #111;
+            text-align: left; padding: 12px 20px; }
+        @media (max-width: 768px) {
+            #hamburger-btn { display: block; }
+            .nav-links { display: none; }
+            .wallet-section .wallet-btn:not(.logged-in) { display: none; }
+        }
+
+        /* ── TITLE BAR ─────────────────────────────────────────────────────── */
+        .title-bar {
+            display: flex; align-items: center; justify-content: center;
+            padding: 18px 24px; gap: 16px;
+            border-bottom: 1px solid rgba(232,160,32,0.2);
+            background: rgba(0,0,0,0.3);
+        }
+        .title-bar h1 {
+            margin: 0; font-size: 1.3em; letter-spacing: 5px; color: var(--theme-color);
+            text-shadow: 0 0 16px rgba(232,160,32,0.6); text-transform: uppercase;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* ── DIAGRAM AREA ──────────────────────────────────────────────────── */
+        .diagram-wrap {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; padding: 24px 16px 40px;
+        }
+        #alement-svg { display: block; max-width: 100%; height: auto; }
+
+        /* ── TOGGLE BUTTONS ────────────────────────────────────────────────── */
+        .toggle-row {
+            display: flex; gap: 10px; margin-bottom: 28px; flex-wrap: wrap;
+            justify-content: center;
+        }
+        .tier-btn {
+            background: transparent; border: 1px solid; padding: 7px 18px;
+            font-family: 'Courier New', monospace; font-size: 0.78em;
+            letter-spacing: 2px; text-transform: uppercase; cursor: crosshair;
+            transition: all 0.18s; border-radius: 2px; font-weight: bold;
+        }
+        .tier-btn.primary-btn { color: #e8a020; border-color: #e8a020; }
+        .tier-btn.primary-btn.off { color: #444; border-color: #333; }
+        .tier-btn.secondary-btn { color: #80b0c0; border-color: #80b0c0; }
+        .tier-btn.secondary-btn.off { color: #444; border-color: #333; }
+        .tier-btn.weak-btn { color: #556; border-color: #445; }
+        .tier-btn.weak-btn.off { color: #333; border-color: #222; }
+
+        /* ── LEGEND ────────────────────────────────────────────────────────── */
+        .legend-row {
+            display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+            font-family: 'Courier New', monospace; font-size: 0.75em;
+            color: #666; letter-spacing: 1px; margin-top: 10px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .legend-line { width: 32px; height: 3px; border-radius: 2px; }
+        .legend-dashed { width: 32px; height: 0; border-top: 2px dashed #445; }
+
+        /* ── TOOLTIP ───────────────────────────────────────────────────────── */
+        #elem-tooltip {
+            position: fixed; display: none; background: rgba(3,6,15,0.95);
+            border: 1px solid rgba(232,160,32,0.5); padding: 8px 14px;
+            font-family: 'Courier New', monospace; font-size: 0.78em;
+            color: #d0d0d0; pointer-events: none; z-index: 5000;
+            letter-spacing: 1px; white-space: nowrap;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ GLOBAL HEADER ══════════════════════════════════════════════════════ -->
+<header class="global-header">
+    <div class="logo-section">
+        <h1>⬡ NARON CODEX</h1>
+    </div>
+    <nav class="nav-links">
+        <a href="index.html" class="nav-btn">HUB</a>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">AW &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="crew.worlds.html" class="nav-dropdown-item">CREW</a>
+                <a href="arms.worlds.html" class="nav-dropdown-item">ARMS</a>
+                <a href="tools.worlds.html" class="nav-dropdown-item">TOOLS</a>
+                <a href="faces.worlds.html" class="nav-dropdown-item">FACES</a>
+                <a href="land.worlds.html" class="nav-dropdown-item">LAND</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">PD &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="pd.materials.html" class="nav-dropdown-item">PD MATS</a>
+                <a href="army.html" class="nav-dropdown-item">ARMY BUILDER</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn active">ALE &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="ale.html" class="nav-dropdown-item">⚔ STATS</a>
+                <a href="alewiki.html" class="nav-dropdown-item">◈ WIKI</a>
+                <a href="alements.html" class="nav-dropdown-item active">⬡ ELEMENTS</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">UTILITY &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="stash.html" class="nav-dropdown-item">&#11041; STASH</a>
+                <a href="outpost.html" class="nav-dropdown-item">OUTPOST</a>
+            </div>
+        </div>
+    </nav>
+    <div class="wallet-section">
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="disconnectWallet()" style="display:none;"></button>
+        <button id="wallet-btn-anchor" class="wallet-btn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
+        <button id="wallet-btn-wcc"    class="wallet-btn" onclick="loginWithWCC()">[ &#9729; CLOUD WALLET ]</button>
+    </div>
+    <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Navigation">&#9776;</button>
+</header>
+
+<nav id="nav-dropdown" class="mobile-nav">
+    <a href="index.html" class="nav-btn">HUB</a>
+    <a href="ale.html"   class="nav-btn">ALE STATS</a>
+    <a href="alewiki.html" class="nav-btn">ALE WIKI</a>
+    <a href="alements.html" class="nav-btn active">⬡ ELEMENTS</a>
+    <a href="stash.html" class="nav-btn">STASH</a>
+</nav>
+
+<!-- ══ TITLE BAR ══════════════════════════════════════════════════════════ -->
+<div class="title-bar">
+    <h1>⬡ ELEMENTAL INTERACTIONS</h1>
+</div>
+
+<!-- ══ DIAGRAM ════════════════════════════════════════════════════════════ -->
+<div class="diagram-wrap">
+    <div class="toggle-row">
+        <button class="tier-btn primary-btn"   id="btn-primary"   onclick="toggleTier('primary')">&#9654; PRIMARY 2&#215;</button>
+        <button class="tier-btn secondary-btn" id="btn-secondary" onclick="toggleTier('secondary')">&#9654; SECONDARY 1.5&#215;</button>
+        <button class="tier-btn weak-btn off"  id="btn-weak"      onclick="toggleTier('weak')">&#9654; WEAK 0.5&#215;</button>
+    </div>
+
+    <svg id="alement-svg" viewBox="0 0 880 740" xmlns="http://www.w3.org/2000/svg"></svg>
+
+    <div class="legend-row">
+        <div class="legend-item"><div class="legend-line" style="background:var(--theme-color);"></div> Primary 2× (attacker colour)</div>
+        <div class="legend-item"><div class="legend-line" style="background:rgba(128,176,192,0.7);"></div> Secondary 1.5×</div>
+        <div class="legend-item"><div class="legend-dashed"></div> Weak 0.5×</div>
+        <div class="legend-item" style="color:#888;">Neutral is 1× against all</div>
+    </div>
+</div>
+
+<div id="elem-tooltip"></div>
+
+<script>
+(function() {
+    // ── DATA ──────────────────────────────────────────────────────────────
+    // Hexagon positions clockwise from top follow the primary beat-cycle:
+    // Fire(0) → Nature(1) → Air(2) → Gem(3) → Metal(4) → Fire  | Neutral(5) = uninvolved
+    var ELEMS = [
+        { id:'fire',    label:'FIRE',    color:'#e05030', glow:'#ff6040' },
+        { id:'nature',  label:'NATURE',  color:'#40a050', glow:'#50c060' },
+        { id:'air',     label:'AIR',     color:'#80c0e0', glow:'#a0d8f8' },
+        { id:'gem',     label:'GEM',     color:'#c060d0', glow:'#e080f0' },
+        { id:'metal',   label:'METAL',   color:'#9898a8', glow:'#b8b8c8' },
+        { id:'neutral', label:'NEUTRAL', color:'#c8a830', glow:'#e8c840' },
+    ];
+
+    // Primary: 2× — each element completely counters the next in the cycle
+    // (attacker does 2×, defender does 0× back)
+    var PRIMARY = [[0,1],[1,2],[2,3],[3,4],[4,0]];
+
+    // Secondary: 1.5× — skip-one relationships
+    var SECONDARY = [[4,2],[2,0],[0,3],[3,1],[1,4]];
+
+    // Weak: 0.5× — reverse of secondary (same pairs, arrow flipped)
+    var WEAK = [[2,4],[0,2],[3,0],[1,3],[4,1]];
+
+    // ── GEOMETRY ──────────────────────────────────────────────────────────
+    var W = 880, H = 740, CX = 440, CY = 360, R = 210, ORB = 44;
+
+    ELEMS.forEach(function(e, i) {
+        var angle = -Math.PI / 2 + i * (2 * Math.PI / 6);
+        e.x = CX + R * Math.cos(angle);
+        e.y = CY + R * Math.sin(angle);
+    });
+
+    // ── SVG HELPERS ───────────────────────────────────────────────────────
+    var svg = document.getElementById('alement-svg');
+
+    function el(tag, attrs) {
+        var node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+        Object.keys(attrs).forEach(function(k) { node.setAttribute(k, attrs[k]); });
+        return node;
+    }
+
+    // Arrowhead marker
+    function makeMarker(id, color) {
+        var m = el('marker', { id:id, markerWidth:'8', markerHeight:'6',
+            refX:'7', refY:'3', orient:'auto' });
+        var p = el('polygon', { points:'0 0, 8 3, 0 6', fill:color });
+        m.appendChild(p);
+        return m;
+    }
+
+    // Bezier path between two orbs, curving outward (positive offset) or inward
+    function arcPath(from, to, offset) {
+        var x1 = from.x, y1 = from.y, x2 = to.x, y2 = to.y;
+        var dx = x2 - x1, dy = y2 - y1;
+        var len = Math.sqrt(dx*dx + dy*dy);
+        var ux = dx/len, uy = dy/len;
+        // Start/end at orb edges
+        var sx = x1 + ux*(ORB+2), sy = y1 + uy*(ORB+2);
+        var ex = x2 - ux*(ORB+6), ey = y2 - uy*(ORB+6);
+        // Midpoint + perpendicular offset
+        var mx = (sx+ex)/2, my = (sy+ey)/2;
+        var cpx = mx - uy*offset, cpy = my + ux*offset;
+        return 'M'+sx.toFixed(1)+' '+sy.toFixed(1)+
+               ' Q'+cpx.toFixed(1)+' '+cpy.toFixed(1)+
+               ' '+ex.toFixed(1)+' '+ey.toFixed(1);
+    }
+
+    // Outward-biased offset (away from center)
+    function outerOffset(from, to, mag) {
+        var mx = (from.x + to.x)/2, my = (from.y + to.y)/2;
+        var ox = mx - CX, oy = my - CY;
+        var oLen = Math.sqrt(ox*ox + oy*oy) || 1;
+        // perpendicular component to push away from center
+        var dx = to.x-from.x, dy = to.y-from.y;
+        var len = Math.sqrt(dx*dx+dy*dy)||1;
+        var px = -dy/len, py = dx/len;
+        // dot with outward direction to pick sign
+        var dot = px*(ox/oLen) + py*(oy/oLen);
+        return dot >= 0 ? mag : -mag;
+    }
+
+    // ── BUILD SVG ─────────────────────────────────────────────────────────
+    var defs = el('defs', {});
+
+    // Glow filters per element
+    ELEMS.forEach(function(e) {
+        var filt = el('filter', { id:'glow-'+e.id, x:'-50%', y:'-50%', width:'200%', height:'200%' });
+        var blur = el('feGaussianBlur', { stdDeviation:'6', result:'blur' });
+        var merge = el('feMerge', {});
+        var n1 = el('feMergeNode', { in:'blur' });
+        var n2 = el('feMergeNode', { in:'SourceGraphic' });
+        merge.appendChild(n1); merge.appendChild(n2);
+        filt.appendChild(blur); filt.appendChild(merge);
+        defs.appendChild(filt);
+    });
+
+    // Arrow markers — one per element color for primary, one shared for secondary, one for weak
+    ELEMS.forEach(function(e) {
+        defs.appendChild(makeMarker('arr-'+e.id, e.color));
+        var dim = e.color+'99';
+        defs.appendChild(makeMarker('arr-sec-'+e.id, dim));
+    });
+    defs.appendChild(makeMarker('arr-weak', '#445566'));
+    svg.appendChild(defs);
+
+    // Arrow groups (so we can toggle tiers)
+    var gPrimary   = el('g', { id:'g-primary',   opacity:'1' });
+    var gSecondary = el('g', { id:'g-secondary',  opacity:'1' });
+    var gWeak      = el('g', { id:'g-weak',       opacity:'0', 'pointer-events':'none' });
+    var gOrbs      = el('g', { id:'g-orbs' });
+
+    // ── PRIMARY ARROWS ────────────────────────────────────────────────────
+    PRIMARY.forEach(function(pair) {
+        var src = ELEMS[pair[0]], dst = ELEMS[pair[1]];
+        var off = outerOffset(src, dst, 52);
+        var path = el('path', {
+            d: arcPath(src, dst, off),
+            stroke: src.color, 'stroke-width':'3.5', fill:'none',
+            'marker-end':'url(#arr-'+src.id+')',
+            'data-src': pair[0], 'data-dst': pair[1], 'data-tier':'primary',
+            class: 'arrow arrow-primary',
+            'data-label': src.label+' → '+dst.label+':  ×2  ('+src.label+' deals 2× to '+dst.label+')'
+        });
+        gPrimary.appendChild(path);
+    });
+
+    // ── SECONDARY ARROWS ──────────────────────────────────────────────────
+    SECONDARY.forEach(function(pair) {
+        var src = ELEMS[pair[0]], dst = ELEMS[pair[1]];
+        // inner diagonals — slight offset toward center
+        var off = outerOffset(src, dst, -30);
+        var path = el('path', {
+            d: arcPath(src, dst, off),
+            stroke: src.color+'99', 'stroke-width':'2', fill:'none',
+            'marker-end':'url(#arr-sec-'+src.id+')',
+            'data-src': pair[0], 'data-dst': pair[1], 'data-tier':'secondary',
+            class: 'arrow arrow-secondary',
+            'data-label': src.label+' → '+dst.label+':  ×1.5'
+        });
+        gSecondary.appendChild(path);
+    });
+
+    // ── WEAK ARROWS ───────────────────────────────────────────────────────
+    WEAK.forEach(function(pair) {
+        var src = ELEMS[pair[0]], dst = ELEMS[pair[1]];
+        var off = outerOffset(src, dst, -30);
+        var path = el('path', {
+            d: arcPath(src, dst, off),
+            stroke: '#445566', 'stroke-width':'1.5', fill:'none',
+            'stroke-dasharray':'5 4',
+            'marker-end':'url(#arr-weak)',
+            'data-src': pair[0], 'data-dst': pair[1], 'data-tier':'weak',
+            class: 'arrow arrow-weak',
+            'data-label': src.label+' → '+dst.label+':  ×0.5  ('+src.label+' is weak against '+dst.label+')'
+        });
+        gWeak.appendChild(path);
+    });
+
+    svg.appendChild(gPrimary);
+    svg.appendChild(gSecondary);
+    svg.appendChild(gWeak);
+
+    // ── ORBS ──────────────────────────────────────────────────────────────
+    ELEMS.forEach(function(e, i) {
+        var g = el('g', { class:'orb-group', 'data-idx':i, style:'cursor:crosshair' });
+
+        // Outer glow ring
+        g.appendChild(el('circle', {
+            cx: e.x, cy: e.y, r: ORB + 10,
+            fill: 'none', stroke: e.color, 'stroke-width':'1',
+            opacity:'0.3', filter:'url(#glow-'+e.id+')'
+        }));
+
+        // Orb fill
+        var grad = el('radialGradient', {
+            id: 'rg-'+e.id, cx:'40%', cy:'35%', r:'65%'
+        });
+        var s1 = el('stop', { offset:'0%' });
+        s1.setAttribute('stop-color', e.glow);
+        s1.setAttribute('stop-opacity', '0.9');
+        var s2 = el('stop', { offset:'100%' });
+        s2.setAttribute('stop-color', e.color);
+        s2.setAttribute('stop-opacity', '0.5');
+        grad.appendChild(s1); grad.appendChild(s2);
+        defs.appendChild(grad);
+
+        g.appendChild(el('circle', {
+            cx: e.x, cy: e.y, r: ORB,
+            fill: 'url(#rg-'+e.id+')',
+            stroke: e.color, 'stroke-width':'2',
+            filter: 'url(#glow-'+e.id+')'
+        }));
+
+        // Label
+        var txt = el('text', {
+            x: e.x, y: e.y + ORB + 20,
+            'text-anchor':'middle', fill: e.color,
+            'font-family':"'Courier New',monospace",
+            'font-size':'13', 'font-weight':'bold',
+            'letter-spacing':'2'
+        });
+        txt.textContent = e.label;
+        g.appendChild(txt);
+
+        // Element symbol inside orb (first letter)
+        var sym = el('text', {
+            x: e.x, y: e.y + 5,
+            'text-anchor':'middle', fill:'#fff',
+            'font-family':"'Courier New',monospace",
+            'font-size':'18', 'font-weight':'bold', opacity:'0.85'
+        });
+        sym.textContent = e.label[0];
+        g.appendChild(sym);
+
+        gOrbs.appendChild(g);
+    });
+
+    svg.appendChild(gOrbs);
+
+    // ── ARROW MULTIPLIER LABELS ───────────────────────────────────────────
+    // Placed at bezier midpoints
+    function bezierMid(from, to, offset) {
+        var x1=from.x, y1=from.y, x2=to.x, y2=to.y;
+        var dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+        var ux=dx/len, uy=dy/len;
+        var sx=x1+ux*(ORB+2), sy=y1+uy*(ORB+2);
+        var ex=x2-ux*(ORB+6), ey=y2-uy*(ORB+6);
+        var mx=(sx+ex)/2, my=(sy+ey)/2;
+        var cpx=mx-uy*offset, cpy=my+ux*offset;
+        // point at t=0.5 on quadratic bezier
+        var bx = 0.25*sx + 0.5*cpx + 0.25*ex;
+        var by = 0.25*sy + 0.5*cpy + 0.25*ey;
+        return { x:bx, y:by };
+    }
+
+    var gLabels = el('g', { id:'g-labels' });
+
+    function addLabel(pair, tier, mult, offset) {
+        var src = ELEMS[pair[0]], dst = ELEMS[pair[1]];
+        var off = outerOffset(src, dst, offset);
+        var mid = bezierMid(src, dst, off);
+        var color = tier==='weak' ? '#556677' : (tier==='primary' ? src.color : src.color+'bb');
+        var bg = el('rect', {
+            x: mid.x-16, y: mid.y-9, width:32, height:16, rx:3,
+            fill:'rgba(3,6,15,0.82)', stroke: color, 'stroke-width':'0.8',
+            class:'lbl-'+tier
+        });
+        var txt = el('text', {
+            x: mid.x, y: mid.y+4, 'text-anchor':'middle',
+            fill: color, 'font-family':"'Courier New',monospace",
+            'font-size':'10', 'font-weight':'bold',
+            class:'lbl-'+tier
+        });
+        txt.textContent = mult;
+        gLabels.appendChild(bg);
+        gLabels.appendChild(txt);
+    }
+
+    PRIMARY.forEach(function(p)   { addLabel(p, 'primary',   '×2',    52); });
+    SECONDARY.forEach(function(p) { addLabel(p, 'secondary', '×1.5', -30); });
+    WEAK.forEach(function(p)      { addLabel(p, 'weak',      '×0.5', -30); });
+
+    svg.appendChild(gLabels);
+
+    // ── TIER TOGGLE ───────────────────────────────────────────────────────
+    var tierState = { primary:true, secondary:true, weak:false };
+
+    window.toggleTier = function(tier) {
+        tierState[tier] = !tierState[tier];
+        var on = tierState[tier];
+        var g  = document.getElementById('g-'+tier);
+        if (g) g.setAttribute('opacity', on ? '1' : '0');
+        g && g.setAttribute('pointer-events', on ? 'auto' : 'none');
+        // labels
+        var lblClass = 'lbl-'+tier;
+        document.querySelectorAll('.'+lblClass).forEach(function(n) {
+            n.style.display = on ? '' : 'none';
+        });
+        var btn = document.getElementById('btn-'+tier);
+        if (btn) btn.classList.toggle('off', !on);
+    };
+
+    // Init weak as hidden
+    document.querySelectorAll('.lbl-weak').forEach(function(n) { n.style.display='none'; });
+
+    // ── HOVER — DIM UNRELATED ARROWS ────────────────────────────────────
+    var tooltip = document.getElementById('elem-tooltip');
+
+    gOrbs.querySelectorAll('.orb-group').forEach(function(orbG) {
+        orbG.addEventListener('mouseenter', function() {
+            var idx = parseInt(orbG.getAttribute('data-idx'));
+            svg.querySelectorAll('.arrow').forEach(function(a) {
+                var s = parseInt(a.getAttribute('data-src'));
+                var d = parseInt(a.getAttribute('data-dst'));
+                a.style.opacity = (s===idx || d===idx) ? '1' : '0.08';
+            });
+            svg.querySelectorAll('[class^="lbl-"], [class*=" lbl-"]').forEach(function(n) {
+                // keep labels readable only for visible arrows — handled via opacity
+            });
+        });
+        orbG.addEventListener('mouseleave', function() {
+            svg.querySelectorAll('.arrow').forEach(function(a) { a.style.opacity = ''; });
+        });
+    });
+
+    // ── ARROW TOOLTIP ────────────────────────────────────────────────────
+    svg.querySelectorAll('.arrow').forEach(function(a) {
+        a.style.cursor = 'crosshair';
+        a.addEventListener('mouseenter', function(ev) {
+            tooltip.textContent = a.getAttribute('data-label');
+            tooltip.style.display = 'block';
+        });
+        a.addEventListener('mousemove', function(ev) {
+            tooltip.style.left = (ev.clientX + 14) + 'px';
+            tooltip.style.top  = (ev.clientY - 32) + 'px';
+        });
+        a.addEventListener('mouseleave', function() {
+            tooltip.style.display = 'none';
+        });
+    });
+
+    // ── WALLET (header) ──────────────────────────────────────────────────
+    var wax = new waxjs.WaxJS({
+        rpcEndpoint: 'https://wax.greymass.com',
+        userAccount: localStorage.getItem('naron_wallet') || '',
+        tryAutoLogin: false
+    });
+
+    function updateWalletUI(account) {
+        var btnA   = document.getElementById('wallet-connect-btn');
+        var btnAnc = document.getElementById('wallet-btn-anchor');
+        var btnWCC = document.getElementById('wallet-btn-wcc');
+        if (account) {
+            if (btnA)   { btnA.textContent = '[ '+account+' ]'; btnA.style.display=''; btnA.classList.add('logged-in'); }
+            if (btnAnc) btnAnc.style.display = 'none';
+            if (btnWCC) btnWCC.style.display = 'none';
+        } else {
+            if (btnA)   { btnA.style.display='none'; btnA.classList.remove('logged-in'); }
+            if (btnAnc) btnAnc.style.display = '';
+            if (btnWCC) btnWCC.style.display = '';
+        }
+    }
+
+    window.loginWithAnchor = async function() {
+        try {
+            var r = await window.walletKit.login();
+            window.walletSession = r.session;
+            localStorage.setItem('naron_wallet', String(r.session.actor));
+            updateWalletUI(String(r.session.actor));
+        } catch(e) {}
+    };
+    window.loginWithWCC = async function() {
+        try {
+            var account = await wax.login();
+            localStorage.setItem('naron_wallet', account);
+            updateWalletUI(account);
+        } catch(e) {}
+    };
+    window.disconnectWallet = function() {
+        if (window.walletKit && window.walletSession) {
+            window.walletKit.logout(window.walletSession).catch(function(){});
+            window.walletSession = null;
+        }
+        localStorage.removeItem('naron_wallet');
+        if (wax) wax.userAccount = '';
+        updateWalletUI(null);
+    };
+    window.toggleHamburger = function() {
+        var dd = document.getElementById('nav-dropdown');
+        if (dd) dd.classList.toggle('open');
+    };
+
+    updateWalletUI(localStorage.getItem('naron_wallet'));
+
+})();
+</script>
+</body>
+</html>
