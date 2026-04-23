@@ -766,12 +766,12 @@
         // Fetch template details + floor prices concurrently (up to 5 at a time each)
         var allIds = active.concat(upcoming).map(function(e){ return e.tmplId; });
         var uniqueIds = allIds.filter(function(v, i, a){ return a.indexOf(v) === i; });
-        var minWarpEnd = Date.now() + 3000; // minimum 3s warp flight
+        var minWarpEnd = Date.now() + 500; // minimum 0.5s warp flight
         setStatus('LOADING ' + uniqueIds.length + ' TEMPLATE' + (uniqueIds.length !== 1 ? 'S' : '') + '\u2026');
-        await pLimit(uniqueIds.map(function(id){ return function(){ return fetchTemplateInfo(id); }; }), 5);
+        await pLimit(uniqueIds.map(function(id){ return function(){ return fetchTemplateInfo(id); }; }), 10);
         setStatus('LOADING MARKET PRICES\u2026');
-        await pLimit(uniqueIds.map(function(id){ return function(){ return fetchFloorPrice(id); }; }), 5);
-        // Hold remaining warp time so journey always feels like at least 5.5s
+        await pLimit(uniqueIds.map(function(id){ return function(){ return fetchFloorPrice(id); }; }), 10);
+        // Hold remaining warp time so journey always feels like at least 0.5s
         var remaining = minWarpEnd - Date.now();
         if (remaining > 0) await new Promise(function(r){ setTimeout(r, remaining); });
 
