@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⬡ Stat Explorer — Alien Legends</title>
+<link rel="icon" type="image/png" href="NCico.png">
+<script src="waxjs.js"></script>
+<script type="module">
+    import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+    import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+    import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+    const kit = new SessionKit({
+        appName: 'naroncodex',
+        chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+        ui: new WebRenderer(),
+        walletPlugins: [new WalletPluginAnchor()],
+    });
+    window.walletKit = kit;
+    try {
+        const session = await kit.restore();
+        if (session) {
+            window.walletSession = session;
+            localStorage.setItem('naron_wallet', String(session.actor));
+            if (typeof checkWalletState === 'function') checkWalletState();
+        }
+    } catch(e) {}
+</script>
+<style>
+:root {
+    --bg: #03060f; --gold: #e8a020; --border: rgba(232,160,32,0.2);
+    --text: #c8ccd8; --muted: #50606a;
+    --theme-color: #e8a020; --theme-shadow: 0 0 15px rgba(232,160,32,0.35);
+    --theme-hover: rgba(232,160,32,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; }
+body { display: flex; flex-direction: column; }
+
+/* HEADER */
+.global-header { display: flex; justify-content: space-between; align-items: center; background: rgba(3,6,15,0.97); border-bottom: 2px solid var(--gold); padding: 12px 28px; position: sticky; top: 0; z-index: 200; box-shadow: 0 4px 20px rgba(0,0,0,0.8); backdrop-filter: blur(8px); }
+.logo-section { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+.logo-section h1 { color: var(--gold); font-size: 1.5em; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 0 10px rgba(232,160,32,0.5); font-weight: normal; }
+.nav-links { display: flex; gap: 6px; flex-wrap: wrap; }
+.nav-btn { background: transparent; color: #555; border: 1px solid transparent; padding: 7px 13px; font-family: 'Courier New', monospace; font-size: 0.78em; text-decoration: none; cursor: pointer; transition: all 0.2s; text-transform: uppercase; border-radius: 3px; letter-spacing: 1px; }
+.nav-btn:hover { color: var(--gold); border-color: var(--border); }
+.nav-btn.active { color: #000; background: var(--gold); }
+.nav-dropdown-wrap { position: relative; }
+.nav-dropdown-btn { background: transparent; color: #555; border: 1px solid transparent; padding: 7px 13px; font-family: 'Courier New', monospace; font-size: 0.78em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; border-radius: 3px; letter-spacing: 1px; }
+.nav-dropdown-btn:hover { color: var(--gold); border-color: var(--border); }
+.nav-dropdown-menu { display: none; position: absolute; top: 100%; left: 0; background: rgba(3,6,15,0.98); border: 1px solid var(--border); min-width: 140px; z-index: 300; padding: 4px 0; }
+.nav-dropdown-wrap:hover .nav-dropdown-menu { display: block; }
+.nav-dropdown-item { display: block; padding: 8px 14px; color: #555; text-decoration: none; font-family: 'Courier New', monospace; font-size: 0.78em; transition: all 0.15s; text-transform: uppercase; letter-spacing: 1px; }
+.nav-dropdown-item:hover { color: var(--gold); background: var(--theme-hover); }
+.wallet-section { display: flex; gap: 5px; }
+.wallet-btn { background: rgba(3,6,15,0.9); color: var(--gold); border: 1px dashed var(--gold); padding: 7px 14px; font-family: 'Courier New', monospace; font-size: 0.78em; cursor: pointer; transition: all 0.2s; letter-spacing: 1px; }
+.wallet-btn:hover { background: var(--theme-hover); box-shadow: var(--theme-shadow); }
+.wallet-btn.logged-in { background: var(--gold); color: #000; border-style: solid; }
+#hamburger-btn { display: none; background: transparent; border: 1px solid #333; color: #888; font-size: 1.1em; padding: 6px 10px; cursor: pointer; border-radius: 3px; }
+#nav-dropdown { display: none; flex-direction: column; background: rgba(3,6,15,0.98); border-bottom: 1px solid var(--border); padding: 10px 20px; gap: 6px; z-index: 199; }
+#nav-dropdown.open { display: flex; }
+@media (max-width: 768px) { .nav-links { display: none; } #hamburger-btn { display: block; } }
+
+/* TITLE BAR */
+.title-bar { padding: 18px 28px 14px; border-bottom: 1px solid rgba(232,160,32,0.08); background: rgba(5,8,20,0.5); }
+.title-bar h1 { font-size: 1.3em; letter-spacing: 5px; color: var(--gold); text-shadow: 0 0 15px rgba(232,160,32,0.3); font-weight: normal; text-transform: uppercase; }
+.title-bar .subtitle { font-size: 0.63em; color: var(--muted); letter-spacing: 2px; margin-top: 4px; }
+
+/* MAIN */
+.main { flex: 1; max-width: 1020px; width: 100%; margin: 0 auto; padding: 22px 20px 52px; }
+
+/* SELECTORS */
+.selector-row { display: flex; gap: 18px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
+.selector-group { display: flex; flex-direction: column; gap: 5px; }
+.selector-label { font-size: 0.6em; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; }
+select {
+    background: rgba(3,6,15,0.9); border: 1px solid rgba(232,160,32,0.22); color: var(--gold);
+    font-family: 'Courier New', monospace; font-size: 0.82em; letter-spacing: 1px;
+    padding: 8px 30px 8px 12px; cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0 L5 6 L10 0z' fill='%23e8a020'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; min-width: 155px; transition: border-color 0.2s;
+}
+select:hover, select:focus { border-color: var(--gold); outline: none; }
+
+/* CLASS DESC BOX */
+.class-desc-box {
+    background: rgba(232,160,32,0.025); border: 1px solid rgba(232,160,32,0.1);
+    border-left: 3px solid rgba(232,160,32,0.4); padding: 11px 16px;
+    margin-bottom: 26px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.class-desc-text { flex: 1; min-width: 220px; font-size: 0.74em; color: #6a7a8a; letter-spacing: 0.3px; line-height: 1.75; }
+.class-races-wrap { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.race-chip { font-size: 0.6em; letter-spacing: 1.5px; padding: 3px 9px; border: 1px solid rgba(232,160,32,0.14); color: var(--muted); text-transform: uppercase; border-radius: 2px; transition: all 0.15s; }
+.race-chip.sel { border-color: var(--gold); color: var(--gold); background: rgba(232,160,32,0.06); }
+
+/* SECTION HEADER */
+.section-hdr { font-size: 0.6em; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid rgba(232,160,32,0.08); padding-bottom: 7px; margin-bottom: 16px; }
+
+/* CORE STATS PANEL */
+.stats-panel {
+    display: flex; gap: 1px; margin-bottom: 32px;
+    background: rgba(232,160,32,0.05); border: 1px solid rgba(232,160,32,0.1);
+    border-radius: 4px; padding: 20px 12px 14px; justify-content: space-around; flex-wrap: wrap;
+}
+.stat-col { flex: 1; min-width: 80px; max-width: 160px; display: flex; flex-direction: column; align-items: center; }
+.stat-track { height: 220px; width: 56px; position: relative; margin-bottom: 10px; flex-shrink: 0; }
+.stat-track::before { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background: rgba(255,255,255,0.05); border-radius: 2px; }
+.stat-bar-lower, .stat-bar-upper {
+    position: absolute; left: 50%; transform: translateX(-50%); width: 10px; border-radius: 5px;
+    transition: bottom 0.4s cubic-bezier(.4,0,.2,1), height 0.4s cubic-bezier(.4,0,.2,1);
+}
+.stat-bar-lower { opacity: 0.3; }
+.stat-bar-upper { opacity: 0.9; }
+.stat-pivot-line { position: absolute; left: 50%; transform: translateX(-50%); width: 18px; height: 2px; background: rgba(255,255,255,0.5); border-radius: 1px; transition: bottom 0.4s cubic-bezier(.4,0,.2,1); }
+.stat-arr-top, .stat-arr-bot { position: absolute; left: 50%; transform: translateX(-50%); font-size: 9px; line-height: 1; color: rgba(255,255,255,0.6); transition: bottom 0.4s cubic-bezier(.4,0,.2,1); }
+.stat-vt, .stat-vb { position: absolute; right: 0; font-size: 10px; white-space: nowrap; line-height: 1; transform: translateY(50%); transition: bottom 0.4s cubic-bezier(.4,0,.2,1); }
+.stat-vt { color: rgba(255,255,255,0.8); }
+.stat-vb { color: rgba(255,255,255,0.4); }
+.stat-vp { position: absolute; left: 0; font-size: 9px; white-space: nowrap; line-height: 1; color: rgba(255,255,255,0.28); transform: translateY(50%); transition: bottom 0.4s cubic-bezier(.4,0,.2,1); }
+.stat-name { font-size: 0.6em; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; text-align: center; }
+
+/* RESISTANCES */
+.res-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
+@media (max-width: 640px) { .res-grid { grid-template-columns: repeat(3, 1fr); } .stats-panel { gap: 8px; } }
+.res-col { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; padding: 10px 6px 8px; }
+.res-name { font-size: 0.55em; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 7px; text-align: center; }
+.res-track { height: 90px; width: 28px; position: relative; margin-bottom: 5px; flex-shrink: 0; }
+.res-track::before { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 4px; height: 100%; background: rgba(255,255,255,0.04); border-radius: 2px; }
+.res-bar { position: absolute; left: 50%; transform: translateX(-50%); width: 9px; border-radius: 4px; opacity: 0.72; transition: bottom 0.4s cubic-bezier(.4,0,.2,1), height 0.4s cubic-bezier(.4,0,.2,1); }
+.res-vals { font-size: 0.58em; color: var(--muted); text-align: center; line-height: 1.6; }
+
+/* FOOTER */
+footer { border-top: 1px solid rgba(232,160,32,0.07); padding: 12px 28px; font-size: 0.58em; color: var(--muted); letter-spacing: 1.5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+
+<header class="global-header">
+    <a href="index.html" class="logo-section">
+        <img src="NCico.png" style="height:28px;border-radius:3px;" alt="">
+        <h1>NARON CODEX</h1>
+    </a>
+    <nav class="nav-links">
+        <a href="index.html" class="nav-btn">HUB</a>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">ALE &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="ale.html" class="nav-dropdown-item">&#9876; ALE CARDS</a>
+                <a href="alewiki.html" class="nav-dropdown-item">&#9672; ALE WIKI</a>
+                <a href="alements.html" class="nav-dropdown-item" style="color:var(--gold);">&#11041; STAT EXPLORER</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">AW &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="crew.worlds.html" class="nav-dropdown-item">CREW</a>
+                <a href="arms.worlds.html" class="nav-dropdown-item">ARMS</a>
+                <a href="tools.worlds.html" class="nav-dropdown-item">TOOLS</a>
+            </div>
+        </div>
+        <a href="stash.html" class="nav-btn">&#11041; STASH</a>
+        <a href="outpost.html" class="nav-btn">OUTPOST</a>
+    </nav>
+    <div class="wallet-section">
+        <button id="wallet-connect-btn" class="wallet-btn" onclick="disconnectWallet()" style="display:none;"></button>
+        <button id="wallet-btn-anchor" class="wallet-btn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
+        <button id="wallet-btn-wcc" class="wallet-btn" onclick="loginWithWCC()">[ &#9729; CLOUD WALLET ]</button>
+    </div>
+    <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Open navigation">&#9776;</button>
+</header>
+<nav id="nav-dropdown">
+    <a href="index.html" class="nav-btn">HUB</a>
+    <a href="ale.html" class="nav-btn">&#9876; ALE CARDS</a>
+    <a href="alewiki.html" class="nav-btn">&#9672; ALE WIKI</a>
+    <a href="alements.html" class="nav-btn active">&#11041; STAT EXPLORER</a>
+    <a href="stash.html" class="nav-btn">&#11041; STASH</a>
+    <a href="outpost.html" class="nav-btn">OUTPOST</a>
+</nav>
+
+<div class="title-bar">
+    <h1>&#11041; FIGHTER STAT EXPLORER</h1>
+    <p class="subtitle">CREATION ROLL RANGES &middot; CLASS + RACE + ELEMENT &middot; SOURCE: CREATION.ALE</p>
+</div>
+
+<div class="main">
+    <div class="selector-row">
+        <div class="selector-group">
+            <span class="selector-label">CLASS</span>
+            <select id="sel-class" onchange="onClassChange()"></select>
+        </div>
+        <div class="selector-group">
+            <span class="selector-label">RACE</span>
+            <select id="sel-race" onchange="onUpdate()"></select>
+        </div>
+        <div class="selector-group">
+            <span class="selector-label">ELEMENT</span>
+            <select id="sel-elem" onchange="onUpdate()"></select>
+        </div>
+    </div>
+
+    <div class="class-desc-box">
+        <div class="class-desc-text" id="class-desc"></div>
+        <div class="class-races-wrap" id="class-races"></div>
+    </div>
+
+    <div class="section-hdr">COMBAT STATS &mdash; FLOOR &#9661; TO CEILING &#9651; FOR SELECTED COMBINATION</div>
+    <div class="stats-panel" id="stats-panel"></div>
+
+    <div class="section-hdr">ELEMENTAL RESISTANCES</div>
+    <div class="res-grid" id="res-grid"></div>
+</div>
+
+<footer>
+    <span>SOURCE &middot; CREATION.ALE &middot; WAX BLOCKCHAIN</span>
+    <span>&#9661; FLOOR &mdash; WHITE LINE = ROLL PIVOT &mdash; CEILING &#9651;</span>
+</footer>
+
+<script>
+// ── WALLET ────────────────────────────────────────────────────
+var wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: '', tryAutoLogin: false });
+function checkWalletState() { updateWalletUI(localStorage.getItem('naron_wallet') || null); }
+async function loginWithAnchor() {
+    try { var r = await window.walletKit.login(); window.walletSession = r.session; localStorage.setItem('naron_wallet', String(r.session.actor)); checkWalletState(); } catch(e) {}
+}
+async function loginWithWCC() {
+    try { var a = await wax.login(); localStorage.setItem('naron_wallet', a); checkWalletState(); } catch(e) {}
+}
+function disconnectWallet() {
+    if (window.walletKit && window.walletSession) { window.walletKit.logout(window.walletSession).catch(function(){}); window.walletSession = null; }
+    localStorage.removeItem('naron_wallet'); checkWalletState();
+}
+function updateWalletUI(account) {
+    var bc = document.getElementById('wallet-connect-btn'), ba = document.getElementById('wallet-btn-anchor'), bw = document.getElementById('wallet-btn-wcc');
+    if (account) { if (bc) { bc.textContent = '[ ' + account + ' ]'; bc.style.display = ''; bc.classList.add('logged-in'); } if (ba) ba.style.display = 'none'; if (bw) bw.style.display = 'none'; }
+    else { if (bc) { bc.style.display = 'none'; bc.classList.remove('logged-in'); } if (ba) ba.style.display = ''; if (bw) bw.style.display = ''; }
+}
+function toggleHamburger() { var dd = document.getElementById('nav-dropdown'); if (dd) dd.classList.toggle('open'); }
+document.addEventListener('click', function(e) {
+    var dd = document.getElementById('nav-dropdown'), btn = document.getElementById('hamburger-btn');
+    if (dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) dd.classList.remove('open');
+});
+
+// ── DATA ──────────────────────────────────────────────────────
+// Core stat arrays: [min_min, pivot, max_max]  (pivot = min_max = max_min in all chain rows)
+// Resistance arrays: [min, max]
+
+var CLASSES = {
+    arcanist:    { label:'Arcanist',     desc:'A glass-cannon damage dealer with extreme power, very low survivability, and naturally evasive presence.',                                                                       races:['altan','elgem','human','robotron'],    hp:[50,75,125],    dmg:[500,675,825],   taunt:[0,50,100],     init:[250,425,500],   aspd:[325,375,450],   rgem:[0,0],     rmetal:[0,0],     rair:[0,0],     rfire:[0,0],     rnature:[0,0],     rneutral:[0,0]    },
+    astralknight:{ label:'Astral Knight',desc:'A resilient frontline defender with strong taunt and minor damage, healing allies with every strike while holding the line.',                                                    races:['human','onoros','lopati','khaured'],   hp:[350,400,475],  dmg:[150,175,225],   taunt:[600,650,700],  init:[250,425,500],   aspd:[325,375,450],   rgem:[125,175], rmetal:[125,175], rair:[125,175], rfire:[100,175], rnature:[100,175], rneutral:[125,175] },
+    desperado:   { label:'Desperado',    desc:"A volatile jack-of-all-trades with unpredictable stats, dabbling in damage, debuffs, and survival — always convinced they're the best fighter on the field.",               races:['human','khaured','robotron'],          hp:[50,150,350],   dmg:[250,425,575],   taunt:[300,600,750],  init:[175,400,600],   aspd:[250,350,525],   rgem:[0,0],     rmetal:[0,0],     rair:[0,0],     rfire:[0,0],     rnature:[0,0],     rneutral:[0,0]    },
+    explosioneer:{ label:'Explosioneer', desc:'Walking hazards — sappers who turn defense into opportunity. Their erratic strikes bypass tanks and tear through low-defense foes hiding behind the line.',                     races:['robotron','lopati','human','elgem'],   hp:[100,150,175],  dmg:[350,375,475],   taunt:[200,250,300],  init:[300,500,775],   aspd:[400,475,625],   rgem:[0,50],    rmetal:[0,50],    rair:[0,50],    rfire:[0,25],    rnature:[0,25],    rneutral:[0,50]   },
+    hunter:      { label:'Hunter',       desc:'A high-windup marksman that prioritizes different targets, delivering burst damage while remaining fragile and low threat.',                                                     races:['human','elgem','robotron','altan'],    hp:[100,150,175],  dmg:[300,375,425],   taunt:[200,250,300],  init:[400,600,875],   aspd:[400,475,625],   rgem:[0,50],    rmetal:[0,50],    rair:[0,50],    rfire:[0,25],    rnature:[0,25],    rneutral:[0,50]   },
+    juggernaut:  { label:'Juggernaut',   desc:'A durable melee fighter with high survivability and taunt, delivering solid damage while holding enemy attention.',                                                              races:['khaured','human','onoros'],            hp:[350,400,475],  dmg:[275,425,450],   taunt:[500,550,600],  init:[250,350,550],   aspd:[325,375,450],   rgem:[125,175], rmetal:[125,175], rair:[125,175], rfire:[100,175], rnature:[100,175], rneutral:[125,175] },
+    lunatic:     { label:'Lunatic',      desc:'A slow, low-damage brawler with extreme taunt that soaks punishment. Low initiative means they rarely act first, but enemies cannot ignore them.',                              races:['human','khaured','lopati','onoros'],   hp:[100,125,175],  dmg:[75,125,150],    taunt:[700,850,900],  init:[0,25,50],       aspd:[150,175,275],   rgem:[0,50],    rmetal:[0,50],    rair:[0,50],    rfire:[0,25],    rnature:[0,25],    rneutral:[0,50]   },
+    mindblade:   { label:'Mindblade',    desc:'A resilient melee fighter with strong taunt and moderate health, applying low damage while controlling the battlefield.',                                                        races:['altan','lopati','onoros','khaured'],   hp:[275,325,350],  dmg:[50,75,175],     taunt:[450,500,550],  init:[150,225,375],   aspd:[75,200,225],    rgem:[0,50],    rmetal:[0,50],    rair:[0,50],    rfire:[0,25],    rnature:[0,25],    rneutral:[0,50]   },
+    mystic:      { label:'Mystic',       desc:'A half glass-cannon who deals medium-high damage while boosting allies, but remains fragile and draws little enemy focus.',                                                      races:['altan','elgem','lopati'],              hp:[75,100,150],   dmg:[300,425,525],   taunt:[150,200,250],  init:[250,425,500],   aspd:[325,375,450],   rgem:[0,0],     rmetal:[0,0],     rair:[0,0],     rfire:[0,0],     rnature:[0,0],     rneutral:[0,0]    },
+    tactician:   { label:'Tactician',    desc:'A slow, fragile backline buffer who empowers allies and hits multiple targets with weak strikes, remaining low threat in every way.',                                            races:['human','altan','elgem'],               hp:[75,100,150],   dmg:[150,225,325],   taunt:[50,100,150],   init:[500,700,975],   aspd:[700,750,775],   rgem:[75,125],  rmetal:[75,125],  rair:[75,125],  rfire:[50,125],  rnature:[50,125],  rneutral:[75,125]  },
+    voidcaller:  { label:'Voidcaller',   desc:'A fragile backline debuffer who weakens enemies with control and disruption, remaining low threat and letting allies finish the fight.',                                         races:['altan','onoros','robotron','elgem'],   hp:[100,150,175],  dmg:[175,225,350],   taunt:[50,150,250],   init:[350,525,600],   aspd:[325,375,450],   rgem:[0,50],    rmetal:[0,50],    rair:[0,50],    rfire:[0,25],    rnature:[0,25],    rneutral:[0,50]   },
+    voidwarden:  { label:'Voidwarden',   desc:'A resilient main tank with immense durability and taunt, designed to absorb damage at the cost of low offense.',                                                                races:['onoros','khaured','human','lopati'],   hp:[525,600,675],  dmg:[50,75,125],     taunt:[550,700,800],  init:[150,225,375],   aspd:[275,325,400],   rgem:[200,250], rmetal:[200,250], rair:[200,250], rfire:[175,250], rnature:[175,250], rneutral:[200,250] }
+};
+
+var RACES = {
+    altan:    { label:'Altan',    hp:[25,150,300],   dmg:[0,50,150],   taunt:[0,50,100],    init:[0,25,50],     aspd:[0,100,175],   rgem:[75,150],  rmetal:[25,75],   rair:[25,75],   rfire:[25,75],   rnature:[25,75],   rneutral:[75,150]  },
+    elgem:    { label:'Elgem',    hp:[0,50,125],     dmg:[0,25,75],    taunt:[0,75,150],    init:[25,100,200],  aspd:[0,50,100],    rgem:[25,100],  rmetal:[25,100],  rair:[100,200], rfire:[25,100],  rnature:[100,200], rneutral:[25,100]  },
+    human:    { label:'Human',    hp:[100,250,425],  dmg:[0,50,125],   taunt:[50,125,300],  init:[25,150,275],  aspd:[25,125,250],  rgem:[0,50],    rmetal:[0,50],    rair:[0,50],    rfire:[75,150],  rnature:[75,150],  rneutral:[0,50]    },
+    khaured:  { label:'Khaured',  hp:[75,225,425],   dmg:[0,75,175],   taunt:[25,100,225],  init:[50,175,325],  aspd:[0,100,175],   rgem:[75,150],  rmetal:[25,75],   rair:[25,75],   rfire:[75,150],  rnature:[25,75],   rneutral:[25,75]   },
+    lopati:   { label:'Lopati',   hp:[75,225,425],   dmg:[0,50,125],   taunt:[25,100,225],  init:[50,175,325],  aspd:[0,100,175],   rgem:[50,100],  rmetal:[125,200], rair:[50,100],  rfire:[50,100],  rnature:[125,200], rneutral:[50,100]  },
+    onoros:   { label:'Onoros',   hp:[125,275,475],  dmg:[0,25,75],    taunt:[0,75,150],    init:[50,175,325],  aspd:[0,75,125],    rgem:[25,75],   rmetal:[25,75],   rair:[75,150],  rfire:[75,150],  rnature:[25,75],   rneutral:[25,75]   },
+    robotron: { label:'Robotron', hp:[50,200,375],   dmg:[0,75,175],   taunt:[25,100,225],  init:[25,75,125],   aspd:[0,125,200],   rgem:[0,0],     rmetal:[25,100],  rair:[0,0],     rfire:[0,0],     rnature:[0,0],     rneutral:[25,100]  }
+};
+
+var ELEMENTS = {
+    air:     { label:'Air',     color:'#80c0e0', hp:[0,50,125],  dmg:[0,25,75],  taunt:[0,50,100],  init:[0,50,125],  aspd:[0,50,100],  rgem:[200,400], rmetal:[50,250],  rair:[100,300], rfire:[150,350], rnature:[0,200],   rneutral:[100,300] },
+    fire:    { label:'Fire',    color:'#e05030', hp:[0,50,125],  dmg:[0,25,75],  taunt:[0,50,100],  init:[0,50,125],  aspd:[0,50,100],  rgem:[150,350], rmetal:[0,200],   rair:[50,250],  rfire:[100,300], rnature:[200,400], rneutral:[100,300] },
+    gem:     { label:'Gem',     color:'#c060d0', hp:[0,50,125],  dmg:[0,25,75],  taunt:[0,50,100],  init:[0,50,125],  aspd:[0,50,100],  rgem:[100,300], rmetal:[200,400], rair:[0,200],   rfire:[50,250],  rnature:[150,350], rneutral:[100,300] },
+    metal:   { label:'Metal',   color:'#9898a8', hp:[0,50,125],  dmg:[0,25,75],  taunt:[0,50,100],  init:[0,50,125],  aspd:[0,50,100],  rgem:[0,200],   rmetal:[100,300], rair:[150,350], rfire:[200,400], rnature:[50,250],  rneutral:[100,300] },
+    nature:  { label:'Nature',  color:'#40a050', hp:[0,50,125],  dmg:[0,25,75],  taunt:[0,50,100],  init:[0,50,125],  aspd:[0,50,100],  rgem:[50,250],  rmetal:[150,350], rair:[200,400], rfire:[0,200],   rnature:[100,300], rneutral:[100,300] },
+    neutral: { label:'Neutral', color:'#c8a830', hp:[0,50,125],  dmg:[0,25,75],  taunt:[0,50,100],  init:[0,50,125],  aspd:[0,50,100],  rgem:[100,300], rmetal:[100,300], rair:[100,300], rfire:[100,300], rnature:[100,300], rneutral:[100,300] }
+};
+
+// Global maxes for bar scale
+var STAT_MAX = { hp:1275, dmg:1075, taunt:1300, init:1425, aspd:1125 };
+var RES_MAX  = 900;
+
+var CORE_STATS = [
+    { key:'hp',    label:'Health',     color:'#e85060' },
+    { key:'dmg',   label:'Damage',     color:'#e89030' },
+    { key:'taunt', label:'Taunt',      color:'#4488e0' },
+    { key:'init',  label:'Initiative', color:'#c8d040' },
+    { key:'aspd',  label:'Atk Speed',  color:'#38c890' }
+];
+var RES_STATS = [
+    { key:'rgem',     label:'Gem',     color:'#c060d0' },
+    { key:'rmetal',   label:'Metal',   color:'#9898a8' },
+    { key:'rair',     label:'Air',     color:'#80c0e0' },
+    { key:'rfire',    label:'Fire',    color:'#e05030' },
+    { key:'rnature',  label:'Nature',  color:'#40a050' },
+    { key:'rneutral', label:'Neutral', color:'#c8a830' }
+];
+
+// ── DROPDOWNS ─────────────────────────────────────────────────
+function buildClassSelect() {
+    var sel = document.getElementById('sel-class');
+    Object.keys(CLASSES).forEach(function(k) {
+        var o = document.createElement('option');
+        o.value = k; o.textContent = CLASSES[k].label;
+        sel.appendChild(o);
+    });
+}
+function buildRaceSelect(cls) {
+    var sel = document.getElementById('sel-race');
+    var prev = sel.value;
+    sel.innerHTML = '';
+    CLASSES[cls].races.forEach(function(r) {
+        var o = document.createElement('option');
+        o.value = r; o.textContent = RACES[r].label;
+        sel.appendChild(o);
+    });
+    if (CLASSES[cls].races.indexOf(prev) !== -1) sel.value = prev;
+}
+function buildElemSelect() {
+    var sel = document.getElementById('sel-elem');
+    if (sel.options.length) return;
+    Object.keys(ELEMENTS).forEach(function(k) {
+        var o = document.createElement('option');
+        o.value = k; o.textContent = ELEMENTS[k].label;
+        sel.appendChild(o);
+    });
+}
+function onClassChange() { buildRaceSelect(document.getElementById('sel-class').value); onUpdate(); }
+
+// ── COMBINED CALC ─────────────────────────────────────────────
+// Core stat: returns [floor, pivot, ceiling]
+// Resistance: returns [min, max]
+function combined(cls, race, elem, key) {
+    var c = CLASSES[cls][key], r = RACES[race][key], e = ELEMENTS[elem][key];
+    if (c.length === 3) {
+        return [c[0]+r[0]+e[0], c[1]+r[1]+e[1], c[2]+r[2]+e[2]];
+    } else {
+        return [c[0]+r[0]+e[0], c[1]+r[1]+e[1]];
+    }
+}
+
+// ── DOM BUILDING ──────────────────────────────────────────────
+var _els = {};
+
+function buildStatPanel() {
+    var panel = document.getElementById('stats-panel');
+    panel.innerHTML = ''; _els = {};
+    CORE_STATS.forEach(function(s) {
+        var col = document.createElement('div'); col.className = 'stat-col';
+        var track = document.createElement('div'); track.className = 'stat-track';
+
+        var barLo  = document.createElement('div'); barLo.className  = 'stat-bar-lower'; barLo.style.backgroundColor  = s.color;
+        var barHi  = document.createElement('div'); barHi.className  = 'stat-bar-upper'; barHi.style.backgroundColor  = s.color;
+        var pvt    = document.createElement('div'); pvt.className    = 'stat-pivot-line';
+        var arrT   = document.createElement('div'); arrT.className   = 'stat-arr-top';   arrT.textContent = '▲';
+        var arrB   = document.createElement('div'); arrB.className   = 'stat-arr-bot';   arrB.textContent = '▼';
+        var vt     = document.createElement('div'); vt.className     = 'stat-vt';        vt.style.color = s.color;
+        var vb     = document.createElement('div'); vb.className     = 'stat-vb';
+        var vp     = document.createElement('div'); vp.className     = 'stat-vp';
+
+        track.appendChild(barLo); track.appendChild(barHi); track.appendChild(pvt);
+        track.appendChild(arrT);  track.appendChild(arrB);
+        track.appendChild(vt);    track.appendChild(vb);    track.appendChild(vp);
+
+        var nm = document.createElement('div'); nm.className = 'stat-name'; nm.textContent = s.label;
+        col.appendChild(track); col.appendChild(nm);
+        panel.appendChild(col);
+
+        _els[s.key] = { barLo:barLo, barHi:barHi, pvt:pvt, arrT:arrT, arrB:arrB, vt:vt, vb:vb, vp:vp };
+    });
+}
+
+function buildResGrid() {
+    var grid = document.getElementById('res-grid'); grid.innerHTML = '';
+    RES_STATS.forEach(function(s) {
+        var col  = document.createElement('div'); col.className = 'res-col';
+        var nm   = document.createElement('div'); nm.className  = 'res-name'; nm.textContent = s.label; nm.style.color = s.color;
+        var trk  = document.createElement('div'); trk.className = 'res-track';
+        var bar  = document.createElement('div'); bar.className = 'res-bar'; bar.style.backgroundColor = s.color;
+        var vals = document.createElement('div'); vals.className = 'res-vals';
+        trk.appendChild(bar);
+        col.appendChild(nm); col.appendChild(trk); col.appendChild(vals);
+        grid.appendChild(col);
+        _els[s.key] = { bar:bar, vals:vals };
+    });
+}
+
+var TH = 220, RH = 90;
+
+function setStatBar(key, v) {
+    var el = _els[key]; if (!el) return;
+    var gm = STAT_MAX[key] || 1400;
+    var yF = (v[0] / gm) * TH, yP = (v[1] / gm) * TH, yC = (v[2] / gm) * TH;
+    el.barLo.style.bottom = yF + 'px'; el.barLo.style.height = Math.max(0, yP - yF) + 'px';
+    el.barHi.style.bottom = yP + 'px'; el.barHi.style.height = Math.max(0, yC - yP) + 'px';
+    el.pvt.style.bottom   = yP + 'px';
+    el.arrT.style.bottom  = (yC + 3) + 'px';
+    el.arrB.style.bottom  = (yF - 12) + 'px';
+    el.vt.style.bottom = (yC - 1) + 'px'; el.vt.textContent = v[2];
+    el.vb.style.bottom = (yF - 1) + 'px'; el.vb.textContent = v[0];
+    if (v[1] !== v[0] && v[1] !== v[2]) { el.vp.style.bottom = (yP - 1) + 'px'; el.vp.textContent = v[1]; el.vp.style.display = ''; }
+    else { el.vp.style.display = 'none'; }
+}
+
+function setResBar(key, v) {
+    var el = _els[key]; if (!el) return;
+    var yMn = (v[0] / RES_MAX) * RH, yMx = (v[1] / RES_MAX) * RH;
+    el.bar.style.bottom = yMn + 'px'; el.bar.style.height = Math.max(2, yMx - yMn) + 'px';
+    el.vals.textContent = v[0] + ' \u2013 ' + v[1];
+}
+
+// ── UPDATE ────────────────────────────────────────────────────
+function onUpdate() {
+    var cls  = document.getElementById('sel-class').value;
+    var race = document.getElementById('sel-race').value;
+    var elem = document.getElementById('sel-elem').value;
+    if (!cls || !race || !elem) return;
+
+    document.getElementById('class-desc').textContent = CLASSES[cls].desc;
+
+    var raceWrap = document.getElementById('class-races'); raceWrap.innerHTML = '';
+    CLASSES[cls].races.forEach(function(r) {
+        var chip = document.createElement('span');
+        chip.className = 'race-chip' + (r === race ? ' sel' : '');
+        chip.textContent = RACES[r].label;
+        raceWrap.appendChild(chip);
+    });
+
+    CORE_STATS.forEach(function(s) { setStatBar(s.key, combined(cls, race, elem, s.key)); });
+    RES_STATS.forEach(function(s)  { setResBar(s.key,  combined(cls, race, elem, s.key)); });
+}
+
+// ── BOOT ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    checkWalletState();
+    buildClassSelect();
+    buildElemSelect();
+    buildStatPanel();
+    buildResGrid();
+    onClassChange();
+});
+</script>
+</body>
+</html>
