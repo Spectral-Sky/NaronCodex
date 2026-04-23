@@ -279,8 +279,8 @@ var ELEMENTS = {
 };
 
 // Global maxes for bar scale
-var STAT_MAX = { hp:1275, dmg:1075, taunt:1300, init:1425, aspd:1125 };
-var RES_MAX  = 900;
+var STAT_MAX = { hp:425, dmg:358, taunt:433, init:475, aspd:375 };
+var RES_MAX  = 300;
 
 var CORE_STATS = [
     { key:'hp',    label:'Health',     color:'#e85060' },
@@ -335,9 +335,9 @@ function onClassChange() { buildRaceSelect(document.getElementById('sel-class').
 function combined(cls, race, elem, key) {
     var c = CLASSES[cls][key], r = RACES[race][key], e = ELEMENTS[elem][key];
     if (c.length === 3) {
-        return [c[0]+r[0]+e[0], c[1]+r[1]+e[1], c[2]+r[2]+e[2]];
+        return [Math.round((c[0]+r[0]+e[0])/3), Math.round((c[1]+r[1]+e[1])/3), Math.round((c[2]+r[2]+e[2])/3)];
     } else {
-        return [c[0]+r[0]+e[0], c[1]+r[1]+e[1]];
+        return [Math.round((c[0]+r[0]+e[0])/3), Math.round((c[1]+r[1]+e[1])/3)];
     }
 }
 
