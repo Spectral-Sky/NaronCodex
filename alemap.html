@@ -324,8 +324,7 @@
     <div class="pd-block"><span class="pd-tag-val" id="pd-tag"></span></div>
     <div class="pd-block"><span class="pd-label">Credits</span><span class="pd-value" id="pd-credits">—</span></div>
     <div class="pd-block"><span class="pd-label">Gems</span><span class="pd-value" id="pd-gems">—</span></div>
-    <div class="pd-block"><span class="pd-label">AP</span><span class="pd-value" id="pd-ap">—</span></div>
-    <div class="pd-block"><span class="pd-label">Energy</span><span class="pd-value" id="pd-energy">—</span></div>
+    <div class="pd-block"><span class="pd-label">Energy</span><span class="pd-value" id="pd-ap">—</span></div>
     <div class="pd-block"><span class="pd-label">Dungeons</span><span class="pd-value" id="pd-dungeons">—</span></div>
     <div class="pd-block"><span class="pd-label">Arenas</span><span class="pd-value" id="pd-arenas">—</span></div>
     <div class="pd-block"><span class="pd-label">Portals Used</span><span class="pd-value" id="pd-portals">—</span></div>
@@ -1240,7 +1239,6 @@
         setVal('pd-credits', stats.credits);
         setVal('pd-gems',    stats.gems);
         setVal('pd-ap',      stats.action_points);
-        setVal('pd-energy',  stats.energy !== undefined ? stats.energy : (row.energy !== undefined ? row.energy : '—'));
 
         // permstats: dungeons_played/won, arenas_played/won, portals_used
         var perm = {};
