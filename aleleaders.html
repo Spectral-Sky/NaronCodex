@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALE Leaderboard // Naron Codex</title>
+    <link rel="icon" type="image/png" href="NCico.png">
+    <style>
+    :root {
+        --bg: #03060f; --gold: #e8a020; --border: rgba(232,160,32,0.2);
+        --text: #c8ccd8; --muted: #50606a; --panel: rgba(5,8,20,0.7);
+        --hover: rgba(232,160,32,0.06);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; }
+    body { display: flex; flex-direction: column; }
+    ::-webkit-scrollbar { height: 8px; width: 8px; }
+    ::-webkit-scrollbar-track { background: #050510; }
+    ::-webkit-scrollbar-thumb { background: #333; border: 1px solid var(--gold); }
+
+    /* HEADER */
+    .global-header { display:flex; justify-content:space-between; align-items:center; background:rgba(3,6,15,0.97); border-bottom:2px solid var(--gold); padding:0 28px; height:66px; position:sticky; top:0; z-index:200; box-shadow:0 4px 20px rgba(0,0,0,0.8); backdrop-filter:blur(8px); }
+    .logo-section { display:flex; align-items:center; gap:8px; text-decoration:none; }
+    .logo-section h1 { color:var(--gold); font-size:1.5em; letter-spacing:4px; text-transform:uppercase; text-shadow:0 0 10px rgba(232,160,32,0.5); font-weight:normal; }
+    .nav-links { display:flex; gap:6px; flex-wrap:wrap; }
+    .nav-btn { background:transparent; color:#555; border:1px solid transparent; padding:7px 13px; font-family:'Courier New',monospace; font-size:0.78em; text-decoration:none; cursor:pointer; transition:all 0.2s; text-transform:uppercase; border-radius:3px; letter-spacing:1px; }
+    .nav-btn:hover { color:var(--gold); border-color:var(--border); }
+    .nav-dropdown-wrap { position:relative; }
+    .nav-dropdown-btn { background:transparent; color:#555; border:1px solid transparent; padding:7px 13px; font-family:'Courier New',monospace; font-size:0.78em; cursor:pointer; transition:all 0.2s; text-transform:uppercase; border-radius:3px; letter-spacing:1px; }
+    .nav-dropdown-btn:hover { color:var(--gold); border-color:var(--border); }
+    .nav-dropdown-menu { display:none; position:absolute; top:100%; left:0; background:rgba(3,6,15,0.98); border:1px solid var(--border); min-width:160px; z-index:300; padding:4px 0; }
+    .nav-dropdown-wrap:hover .nav-dropdown-menu { display:block; }
+    .nav-dropdown-item { display:block; padding:8px 14px; color:#555; text-decoration:none; font-family:'Courier New',monospace; font-size:0.78em; transition:all 0.15s; text-transform:uppercase; letter-spacing:1px; }
+    .nav-dropdown-item:hover { color:var(--gold); background:var(--hover); }
+    .nav-dropdown-item.active { color:var(--gold); }
+    #hamburger-btn { display:none; background:transparent; border:1px solid #333; color:#888; font-size:1.1em; padding:6px 10px; cursor:pointer; border-radius:3px; }
+    #nav-dropdown { display:none; flex-direction:column; background:rgba(3,6,15,0.98); border-bottom:1px solid var(--border); padding:10px 20px; gap:6px; z-index:199; }
+    #nav-dropdown.open { display:flex; }
+    @media(max-width:768px){ .nav-links{display:none;} #hamburger-btn{display:block;} }
+
+    /* TITLE */
+    .title-bar { padding:16px 28px 13px; border-bottom:1px solid rgba(232,160,32,0.08); background:rgba(5,8,20,0.5); }
+    .title-bar h1 { font-size:1.2em; letter-spacing:5px; color:var(--gold); text-shadow:0 0 15px rgba(232,160,32,0.3); font-weight:normal; text-transform:uppercase; }
+    .title-bar .sub { font-size:0.62em; color:var(--muted); letter-spacing:2px; margin-top:4px; }
+
+    /* CONTROLS */
+    .controls-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:10px 28px; border-bottom:1px solid rgba(232,160,32,0.07); background:rgba(3,6,15,0.6); }
+    .ctrl-btn { background:transparent; border:1px solid rgba(232,160,32,0.35); color:var(--gold); padding:6px 14px; font-family:'Courier New',monospace; font-size:0.74em; letter-spacing:1px; cursor:pointer; border-radius:2px; transition:all 0.2s; }
+    .ctrl-btn:hover { background:rgba(232,160,32,0.08); }
+    .ctrl-btn:disabled { opacity:0.35; cursor:not-allowed; }
+    #cache-info { font-size:0.65em; color:var(--muted); letter-spacing:1px; }
+    #player-search { background:rgba(3,6,15,0.9); border:1px solid rgba(232,160,32,0.2); color:var(--gold); font-family:'Courier New',monospace; font-size:0.76em; padding:6px 12px; outline:none; border-radius:2px; width:180px; }
+    #player-search::placeholder { color:#444; }
+    #player-search:focus { border-color:var(--gold); }
+    #count-display { font-size:0.65em; color:var(--muted); margin-left:auto; letter-spacing:1px; }
+
+    /* COLUMN TOGGLES */
+    .col-toggles { padding:8px 28px; border-bottom:1px solid rgba(232,160,32,0.06); background:rgba(3,6,15,0.4); display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .col-toggle-label { font-size:0.58em; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-right:4px; }
+    .col-toggle { background:transparent; border:1px solid rgba(232,160,32,0.18); color:#445; font-family:'Courier New',monospace; font-size:0.65em; letter-spacing:1px; padding:3px 9px; cursor:pointer; border-radius:2px; transition:all 0.15s; }
+    .col-toggle:hover { border-color:rgba(232,160,32,0.4); color:#778; }
+    .col-toggle.on { border-color:var(--gold); color:var(--gold); background:rgba(232,160,32,0.06); }
+
+    /* PROGRESS */
+    .progress-wrap { padding:18px 28px; display:none; }
+    .progress-wrap.visible { display:block; }
+    .progress-bar-outer { height:4px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden; margin-bottom:8px; }
+    .progress-bar-inner { height:100%; background:var(--gold); border-radius:2px; transition:width 0.3s; }
+    .progress-label { font-size:0.65em; color:var(--muted); letter-spacing:2px; }
+
+    /* TABLE */
+    .table-wrap { overflow-x:auto; flex:1; }
+    .lb-table { width:100%; border-collapse:collapse; font-size:0.76em; }
+    .lb-table th { position:sticky; top:66px; background:#090912; border-bottom:2px solid var(--gold); padding:9px 12px; text-align:right; cursor:pointer; letter-spacing:1px; text-transform:uppercase; color:#667; font-weight:normal; white-space:nowrap; user-select:none; transition:color 0.15s; z-index:10; }
+    .lb-table th:first-child, .lb-table th:nth-child(2) { text-align:left; }
+    .lb-table th:hover { color:var(--gold); }
+    .lb-table th.sort-asc::after { content:' ▲'; color:var(--gold); }
+    .lb-table th.sort-desc::after { content:' ▼'; color:var(--gold); }
+    .lb-table th.sort-asc, .lb-table th.sort-desc { color:var(--gold); }
+    .lb-table td { padding:7px 12px; text-align:right; border-bottom:1px solid rgba(255,255,255,0.03); white-space:nowrap; color:#9098a8; }
+    .lb-table td:first-child { text-align:left; color:var(--muted); font-size:0.88em; width:36px; }
+    .lb-table td:nth-child(2) { text-align:left; color:var(--gold); }
+    .lb-table tr:hover td { background:var(--hover); }
+    .lb-table tr.me td { background:rgba(232,160,32,0.06); }
+    .lb-table tr.me td:nth-child(2) { color:#fff; text-shadow:0 0 8px rgba(232,160,32,0.5); }
+    .lb-table .rank-top { color:var(--gold); font-weight:bold; }
+    .rank-1  td:first-child { color:#ffd700; }
+    .rank-2  td:first-child { color:#c0c0c0; }
+    .rank-3  td:first-child { color:#cd7f32; }
+    .zero { color:#2a3040 !important; }
+
+    /* EMPTY / ERROR */
+    .lb-empty { padding:40px 28px; text-align:center; font-size:0.75em; color:var(--muted); letter-spacing:2px; }
+
+    footer { border-top:1px solid rgba(232,160,32,0.07); padding:12px 28px; font-size:0.58em; color:var(--muted); letter-spacing:1.5px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+    </style>
+</head>
+<body>
+
+<header class="global-header">
+    <a href="index.html" class="logo-section">
+        <img src="NCico.png" style="height:28px;border-radius:3px;" alt="">
+        <h1>NARON CODEX</h1>
+    </a>
+    <nav class="nav-links">
+        <a href="index.html" class="nav-btn">HUB</a>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">ALE &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="ale.html"       class="nav-dropdown-item">&#9876; ALE CARDS</a>
+                <a href="alewiki.html"   class="nav-dropdown-item">&#9672; ALE WIKI</a>
+                <a href="alements.html"  class="nav-dropdown-item">&#11041; STAT EXPLORER</a>
+                <a href="alemap.html"    class="nav-dropdown-item">&#9632; TRAVEL MAP</a>
+                <a href="aleleaders.html" class="nav-dropdown-item active">&#9670; LEADERBOARD</a>
+            </div>
+        </div>
+        <a href="stash.html"   class="nav-btn">&#11041; STASH</a>
+        <a href="outpost.html" class="nav-btn">OUTPOST</a>
+    </nav>
+    <button id="hamburger-btn" onclick="toggleHamburger()" aria-label="Navigation">&#9776;</button>
+</header>
+
+<nav id="nav-dropdown">
+    <a href="index.html"      class="nav-btn">HUB</a>
+    <a href="ale.html"        class="nav-btn">&#9876; ALE CARDS</a>
+    <a href="alewiki.html"    class="nav-btn">&#9672; ALE WIKI</a>
+    <a href="alemap.html"     class="nav-btn">&#9632; TRAVEL MAP</a>
+    <a href="aleleaders.html" class="nav-btn active">&#9670; LEADERBOARD</a>
+</nav>
+
+<div class="title-bar">
+    <h1>&#9670; ALIEN LEGENDS &mdash; LEADERBOARD</h1>
+    <p class="sub">ALL PLAYERS &middot; SORTABLE BY ANY STAT &middot; SOURCE: PLAYERS.ALE</p>
+</div>
+
+<div class="controls-bar">
+    <button class="ctrl-btn" id="refresh-btn" onclick="loadLeaderboard(true)">&#8635; REFRESH</button>
+    <span id="cache-info"></span>
+    <input id="player-search" type="text" placeholder="Search player..." oninput="filterAndRender()">
+    <span id="count-display"></span>
+</div>
+
+<div class="col-toggles" id="col-toggles">
+    <span class="col-toggle-label">Columns:</span>
+</div>
+
+<div class="progress-wrap" id="progress-wrap">
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="progress-bar" style="width:0%"></div></div>
+    <div class="progress-label" id="progress-label">Loading players...</div>
+</div>
+
+<div class="table-wrap">
+    <div class="lb-empty" id="lb-empty">Click REFRESH to load the leaderboard.</div>
+    <table class="lb-table" id="lb-table" style="display:none;">
+        <thead id="lb-thead"></thead>
+        <tbody id="lb-tbody"></tbody>
+    </table>
+</div>
+
+<footer>
+    <span>SOURCE &middot; PLAYERS.ALE &middot; WAX BLOCKCHAIN</span>
+    <span id="footer-ts"></span>
+</footer>
+
+<script>
+(function() {
+    var CACHE_KEY = 'ale_lb_data';
+    var CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+    var WAX_ENDPOINTS = [
+        'https://wax.eosusa.io',
+        'https://api.wax.alohaeos.com',
+        'https://wax.cryptolions.io',
+    ];
+
+    // ── COLUMNS DEFINITION ───────────────────────────────────────────────────
+    // src: 'perm' = permstats key | 'active' = activestats key | 'tag' = player tag
+    var COLUMNS = [
+        { key:'dungeons_won',       label:'D Won',       src:'perm',   def:true  },
+        { key:'dungeons_played',    label:'D Played',    src:'perm',   def:false },
+        { key:'arenas_won',         label:'A Won',       src:'perm',   def:true  },
+        { key:'arenas_played',      label:'A Played',    src:'perm',   def:false },
+        { key:'portals_used',       label:'Portals',     src:'perm',   def:true  },
+        { key:'travel_distance',    label:'Travel',      src:'perm',   def:true  },
+        { key:'fighters_recruited', label:'Recruited',   src:'perm',   def:true  },
+        { key:'fighters_sold',      label:'Sold',        src:'perm',   def:false },
+        { key:'quests_completed',   label:'Quests',      src:'perm',   def:true  },
+        { key:'level_ups',          label:'Lvl Ups',     src:'perm',   def:false },
+        { key:'nfts_staked',        label:'Staked',      src:'perm',   def:false },
+        { key:'credits_gained',     label:'Credits',     src:'perm',   def:true  },
+        { key:'gems_gained',        label:'Gems',        src:'perm',   def:true  },
+        { key:'energy_gained',      label:'Energy',      src:'perm',   def:false },
+        { key:'buildings_constructed', label:'Buildings',src:'perm',   def:false },
+        { key:'action_points',      label:'AP',          src:'active', def:false },
+        { key:'credits',            label:'Cur Credits', src:'active', def:false },
+        { key:'gems',               label:'Cur Gems',    src:'active', def:false },
+    ];
+
+    // visible set (keys)
+    var _visibleCols = {};
+    var _allPlayers  = [];
+    var _filtered    = [];
+    var _sortKey     = 'dungeons_won';
+    var _sortDir     = -1; // -1 = desc
+    var _extraCols   = []; // discovered permstats keys not in COLUMNS
+
+    // ── API ──────────────────────────────────────────────────────────────────
+    async function fetchTableRows(params) {
+        var lastErr;
+        for (var i = 0; i < WAX_ENDPOINTS.length; i++) {
+            try {
+                var r = await fetch(WAX_ENDPOINTS[i] + '/v1/chain/get_table_rows', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                if (r.ok) return await r.json();
+            } catch(e) { lastErr = e; }
+        }
+        throw lastErr || new Error('WAX API unavailable');
+    }
+
+    // ── FETCH ALL PLAYERS ────────────────────────────────────────────────────
+    async function fetchAllPlayers(onProgress) {
+        var all = [];
+        var lb  = undefined;
+        var more = true;
+        while (more) {
+            var params = {
+                code: 'players.ale', scope: 'players.ale', table: 'players',
+                limit: 200, json: true, reverse: false
+            };
+            if (lb !== undefined) params.lower_bound = lb;
+            var data = await fetchTableRows(params);
+            var rows = data.rows || [];
+            all = all.concat(rows);
+            if (data.more && rows.length > 0) {
+                lb = data.next_key !== undefined ? data.next_key : rows[rows.length - 1].wallet + '\x01';
+            } else {
+                more = false;
+            }
+            if (onProgress) onProgress(all.length, !more);
+        }
+        return all;
+    }
+
+    // ── FLATTEN ROW ──────────────────────────────────────────────────────────
+    function flattenPlayer(row) {
+        var perm = {};
+        if (row.permstats) {
+            row.permstats.forEach(function(s) { perm[s.first] = Number(s.second) || 0; });
+        }
+        var active = row.activestats || {};
+        return {
+            wallet:  row.wallet || '',
+            tag:     row.playertag || row.wallet || '',
+            perm:    perm,
+            active:  {
+                credits:       Number(active.credits       || 0),
+                gems:          Number(active.gems          || 0),
+                action_points: Number(active.action_points || 0),
+            }
+        };
+    }
+
+    function getVal(fp, key, src) {
+        if (src === 'perm')   return fp.perm[key]   || 0;
+        if (src === 'active') return fp.active[key] || 0;
+        return 0;
+    }
+
+    // ── DISCOVER EXTRA COLUMNS ───────────────────────────────────────────────
+    function discoverExtraCols(players) {
+        var known = {};
+        COLUMNS.forEach(function(c) { if (c.src === 'perm') known[c.key] = true; });
+        var found = {};
+        players.forEach(function(fp) {
+            Object.keys(fp.perm).forEach(function(k) {
+                if (!known[k]) found[k] = true;
+            });
+        });
+        _extraCols = Object.keys(found).sort();
+    }
+
+    // ── COLUMN TOGGLE UI ─────────────────────────────────────────────────────
+    function buildColToggles() {
+        var wrap = document.getElementById('col-toggles');
+        // keep only the label span
+        var label = wrap.querySelector('.col-toggle-label');
+        wrap.innerHTML = '';
+        wrap.appendChild(label);
+
+        var allCols = COLUMNS.concat(_extraCols.map(function(k) {
+            return { key: k, label: k.replace(/_/g, ' '), src: 'perm', def: false };
+        }));
+
+        allCols.forEach(function(col) {
+            var on = _visibleCols[col.key];
+            var btn = document.createElement('button');
+            btn.className = 'col-toggle' + (on ? ' on' : '');
+            btn.textContent = col.label.toUpperCase();
+            btn.dataset.key = col.key;
+            btn.onclick = function() {
+                _visibleCols[col.key] = !_visibleCols[col.key];
+                btn.classList.toggle('on', _visibleCols[col.key]);
+                renderTable();
+            };
+            wrap.appendChild(btn);
+        });
+    }
+
+    // ── SORT ─────────────────────────────────────────────────────────────────
+    function sortPlayers(players, key) {
+        var allCols = COLUMNS.concat(_extraCols.map(function(k) {
+            return { key:k, src:'perm' };
+        }));
+        var col = allCols.find(function(c) { return c.key === key; });
+        var src = col ? col.src : 'perm';
+
+        if (key === 'tag') {
+            return players.slice().sort(function(a, b) {
+                return _sortDir * a.tag.localeCompare(b.tag);
+            });
+        }
+        return players.slice().sort(function(a, b) {
+            return _sortDir * (getVal(b, key, src) - getVal(a, key, src));
+        });
+    }
+
+    // ── RENDER TABLE ─────────────────────────────────────────────────────────
+    function renderTable() {
+        var search  = (document.getElementById('player-search').value || '').toLowerCase();
+        _filtered   = _allPlayers.filter(function(fp) {
+            return !search || fp.tag.toLowerCase().indexOf(search) >= 0 ||
+                   fp.wallet.toLowerCase().indexOf(search) >= 0;
+        });
+
+        var sorted = sortPlayers(_filtered, _sortKey);
+
+        var allCols = COLUMNS.concat(_extraCols.map(function(k) {
+            return { key:k, label:k.replace(/_/g,' '), src:'perm', def:false };
+        }));
+        var visCols = allCols.filter(function(c) { return _visibleCols[c.key]; });
+
+        // thead
+        var thHtml = '<tr><th onclick="sortBy(\'rank\')" id="th-rank">#</th>' +
+            '<th onclick="sortBy(\'tag\')" id="th-tag" class="' + sortClass('tag') + '">PLAYER</th>';
+        visCols.forEach(function(c) {
+            thHtml += '<th onclick="sortBy(\'' + c.key + '\')" id="th-' + c.key + '" class="' + sortClass(c.key) + '">' +
+                c.label.toUpperCase() + '</th>';
+        });
+        thHtml += '</tr>';
+        document.getElementById('lb-thead').innerHTML = thHtml;
+
+        // tbody
+        var rows = '';
+        sorted.forEach(function(fp, i) {
+            var rank = i + 1;
+            var rankCls = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
+            var meCls = ''; // could highlight logged-in player here
+            rows += '<tr class="' + rankCls + ' ' + meCls + '">';
+            rows += '<td>' + rank + '</td>';
+            rows += '<td>' + escHtml(fp.tag) + '</td>';
+            visCols.forEach(function(c) {
+                var v = getVal(fp, c.key, c.src);
+                rows += '<td class="' + (v === 0 ? 'zero' : '') + '">' + v.toLocaleString() + '</td>';
+            });
+            rows += '</tr>';
+        });
+
+        document.getElementById('lb-tbody').innerHTML = rows || '<tr><td colspan="99" style="text-align:center;color:#445;padding:24px;">No results</td></tr>';
+        document.getElementById('lb-table').style.display = '';
+        document.getElementById('lb-empty').style.display = 'none';
+        document.getElementById('count-display').textContent = sorted.length + ' / ' + _allPlayers.length + ' PLAYERS';
+    }
+
+    function sortClass(key) {
+        if (key !== _sortKey) return '';
+        return _sortDir === -1 ? 'sort-desc' : 'sort-asc';
+    }
+
+    window.sortBy = function(key) {
+        if (_sortKey === key) {
+            _sortDir = -_sortDir;
+        } else {
+            _sortKey = key;
+            _sortDir = key === 'tag' ? 1 : -1;
+        }
+        renderTable();
+    };
+
+    function filterAndRender() { if (_allPlayers.length) renderTable(); }
+    window.filterAndRender = filterAndRender;
+
+    // ── LOAD ─────────────────────────────────────────────────────────────────
+    window.loadLeaderboard = async function(forceRefresh) {
+        var btn = document.getElementById('refresh-btn');
+        btn.disabled = true;
+
+        // Try cache
+        if (!forceRefresh) {
+            try {
+                var cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+                if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+                    _allPlayers = cached.players;
+                    discoverExtraCols(_allPlayers);
+                    initVisibility();
+                    buildColToggles();
+                    renderTable();
+                    setCacheInfo(cached.ts, cached.players.length);
+                    btn.disabled = false;
+                    return;
+                }
+            } catch(e) {}
+        }
+
+        // Show progress
+        var pw = document.getElementById('progress-wrap');
+        var pb = document.getElementById('progress-bar');
+        var pl = document.getElementById('progress-label');
+        pw.classList.add('visible');
+        document.getElementById('lb-table').style.display = 'none';
+        document.getElementById('lb-empty').style.display = 'none';
+
+        try {
+            var raw = await fetchAllPlayers(function(count, done) {
+                pl.textContent = 'Fetched ' + count + ' players' + (done ? ' — done.' : '...');
+                pb.style.width = done ? '100%' : Math.min(95, count / 5) + '%';
+            });
+
+            _allPlayers = raw.map(flattenPlayer);
+            discoverExtraCols(_allPlayers);
+            initVisibility();
+            buildColToggles();
+            renderTable();
+
+            var ts = Date.now();
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: ts, players: _allPlayers }));
+            setCacheInfo(ts, _allPlayers.length);
+
+        } catch(e) {
+            pl.textContent = '✗ Error: ' + (e.message || e);
+        } finally {
+            pw.classList.remove('visible');
+            btn.disabled = false;
+        }
+    };
+
+    function initVisibility() {
+        // Only run once; preserve user toggles on re-render
+        COLUMNS.forEach(function(c) {
+            if (_visibleCols[c.key] === undefined) _visibleCols[c.key] = c.def;
+        });
+        _extraCols.forEach(function(k) {
+            if (_visibleCols[k] === undefined) _visibleCols[k] = false;
+        });
+    }
+
+    function setCacheInfo(ts, count) {
+        var d = new Date(ts);
+        document.getElementById('cache-info').textContent =
+            'Updated ' + d.toLocaleTimeString() + '  ·  ' + count + ' total players';
+        document.getElementById('footer-ts').textContent =
+            'LAST FETCH ' + d.toLocaleString();
+    }
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── HAMBURGER ────────────────────────────────────────────────────────────
+    window.toggleHamburger = function() {
+        var dd = document.getElementById('nav-dropdown');
+        if (dd) dd.classList.toggle('open');
+    };
+
+    // ── INIT ─────────────────────────────────────────────────────────────────
+    loadLeaderboard(false);
+})();
+</script>
+</body>
+</html>
