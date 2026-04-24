@@ -965,6 +965,7 @@
             updatePlayerPosDisplay();
             showStripBrief('ok', '✓ Travelled to ' + PLANETS[destPlanet].name + ' (' + sel.x + ', ' + sel.y + ')');
             if (sel.portal) switchPlanet(sel.portal.to);
+            fetchPlayerData(wallet);
         } catch(e) {
             var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
             showStripBrief('err', '✗ ' + msg.substring(0, 120));
@@ -1091,6 +1092,7 @@
             _playerPos = { planet: destPlanet, x: _selection.x, y: _selection.y };
             applyPlayerMarker();
             updatePlayerPosDisplay();
+            fetchPlayerData(wallet);
             if (_selection.portal) {
                 setTimeout(function() { switchPlanet(destPlanet); }, 1200);
             } else {
@@ -1432,11 +1434,13 @@
                     renderRouteSteps();
                     var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
                     execBtn.textContent = '✗ ' + msg.substring(0, 60);
+                    fetchPlayerData(wallet);
                     _routeRunning = false;
                     execBtn.disabled = false;
                     return;
                 }
             }
+            fetchPlayerData(wallet);
         } else {
             // ── BATCH MODE: all actions in one transaction ─────────────────────
             var actions = _routeSteps.map(function(step) {
@@ -1463,6 +1467,7 @@
                 _playerPos = { planet: destPlanet, x: last.x, y: last.y };
                 applyPlayerMarker();
                 updatePlayerPosDisplay();
+                fetchPlayerData(wallet);
                 if (destPlanet !== _activePlanet) switchPlanet(destPlanet);
             } catch(e) {
                 _routeSteps.forEach(function(s) { if (s.status === 'run') s.status = 'fail'; });
@@ -1554,7 +1559,7 @@
     var wax = new waxjs.WaxJS({
         rpcEndpoint: 'https://wax.greymass.com',
         userAccount: localStorage.getItem('naron_wallet') || '',
-        tryAutoLogin: false
+        tryAutoLogin: true
     });
 
     function checkWalletState() {
@@ -1630,6 +1635,14 @@
     fetchAllDungeons().then(enrichWithLandOwners); // dungeons → then owner enrichment
     fetchAllBuildings();                           // taverns + arenas from lands.ale globally
     checkWalletState();
+
+    // WaxJS Cloud Wallet auto-restore on page refresh
+    // tryAutoLogin:true makes wax.login() return instantly if the user was already logged in
+    if (!window.walletSession && localStorage.getItem('naron_wallet')) {
+        wax.login().then(function(account) {
+            if (account) { localStorage.setItem('naron_wallet', account); checkWalletState(); }
+        }).catch(function() {});
+    }
 
 })();
 </script>
