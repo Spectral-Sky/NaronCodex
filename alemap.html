@@ -225,6 +225,9 @@
         .conf-btn.exec-btn:hover { background:var(--theme-color); color:#000; }
         .conf-btn.exec-btn:disabled { opacity:0.4; cursor:not-allowed !important; }
         .route-empty { color:#445; font-family:'Courier New',monospace; font-size:0.76em; padding:8px 0; }
+        .route-mode-btn { background:transparent; border:1px solid rgba(232,160,32,0.25); color:#556; font-family:'Courier New',monospace; font-size:0.7em; letter-spacing:1px; padding:3px 9px; cursor:crosshair; border-radius:2px; transition:all 0.15s; }
+        .route-mode-btn:hover { color:#998; border-color:rgba(232,160,32,0.5); }
+        .route-mode-btn.active { border-color:var(--theme-color); color:var(--theme-color); background:rgba(232,160,32,0.08); }
 
         /* legend */
         .map-legend { display:flex; gap:14px; flex-wrap:wrap; padding:10px 20px; background:#06050e; border-top:1px solid rgba(232,160,32,0.08); font-family:'Courier New',monospace; font-size:0.7em; }
@@ -317,6 +320,7 @@
     <div class="pd-block"><span class="pd-label">Credits</span><span class="pd-value" id="pd-credits">—</span></div>
     <div class="pd-block"><span class="pd-label">Gems</span><span class="pd-value" id="pd-gems">—</span></div>
     <div class="pd-block"><span class="pd-label">AP</span><span class="pd-value" id="pd-ap">—</span></div>
+    <div class="pd-block"><span class="pd-label">Energy</span><span class="pd-value" id="pd-energy">—</span></div>
     <div class="pd-block"><span class="pd-label">Dungeons</span><span class="pd-value" id="pd-dungeons">—</span></div>
     <div class="pd-block"><span class="pd-label">Arenas</span><span class="pd-value" id="pd-arenas">—</span></div>
     <div class="pd-block"><span class="pd-label">Portals Used</span><span class="pd-value" id="pd-portals">—</span></div>
@@ -389,7 +393,11 @@
     <div class="route-panel" id="route-panel">
         <div class="route-header">
             ROUTE QUEUE
-            <button class="route-clear-btn" onclick="clearRoute()">✕ CLEAR ALL</button>
+            <div style="display:flex;gap:6px;align-items:center;">
+                <button id="route-mode-batch" class="route-mode-btn active" onclick="setRouteMode('batch')"       title="All steps in one transaction">BATCH</button>
+                <button id="route-mode-seq"   class="route-mode-btn"        onclick="setRouteMode('sequential')"  title="One transaction per step — counts each travel separately">SEQUENTIAL</button>
+                <button class="route-clear-btn" onclick="clearRoute()">✕ CLEAR</button>
+            </div>
         </div>
         <div id="route-steps-list" class="route-steps">
             <div class="route-empty" id="route-empty-msg">No steps added. Select a cell and click + ADD TO ROUTE.</div>
@@ -752,6 +760,7 @@
     var _rendered      = {};
     var _routeSteps    = [];
     var _routeRunning  = false;
+    var _routeMode     = 'batch';
     var _routeUnlocked = false;
     var _routeClickSeq = 0;
     var _routeClickTimer = null;
@@ -1213,6 +1222,7 @@
         setVal('pd-credits', stats.credits);
         setVal('pd-gems',    stats.gems);
         setVal('pd-ap',      stats.action_points);
+        setVal('pd-energy',  stats.energy !== undefined ? stats.energy : (row.energy !== undefined ? row.energy : '—'));
 
         // permstats: dungeons_played/won, arenas_played/won, portals_used
         var perm = {};
@@ -1306,6 +1316,13 @@
     };
 
     // ── ROUTE PLANNER ────────────────────────────────────────────────────────
+    window.setRouteMode = function(mode) {
+        _routeMode = mode;
+        document.getElementById('route-mode-batch').classList.toggle('active', mode === 'batch');
+        document.getElementById('route-mode-seq').classList.toggle('active', mode === 'sequential');
+        renderRouteSteps();
+    };
+
     window.toggleRoutePlanner = function() {
         var btn   = document.getElementById('route-toggle-btn');
         var panel = document.getElementById('route-panel');
@@ -1329,7 +1346,8 @@
             return;
         }
         execBtn.disabled = _routeRunning;
-        execBtn.textContent = '▶ EXECUTE ROUTE (' + _routeSteps.length + ')';
+        var modeLabel = _routeMode === 'sequential' ? '▶ EXECUTE SEQ (' : '▶ EXECUTE ROUTE (';
+        execBtn.textContent = modeLabel + _routeSteps.length + ')';
         list.innerHTML = _routeSteps.map(function(step, i) {
             var statusIcon = step.status === 'done' ? '<span style="color:#40c070">✓</span>'
                            : step.status === 'fail' ? '<span style="color:#c04040">✗</span>'
@@ -1372,44 +1390,70 @@
         var execBtn = document.getElementById('execute-route-btn');
         execBtn.disabled = true;
 
-        // Build all travel actions into one transaction
-        var actions = _routeSteps.map(function(step) {
-            return {
-                account: 'players.ale',
-                name: 'travel',
-                authorization: [{ actor: wallet, permission: 'active' }],
-                data: { wallet: wallet, x: step.x, y: step.y }
-            };
-        });
-
-        // Mark all as running so the user sees the whole queue light up
-        _routeSteps.forEach(function(s) { s.status = 'run'; });
-        renderRouteSteps();
-
-        try {
-            if (window.walletSession) {
-                await window.walletSession.transact({ actions });
-            } else if (typeof wax !== 'undefined' && wax && wax.userAccount) {
-                await wax.api.transact({ actions }, { blocksBehind: 3, expireSeconds: 30 });
-            } else {
-                throw new Error('Session not ready — please log out and log back in.');
+        if (_routeMode === 'sequential') {
+            // ── SEQUENTIAL MODE: one transaction per step ──────────────────────
+            // Each travel is a separate chain TX — every hop counts individually
+            // (useful for achievement farming: portals_used increments each time)
+            for (var i = 0; i < _routeSteps.length; i++) {
+                var step = _routeSteps[i];
+                step.status = 'run';
+                renderRouteSteps();
+                try {
+                    await sendTravel(wallet, step.x, step.y);
+                    step.status = 'done';
+                    var destPlanet = step.portal ? step.portal : step.planet;
+                    _playerPos = { planet: destPlanet, x: step.x, y: step.y };
+                    applyPlayerMarker();
+                    updatePlayerPosDisplay();
+                    if (destPlanet !== _activePlanet) switchPlanet(destPlanet);
+                    renderRouteSteps();
+                    // Brief pause between TXs so chain registers each travel separately
+                    if (i < _routeSteps.length - 1) {
+                        await new Promise(function(r) { setTimeout(r, 2500); });
+                    }
+                } catch(e) {
+                    step.status = 'fail';
+                    renderRouteSteps();
+                    var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
+                    execBtn.textContent = '✗ ' + msg.substring(0, 60);
+                    _routeRunning = false;
+                    execBtn.disabled = false;
+                    return;
+                }
             }
-
-            // All steps confirmed — mark done and update position to last step
-            _routeSteps.forEach(function(s) { s.status = 'done'; });
-            var last       = _routeSteps[_routeSteps.length - 1];
-            var destPlanet = last.portal ? last.portal : last.planet;
-            _playerPos = { planet: destPlanet, x: last.x, y: last.y };
-            applyPlayerMarker();
-            updatePlayerPosDisplay();
-            if (destPlanet !== _activePlanet) switchPlanet(destPlanet);
-
-        } catch(e) {
-            // Whole transaction failed — mark all pending as failed
-            _routeSteps.forEach(function(s) { if (s.status === 'run') s.status = 'fail'; });
-            var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
-            execBtn.textContent = '✗ ' + msg.substring(0, 60);
-            setTimeout(function() { renderRouteSteps(); }, 100);
+        } else {
+            // ── BATCH MODE: all actions in one transaction ─────────────────────
+            var actions = _routeSteps.map(function(step) {
+                return {
+                    account: 'players.ale',
+                    name: 'travel',
+                    authorization: [{ actor: wallet, permission: 'active' }],
+                    data: { wallet: wallet, x: step.x, y: step.y }
+                };
+            });
+            _routeSteps.forEach(function(s) { s.status = 'run'; });
+            renderRouteSteps();
+            try {
+                if (window.walletSession) {
+                    await window.walletSession.transact({ actions });
+                } else if (typeof wax !== 'undefined' && wax && wax.userAccount) {
+                    await wax.api.transact({ actions }, { blocksBehind: 3, expireSeconds: 30 });
+                } else {
+                    throw new Error('Session not ready — please log out and log back in.');
+                }
+                _routeSteps.forEach(function(s) { s.status = 'done'; });
+                var last       = _routeSteps[_routeSteps.length - 1];
+                var destPlanet = last.portal ? last.portal : last.planet;
+                _playerPos = { planet: destPlanet, x: last.x, y: last.y };
+                applyPlayerMarker();
+                updatePlayerPosDisplay();
+                if (destPlanet !== _activePlanet) switchPlanet(destPlanet);
+            } catch(e) {
+                _routeSteps.forEach(function(s) { if (s.status === 'run') s.status = 'fail'; });
+                var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
+                execBtn.textContent = '✗ ' + msg.substring(0, 60);
+                setTimeout(function() { renderRouteSteps(); }, 100);
+            }
         }
 
         renderRouteSteps();
