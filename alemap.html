@@ -323,9 +323,9 @@
 <!-- ══ PLAYER DATA BAR ════════════════════════════════════════════════════ -->
 <div id="player-data-bar" class="player-data-bar" style="display:none;">
     <div class="pd-block"><span class="pd-tag-val" id="pd-tag"></span></div>
-    <div class="pd-block"><img src="ALE%20Images/credits.png" class="pd-icon" title="Credits"><span class="pd-value" id="pd-credits">—</span></div>
-    <div class="pd-block"><img src="ALE%20Images/gems.png"    class="pd-icon" title="Gems"><span class="pd-value" id="pd-gems">—</span></div>
-    <div class="pd-block"><img src="ALE%20Images/energy.png"  class="pd-icon" title="Energy"><span class="pd-value" id="pd-ap">—</span></div>
+    <div class="pd-block"><img src="Ale%20images/credits.png" class="pd-icon" title="Credits"><span class="pd-value" id="pd-credits">—</span></div>
+    <div class="pd-block"><img src="Ale%20images/gems.png"    class="pd-icon" title="Gems"><span class="pd-value" id="pd-gems">—</span></div>
+    <div class="pd-block"><img src="Ale%20images/energy.png"  class="pd-icon" title="Energy"><span class="pd-value" id="pd-ap">—</span></div>
     <div class="pd-block"><span class="pd-label">Dungeons</span><span class="pd-value" id="pd-dungeons">—</span></div>
     <div class="pd-block"><span class="pd-label">Arenas</span><span class="pd-value" id="pd-arenas">—</span></div>
     <div class="pd-block"><span class="pd-label">Portals Used</span><span class="pd-value" id="pd-portals">—</span></div>
@@ -766,6 +766,7 @@
     var _routeSteps    = [];
     var _routeRunning  = false;
     var _routeMode     = 'batch';
+    var _lastTravelTime = 0; // ms timestamp of last successful travel, to guard stale chain reads
     var _routeUnlocked = false;
     var _routeClickSeq = 0;
     var _routeClickTimer = null;
@@ -965,6 +966,7 @@
             updatePlayerPosDisplay();
             showStripBrief('ok', '✓ Travelled to ' + PLANETS[destPlanet].name + ' (' + sel.x + ', ' + sel.y + ')');
             if (sel.portal) switchPlanet(sel.portal.to);
+            _lastTravelTime = Date.now();
             fetchPlayerData(wallet);
         } catch(e) {
             var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
@@ -1092,6 +1094,7 @@
             _playerPos = { planet: destPlanet, x: _selection.x, y: _selection.y };
             applyPlayerMarker();
             updatePlayerPosDisplay();
+            _lastTravelTime = Date.now();
             fetchPlayerData(wallet);
             if (_selection.portal) {
                 setTimeout(function() { switchPlanet(destPlanet); }, 1200);
@@ -1160,9 +1163,10 @@
             if (data.rows && data.rows.length > 0 && data.rows[0].wallet === wallet) {
                 var row = data.rows[0];
                 _playerData = row;
-                // Position
+                // Position — skip if we just sent a travel (chain may not have caught up yet)
+                var recentTravel = (Date.now() - _lastTravelTime) < 6000;
                 var planet = normalizePlanet(row.planet);
-                if (planet) {
+                if (planet && !recentTravel) {
                     _playerPos = { planet: planet, x: row.x, y: row.y };
                     applyPlayerMarker();
                     updatePlayerPosDisplay();
@@ -1466,6 +1470,7 @@
                 _playerPos = { planet: destPlanet, x: last.x, y: last.y };
                 applyPlayerMarker();
                 updatePlayerPosDisplay();
+                _lastTravelTime = Date.now();
                 fetchPlayerData(wallet);
                 if (destPlanet !== _activePlanet) switchPlanet(destPlanet);
             } catch(e) {
