@@ -230,6 +230,31 @@
         .conf-btn.exec-btn { color:var(--theme-color); border-color:var(--theme-color); }
         .conf-btn.exec-btn:hover { background:var(--theme-color); color:#000; }
         .conf-btn.exec-btn:disabled { opacity:0.4; cursor:not-allowed !important; }
+        .conf-btn.dungeon  { color:#70a870; border-color:#70a870; }
+        .conf-btn.dungeon:hover { background:#70a870; color:#000; }
+
+        /* dungeon play modal */
+        .dg-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); z-index:9100; align-items:center; justify-content:center; }
+        .dg-box { background:#060e18; border:1px solid rgba(80,160,80,0.4); border-radius:4px; padding:22px 26px; width:460px; max-width:96vw; box-shadow:0 0 40px rgba(80,160,80,0.12); }
+        .dg-title { font-family:'Courier New',monospace; font-size:0.72em; letter-spacing:3px; color:#70a870; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+        .dg-loc { font-size:0.85em; color:#a8c8a8; letter-spacing:1px; }
+        .dg-field { margin-bottom:11px; }
+        .dg-label { display:block; font-family:'Courier New',monospace; font-size:0.62em; letter-spacing:2px; color:#486858; text-transform:uppercase; margin-bottom:4px; }
+        .dg-input { width:100%; background:#010c0c; border:1px solid rgba(80,160,80,0.28); color:#a0d0a0; font-family:'Courier New',monospace; font-size:0.82em; padding:7px 10px; outline:none; border-radius:2px; transition:border-color 0.15s; }
+        .dg-input:focus { border-color:rgba(80,160,80,0.7); }
+        .dg-input[readonly] { color:#506858; background:#010a08; cursor:default; }
+        .dg-row { display:flex; gap:10px; }
+        .dg-row .dg-field { flex:1; }
+        .dg-slider-row { display:flex; align-items:center; gap:12px; }
+        .dg-slider { flex:1; accent-color:#70a870; cursor:crosshair; }
+        .dg-diff-val { font-family:'Courier New',monospace; font-size:1.1em; color:#70a870; font-weight:bold; min-width:28px; text-align:center; }
+        .dg-gems-toggle { display:flex; align-items:center; gap:8px; cursor:crosshair; }
+        .dg-gems-toggle input[type=checkbox] { accent-color:#70a870; width:15px; height:15px; cursor:crosshair; }
+        .dg-gems-label { font-family:'Courier New',monospace; font-size:0.76em; color:#486858; letter-spacing:1px; text-transform:uppercase; }
+        .dg-actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; align-items:center; }
+        .dg-status { font-family:'Courier New',monospace; font-size:0.78em; flex:1; }
+        .dg-status.ok  { color:#40c070; }
+        .dg-status.err { color:#c04040; }
         .route-empty { color:#445; font-family:'Courier New',monospace; font-size:0.76em; padding:8px 0; }
         .route-mode-btn { background:transparent; border:1px solid rgba(232,160,32,0.25); color:#556; font-family:'Courier New',monospace; font-size:0.7em; letter-spacing:1px; padding:3px 9px; cursor:crosshair; border-radius:2px; transition:all 0.15s; }
         .route-mode-btn:hover { color:#998; border-color:rgba(232,160,32,0.5); }
@@ -374,6 +399,7 @@
             <button id="confirm-travel-btn" class="conf-btn confirm"  onclick="executeTravel()" style="display:none;">CONFIRM TRAVEL</button>
             <button id="view-map-btn"        class="conf-btn view-map" style="display:none;" onclick="viewDestMap()">VIEW MAP</button>
             <button id="hire-btn"            class="conf-btn hire"     style="display:none;" onclick="executeHire()">HIRE FIGHTER</button>
+            <button id="dungeon-btn"         class="conf-btn dungeon"  style="display:none;" onclick="showDungeonModal()">⛏ PLAY DUNGEON</button>
             <span id="strip-status"></span>
             <button class="conf-btn cancel" onclick="hideStrip()">✕</button>
         </div>
@@ -410,6 +436,73 @@
         <div class="route-actions">
             <button class="conf-btn add-btn" onclick="addToRoute()">+ ADD SELECTION</button>
             <button class="conf-btn exec-btn" id="execute-route-btn" onclick="executeRoute()" disabled>▶ EXECUTE ROUTE (0)</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ DUNGEON PLAY MODAL ════════════════════════════════════════════════ -->
+<div id="dungeon-overlay" class="dg-overlay">
+    <div class="dg-box">
+        <div class="dg-title">
+            ⛏ PLAY DUNGEON
+            <span class="dg-loc" id="dg-loc-display"></span>
+        </div>
+
+        <div class="dg-row">
+            <div class="dg-field">
+                <label class="dg-label">Crew Asset ID</label>
+                <input id="dg-crew"    class="dg-input" type="text" placeholder="1099976614260">
+            </div>
+            <div class="dg-field">
+                <label class="dg-label">Weapon Asset ID</label>
+                <input id="dg-weapon"  class="dg-input" type="text" placeholder="1099982766856">
+            </div>
+        </div>
+
+        <div class="dg-field">
+            <label class="dg-label">Fighter IDs <span style="color:#334;font-size:0.9em">(comma-separated)</span></label>
+            <input id="dg-fighters" class="dg-input" type="text" placeholder="1244232619921236645, ...">
+        </div>
+
+        <div class="dg-field">
+            <label class="dg-label">Difficulty &nbsp;<span style="color:#334;font-size:0.9em">(1 = easy · 20 = hard · higher = better rewards)</span></label>
+            <div class="dg-slider-row">
+                <input id="dg-difficulty" class="dg-slider" type="range" min="1" max="20" value="5"
+                       oninput="document.getElementById('dg-diff-val').textContent=this.value">
+                <span class="dg-diff-val" id="dg-diff-val">5</span>
+            </div>
+        </div>
+
+        <div class="dg-field">
+            <label class="dg-gems-toggle">
+                <input id="dg-use-gems" type="checkbox">
+                <span class="dg-gems-label">Use Gems</span>
+            </label>
+        </div>
+
+        <div class="dg-row">
+            <div class="dg-field">
+                <label class="dg-label">Planet</label>
+                <input id="dg-planet"  class="dg-input" type="text" readonly>
+            </div>
+            <div class="dg-field">
+                <label class="dg-label">Land ID</label>
+                <input id="dg-land-id" class="dg-input" type="text" readonly>
+            </div>
+            <div class="dg-field" style="max-width:60px;">
+                <label class="dg-label">X</label>
+                <input id="dg-x" class="dg-input" type="text" readonly>
+            </div>
+            <div class="dg-field" style="max-width:60px;">
+                <label class="dg-label">Y</label>
+                <input id="dg-y" class="dg-input" type="text" readonly>
+            </div>
+        </div>
+
+        <div class="dg-actions">
+            <button class="conf-btn dungeon" onclick="executeDungeon()">▶ EXECUTE</button>
+            <button class="conf-btn cancel"  onclick="hideDungeonModal()">✕ CANCEL</button>
+            <span class="dg-status" id="dg-status"></span>
         </div>
     </div>
 </div>
@@ -938,9 +1031,10 @@
         );
         if (cell) cell.classList.add('selected');
 
-        var portal   = (ALE_PORTALS[_activePlanet] || []).find(function(p) { return p.x === x && p.y === y; });
-        var isTavern = (ALE_LOCATIONS[_activePlanet].taverns || []).some(function(t) { return t.x === x && t.y === y; });
-        _selection = { x: x, y: y, portal: portal || null, tavern: isTavern };
+        var portal     = (ALE_PORTALS[_activePlanet] || []).find(function(p) { return p.x === x && p.y === y; });
+        var isTavern   = (ALE_LOCATIONS[_activePlanet].taverns  || []).some(function(t) { return t.x === x && t.y === y; });
+        var isDungeon  = (ALE_LOCATIONS[_activePlanet].dungeons || []).some(function(d) { return d.x === x && d.y === y; });
+        _selection = { x: x, y: y, portal: portal || null, tavern: isTavern, dungeon: isDungeon };
 
         if (!_confirmMode) {
             instantTravel();
@@ -978,6 +1072,7 @@
         document.getElementById('confirm-travel-btn').style.display = 'none';
         document.getElementById('view-map-btn').style.display       = 'none';
         document.getElementById('hire-btn').style.display           = 'none';
+        document.getElementById('dungeon-btn').style.display        = 'none';
     }
 
     function showStripBrief(cls, text) {
@@ -1029,6 +1124,17 @@
                 confBtn.style.display = '';
             }
             hireBtn.style.display = '';
+        } else if (_selection.dungeon) {
+            var dOwner = _findLocOwner('dungeons', _activePlanet, _selection.x, _selection.y);
+            content.innerHTML = '<img src="Ale%20images/dungeon.svg" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;opacity:0.85;">' +
+                'Dungeon' +
+                (dOwner ? '&nbsp;&nbsp;<span style="color:#8898a8;font-size:0.85em">' + dOwner + '</span>' : '') +
+                '&nbsp;&nbsp;<span style="color:#70a870;font-family:\'Courier New\',monospace">(' + _selection.x + ', ' + _selection.y + ')</span>';
+            if (!atThisCell) {
+                confBtn.textContent   = 'TRAVEL THERE';
+                confBtn.style.display = '';
+            }
+            document.getElementById('dungeon-btn').style.display = '';
         } else {
             content.innerHTML = 'Travel to <strong>' + PLANETS[_activePlanet].name.toUpperCase() + '</strong>' +
                 ' &nbsp;<span style="color:var(--theme-color);font-family:\'Courier New\',monospace">(' + _selection.x + ', ' + _selection.y + ')</span>';
@@ -1109,6 +1215,102 @@
             btn.textContent = _selection && _selection.portal ? 'TRAVEL TO PORTAL' : 'CONFIRM TRAVEL';
         }
     };
+
+    // ── DUNGEON ───────────────────────────────────────────────────────────────
+    function encodeLandId(x, y) {
+        function enc(n) {
+            return String(n).split('').map(function(d) {
+                return String.fromCharCode(97 + parseInt(d));
+            }).join('');
+        }
+        return enc(x) + 'x' + enc(y);
+    }
+
+    function genHistoryId() {
+        var c = 'abcdefghijklmnopqrstuvwxyz';
+        var s = '';
+        for (var i = 0; i < 12; i++) s += c[Math.floor(Math.random() * c.length)];
+        return s;
+    }
+
+    window.showDungeonModal = function() {
+        if (!_selection) return;
+        var planet = _activePlanet;
+        var x = _selection.x, y = _selection.y;
+        document.getElementById('dg-loc-display').textContent = PLANETS[planet].name.toUpperCase() + ' (' + x + ', ' + y + ')';
+        document.getElementById('dg-planet').value  = planet;
+        document.getElementById('dg-land-id').value = encodeLandId(x, y);
+        document.getElementById('dg-x').value = x;
+        document.getElementById('dg-y').value = y;
+        document.getElementById('dg-status').textContent = '';
+        document.getElementById('dg-status').className = 'dg-status';
+        document.getElementById('dungeon-overlay').style.display = 'flex';
+    };
+
+    window.hideDungeonModal = function() {
+        document.getElementById('dungeon-overlay').style.display = 'none';
+    };
+
+    window.executeDungeon = async function() {
+        var wallet = getActiveWallet();
+        if (!wallet) { _dgStatus('err', '✗ Please log in.'); return; }
+
+        var crew    = document.getElementById('dg-crew').value.trim();
+        var weapon  = document.getElementById('dg-weapon').value.trim();
+        var fRaw    = document.getElementById('dg-fighters').value.trim();
+        var diff    = parseInt(document.getElementById('dg-difficulty').value);
+        var useGems = document.getElementById('dg-use-gems').checked;
+        var planet  = document.getElementById('dg-planet').value;
+        var landId  = document.getElementById('dg-land-id').value;
+        var x       = parseInt(document.getElementById('dg-x').value);
+        var y       = parseInt(document.getElementById('dg-y').value);
+
+        if (!crew)   { _dgStatus('err', '✗ Enter a Crew Asset ID.'); return; }
+        if (!weapon) { _dgStatus('err', '✗ Enter a Weapon Asset ID.'); return; }
+        if (!fRaw)   { _dgStatus('err', '✗ Enter at least one Fighter ID.'); return; }
+
+        var fighterIds = fRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+
+        var actions = [{
+            account: 'dungeons.ale',
+            name: 'playdungeon',
+            authorization: [{ actor: wallet, permission: 'active' }],
+            data: {
+                wallet:           wallet,
+                planet:           planet,
+                land_id:          landId,
+                x:                x,
+                y:                y,
+                difficulty:       diff,
+                fighter_ids:      fighterIds,
+                crew_asset_id:    crew,
+                weapon_asset_id:  weapon,
+                use_gems:         useGems,
+                history_id:       genHistoryId()
+            }
+        }];
+
+        _dgStatus('', '...');
+        try {
+            if (window.walletSession) {
+                await window.walletSession.transact({ actions });
+            } else if (typeof wax !== 'undefined' && wax && wax.userAccount) {
+                await wax.api.transact({ actions }, { blocksBehind: 3, expireSeconds: 30 });
+            } else {
+                throw new Error('Session not ready — please log in.');
+            }
+            _dgStatus('ok', '✓ Dungeon started!');
+            setTimeout(hideDungeonModal, 2200);
+        } catch(e) {
+            var msg = (e && (e.message || e.toString())) || 'Transaction failed.';
+            _dgStatus('err', '✗ ' + msg.substring(0, 120));
+        }
+    };
+
+    function _dgStatus(cls, text) {
+        var el = document.getElementById('dg-status');
+        el.textContent = text; el.className = 'dg-status' + (cls ? ' ' + cls : '');
+    }
 
     // ── HIRE TRANSACTION ─────────────────────────────────────────────────────
     window.executeHire = async function() {
