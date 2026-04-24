@@ -1045,6 +1045,14 @@
 
     // ── TRAVEL TRANSACTION ───────────────────────────────────────────────────
     async function sendTravel(wallet, x, y) {
+        // If walletSession isn't set yet (page just refreshed, async restore still in flight),
+        // try to restore it once before giving up
+        if (!window.walletSession && window.walletKit) {
+            try {
+                var restored = await window.walletKit.restore();
+                if (restored) { window.walletSession = restored; }
+            } catch(e) { /* ignore — will fall through to WaxJS or error below */ }
+        }
         var actions = [{
             account: 'players.ale',
             name: 'travel',
