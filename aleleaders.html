@@ -183,24 +183,32 @@
     // ── COLUMNS DEFINITION ───────────────────────────────────────────────────
     // src: 'perm' = permstats key | 'active' = activestats key | 'tag' = player tag
     var COLUMNS = [
-        { key:'dungeons_won',       label:'Dungeons Won',    src:'perm',   def:true  },
-        { key:'dungeons_played',    label:'Dungeons Played', src:'perm',   def:false },
-        { key:'arenas_won',         label:'Arenas Won',      src:'perm',   def:true  },
-        { key:'arenas_played',      label:'Arenas Played',   src:'perm',   def:false },
-        { key:'portals_used',       label:'Portals',     src:'perm',   def:true  },
-        { key:'travel_distance',    label:'Travel',      src:'perm',   def:true  },
-        { key:'fighters_recruited', label:'Recruited',   src:'perm',   def:true  },
-        { key:'fighters_sold',      label:'Sold',        src:'perm',   def:false },
-        { key:'quests_completed',   label:'Quests',      src:'perm',   def:true  },
-        { key:'level_ups',          label:'Lvl Ups',     src:'perm',   def:false },
-        { key:'nfts_staked',        label:'Staked',      src:'perm',   def:false },
-        { key:'credits_gained',     label:'Credits',     src:'perm',   def:true  },
-        { key:'gems_gained',        label:'Gems',        src:'perm',   def:true  },
-        { key:'energy_gained',      label:'Total Energy', src:'perm',   def:false },
-        { key:'buildings_constructed', label:'Buildings',src:'perm',   def:false },
-        { key:'action_points',      label:'Cur Energy',  src:'active', def:false },
-        { key:'credits',            label:'Cur Credits', src:'active', def:false },
-        { key:'gems',               label:'Cur Gems',    src:'active', def:false },
+        // Dungeons
+        { key:'dungeons_won',          label:'Dungeons Won',    src:'perm',   def:true  },
+        { key:'dungeons_played',       label:'Dungeons Played', src:'perm',   def:false },
+        // Arenas
+        { key:'arenas_won',            label:'Arenas Won',      src:'perm',   def:true  },
+        { key:'arenas_played',         label:'Arenas Played',   src:'perm',   def:false },
+        // Travel
+        { key:'portals_used',          label:'Portals',         src:'perm',   def:true  },
+        { key:'travel_distance',       label:'Travel',          src:'perm',   def:true  },
+        // Fighters
+        { key:'fighters_recruited',    label:'Recruited',       src:'perm',   def:true  },
+        { key:'fighters_sold',         label:'Sold',            src:'perm',   def:false },
+        { key:'level_ups',             label:'Lvl Ups',         src:'perm',   def:false },
+        { key:'nfts_staked',           label:'Staked',          src:'perm',   def:false },
+        // Quests / Buildings
+        { key:'quests_completed',      label:'Quests',          src:'perm',   def:true  },
+        { key:'buildings_constructed', label:'Buildings',       src:'perm',   def:false },
+        // Credits (lifetime then current)
+        { key:'credits_gained',        label:'Credits',         src:'perm',   def:true  },
+        { key:'credits',               label:'Cur Credits',     src:'active', def:false },
+        // Gems (lifetime then current)
+        { key:'gems_gained',           label:'Gems',            src:'perm',   def:true  },
+        { key:'gems',                  label:'Cur Gems',        src:'active', def:false },
+        // Energy (lifetime then current)
+        { key:'energy_gained',         label:'Total Energy',    src:'perm',   def:false },
+        { key:'action_points',         label:'Cur Energy',      src:'active', def:false },
     ];
 
     // visible set (keys)
