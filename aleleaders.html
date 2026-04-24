@@ -269,6 +269,22 @@
         return 0;
     }
 
+    // Columns whose raw integer values have implied decimal places
+    var DECIMAL_COLS = {
+        tlm_earned:  4, tlm_gained:  4, tlm_mined:  4, tlm_claimed: 4,
+        tlm_farmed:  4, tlm_spent:   4,
+        wax_earned:  8, wax_gained:  8, wax_spent:   8,
+    };
+
+    function formatVal(key, v) {
+        var dec = DECIMAL_COLS[key];
+        if (dec) {
+            var n = v / Math.pow(10, dec);
+            return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+        }
+        return v.toLocaleString();
+    }
+
     // ── DISCOVER EXTRA COLUMNS ───────────────────────────────────────────────
     function discoverExtraCols(players) {
         var known = {};
@@ -363,7 +379,7 @@
             rows += '<td>' + escHtml(fp.tag) + '</td>';
             visCols.forEach(function(c) {
                 var v = getVal(fp, c.key, c.src);
-                rows += '<td class="' + (v === 0 ? 'zero' : '') + '">' + v.toLocaleString() + '</td>';
+                rows += '<td class="' + (v === 0 ? 'zero' : '') + '">' + formatVal(c.key, v) + '</td>';
             });
             rows += '</tr>';
         });
