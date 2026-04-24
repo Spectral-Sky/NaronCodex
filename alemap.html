@@ -31,7 +31,12 @@
                 localStorage.setItem('naron_wallet', String(session.actor));
                 if (typeof checkWalletState === 'function') checkWalletState();
             }
-        } catch(e) {}
+        } catch(e) {
+            // Restore failed (e.g. Anchor "chain is not set up") — clear stale session
+            // so the UI shows login buttons instead of a ghost "logged in" state
+            localStorage.removeItem('naron_wallet');
+            if (typeof checkWalletState === 'function') checkWalletState();
+        }
     </script>
     <style>
         :root {
@@ -1064,7 +1069,10 @@
         } else if (typeof wax !== 'undefined' && wax && wax.userAccount) {
             await wax.api.transact({ actions }, { blocksBehind: 3, expireSeconds: 30 });
         } else {
-            throw new Error('Session not ready — please log out and log back in.');
+            // No live session — clear stale localStorage so login buttons reappear
+            localStorage.removeItem('naron_wallet');
+            if (typeof checkWalletState === 'function') checkWalletState();
+            throw new Error('Session expired — please log in again.');
         }
     }
 
