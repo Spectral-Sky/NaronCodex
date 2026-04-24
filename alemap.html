@@ -123,6 +123,7 @@
         .pd-block { display:flex; align-items:center; gap:7px; padding:7px 18px; border-right:1px solid rgba(232,160,32,0.1); white-space:nowrap; }
         .pd-block:last-child { border-right:none; }
         .pd-label { color:#485868; font-size:0.9em; letter-spacing:1px; text-transform:uppercase; }
+        .pd-icon { width:18px; height:18px; object-fit:contain; opacity:0.85; flex-shrink:0; }
         .pd-value { color:#c8b060; font-weight:bold; letter-spacing:1px; }
         .pd-tag-val { color:var(--theme-color); font-weight:bold; letter-spacing:2px; font-size:1.08em; text-shadow:0 0 6px rgba(232,160,32,0.4); }
         .pd-legend-active { color:#50c870 !important; }
@@ -322,9 +323,9 @@
 <!-- ══ PLAYER DATA BAR ════════════════════════════════════════════════════ -->
 <div id="player-data-bar" class="player-data-bar" style="display:none;">
     <div class="pd-block"><span class="pd-tag-val" id="pd-tag"></span></div>
-    <div class="pd-block"><span class="pd-label">Credits</span><span class="pd-value" id="pd-credits">—</span></div>
-    <div class="pd-block"><span class="pd-label">Gems</span><span class="pd-value" id="pd-gems">—</span></div>
-    <div class="pd-block"><span class="pd-label">Energy</span><span class="pd-value" id="pd-ap">—</span></div>
+    <div class="pd-block"><img src="ALE%20Images/credits.png" class="pd-icon" title="Credits"><span class="pd-value" id="pd-credits">—</span></div>
+    <div class="pd-block"><img src="ALE%20Images/gems.png"    class="pd-icon" title="Gems"><span class="pd-value" id="pd-gems">—</span></div>
+    <div class="pd-block"><img src="ALE%20Images/energy.png"  class="pd-icon" title="Energy"><span class="pd-value" id="pd-ap">—</span></div>
     <div class="pd-block"><span class="pd-label">Dungeons</span><span class="pd-value" id="pd-dungeons">—</span></div>
     <div class="pd-block"><span class="pd-label">Arenas</span><span class="pd-value" id="pd-arenas">—</span></div>
     <div class="pd-block"><span class="pd-label">Portals Used</span><span class="pd-value" id="pd-portals">—</span></div>
