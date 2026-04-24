@@ -60,6 +60,13 @@
     .col-toggle { background:transparent; border:1px solid rgba(232,160,32,0.18); color:#445; font-family:'Courier New',monospace; font-size:0.65em; letter-spacing:1px; padding:3px 9px; cursor:pointer; border-radius:2px; transition:all 0.15s; }
     .col-toggle:hover { border-color:rgba(232,160,32,0.4); color:#778; }
     .col-toggle.on { border-color:var(--gold); color:var(--gold); background:rgba(232,160,32,0.06); }
+    .col-toggle-blue   { border-color:rgba(60,120,255,0.45); color:#5090ff; }
+    .col-toggle-blue:hover   { background:rgba(60,120,255,0.1); border-color:#5090ff; color:#80b0ff; }
+    .col-toggle-pink   { border-color:rgba(220,60,120,0.45); color:#f06090; }
+    .col-toggle-pink:hover   { background:rgba(220,60,120,0.1); border-color:#f06090; color:#f080a8; }
+    .col-toggle-orange { border-color:rgba(232,120,40,0.45); color:#f08040; }
+    .col-toggle-orange:hover { background:rgba(232,120,40,0.1); border-color:#f08040; color:#f0a060; }
+    .col-toggles-sep { width:1px; height:16px; background:rgba(255,255,255,0.08); align-self:center; flex-shrink:0; }
 
     /* PROGRESS */
     .progress-wrap { padding:18px 28px; display:none; }
@@ -204,6 +211,13 @@
     var _sortDir     = -1; // -1 = desc
     var _extraCols   = []; // discovered permstats keys not in COLUMNS
 
+    var COL_GROUPS = {
+        actions:    ['dungeons_won','dungeons_played','arenas_won','arenas_played','portals_used',
+                     'travel_distance','fighters_recruited','fighters_sold','quests_completed',
+                     'level_ups','nfts_staked','buildings_constructed'],
+        currencies: ['credits_gained','gems_gained','energy_gained','action_points','credits','gems'],
+    };
+
     // ── API ──────────────────────────────────────────────────────────────────
     async function fetchTableRows(params) {
         var lastErr;
@@ -300,18 +314,51 @@
     }
 
     // ── COLUMN TOGGLE UI ─────────────────────────────────────────────────────
+    function allColsList() {
+        return COLUMNS.concat(_extraCols.map(function(k) {
+            return { key: k, label: k.replace(/_/g, ' '), src: 'perm', def: false };
+        }));
+    }
+
+    function toggleAll() {
+        var cols = allColsList();
+        var anyOn = cols.some(function(c) { return _visibleCols[c.key]; });
+        cols.forEach(function(c) { _visibleCols[c.key] = !anyOn; });
+        buildColToggles();
+        renderTable();
+    }
+
+    function toggleGroup(group) {
+        var keys = COL_GROUPS[group] || [];
+        var anyOn = keys.some(function(k) { return _visibleCols[k]; });
+        keys.forEach(function(k) { _visibleCols[k] = !anyOn; });
+        buildColToggles();
+        renderTable();
+    }
+
     function buildColToggles() {
         var wrap = document.getElementById('col-toggles');
-        // keep only the label span
         var label = wrap.querySelector('.col-toggle-label');
         wrap.innerHTML = '';
         wrap.appendChild(label);
 
-        var allCols = COLUMNS.concat(_extraCols.map(function(k) {
-            return { key: k, label: k.replace(/_/g, ' '), src: 'perm', def: false };
-        }));
+        function makeGroupBtn(text, colorClass, fn) {
+            var btn = document.createElement('button');
+            btn.className = 'col-toggle ' + colorClass;
+            btn.textContent = text;
+            btn.onclick = fn;
+            return btn;
+        }
 
-        allCols.forEach(function(col) {
+        wrap.appendChild(makeGroupBtn('ALL', 'col-toggle-blue', toggleAll));
+        wrap.appendChild(makeGroupBtn('GAME ACTIONS', 'col-toggle-pink', function() { toggleGroup('actions'); }));
+        wrap.appendChild(makeGroupBtn('CURRENCIES', 'col-toggle-orange', function() { toggleGroup('currencies'); }));
+
+        var sep = document.createElement('span');
+        sep.className = 'col-toggles-sep';
+        wrap.appendChild(sep);
+
+        allColsList().forEach(function(col) {
             var on = _visibleCols[col.key];
             var btn = document.createElement('button');
             btn.className = 'col-toggle' + (on ? ' on' : '');
