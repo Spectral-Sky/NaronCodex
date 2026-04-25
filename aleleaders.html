@@ -192,9 +192,11 @@
         // Dungeons
         { key:'dungeons_won',          label:'Dungeons Won',    src:'perm',   def:true  },
         { key:'dungeons_played',       label:'Dungeons Played', src:'perm',   def:false },
+        { key:'dungeon_win_rate',      label:'Dungeon Win %',   src:'calc',   def:true,  title:'dungeons_won ÷ dungeons_played × 100' },
         // Arenas
         { key:'arenas_won',            label:'Arenas Won',      src:'perm',   def:true  },
         { key:'arenas_played',         label:'Arenas Played',   src:'perm',   def:false },
+        { key:'arena_win_rate',        label:'Arena Win %',     src:'calc',   def:true,  title:'arenas_won ÷ arenas_played × 100' },
         // Travel
         { key:'portals_used',          label:'Portals',         src:'perm',   def:true  },
         { key:'travel_distance',       label:'Travel',          src:'perm',   def:true  },
@@ -227,8 +229,8 @@
     var _extraCols   = []; // discovered permstats keys not in COLUMNS
 
     var COL_GROUPS = {
-        actions:    ['dungeons_won','dungeons_played','arenas_won','arenas_played','portals_used',
-                     'travel_distance','fighters_recruited','fighters_sold','quests_completed',
+        actions:    ['dungeons_won','dungeons_played','dungeon_win_rate','arenas_won','arenas_played','arena_win_rate',
+                     'portals_used','travel_distance','fighters_recruited','fighters_sold','quests_completed',
                      'level_ups','nfts_staked','buildings_constructed'],
         currencies: ['credits_gained','credits','alf_credits','gems_gained','gems','energy_gained','action_points'],
     };
@@ -292,7 +294,19 @@
         };
     }
 
+    var CALC_COLS = {
+        dungeon_win_rate: function(fp) {
+            var p = fp.perm['dungeons_played'] || 0;
+            return p > 0 ? (fp.perm['dungeons_won'] || 0) / p * 100 : null;
+        },
+        arena_win_rate: function(fp) {
+            var p = fp.perm['arenas_played'] || 0;
+            return p > 0 ? (fp.perm['arenas_won'] || 0) / p * 100 : null;
+        },
+    };
+
     function getVal(fp, key, src) {
+        if (src === 'calc')   { var fn = CALC_COLS[key]; return fn ? fn(fp) : null; }
         if (src === 'perm')   return fp.perm[key]   || 0;
         if (src === 'active') return fp.active[key] || 0;
         return 0;
@@ -307,6 +321,8 @@
     };
 
     function formatVal(key, v) {
+        if (v === null || v === undefined) return '—';
+        if (key in CALC_COLS) return v.toFixed(1) + ' %';
         var dec = DECIMAL_COLS[key];
         if (dec) {
             var n = v / Math.pow(10, dec);
@@ -379,7 +395,7 @@
             var btn = document.createElement('button');
             btn.className = 'col-toggle' + (on ? ' on' : '');
             btn.textContent = col.label.toUpperCase();
-            btn.title = col.key;
+            btn.title = col.title || col.key;
             btn.dataset.key = col.key;
             btn.onclick = function() {
                 _visibleCols[col.key] = !_visibleCols[col.key];
@@ -404,7 +420,11 @@
             });
         }
         return players.slice().sort(function(a, b) {
-            return _sortDir * (getVal(b, key, src) - getVal(a, key, src));
+            var av = getVal(a, key, src), bv = getVal(b, key, src);
+            if (av === null && bv === null) return 0;
+            if (av === null) return 1;
+            if (bv === null) return -1;
+            return _sortDir * (bv - av);
         });
     }
 
@@ -427,7 +447,7 @@
         var thHtml = '<tr><th onclick="sortBy(\'rank\')" id="th-rank">#</th>' +
             '<th onclick="sortBy(\'tag\')" id="th-tag" class="' + sortClass('tag') + '" title="wallet / playertag">PLAYER</th>';
         visCols.forEach(function(c) {
-            thHtml += '<th onclick="sortBy(\'' + c.key + '\')" id="th-' + c.key + '" class="' + sortClass(c.key) + '" title="' + c.key + ' (' + c.src + ')">' +
+            thHtml += '<th onclick="sortBy(\'' + c.key + '\')" id="th-' + c.key + '" class="' + sortClass(c.key) + '" title="' + (c.title || (c.key + ' (' + c.src + ')')) + '">' +
                 c.label.toUpperCase() + '</th>';
         });
         thHtml += '</tr>';
@@ -444,7 +464,7 @@
             rows += '<td>' + escHtml(fp.tag) + '</td>';
             visCols.forEach(function(c) {
                 var v = getVal(fp, c.key, c.src);
-                rows += '<td class="' + (v === 0 ? 'zero' : '') + '">' + formatVal(c.key, v) + '</td>';
+                rows += '<td class="' + (v === 0 || v === null ? 'zero' : '') + '">' + formatVal(c.key, v) + '</td>';
             });
             rows += '</tr>';
         });
