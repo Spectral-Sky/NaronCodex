@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ALE Leaderboard // Naron Codex</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <link rel="icon" type="image/png" href="NCico.png">
     <style>
     :root {
@@ -53,6 +54,9 @@
     #player-search::placeholder { color:#444; }
     #player-search:focus { border-color:var(--gold); }
     #count-display { font-size:0.65em; color:var(--muted); margin-left:auto; letter-spacing:1px; }
+    .dl-btn { background:transparent; border:1px solid rgba(80,180,100,0.4); color:#60c070; padding:6px 14px; font-family:'Courier New',monospace; font-size:0.74em; letter-spacing:1px; cursor:pointer; border-radius:2px; transition:all 0.2s; }
+    .dl-btn:hover { background:rgba(80,180,100,0.08); border-color:#60c070; }
+    .dl-btn:disabled { opacity:0.35; cursor:not-allowed; }
 
     /* COLUMN TOGGLES */
     .col-toggles { padding:8px 28px; border-bottom:1px solid rgba(232,160,32,0.06); background:rgba(3,6,15,0.4); display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
@@ -145,6 +149,8 @@
     <span id="cache-info"></span>
     <input id="player-search" type="text" placeholder="Search player..." oninput="filterAndRender()">
     <span id="count-display"></span>
+    <button class="dl-btn" id="dl-csv-btn" onclick="downloadCSV()" disabled title="Download visible columns as CSV">&#8659; CSV</button>
+    <button class="dl-btn" id="dl-xlsx-btn" onclick="downloadXLSX()" disabled title="Download visible columns as Excel spreadsheet">&#8659; XLSX</button>
 </div>
 
 <div class="col-toggles" id="col-toggles">
@@ -351,17 +357,18 @@
         wrap.innerHTML = '';
         wrap.appendChild(label);
 
-        function makeGroupBtn(text, colorClass, fn) {
+        function makeGroupBtn(text, colorClass, fn, titleText) {
             var btn = document.createElement('button');
             btn.className = 'col-toggle ' + colorClass;
             btn.textContent = text;
+            btn.title = titleText;
             btn.onclick = fn;
             return btn;
         }
 
-        wrap.appendChild(makeGroupBtn('ALL', 'col-toggle-blue', toggleAll));
-        wrap.appendChild(makeGroupBtn('GAME ACTIONS', 'col-toggle-pink', function() { toggleGroup('actions'); }));
-        wrap.appendChild(makeGroupBtn('CURRENCIES', 'col-toggle-orange', function() { toggleGroup('currencies'); }));
+        wrap.appendChild(makeGroupBtn('ALL', 'col-toggle-blue', toggleAll, 'Toggle all columns on/off'));
+        wrap.appendChild(makeGroupBtn('GAME ACTIONS', 'col-toggle-pink', function() { toggleGroup('actions'); }, COL_GROUPS.actions.join(', ')));
+        wrap.appendChild(makeGroupBtn('CURRENCIES', 'col-toggle-orange', function() { toggleGroup('currencies'); }, COL_GROUPS.currencies.join(', ')));
 
         var sep = document.createElement('span');
         sep.className = 'col-toggles-sep';
@@ -372,6 +379,7 @@
             var btn = document.createElement('button');
             btn.className = 'col-toggle' + (on ? ' on' : '');
             btn.textContent = col.label.toUpperCase();
+            btn.title = col.key;
             btn.dataset.key = col.key;
             btn.onclick = function() {
                 _visibleCols[col.key] = !_visibleCols[col.key];
@@ -417,9 +425,9 @@
 
         // thead
         var thHtml = '<tr><th onclick="sortBy(\'rank\')" id="th-rank">#</th>' +
-            '<th onclick="sortBy(\'tag\')" id="th-tag" class="' + sortClass('tag') + '">PLAYER</th>';
+            '<th onclick="sortBy(\'tag\')" id="th-tag" class="' + sortClass('tag') + '" title="wallet / playertag">PLAYER</th>';
         visCols.forEach(function(c) {
-            thHtml += '<th onclick="sortBy(\'' + c.key + '\')" id="th-' + c.key + '" class="' + sortClass(c.key) + '">' +
+            thHtml += '<th onclick="sortBy(\'' + c.key + '\')" id="th-' + c.key + '" class="' + sortClass(c.key) + '" title="' + c.key + ' (' + c.src + ')">' +
                 c.label.toUpperCase() + '</th>';
         });
         thHtml += '</tr>';
@@ -445,6 +453,8 @@
         document.getElementById('lb-table').style.display = '';
         document.getElementById('lb-empty').style.display = 'none';
         document.getElementById('count-display').textContent = sorted.length + ' / ' + _allPlayers.length + ' PLAYERS';
+        document.getElementById('dl-csv-btn').disabled = false;
+        document.getElementById('dl-xlsx-btn').disabled = false;
     }
 
     function sortClass(key) {
@@ -464,6 +474,52 @@
 
     function filterAndRender() { if (_allPlayers.length) renderTable(); }
     window.filterAndRender = filterAndRender;
+
+    // ── DOWNLOADS ────────────────────────────────────────────────────────────
+    function dlTimestamp() {
+        return new Date().toISOString().slice(0, 19).replace(/T/, '_').replace(/:/g, '-');
+    }
+
+    function getDownloadData() {
+        var search = (document.getElementById('player-search').value || '').toLowerCase();
+        var players = _allPlayers.filter(function(fp) {
+            return !search || fp.tag.toLowerCase().indexOf(search) >= 0 ||
+                   fp.wallet.toLowerCase().indexOf(search) >= 0;
+        });
+        var sorted = sortPlayers(players, _sortKey);
+        var cols = allColsList().filter(function(c) { return _visibleCols[c.key]; });
+        var headers = ['#', 'Player (wallet)'].concat(cols.map(function(c) { return c.label; }));
+        var rows = sorted.map(function(fp, i) {
+            return [i + 1, fp.tag].concat(cols.map(function(c) { return getVal(fp, c.key, c.src); }));
+        });
+        return { headers: headers, rows: rows };
+    }
+
+    window.downloadCSV = function() {
+        if (!_allPlayers.length) return;
+        var d = getDownloadData();
+        var lines = [d.headers].concat(d.rows).map(function(row) {
+            return row.map(function(cell) {
+                var s = String(cell);
+                return (s.indexOf(',') >= 0 || s.indexOf('"') >= 0) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            }).join(',');
+        });
+        lines.unshift('# ALE Leaderboard export — ' + new Date().toLocaleString());
+        var blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = url; a.download = 'ale-leaderboard_' + dlTimestamp() + '.csv'; a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    window.downloadXLSX = function() {
+        if (!_allPlayers.length || typeof XLSX === 'undefined') return;
+        var d = getDownloadData();
+        var ws = XLSX.utils.aoa_to_sheet([d.headers].concat(d.rows));
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Leaderboard');
+        ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+        XLSX.writeFile(wb, 'ale-leaderboard_' + dlTimestamp() + '.xlsx');
+    };
 
     // ── LOAD ─────────────────────────────────────────────────────────────────
     window.loadLeaderboard = async function(forceRefresh) {
