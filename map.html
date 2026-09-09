@@ -4416,21 +4416,25 @@ async function runTxQueue() {
     }
 
     if (_txQueueRunMode === 'fastwarp') {
-        var _fwBatch = [];
-        function _flushFwBatch(lastQIdx) {
-            if (!_fwBatch.length) return;
-            var dest = _fwBatch[_fwBatch.length - 1];
-            var lbl = 'WARP ×' + _fwBatch.length + ' (→' + dest.data.x + ',' + dest.data.y + ')';
-            plan.push({ label: lbl, qIdx: lastQIdx, actions: _fwBatch.slice() });
-            _fwBatch = [];
-        }
+        var _fwBatch = [], _fwBatchStartIdx = 0;
         for (var i = 0; i < _txQueue.length; i++) {
             var item = _txQueue[i];
             if (item.type === 'travel' || item.type === 'portal') {
                 _fwBatch.push(_travelAction(wallet, item.x, item.y));
-                if (_fwBatch.length >= _warpBatchSize) _flushFwBatch(i);
+                if (_fwBatch.length >= _warpBatchSize) {
+                    var _fwDest = _fwBatch[_fwBatch.length - 1];
+                    plan.push({ label: 'WARP ×'+_fwBatch.length+' (→'+_fwDest.data.x+','+_fwDest.data.y+')',
+                        qIdx: i, actions: _fwBatch.slice() });
+                    _fwBatch = [];
+                    _fwBatchStartIdx = i + 1;
+                }
             } else {
-                _flushFwBatch(i - 1);
+                if (_fwBatch.length) {
+                    var _fwDest2 = _fwBatch[_fwBatch.length - 1];
+                    plan.push({ label: 'WARP ×'+_fwBatch.length+' (→'+_fwDest2.data.x+','+_fwDest2.data.y+')',
+                        qIdx: i - 1, actions: _fwBatch.slice() });
+                    _fwBatch = [];
+                }
                 if (item.type === 'travel+hire') {
                     plan.push({ label: item.name || 'TRAVEL+HIRE ('+item.x+','+item.y+')', qIdx: i,
                         tavern: item, isTravelAndHire: true, objectives: item.objectives,
@@ -4442,7 +4446,13 @@ async function runTxQueue() {
                 }
             }
         }
-        _flushFwBatch(_txQueue.length - 1);
+        // flush any remaining partial batch
+        if (_fwBatch.length) {
+            var _fwDestF = _fwBatch[_fwBatch.length - 1];
+            plan.push({ label: 'WARP ×'+_fwBatch.length+' (→'+_fwDestF.data.x+','+_fwDestF.data.y+')',
+                qIdx: _txQueue.length - 1, actions: _fwBatch.slice() });
+            _fwBatch = [];
+        }
     } else if (_txQueueRunMode === 'stacked') {
         for (var i = 0; i < _txQueue.length; ) {
             var item = _txQueue[i];
