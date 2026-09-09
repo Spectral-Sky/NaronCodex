@@ -3704,14 +3704,22 @@
 <div id="warp-picker" style="display:none;position:fixed;inset:0;z-index:730;align-items:center;justify-content:center;background:rgba(0,0,6,0.85);">
     <div style="width:min(340px,95vw);background:rgba(3,6,18,0.99);border:1.5px solid rgba(180,96,255,0.4);border-radius:12px;padding:18px 16px 14px;box-shadow:0 0 40px rgba(0,0,0,0.9);">
         <div style="font-size:0.68em;letter-spacing:3px;color:#c080ff;text-align:center;margin-bottom:3px;">⚡ FASTWARP FILL</div>
-        <div style="font-size:0.55em;letter-spacing:2px;color:#556;text-align:center;margin-bottom:12px;">2 TRAVELS PER TRANSACTION · 1,1 ↔ 40,20</div>
-        <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:10px;">
-            <label style="font-size:0.6em;letter-spacing:1px;color:#8090a0;"># TRANSACTIONS</label>
-            <input id="warp-tx-count" type="number" min="1" max="200" value="20" oninput="_txqWarpCalcLabel()"
-                style="width:70px;background:rgba(180,96,255,0.08);border:1px solid rgba(180,96,255,0.35);color:#c080ff;
-                       font-family:inherit;font-size:0.75em;padding:5px 8px;border-radius:4px;text-align:center;">
+        <div style="font-size:0.55em;letter-spacing:2px;color:#556;text-align:center;margin-bottom:12px;">1,1 ↔ 40,20</div>
+        <div style="display:flex;align-items:center;gap:14px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <label style="font-size:0.6em;letter-spacing:1px;color:#8090a0;">TRAVELS PER TX</label>
+                <input id="warp-batch-size" type="number" min="1" max="20" value="1" oninput="_txqWarpCalcLabel()"
+                    style="width:54px;background:rgba(180,96,255,0.08);border:1px solid rgba(180,96,255,0.35);color:#c080ff;
+                           font-family:inherit;font-size:0.75em;padding:5px 8px;border-radius:4px;text-align:center;">
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <label style="font-size:0.6em;letter-spacing:1px;color:#8090a0;"># TRANSACTIONS</label>
+                <input id="warp-tx-count" type="number" min="1" max="500" value="20" oninput="_txqWarpCalcLabel()"
+                    style="width:64px;background:rgba(180,96,255,0.08);border:1px solid rgba(180,96,255,0.35);color:#c080ff;
+                           font-family:inherit;font-size:0.75em;padding:5px 8px;border-radius:4px;text-align:center;">
+            </div>
         </div>
-        <div style="font-size:0.5em;color:#445;text-align:center;margin-bottom:12px;" id="warp-calc-lbl">= 200 travel actions</div>
+        <div style="font-size:0.5em;color:#445;text-align:center;margin-bottom:12px;" id="warp-calc-lbl">= 20 travel actions</div>
         <div style="display:flex;gap:8px;justify-content:center;">
             <button onclick="txqWarpPickerConfirm()"
                 style="padding:7px 20px;font-size:0.65em;letter-spacing:1px;background:rgba(180,96,255,0.15);
@@ -3739,6 +3747,7 @@ window._txQueue        = [];   // [{type,x,y,name,land_id}]
 window._txQueueMode    = false; // when true, map clicks add to queue
 window._txQPanelOpen   = false;
 var _txQueueRunMode    = 'stacked'; // 'stacked' | 'split' | 'fastwarp'
+var _warpBatchSize     = 1;         // travels per TX in fastwarp mode
 var _txQueueRunning    = false;
 var _txQueueAbort      = false;
 var _pendingAutoRetry  = false;
@@ -4002,23 +4011,24 @@ function txqWarpPickerClose() {
     if (el) el.style.display = 'none';
 }
 function _txqWarpCalcLabel() {
-    var n = Number(document.getElementById('warp-tx-count').value) || 1;
+    var batch = Math.max(1, Number(document.getElementById('warp-batch-size').value) || 1);
+    var txs   = Math.max(1, Number(document.getElementById('warp-tx-count').value)  || 20);
     var lbl = document.getElementById('warp-calc-lbl');
-    if (lbl) lbl.textContent = '= ' + (n * 2) + ' travel actions';
+    if (lbl) lbl.textContent = '= ' + (batch * txs) + ' travel actions total';
 }
 function txqWarpPickerConfirm() {
-    var txCount = Math.max(1, Math.min(200, Number(document.getElementById('warp-tx-count').value) || 20));
+    var batchSize = Math.max(1, Math.min(20,  Number(document.getElementById('warp-batch-size').value) || 1));
+    var txCount   = Math.max(1, Math.min(500, Number(document.getElementById('warp-tx-count').value)   || 20));
+    _warpBatchSize = batchSize;
     txqWarpPickerClose();
-    // Clear queue and fill with back-and-forth travels (10 waypoints per TX)
     _txQueue = [];
     var waypoints = [[1,1],[40,20]];
     var wpIdx = 0;
-    for (var i = 0; i < txCount * 2; i++) {
-        var wp = waypoints[wpIdx % 2];
-        _txQueue.push({ type:'travel', x:wp[0], y:wp[1] });
+    for (var i = 0; i < txCount * batchSize; i++) {
+        _txQueue.push({ type:'travel', x:waypoints[wpIdx%2][0], y:waypoints[wpIdx%2][1] });
         wpIdx++;
     }
-    setTxqRunMode('fastwarp');  // auto-switch to fastwarp mode
+    setTxqRunMode('fastwarp');
 }
 
 function toggleTxQueueMode() {
@@ -4418,7 +4428,7 @@ async function runTxQueue() {
             var item = _txQueue[i];
             if (item.type === 'travel' || item.type === 'portal') {
                 _fwBatch.push(_travelAction(wallet, item.x, item.y));
-                if (_fwBatch.length >= 2) _flushFwBatch(i);
+                if (_fwBatch.length >= _warpBatchSize) _flushFwBatch(i);
             } else {
                 _flushFwBatch(i - 1);
                 if (item.type === 'travel+hire') {
