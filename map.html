@@ -3704,7 +3704,7 @@
 <div id="warp-picker" style="display:none;position:fixed;inset:0;z-index:730;align-items:center;justify-content:center;background:rgba(0,0,6,0.85);">
     <div style="width:min(340px,95vw);background:rgba(3,6,18,0.99);border:1.5px solid rgba(180,96,255,0.4);border-radius:12px;padding:18px 16px 14px;box-shadow:0 0 40px rgba(0,0,0,0.9);">
         <div style="font-size:0.68em;letter-spacing:3px;color:#c080ff;text-align:center;margin-bottom:3px;">⚡ FASTWARP FILL</div>
-        <div style="font-size:0.55em;letter-spacing:2px;color:#556;text-align:center;margin-bottom:12px;">10 TRAVELS PER TRANSACTION · 1,1 ↔ 40,20</div>
+        <div style="font-size:0.55em;letter-spacing:2px;color:#556;text-align:center;margin-bottom:12px;">2 TRAVELS PER TRANSACTION · 1,1 ↔ 40,20</div>
         <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:10px;">
             <label style="font-size:0.6em;letter-spacing:1px;color:#8090a0;"># TRANSACTIONS</label>
             <input id="warp-tx-count" type="number" min="1" max="200" value="20" oninput="_txqWarpCalcLabel()"
@@ -4004,7 +4004,7 @@ function txqWarpPickerClose() {
 function _txqWarpCalcLabel() {
     var n = Number(document.getElementById('warp-tx-count').value) || 1;
     var lbl = document.getElementById('warp-calc-lbl');
-    if (lbl) lbl.textContent = '= ' + (n * 10) + ' travel actions';
+    if (lbl) lbl.textContent = '= ' + (n * 2) + ' travel actions';
 }
 function txqWarpPickerConfirm() {
     var txCount = Math.max(1, Math.min(200, Number(document.getElementById('warp-tx-count').value) || 20));
@@ -4013,7 +4013,7 @@ function txqWarpPickerConfirm() {
     _txQueue = [];
     var waypoints = [[1,1],[40,20]];
     var wpIdx = 0;
-    for (var i = 0; i < txCount * 10; i++) {
+    for (var i = 0; i < txCount * 2; i++) {
         var wp = waypoints[wpIdx % 2];
         _txQueue.push({ type:'travel', x:wp[0], y:wp[1] });
         wpIdx++;
@@ -4418,7 +4418,7 @@ async function runTxQueue() {
             var item = _txQueue[i];
             if (item.type === 'travel' || item.type === 'portal') {
                 _fwBatch.push(_travelAction(wallet, item.x, item.y));
-                if (_fwBatch.length >= 10) _flushFwBatch(i);
+                if (_fwBatch.length >= 2) _flushFwBatch(i);
             } else {
                 _flushFwBatch(i - 1);
                 if (item.type === 'travel+hire') {
