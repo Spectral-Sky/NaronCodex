@@ -443,7 +443,9 @@
             background:transparent; border:1px solid rgba(192,144,96,0.2); color:#556;
             cursor:pointer; transition:all 0.15s; }
         .txq-mode-btn:first-child { border-radius:6px 0 0 6px; }
-        .txq-mode-btn:last-child  { border-radius:0 6px 6px 0; border-left:none; }
+        .txq-mode-btn:last-child  { border-radius:0 6px 6px 0; }
+        .txq-mode-btn:not(:first-child) { border-left:none; }
+        .txq-mode-btn.fw-active { background:rgba(180,96,255,0.15); color:#c080ff; border-color:rgba(180,96,255,0.55); }
         .txq-mode-btn.active { background:rgba(192,144,96,0.15); color:var(--gold); border-color:rgba(192,144,96,0.5); }
         .txq-mode-btn:hover:not(.active) { color:#c0b090; border-color:rgba(192,144,96,0.35); }
         .txq-qm-btn { font-size:0.58em; letter-spacing:1px; padding:3px 8px;
@@ -3643,10 +3645,12 @@
         <div class="txq-mode-wrap">
             <button class="txq-mode-btn active" id="txq-mode-stk" onclick="setTxqRunMode('stacked')">STACKED</button>
             <button class="txq-mode-btn" id="txq-mode-sep" onclick="setTxqRunMode('separate')">SPLIT</button>
+            <button class="txq-mode-btn" id="txq-mode-fw"  onclick="setTxqRunMode('fastwarp')">FASTWARP</button>
         </div>
         <button class="txq-qm-btn" id="txq-qm-btn" onclick="toggleTxQueueMode()">○ QUEUE MODE</button>
         <button class="txq-add-btn" id="txq-recruit-btn" onclick="txqAddAllTaverns()">RECRUIT RUN</button>
         <button class="txq-add-btn" id="txq-dungeon-btn" onclick="txqAddDungeonRun()">DUNGEON RUN</button>
+        <button class="txq-add-btn" id="txq-warp-btn" onclick="txqWarpPickerOpen()" style="border-color:rgba(180,96,255,0.45);color:#b060e0;">⚡ WARP FILL</button>
         <button class="txq-clr-btn" onclick="txqClear()">CLEAR</button>
         <span class="txq-ap-total" id="txq-ap-total">0 AP</span>
         <button class="txq-close-btn" id="txq-close-btn" onclick="closeTxQueuePanel()">▼</button>
@@ -3696,6 +3700,28 @@
         </div>
     </div>
 </div>
+<!-- FASTWARP fill picker -->
+<div id="warp-picker" style="display:none;position:fixed;inset:0;z-index:730;align-items:center;justify-content:center;background:rgba(0,0,6,0.85);">
+    <div style="width:min(340px,95vw);background:rgba(3,6,18,0.99);border:1.5px solid rgba(180,96,255,0.4);border-radius:12px;padding:18px 16px 14px;box-shadow:0 0 40px rgba(0,0,0,0.9);">
+        <div style="font-size:0.68em;letter-spacing:3px;color:#c080ff;text-align:center;margin-bottom:3px;">⚡ FASTWARP FILL</div>
+        <div style="font-size:0.55em;letter-spacing:2px;color:#556;text-align:center;margin-bottom:12px;">10 TRAVELS PER TRANSACTION · 1,1 ↔ 40,20</div>
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:10px;">
+            <label style="font-size:0.6em;letter-spacing:1px;color:#8090a0;"># TRANSACTIONS</label>
+            <input id="warp-tx-count" type="number" min="1" max="200" value="20" oninput="_txqWarpCalcLabel()"
+                style="width:70px;background:rgba(180,96,255,0.08);border:1px solid rgba(180,96,255,0.35);color:#c080ff;
+                       font-family:inherit;font-size:0.75em;padding:5px 8px;border-radius:4px;text-align:center;">
+        </div>
+        <div style="font-size:0.5em;color:#445;text-align:center;margin-bottom:12px;" id="warp-calc-lbl">= 200 travel actions</div>
+        <div style="display:flex;gap:8px;justify-content:center;">
+            <button onclick="txqWarpPickerConfirm()"
+                style="padding:7px 20px;font-size:0.65em;letter-spacing:1px;background:rgba(180,96,255,0.15);
+                       border:1px solid rgba(180,96,255,0.55);color:#c080ff;cursor:pointer;border-radius:6px;">▶ FILL &amp; SET MODE</button>
+            <button onclick="txqWarpPickerClose()"
+                style="padding:7px 16px;font-size:0.65em;letter-spacing:1px;background:transparent;
+                       border:1px solid rgba(255,255,255,0.1);color:#556;cursor:pointer;border-radius:6px;">CANCEL</button>
+        </div>
+    </div>
+</div>
 <div id="txq-mode-badge">◎ QUEUE MODE — CLICK CELLS TO ADD</div>
 
 <script>
@@ -3712,7 +3738,7 @@ var _sweepKpBuf     = '';
 window._txQueue        = [];   // [{type,x,y,name,land_id}]
 window._txQueueMode    = false; // when true, map clicks add to queue
 window._txQPanelOpen   = false;
-var _txQueueStacked    = true;  // true=STACKED (travel+hire in one TX); false=SPLIT (separate TXs)
+var _txQueueRunMode    = 'stacked'; // 'stacked' | 'split' | 'fastwarp'
 var _txQueueRunning    = false;
 var _txQueueAbort      = false;
 var _pendingAutoRetry  = false;
@@ -3960,10 +3986,39 @@ function closeTxQueuePanel() {
 }
 
 function setTxqRunMode(mode) {
-    _txQueueStacked = (mode === 'stacked');
-    document.getElementById('txq-mode-stk').classList.toggle('active', _txQueueStacked);
-    document.getElementById('txq-mode-sep').classList.toggle('active', !_txQueueStacked);
+    _txQueueRunMode = mode;
+    document.getElementById('txq-mode-stk').classList.toggle('active',    mode === 'stacked');
+    document.getElementById('txq-mode-sep').classList.toggle('active',    mode === 'split');
+    document.getElementById('txq-mode-fw') .classList.toggle('fw-active', mode === 'fastwarp');
     renderTxQueue();
+}
+
+function txqWarpPickerOpen() {
+    var el = document.getElementById('warp-picker');
+    if (el) { el.style.display = 'flex'; _txqWarpCalcLabel(); }
+}
+function txqWarpPickerClose() {
+    var el = document.getElementById('warp-picker');
+    if (el) el.style.display = 'none';
+}
+function _txqWarpCalcLabel() {
+    var n = Number(document.getElementById('warp-tx-count').value) || 1;
+    var lbl = document.getElementById('warp-calc-lbl');
+    if (lbl) lbl.textContent = '= ' + (n * 10) + ' travel actions';
+}
+function txqWarpPickerConfirm() {
+    var txCount = Math.max(1, Math.min(200, Number(document.getElementById('warp-tx-count').value) || 20));
+    txqWarpPickerClose();
+    // Clear queue and fill with back-and-forth travels (10 waypoints per TX)
+    _txQueue = [];
+    var waypoints = [[1,1],[40,20]];
+    var wpIdx = 0;
+    for (var i = 0; i < txCount * 10; i++) {
+        var wp = waypoints[wpIdx % 2];
+        _txQueue.push({ type:'travel', x:wp[0], y:wp[1] });
+        wpIdx++;
+    }
+    setTxqRunMode('fastwarp');  // auto-switch to fastwarp mode
 }
 
 function toggleTxQueueMode() {
@@ -4340,12 +4395,45 @@ async function runTxQueue() {
     try { _allNFTs = await loadPlayerHireNFTs(wallet, []); } catch(e) {}
 
     // Build execution plan.
-    // AP cost work correctly even across multiple taverns in the same run.
-    // STACKED: travel+hire bundled in one TX (original fast mode).
-    // SPLIT: travel then hire as separate TXs (safer, avoids hire-before-travel risk).
+    // STACKED:  travel+hire bundled in one TX (original fast mode).
+    // SPLIT:    travel then hire as separate TXs (safer, avoids hire-before-travel race).
+    // FASTWARP: consecutive travel actions batched up to 10 per TX for maximum throughput.
     var plan = [];
     var _usedHireNFTs = new Set();
-    if (_txQueueStacked) {
+
+    function _travelAction(w, x, y) {
+        return { account:'players.ale', name:'travel', authorization:[{actor:w,permission:'active'}], data:{wallet:w, x:x, y:y} };
+    }
+
+    if (_txQueueRunMode === 'fastwarp') {
+        var _fwBatch = [];
+        function _flushFwBatch(lastQIdx) {
+            if (!_fwBatch.length) return;
+            var dest = _fwBatch[_fwBatch.length - 1];
+            var lbl = 'WARP ×' + _fwBatch.length + ' (→' + dest.data.x + ',' + dest.data.y + ')';
+            plan.push({ label: lbl, qIdx: lastQIdx, actions: _fwBatch.slice() });
+            _fwBatch = [];
+        }
+        for (var i = 0; i < _txQueue.length; i++) {
+            var item = _txQueue[i];
+            if (item.type === 'travel' || item.type === 'portal') {
+                _fwBatch.push(_travelAction(wallet, item.x, item.y));
+                if (_fwBatch.length >= 10) _flushFwBatch(i);
+            } else {
+                _flushFwBatch(i - 1);
+                if (item.type === 'travel+hire') {
+                    plan.push({ label: item.name || 'TRAVEL+HIRE ('+item.x+','+item.y+')', qIdx: i,
+                        tavern: item, isTravelAndHire: true, objectives: item.objectives,
+                        travelData: {wallet:wallet, x:item.x, y:item.y}, actions: null });
+                } else if (item.type === 'levelup') {
+                    plan.push({ label: item.name||'LEVEL UP', qIdx: i, isLevelUp: true, levelupItem: item, actions: null });
+                } else if (item.type === 'dungeon') {
+                    plan.push({ label: item.name||'DUNGEON ('+item.x+','+item.y+')', qIdx: i, isDungeon: true, dungeonItem: item, actions: null });
+                }
+            }
+        }
+        _flushFwBatch(_txQueue.length - 1);
+    } else if (_txQueueRunMode === 'stacked') {
         for (var i = 0; i < _txQueue.length; ) {
             var item = _txQueue[i];
             if (item.type === 'travel+hire') {
@@ -4358,7 +4446,7 @@ async function runTxQueue() {
                 i++;
             } else if (item.type === 'travel') {
                 plan.push({ label: 'TRAVEL ('+item.x+','+item.y+')', qIdx: i,
-                    actions: [{ account:'players.ale', name:'travel', authorization:[{actor:wallet,permission:'active'}], data:{wallet:wallet, x:item.x, y:item.y} }]
+                    actions: [_travelAction(wallet, item.x, item.y)]
                 });
                 i++;
             } else if (item.type === 'hire') {
@@ -4369,7 +4457,7 @@ async function runTxQueue() {
             } else if (item.type === 'portal') {
                 plan.push({ label: 'PORTAL ('+item.x+','+item.y+')', qIdx: i,
                     isPortal: true, toPlanet: item.to,
-                    actions: [{ account:'players.ale', name:'travel', authorization:[{actor:wallet,permission:'active'}], data:{wallet:wallet, x:item.x, y:item.y} }]
+                    actions: [_travelAction(wallet, item.x, item.y)]
                 });
                 i++;
             } else if (item.type === 'levelup') {
@@ -4381,15 +4469,16 @@ async function runTxQueue() {
             } else { i++; }
         }
     } else {
+        // SPLIT
         _txQueue.forEach(function(item, i){
             if (item.type === 'travel' || item.type === 'portal') {
                 plan.push({ label: 'TRAVEL ('+item.x+','+item.y+')', qIdx: i,
                     isPortal: item.type === 'portal', toPlanet: item.to,
-                    actions: [{ account:'players.ale', name:'travel', authorization:[{actor:wallet,permission:'active'}], data:{wallet:wallet, x:item.x, y:item.y} }]
+                    actions: [_travelAction(wallet, item.x, item.y)]
                 });
             } else if (item.type === 'travel+hire') {
                 plan.push({ label: 'TRAVEL ('+item.x+','+item.y+')', qIdx: i,
-                    actions: [{ account:'players.ale', name:'travel', authorization:[{actor:wallet,permission:'active'}], data:{wallet:wallet, x:item.x, y:item.y} }]
+                    actions: [_travelAction(wallet, item.x, item.y)]
                 });
                 plan.push({ label: 'HIRE — '+(item.name||''), qIdx: i, tavern: item,
                     isHire: true, objectives: item.objectives, actions: null
