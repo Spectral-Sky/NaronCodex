@@ -4741,7 +4741,7 @@ async function runTxQueue() {
         }
 
         if (j < plan.length - 1 && !_txQueueAbort) {
-            var _stepDelay = _txQueueStacked ? 1000 : 2000;
+            var _stepDelay = _txQueueRunMode === 'split' ? 2000 : 1000;
             await new Promise(function(r){ setTimeout(r, _stepDelay); });
         }
     }
