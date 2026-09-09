@@ -3980,6 +3980,12 @@ function openAutoRerollPanel() {
     if (!_qLoaded) loadQuestOverlay();
 }
 
+function txqAbort() {
+    _txQueueAbort = true;
+    window._txQueue = [];
+    renderTxQueue();
+}
+
 function closeTxQueuePanel() {
     window._txQueueMode = false;
     window._txQPanelOpen = false;
@@ -4382,7 +4388,7 @@ async function runTxQueue() {
     var rfBtn    = document.getElementById('txq-retry-failed-btn');
 
     if (runBtn)   { runBtn.disabled = true; runBtn.textContent = 'RUNNING…'; }
-    if (closeBtn) { closeBtn.textContent = '■ ABORT'; closeBtn.style.color = '#ff6666'; }
+    if (closeBtn) { closeBtn.textContent = '■ ABORT'; closeBtn.style.color = '#ff6666'; closeBtn.onclick = txqAbort; }
     if (progWrap) { progWrap.style.display = 'block'; }
     if (progLbl)  { progLbl.textContent = 'Loading NFTs…'; }
     if (rfBtn)    { rfBtn.style.display = 'none'; }
@@ -4770,7 +4776,7 @@ async function runTxQueue() {
         : '✓ ' + succeeded + ' / ' + plan.length + (failed ? '  ·  ' + failed + ' FAILED' : '');
     if (progLbl)  progLbl.textContent = _runSummary + '  ·  refreshing…';
     if (runBtn)   { runBtn.textContent = '▶ RUN QUEUE'; runBtn.disabled = false; }
-    if (closeBtn) { closeBtn.textContent = '▼'; closeBtn.style.color = ''; }
+    if (closeBtn) { closeBtn.textContent = '▼'; closeBtn.style.color = ''; closeBtn.onclick = closeTxQueuePanel; }
     if (rfBtn && _failedPlan.length) {
         rfBtn.style.display = '';
         rfBtn.textContent = '⟳ RETRY FAILED (' + _failedPlan.length + ')';
@@ -4946,7 +4952,7 @@ async function txqRetryFailed() {
         : '⟳ RETRY: ' + succeeded + '/' + toRetry.length + (failed ? '  ·  ' + failed + ' still failed' : '  ✓ ALL CLEAR');
     if (progLbl)  progLbl.textContent = retrySummary + '  ·  refreshing…';
     if (runBtn)   { runBtn.disabled = false; }
-    if (closeBtn) { closeBtn.textContent = '▼'; closeBtn.style.color = ''; }
+    if (closeBtn) { closeBtn.textContent = '▼'; closeBtn.style.color = ''; closeBtn.onclick = closeTxQueuePanel; }
     if (rfBtn) {
         if (_failedPlan.length) { rfBtn.disabled = false; rfBtn.textContent = '⟳ RETRY FAILED (' + _failedPlan.length + ')'; }
         else rfBtn.style.display = 'none';
