@@ -3645,12 +3645,11 @@
         <div class="txq-mode-wrap">
             <button class="txq-mode-btn active" id="txq-mode-stk" onclick="setTxqRunMode('stacked')">STACKED</button>
             <button class="txq-mode-btn" id="txq-mode-sep" onclick="setTxqRunMode('separate')">SPLIT</button>
-            <button class="txq-mode-btn" id="txq-mode-fw"  onclick="setTxqRunMode('fastwarp')">FASTWARP</button>
         </div>
         <button class="txq-qm-btn" id="txq-qm-btn" onclick="toggleTxQueueMode()">○ QUEUE MODE</button>
-        <button class="txq-add-btn" id="txq-recruit-btn" onclick="txqAddAllTaverns()">RECRUIT RUN</button>
-        <button class="txq-add-btn" id="txq-dungeon-btn" onclick="txqAddDungeonRun()">DUNGEON RUN</button>
-        <button class="txq-add-btn" id="txq-warp-btn" onclick="txqWarpPickerOpen()" style="border-color:rgba(180,96,255,0.45);color:#b060e0;">⚡ WARP FILL</button>
+        <button class="txq-add-btn" id="txq-recruit-btn" onclick="txqAddAllTaverns()" style="border-color:rgba(60,200,100,0.45);color:#50c878;">RECRUIT RUN</button>
+        <button class="txq-add-btn" id="txq-dungeon-btn" onclick="txqAddDungeonRun()" style="border-color:rgba(60,140,255,0.45);color:#5090e0;">DUNGEON RUN</button>
+        <button class="txq-add-btn" id="txq-warp-btn" onclick="txqWarpPickerOpen()" style="border-color:rgba(180,96,255,0.45);color:#b060e0;">WARP</button>
         <button class="txq-clr-btn" onclick="txqClear()">CLEAR</button>
         <span class="txq-ap-total" id="txq-ap-total">0 AP</span>
         <button class="txq-close-btn" id="txq-close-btn" onclick="closeTxQueuePanel()">▼</button>
@@ -3996,9 +3995,8 @@ function closeTxQueuePanel() {
 
 function setTxqRunMode(mode) {
     _txQueueRunMode = mode;
-    document.getElementById('txq-mode-stk').classList.toggle('active',    mode === 'stacked');
-    document.getElementById('txq-mode-sep').classList.toggle('active',    mode === 'split');
-    document.getElementById('txq-mode-fw') .classList.toggle('fw-active', mode === 'fastwarp');
+    document.getElementById('txq-mode-stk').classList.toggle('active', mode === 'stacked');
+    document.getElementById('txq-mode-sep').classList.toggle('active', mode === 'split');
     renderTxQueue();
 }
 
