@@ -493,9 +493,13 @@
         #txq-retry-failed-btn:hover { background:rgba(255,100,80,0.16); }
 
         /* ── DUNGEON RUN difficulty picker ───────────────────────────────── */
-        #drun-picker { position:fixed; inset:0; z-index:730; display:none; align-items:center; justify-content:center; background:rgba(0,0,6,0.85); }
-        #drun-picker.open { display:flex; }
+        #drun-picker, #arun-picker { position:fixed; inset:0; z-index:730; display:none; align-items:center; justify-content:center; background:rgba(0,0,6,0.85); }
+        #drun-picker.open, #arun-picker.open { display:flex; }
         #drun-picker-box { width:min(400px,95vw); background:rgba(3,6,18,0.99); border:1.5px solid rgba(232,160,32,0.3); border-radius:12px; padding:18px 16px 14px; box-shadow:0 0 40px rgba(0,0,0,0.9); }
+        #arun-picker-box { width:min(400px,95vw); background:rgba(3,6,18,0.99); border:1.5px solid rgba(192,96,96,0.35); border-radius:12px; padding:18px 16px 14px; box-shadow:0 0 40px rgba(0,0,0,0.9); }
+        .arun-ph { font-size:0.68em; letter-spacing:3px; color:#c06060; text-align:center; margin-bottom:3px; }
+        #arun-refill-wrap { display:flex; gap:5px; margin-bottom:10px; }
+        .drun-fighter-chip.suggested { border-color:rgba(96,224,144,0.55); color:#60e090; background:rgba(96,224,144,0.07); }
         .drun-ph { font-size:0.68em; letter-spacing:3px; color:var(--gold); text-align:center; margin-bottom:3px; }
         .drun-sub { font-size:0.55em; letter-spacing:2px; color:#556; text-align:center; margin-bottom:10px; }
         #drun-diff-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-bottom:8px; }
@@ -503,11 +507,11 @@
         .drun-diff-btn:hover { border-color:rgba(232,160,32,0.3); color:#887755; }
         .drun-diff-btn.on { background:rgba(232,160,32,0.14); border-color:rgba(232,160,32,0.55); color:var(--gold); font-weight:bold; }
         #drun-hint { font-size:0.52em; letter-spacing:1px; color:#505840; text-align:center; margin-bottom:8px; min-height:1.2em; }
-        #drun-presets { display:flex; gap:5px; margin-bottom:10px; }
+        #drun-presets, #arun-presets { display:flex; gap:5px; margin-bottom:10px; }
         .drun-preset-btn { flex:1; padding:5px 2px; font-size:0.52em; letter-spacing:1px; background:rgba(96,200,255,0.04); border:1px solid rgba(96,200,255,0.15); color:#5a7a9a; cursor:pointer; border-radius:5px; font-family:inherit; transition:all 0.15s; text-align:center; line-height:1.5; }
         .drun-preset-btn:hover { border-color:rgba(232,160,32,0.4); color:#b09070; background:rgba(232,160,32,0.06); }
         .drun-preset-btn.active { border-color:rgba(232,160,32,0.6); color:var(--gold); background:rgba(232,160,32,0.1); }
-        #drun-team { border:1px solid rgba(96,200,255,0.1); border-radius:7px; padding:8px 10px; margin-bottom:10px; background:rgba(96,200,255,0.03); }
+        #drun-team, #arun-team { border:1px solid rgba(96,200,255,0.1); border-radius:7px; padding:8px 10px; margin-bottom:10px; background:rgba(96,200,255,0.03); }
         .drun-team-lbl { font-size:0.5em; letter-spacing:2px; color:#445; margin-bottom:5px; }
         .fm-badge { display:inline-block; font-size:0.75em; padding:0 3px; border-radius:3px; margin-left:3px; vertical-align:middle; cursor:pointer; user-select:none; }
         .fm-tank { background:rgba(96,160,255,0.18); color:#70a8ff; border:1px solid rgba(96,160,255,0.3); }
@@ -522,7 +526,7 @@
         .drun-nft-row { display:flex; gap:8px; }
         .drun-nft-chip { flex:1; font-size:0.52em; letter-spacing:1px; color:#8898a8; padding:3px 6px; border:1px solid rgba(96,200,255,0.12); border-radius:4px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .drun-nft-chip.missing { color:#e06060; border-color:rgba(255,80,80,0.3); background:rgba(255,60,60,0.05); }
-        #drun-warn { font-size:0.52em; letter-spacing:1px; color:#e06060; text-align:center; margin-bottom:8px; min-height:1.2em; }
+        #drun-warn, #arun-warn { font-size:0.52em; letter-spacing:1px; color:#e06060; text-align:center; margin-bottom:8px; min-height:1.2em; }
         .drun-actions { display:flex; gap:8px; }
         .drun-go { flex:1; padding:7px; background:rgba(232,160,32,0.12); border:1px solid rgba(232,160,32,0.45); color:var(--gold); font-family:inherit; font-size:0.62em; letter-spacing:2px; cursor:pointer; transition:all 0.18s; border-radius:7px; }
         .drun-go:hover:not(:disabled) { background:rgba(232,160,32,0.22); }
@@ -632,6 +636,7 @@
         .bpp-xp  { color:#60d080; background:rgba(60,160,80,0.12); border:1px solid rgba(60,160,80,0.25); }
         .bpp-use { color:#5090c0; background:rgba(40,80,160,0.12); border:1px solid rgba(50,100,180,0.25); }
         .bpp-sel { color:var(--gold); background:rgba(232,160,32,0.1); border:1px solid rgba(232,160,32,0.25); }
+        .bpp-sugg { color:#60e090; background:rgba(96,224,144,0.12); border:1px solid rgba(96,224,144,0.3); }
         .bpp-img { width:36px; height:36px; object-fit:cover; border-radius:5px; background:rgba(20,20,40,0.6); flex-shrink:0; }
         /* auto-battle toggle */
         #ab-toggle { display:inline-block; padding:4px 8px; font-size:0.58em; letter-spacing:1px; background:transparent; border:1px dashed #334; color:#446; cursor:crosshair; transition:all 0.2s; text-align:center; text-transform:uppercase; flex-shrink:0; border-radius:6px; }
@@ -983,6 +988,7 @@
     })();
     var _playerLockedArenas=new Set();   // "planet.x.y" arenas where player's fighter is defending
     var _arenaDefenderIds={};            // planet.x.y -> {fid, wallet} for all live arenas
+    var _landBuildingNames={};           // "planet.x.y" -> building display name from lands.ale
     var _fighterCache={};               // assetId -> fighter row cache
     var _myFighters=[];                  // loaded from fighters.ale for logged-in wallet
     var _fighterSort='level';             // current sort: 'level'|'class'|'element'|'marker'
@@ -1027,16 +1033,14 @@
             _playerLockedArenas=new Set();
             res.rows.forEach(function(row){
                 var def=row.defender||row.defender_wallet||row.owner||'';
-                if(def!==wallet)return;
                 var planet=row.planet?normalizePlanet(row.planet):null;
                 var x=row.x,y=row.y;
                 if((!x||!y)&&row.land_id){var c=decodeLandId(row.land_id);if(c){x=c.x;y=c.y;}}
-                if(planet&&x&&y){
+                if(!planet||!x||!y)return;
                 var arKey=planet+'.'+x+'.'+y;
                 var fid=row.fighter_id||row.fighter||row.defender_fighter||row.defender_id||row.asset_id||null;
                 _arenaDefenderIds[arKey]={fid:fid,wallet:def};
                 if(def===wallet)_playerLockedArenas.add(arKey);
-            }
             });
             if(_playerLockedArenas.size>0)_refreshAllMaps();
         }catch(e){}
@@ -1080,6 +1084,11 @@
                 var owner=row.owner||null;
                 var buildings=row.buildings||row.building||[];
                 if (!Array.isArray(buildings)) buildings=[buildings];
+                buildings.forEach(function(b){
+                    var nm = (typeof b==='string') ? b
+                           : (b && (b.name||b.building_name||b.type||b.building)) || '';
+                    if (nm) _landBuildingNames[rp+'.'+x+'.'+y]=String(nm);
+                });
                 var bStr=JSON.stringify(buildings).toLowerCase();
                 if (bStr.indexOf('arena')>=0){
                     var dup2=ALE_LOCATIONS[rp].arenas.some(function(a){return a.x===x&&a.y===y;});
@@ -1529,11 +1538,11 @@
         if(!container)return;
         var portals=ALE_PORTALS[planet]||[];
         var locs=ALE_LOCATIONS[planet]||{};
-        var pmap={},dungeonMap={},tavernMap={},arenaSet={};
+        var pmap={},dungeonMap={},tavernMap={},arenaMap={};
         portals.forEach(function(p){pmap[p.x+','+p.y]=p;});
         (locs.dungeons||[]).forEach(function(d){dungeonMap[d.x+','+d.y]=d;});
         (locs.taverns||[]).forEach(function(t){tavernMap[t.x+','+t.y]=t;});
-        (locs.arenas||[]).forEach(function(a){arenaSet[a.x+','+a.y]=true;});
+        (locs.arenas||[]).forEach(function(a){arenaMap[a.x+','+a.y]=a;});
         var html='';
         for(var y=1;y<=20;y++){
             for(var x=1;x<=40;x++){
@@ -1558,7 +1567,7 @@
                     cls+=' ale-tavern';
                     sty=' style="border-color:#b0784090;box-shadow:inset 0 0 5px #b0784050"';
                     icon='<span class="cell-icon"><img src="Ale%20images/tavern.svg" alt="tavern"></span>';
-                } else if(arenaSet[key]){
+                } else if(arenaMap[key]){
                     var arLocked=_playerLockedArenas.has(planet+'.'+x+'.'+y);
                     cls+=' ale-arena'+(arLocked?' ale-ar-locked':'');
                     sty=' style="border-color:'+(arLocked?'#805050':'#c04040')+'90;box-shadow:inset 0 0 5px '+(arLocked?'#805050':'#c04040')+'50"';
@@ -2574,7 +2583,8 @@
         return '<span style="color:#446;font-size:0.55em">'+String(m).slice(0,3).toUpperCase()+'</span>';
     }
 
-    async function _checkDungeonResult(historyId) {
+    // battle.ale::fights holds both dungeon and arena results, keyed by history_id
+    async function _checkFightResult(historyId) {
         if (!historyId) return null;
         // Give the chain 2.5s to write the fight result
         await new Promise(function(r){ setTimeout(r, 2500); });
@@ -3227,6 +3237,12 @@
         var f=_myFighters.find(function(x){return String(x.fighter_id)===String(fid);});
         if(f&&_bpPickerSlot>=0) _bpFighters[_bpPickerSlot]=f;
 
+        // An arena run paused waiting for a replacement — hand it back and resume
+        if(f&&typeof _arunResolveChoice==='function'&&_arunResolveChoice(f)){
+            closePicker();
+            return;
+        }
+
         if(_bpPickerFromDrun){
             // Stay open as sidebar — advance to next empty slot automatically
             var nextEmpty=-1;
@@ -3264,11 +3280,13 @@
             var usedInOtherSlot=selectedIds.some(function(id,i){return i!==slotIdx&&id===fid;});
             var role=_fmEffective(f);
             var roleLabel=role==='tank'?'🛡':role==='dps'?'⚔':role==='util'?'✦':'';
+            var sugg=(typeof _arunSuggestedIds!=='undefined'&&_arunSuggestedIds&&_arunSuggestedIds.has(fid));
             html+='<div class="bpp-row'+(usedInOtherSlot?' disabled':'')+'" onclick="selectBpFighter(\''+fid+'\')">'
                 +'<span class="bpp-cls">'+ci.e+'</span>'
                 +'<span class="bpp-name">'+ci.n.toUpperCase()+'</span>'
                 +'<span class="bpp-lv">LV'+lvl+'</span>'
                 +(role?'<span class="fm-badge fm-'+role+'" onclick="event.stopPropagation();_fmCycleInPicker(\''+fid+'\',this)" title="Change role">'+roleLabel+'</span>':'')
+                +(sugg?'<span class="bpp-badge bpp-sugg" title="Out-levels this arena\'s defender">★ SUGGESTED</span>':'')
                 +(xpReady?'<span class="bpp-badge bpp-xp">XP✓</span>':'')
                 +(inUse?'<span class="bpp-badge bpp-use">IN USE</span>':'')
                 +(selectedIds[slotIdx]===fid?'<span class="bpp-badge bpp-sel">✓</span>':'')
@@ -3279,7 +3297,8 @@
 
     function _refreshDrunTeam(){
         var _fc=document.getElementById('drun-fighters');
-        if(!_fc) return;
+        var _ac=document.getElementById('arun-fighters');
+        if(!_fc && !_ac) return;
         var _fh='';
         for(var _fi=0;_fi<5;_fi++){
             var _ff=_bpFighters[_fi];
@@ -3295,16 +3314,22 @@
                 _fh+='<button class="drun-fighter-chip empty'+(isActive?' slot-active':'')+'" onclick="drunSelectFighter('+_fi+')" title="Slot '+(_fi+1)+' — click to pick">+ PICK</button>';
             }
         }
-        _fc.innerHTML=_fh;
-        // Highlight active preset button
+        if(_fc) _fc.innerHTML=_fh;
+        if(_ac) _ac.innerHTML=_fh;
+        // Highlight active preset button (dungeon picker: dpp-*, arena picker: app-*)
         ['elite','grind','top5'].forEach(function(p){
             var b=document.getElementById('dpp-'+p);
             if(b) b.classList.toggle('active', p===_drunLastPreset);
+            var b2=document.getElementById('app-'+p);
+            if(b2) b2.classList.toggle('active', p===_drunLastPreset);
         });
         var activeFighters=_bpFighters.filter(Boolean);
-        var goBtn=document.getElementById('drun-go-btn');
         var nftsMissing=!_bpCrew||!_bpWeapon;
-        if(goBtn) goBtn.disabled=nftsMissing||activeFighters.length<5;
+        var _disabled=nftsMissing||activeFighters.length<5;
+        var goBtn=document.getElementById('drun-go-btn');
+        if(goBtn) goBtn.disabled=_disabled;
+        var aGoBtn=document.getElementById('arun-go-btn');
+        if(aGoBtn) aGoBtn.disabled=_disabled;
     }
 
     function _drunApplyPreset(preset){
@@ -3649,6 +3674,7 @@
         <button class="txq-qm-btn" id="txq-qm-btn" onclick="toggleTxQueueMode()">○ QUEUE MODE</button>
         <button class="txq-add-btn" id="txq-recruit-btn" onclick="txqAddAllTaverns()" style="border-color:rgba(60,200,100,0.45);color:#50c878;">RECRUIT RUN</button>
         <button class="txq-add-btn" id="txq-dungeon-btn" onclick="txqAddDungeonRun()" style="border-color:rgba(60,140,255,0.45);color:#5090e0;">DUNGEON RUN</button>
+        <button class="txq-add-btn" id="txq-arena-btn" onclick="txqAddArenaRun()" style="border-color:rgba(192,96,96,0.45);color:#c06060;">ARENA RUN</button>
         <button class="txq-add-btn" id="txq-warp-btn" onclick="txqWarpPickerOpen()" style="border-color:rgba(180,96,255,0.45);color:#b060e0;">WARP</button>
         <button class="txq-clr-btn" onclick="txqClear()">CLEAR</button>
         <span class="txq-ap-total" id="txq-ap-total">0 AP</span>
@@ -3696,6 +3722,35 @@
         <div class="drun-actions">
             <button class="drun-go" id="drun-go-btn" onclick="drunPickerConfirm()">▶ ADD TO QUEUE</button>
             <button class="drun-cancel" onclick="drunPickerCancel()">CANCEL</button>
+        </div>
+    </div>
+</div>
+<!-- ARENA RUN picker (no difficulty — arena defenders fight at their own levels) -->
+<div id="arun-picker">
+    <div id="arun-picker-box">
+        <div class="arun-ph">&#9876; ARENA RUN</div>
+        <div class="drun-sub" id="arun-count-sub">CURRENT PLANET</div>
+        <div class="drun-sub" style="margin-bottom:6px;color:#7a5a5a;">WHEN A FIGHTER IS LEFT BEHIND</div>
+        <div id="arun-refill-wrap">
+            <button class="drun-preset-btn active" id="arf-auto"   onclick="setArunRefill('auto')"   title="Automatically slot in your highest-level available fighter">&#9889; AUTO<br>HIGHEST LEVEL</button>
+            <button class="drun-preset-btn"        id="arf-choose" onclick="setArunRefill('choose')" title="Pause the run and let you pick the replacement">&#128100; CHOOSE<br>PAUSE &amp; PICK</button>
+        </div>
+        <div id="arun-presets">
+            <button class="drun-preset-btn" id="app-top5"  onclick="_drunApplyPreset('top5')"  title="Top 5 fighters by level">&#127942; TOP 5<br>BY LEVEL</button>
+            <button class="drun-preset-btn" id="app-elite" onclick="_drunApplyPreset('elite')" title="1 tank (lvl 9-10) + 4 high-level fighters">&#9889; ELITE<br>1 TANK + 4 HIGH</button>
+        </div>
+        <div id="arun-team">
+            <div class="drun-team-lbl">TEAM</div>
+            <div class="drun-fighter-row" id="arun-fighters"></div>
+            <div class="drun-nft-row">
+                <div class="drun-nft-chip" id="arun-crew-chip">CREW: —</div>
+                <div class="drun-nft-chip" id="arun-weapon-chip">WEAPON: —</div>
+            </div>
+        </div>
+        <div id="arun-warn"></div>
+        <div class="drun-actions">
+            <button class="drun-go" id="arun-go-btn" onclick="arunPickerConfirm()">▶ ADD TO QUEUE</button>
+            <button class="drun-cancel" onclick="arunPickerCancel()">CANCEL</button>
         </div>
     </div>
 </div>
@@ -3982,6 +4037,14 @@ function openAutoRerollPanel() {
 
 function txqAbort() {
     _txQueueAbort = true;
+    // Release an arena run paused waiting for a replacement pick, or it hangs forever
+    if (typeof _arunPendingResolve !== 'undefined' && _arunPendingResolve) {
+        var r = _arunPendingResolve;
+        _arunPendingResolve = null;
+        _arunSuggestedIds = null;
+        if (typeof closePicker === 'function') closePicker();
+        r(null);
+    }
     window._txQueue = [];
     renderTxQueue();
 }
@@ -4052,15 +4115,23 @@ function txqAddCell(x, y) {
     var portals = ALE_PORTALS[_activePlanet]   || [];
     var isPortal = portals.some(function(p){ return p.x===x && p.y===y; });
     var tavern   = (locs.taverns||[]).find(function(t){ return t.x===x && t.y===y; });
+    var arena    = (locs.arenas||[]).find(function(a){ return a.x===x && a.y===y; });
     if (isPortal) {
         var _portalDef = portals.find(function(p){ return p.x===x && p.y===y; });
         _txQueue.push({ type:'portal', x:x, y:y, planet:_activePlanet, to: _portalDef && _portalDef.to });
     } else if (tavern) {
-        _txQueue.push({ type:'travel+hire', x:x, y:y,
-            name: tavern.name || ('Tavern '+x+','+y), land_id: tavern.land_id,
+        _txQueue.push({ type:'travel+hire', x:x, y:y, planet:_activePlanet,
+            land_id: tavern.land_id,
             objectives: tavern.objectives || [] });
+    } else if (arena) {
+        if (_playerLockedArenas.has(_activePlanet+'.'+x+'.'+y)) {
+            showToast('✗ YOUR FIGHTER ALREADY DEFENDS THIS ARENA');
+            return;
+        }
+        _txQueue.push({ type:'travel', x:x, y:y, planet:_activePlanet });
+        _txQueue.push({ type:'arena', x:x, y:y, planet:_activePlanet, land_id: arena.land_id });
     } else {
-        _txQueue.push({ type:'travel', x:x, y:y });
+        _txQueue.push({ type:'travel', x:x, y:y, planet:_activePlanet });
     }
     renderTxQueue();
 }
@@ -4097,8 +4168,7 @@ async function txqAddAllTaverns() {
             fromPlanet = planet;
         }
         byPlanet[planet].forEach(function(tv) {
-            _txQueue.push({ type:'travel+hire', x:tv.x, y:tv.y,
-                name: tv.name || ('Tavern '+tv.x+','+tv.y),
+            _txQueue.push({ type:'travel+hire', x:tv.x, y:tv.y, planet:planet,
                 land_id: tv.land_id, objectives: tv.objectives||[] });
         });
     });
@@ -4202,6 +4272,152 @@ function drunPickerCancel() {
     document.getElementById('drun-picker').classList.remove('open');
 }
 
+// ── ARENA RUN ─────────────────────────────────────────────────────────────────
+// Arenas have no difficulty dial — defenders fight at their own levels. On a win
+// the contract parks one of your five at that arena, so the team must be refilled
+// between arenas (see the step.isArena block in runTxQueue).
+var _arunRefillMode    = 'auto';   // 'auto' = highest level available | 'choose' = pause and pick
+var _arunPendingResolve = null;    // resolver for the choose-mode pause
+var _arunSuggestedIds  = null;     // Set of fighter_ids suggested for the pending choice
+
+function setArunRefill(mode) {
+    _arunRefillMode = mode;
+    var a = document.getElementById('arf-auto'), c = document.getElementById('arf-choose');
+    if (a) a.classList.toggle('active', mode === 'auto');
+    if (c) c.classList.toggle('active', mode === 'choose');
+}
+
+function arunPickerCancel() {
+    document.getElementById('arun-picker').classList.remove('open');
+}
+
+async function txqAddArenaRun() {
+    var wallet = getWallet();
+    if (!wallet) return;
+    var btn = document.getElementById('txq-arena-btn');
+    if (btn) { btn.textContent = '…'; btn.disabled = true; }
+
+    if (!_myFighters || !_myFighters.length) {
+        try { await _fetchAllFighters(wallet); } catch(e){}
+    }
+    // Top-5-by-level is the sensible arena default — there's no difficulty to tune down for
+    if (!_bpFighters.some(Boolean)) _drunApplyPreset('top5');
+
+    // Refresh locks + defender ids so we skip arenas we already hold and can suggest matchups
+    try { await fetchArenaLock(wallet); } catch(e) {}
+
+    if (btn) { btn.textContent = 'ARENA RUN'; btn.disabled = false; }
+
+    if (!_bpCrew && _battleNFTDefaults.crewAssetId) {
+        _bpCrew = {asset_id:_battleNFTDefaults.crewAssetId, template_id:_battleNFTDefaults.crewTemplateId,
+            name:_battleNFTDefaults.crewName||'CREW NFT', schema:'crew.worlds'};
+    }
+    if (!_bpWeapon && _battleNFTDefaults.weaponAssetId) {
+        _bpWeapon = {asset_id:_battleNFTDefaults.weaponAssetId, template_id:_battleNFTDefaults.weaponTemplateId,
+            name:_battleNFTDefaults.weaponName||'WEAPON NFT', schema:'arms.worlds'};
+    }
+    if (!_bpCrew || !_bpWeapon) {
+        try {
+            var _saved = JSON.parse(localStorage.getItem('naron_battle_nfts')||'{}');
+            if (!_bpCrew && _saved.crewAssetId)
+                _bpCrew = {asset_id:_saved.crewAssetId, template_id:_saved.crewTemplateId, name:_saved.crewName||'CREW NFT', schema:'crew.worlds'};
+            if (!_bpWeapon && _saved.weaponAssetId)
+                _bpWeapon = {asset_id:_saved.weaponAssetId, template_id:_saved.weaponTemplateId, name:_saved.weaponName||'WEAPON NFT', schema:'arms.worlds'};
+        } catch(e) {}
+    }
+
+    var _avail = _arunAvailableArenas();
+    var _sub = document.getElementById('arun-count-sub');
+    if (_sub) _sub.textContent = (PLANETS[_activePlanet]||{name:_activePlanet}).name.toUpperCase()
+        + ' — ' + _avail.length + ' ARENA' + (_avail.length===1?'':'S') + ' AVAILABLE';
+
+    _refreshDrunTeam();
+    var _activeFighters = (_bpFighters||[]).filter(Boolean);
+    var _crewChip = document.getElementById('arun-crew-chip');
+    var _weapChip = document.getElementById('arun-weapon-chip');
+    var _warnEl   = document.getElementById('arun-warn');
+    var _goBtn    = document.getElementById('arun-go-btn');
+    var _nftsMissing = !_bpCrew || !_bpWeapon;
+    if (_crewChip) { _crewChip.textContent = 'CREW: '+(_bpCrew ? (_bpCrew.name||('#'+_bpCrew.asset_id)) : '⚠ NOT SET'); _crewChip.className = 'drun-nft-chip'+(_bpCrew?'':' missing'); }
+    if (_weapChip) { _weapChip.textContent = 'WEAPON: '+(_bpWeapon ? (_bpWeapon.name||('#'+_bpWeapon.asset_id)) : '⚠ NOT SET'); _weapChip.className = 'drun-nft-chip'+(_bpWeapon?'':' missing'); }
+    if (_warnEl) {
+        _warnEl.textContent = _nftsMissing ? '⚠ Open the battle pane and select your NFTs first'
+                            : !_avail.length ? '⚠ No available arenas on this planet'
+                            : '';
+    }
+    if (_goBtn) _goBtn.disabled = _nftsMissing || _activeFighters.length < 5 || !_avail.length;
+
+    document.getElementById('arun-picker').classList.add('open');
+}
+
+// Arenas on the current planet the player isn't already defending
+function _arunAvailableArenas() {
+    var planet = _activePlanet;
+    return ((ALE_LOCATIONS[planet]||{}).arenas || []).filter(function(a){
+        return !_playerLockedArenas.has(planet+'.'+a.x+'.'+a.y);
+    });
+}
+
+function arunPickerConfirm() {
+    document.getElementById('arun-picker').classList.remove('open');
+    var planet  = _activePlanet;
+    var arenas  = _arunAvailableArenas();
+    if (!arenas.length) { showToast('NO AVAILABLE ARENAS ON THIS PLANET'); return; }
+
+    var px = _playerPos ? _playerPos.x : 1, py = _playerPos ? _playerPos.y : 1;
+    arenas = arenas.slice().sort(function(a,b){
+        return (Math.abs(a.x-px)+Math.abs(a.y-py)) - (Math.abs(b.x-px)+Math.abs(b.y-py));
+    });
+
+    arenas.forEach(function(a){
+        var alreadyHere = _playerPos && a.x===_playerPos.x && a.y===_playerPos.y;
+        if (!alreadyHere) _txQueue.push({type:'travel', x:a.x, y:a.y, planet:planet});
+        _txQueue.push({type:'arena', x:a.x, y:a.y, planet:planet, land_id:a.land_id});
+    });
+    renderTxQueue();
+}
+
+// Up to 3 fighters that out-level this arena's defender. Empty when the defender
+// is unknown — better to show nothing than to guess.
+async function _arunSuggest(arenaItem, pool) {
+    try {
+        var def = _arenaDefenderIds[arenaItem.planet+'.'+arenaItem.x+'.'+arenaItem.y];
+        if (!def || !def.fid) return [];
+        var d = _fighterCache[String(def.fid)];
+        if (!d) d = await fetchFighterData(def.fid, def.wallet);
+        var defLv = d && d.stats ? Number(d.stats.level||0) : 0;
+        if (!defLv) return [];
+        return pool.filter(function(f){ return Number((f.stats||{}).level||0) >= defLv; })
+                   .sort(function(a,b){ return ((b.stats||{}).level||0) - ((a.stats||{}).level||0); })
+                   .slice(0,3);
+    } catch(e) { return []; }
+}
+
+// choose-mode: pause the run, open the slot picker, resolve when the user picks
+function _arunAwaitChoice(slotIdx, arenaItem, pool) {
+    return new Promise(function(resolve){
+        _arunPendingResolve = resolve;
+        _arunSuggest(arenaItem, pool).then(function(sugg){
+            _arunSuggestedIds = new Set(sugg.map(function(f){ return String(f.fighter_id); }));
+            var pl = document.getElementById('txq-prog-lbl');
+            if (pl) pl.textContent = '👤 Pick a replacement for slot ' + (slotIdx+1)
+                + (sugg.length ? ' — ' + sugg.length + ' suggested' : '');
+            if (typeof drunSelectFighter === 'function') drunSelectFighter(slotIdx);
+        });
+    });
+}
+
+// Called by the fighter picker when a run is waiting on a choice.
+// Returns true if it consumed the click.
+function _arunResolveChoice(fighter) {
+    if (!_arunPendingResolve) return false;
+    var r = _arunPendingResolve;
+    _arunPendingResolve = null;
+    _arunSuggestedIds = null;
+    r(fighter);
+    return true;
+}
+
 function drunPickerConfirm() {
     document.getElementById('drun-picker').classList.remove('open');
 
@@ -4249,9 +4465,10 @@ function drunPickerConfirm() {
         // Skip travel if already standing on this dungeon
         var alreadyHere = _playerPos && d.planet === _activePlanet
             && d.x === _playerPos.x && d.y === _playerPos.y;
-        if (!alreadyHere) _txQueue.push({type:'travel', x:d.x, y:d.y});
+        if (!alreadyHere) _txQueue.push({type:'travel', x:d.x, y:d.y, planet:d.planet});
         _txQueue.push({type:'dungeon', x:d.x, y:d.y, planet:d.planet, land_id:d.land_id,
-            name:'DUNGEON ('+d.x+', '+d.y+') — LVL '+_drunPickerDiff, difficulty:_drunPickerDiff});
+            name:_txqLocLabel('DUNGEON', d.planet, d.x, d.y)+' — LVL '+_drunPickerDiff,
+            difficulty:_drunPickerDiff});
         // Level-up step always follows each dungeon — checked at runtime against refreshed XP
         _txQueue.push({type:'levelup', name:'LEVEL UP (if ready)'});
     });
@@ -4293,6 +4510,13 @@ function txqCalcAP() {
     return total;
 }
 
+// "BUILDING, PLANET, x,y" — building name from lands.ale when known, else the type fallback
+function _txqLocLabel(fallbackType, planet, x, y) {
+    var pName = (PLANETS[planet] || {name: planet || ''}).name || '';
+    var bName = (typeof _landBuildingNames !== 'undefined' && _landBuildingNames[planet+'.'+x+'.'+y]) || fallbackType;
+    return String(bName).toUpperCase() + (pName ? ', ' + pName.toUpperCase() : '') + ', ' + x + ',' + y;
+}
+
 function renderTxQueue() {
     var list   = document.getElementById('txq-list');
     var apEl   = document.getElementById('txq-ap-total');
@@ -4313,7 +4537,7 @@ function renderTxQueue() {
             + '</div>';
     } else {
         var simX = _playerPos ? _playerPos.x : 0, simY = _playerPos ? _playerPos.y : 0;
-        var icons = { travel:'→', hire:'⊕', portal:'◈', 'travel+hire':'→⊕', levelup:'↑', dungeon:'⚔' };
+        var icons = { travel:'→', hire:'⊕', portal:'◈', 'travel+hire':'→⊕', levelup:'↑', dungeon:'⚔', arena:'🏟' };
         list.innerHTML = _txQueue.map(function(item, i){
             var ap = 0;
             if (item.type==='travel'||item.type==='travel+hire'||item.type==='portal') {
@@ -4323,12 +4547,14 @@ function renderTxQueue() {
             if (item.type==='travel+hire'||item.type==='hire') ap += _hireBaseCost||100;
             var _pFrom = item.planet && PLANETS[item.planet] ? PLANETS[item.planet].name.toUpperCase() : (item.planet||'').toUpperCase();
             var _pTo   = item.to    && PLANETS[item.to]    ? PLANETS[item.to].name.toUpperCase()    : (item.to||'?').toUpperCase();
-            var label = item.type==='travel'      ? 'TRAVEL  ('+item.x+', '+item.y+')'
+            var _lp = item.planet || _activePlanet;
+            var label = item.type==='travel'      ? 'TRAVEL → '+_txqLocLabel('CELL', _lp, item.x, item.y)
                       : item.type==='hire'        ? 'HIRE'
                       : item.type==='portal'      ? 'PORTAL  '+_pFrom+' → '+_pTo
                       : item.type==='levelup'     ? (item.name||'LEVEL UP')
-                      : item.type==='dungeon'     ? (item.name||'DUNGEON ('+item.x+', '+item.y+')')
-                      : (item.name || 'TRAVEL + HIRE  ('+item.x+', '+item.y+')');
+                      : item.type==='dungeon'     ? (item.name||_txqLocLabel('DUNGEON', _lp, item.x, item.y))
+                      : item.type==='arena'       ? (item.name||_txqLocLabel('ARENA', _lp, item.x, item.y))
+                      : (item.name || _txqLocLabel('TAVERN', _lp, item.x, item.y));
             return '<div class="txq-item" id="txq-item-'+i+'">'
                 + '<span class="txq-item-icon">' + (icons[item.type]||'→') + '</span>'
                 + '<span class="txq-item-label">' + label + '</span>'
@@ -4447,6 +4673,8 @@ async function runTxQueue() {
                     plan.push({ label: item.name||'LEVEL UP', qIdx: i, isLevelUp: true, levelupItem: item, actions: null });
                 } else if (item.type === 'dungeon') {
                     plan.push({ label: item.name||'DUNGEON ('+item.x+','+item.y+')', qIdx: i, isDungeon: true, dungeonItem: item, actions: null });
+                } else if (item.type === 'arena') {
+                    plan.push({ label: item.name||_txqLocLabel('ARENA', item.planet, item.x, item.y), qIdx: i, isArena: true, arenaItem: item, actions: null });
                 }
             }
         }
@@ -4490,6 +4718,9 @@ async function runTxQueue() {
             } else if (item.type === 'dungeon') {
                 plan.push({ label: item.name||'DUNGEON ('+item.x+','+item.y+')', qIdx: i, isDungeon: true, dungeonItem: item, actions: null });
                 i++;
+            } else if (item.type === 'arena') {
+                plan.push({ label: item.name||_txqLocLabel('ARENA', item.planet, item.x, item.y), qIdx: i, isArena: true, arenaItem: item, actions: null });
+                i++;
             } else { i++; }
         }
     } else {
@@ -4515,6 +4746,8 @@ async function runTxQueue() {
                 plan.push({ label: item.name||'LEVEL UP', qIdx: i, isLevelUp: true, levelupItem: item, actions: null });
             } else if (item.type === 'dungeon') {
                 plan.push({ label: item.name||'DUNGEON ('+item.x+','+item.y+')', qIdx: i, isDungeon: true, dungeonItem: item, actions: null });
+            } else if (item.type === 'arena') {
+                plan.push({ label: item.name||_txqLocLabel('ARENA', item.planet, item.x, item.y), qIdx: i, isArena: true, arenaItem: item, actions: null });
             }
         });
     }
@@ -4576,6 +4809,31 @@ async function runTxQueue() {
                        use_gems: false, history_id: _dHid } }];
         }
 
+        // Arena fight: same as a dungeon minus difficulty / use_gems
+        if (step.isArena) {
+            var av = step.arenaItem;
+            var afids = (_bpFighters||[]).filter(Boolean).map(function(f){ return Number(f.fighter_id); });
+            if (afids.length < 5) {
+                if (itemEl) {
+                    itemEl.style.background = 'rgba(255,68,68,0.06)';
+                    var albl = itemEl.querySelector('.txq-item-label');
+                    if (albl) { albl.style.color = '#ff6688'; albl.textContent += ' — need 5 fighters selected'; }
+                }
+                failed++;
+                continue;
+            }
+            var _aHid = genHistoryId();
+            step.arenaHistoryId = _aHid;
+            step.actions = [{ account:'arena.ale', name:'playarena',
+                authorization:[{actor:wallet,permission:'active'}],
+                data:{ wallet:wallet, planet:av.planet, land_id:av.land_id||'',
+                       x:Number(av.x), y:Number(av.y),
+                       fighter_ids: afids,
+                       crew_asset_id: _bpCrew   ? Number(_bpCrew.asset_id)   : 0,
+                       weapon_asset_id: _bpWeapon ? Number(_bpWeapon.asset_id) : 0,
+                       history_id: _aHid } }];
+        }
+
         // Lazy hire: compute actions just before TX using only NFTs not yet deployed this run
         if (step.isTravelAndHire) {
             var _avail = _allNFTs.filter(function(n){ return !_usedHireNFTs.has(n.asset_id); });
@@ -4612,7 +4870,7 @@ async function runTxQueue() {
                 var _dk = step.dungeonItem.planet + '.' + step.dungeonItem.land_id;
                 var _dResult = null;
                 if (progLbl) progLbl.textContent = 'Checking battle result…';
-                try { _dResult = await _checkDungeonResult(step.dungeonHistoryId); } catch(e) {}
+                try { _dResult = await _checkFightResult(step.dungeonHistoryId); } catch(e) {}
 
                 if (_dResult === 'loss') {
                     // First loss — retry once with new history_id
@@ -4631,7 +4889,7 @@ async function runTxQueue() {
                         else if (wax && wax.api) await wax.api.transact({actions: step.actions},{blocksBehind:3,expireSeconds:30});
                         if (progLbl) progLbl.textContent = 'Checking retry result…';
                         _dResult = null;
-                        try { _dResult = await _checkDungeonResult(_rHid); } catch(e) {}
+                        try { _dResult = await _checkFightResult(_rHid); } catch(e) {}
                     } catch(re) {
                         _dResult = 'error';
                     }
@@ -4656,6 +4914,90 @@ async function runTxQueue() {
                 try { await _refreshBpFighters(); } catch(e) {}
                 // Rebuild map so the dungeon cell shows as played (greyed/locked)
                 buildMap(step.dungeonItem.planet || _activePlanet);
+            }
+
+            // Arena fight: same win/loss handling, plus the fighter left behind on a win
+            if (step.isArena && step.arenaItem) {
+                var _aResult = null;
+                if (progLbl) progLbl.textContent = 'Checking arena result…';
+                try { _aResult = await _checkFightResult(step.arenaHistoryId); } catch(e) {}
+
+                if (_aResult === 'loss') {
+                    if (itemEl) {
+                        itemEl.style.background = 'rgba(255,160,40,0.08)';
+                        var _al = itemEl.querySelector('.txq-item-label');
+                        if (_al) _al.textContent += ' — LOSS · retrying…';
+                    }
+                    if (progLbl) progLbl.textContent = '⚠ Arena loss — retrying once…';
+                    await new Promise(function(r){ setTimeout(r, 1500); });
+                    try {
+                        var _arHid = genHistoryId();
+                        step.actions[0].data.history_id = _arHid;
+                        step.arenaHistoryId = _arHid;
+                        if (window.walletSession) await window.walletSession.transact({actions: step.actions});
+                        else if (wax && wax.api) await wax.api.transact({actions: step.actions},{blocksBehind:3,expireSeconds:30});
+                        if (progLbl) progLbl.textContent = 'Checking retry result…';
+                        _aResult = null;
+                        try { _aResult = await _checkFightResult(_arHid); } catch(e) {}
+                    } catch(re) { _aResult = 'error'; }
+                }
+
+                if (_aResult === 'loss' || _aResult === 'error') {
+                    if (itemEl) {
+                        itemEl.style.background = 'rgba(255,68,68,0.06)';
+                        var _al2 = itemEl.querySelector('.txq-item-label');
+                        if (_al2) { _al2.style.color = '#ff6644'; _al2.textContent = (_al2.textContent||'') + ' — LOSS ×2 · queue paused'; }
+                    }
+                    if (progLbl) progLbl.textContent = '⚠ Arena lost twice — check your team and retry.';
+                    _txQueueAbort = true;
+                    failed++;
+                    continue;
+                }
+
+                // Win — the contract parks one of our five here as the defender.
+                // Find which slot went in_use and refill it before the next arena.
+                try { await _refreshBpFighters(); } catch(e) {}
+                try { await fetchArenaLock(wallet); } catch(e) {}
+
+                var lostIdx = -1;
+                for (var _li = 0; _li < _bpFighters.length; _li++) {
+                    var _lf = _bpFighters[_li];
+                    if (_lf && (_lf.in_use === 1 || _lf.in_use === '1')) { lostIdx = _li; break; }
+                }
+                if (lostIdx >= 0) {
+                    var taken = _bpFighters[lostIdx];
+                    var takenName = (taken.classname || 'Fighter').toUpperCase();
+                    if (itemEl) {
+                        var _wl = itemEl.querySelector('.txq-item-label');
+                        if (_wl) { _wl.style.color = '#60e090'; _wl.textContent += ' — WON · ' + takenName + ' left behind'; }
+                    }
+                    var inTeam = _bpFighters.filter(Boolean).map(function(f){ return String(f.fighter_id); });
+                    var pool = (_myFighters||[]).filter(function(f){
+                        return !(f.in_use === 1 || f.in_use === '1')
+                            && inTeam.indexOf(String(f.fighter_id)) === -1;
+                    });
+
+                    if (!pool.length) {
+                        if (progLbl) progLbl.textContent = '⚠ No fighters left to refill slot ' + (lostIdx+1) + ' — queue paused.';
+                        _txQueueAbort = true;
+                        succeeded++;
+                        continue;
+                    }
+
+                    if (_arunRefillMode === 'choose') {
+                        var picked = await _arunAwaitChoice(lostIdx, step.arenaItem, pool);
+                        if (_txQueueAbort) { succeeded++; continue; }
+                        _bpFighters[lostIdx] = picked || pool[0];
+                    } else {
+                        pool.sort(function(a,b){ return ((b.stats||{}).level||0) - ((a.stats||{}).level||0); });
+                        _bpFighters[lostIdx] = pool[0];
+                        if (progLbl) progLbl.textContent = '🏟 ' + takenName + ' left behind — slot '
+                            + (lostIdx+1) + ' refilled with LV'
+                            + (((pool[0].stats)||{}).level || '?');
+                    }
+                    _refreshDrunTeam();
+                }
+                buildMap(step.arenaItem.planet || _activePlanet);
             }
 
             // Track used tavern
@@ -4821,6 +5163,12 @@ async function txqRetryStep(step, wallet, allNFTs, retryBtn) {
             step.actions = [{ account:'players.ale', name:'hire',
                 authorization:[{actor:wallet,permission:'active'}], data: hd }];
         }
+    }
+    // Battle steps need a fresh history_id, or the result check matches the previous fight
+    if ((step.isDungeon || step.isArena) && step.actions && step.actions[0] && step.actions[0].data) {
+        var _nHid = genHistoryId();
+        step.actions[0].data.history_id = _nHid;
+        if (step.isArena) step.arenaHistoryId = _nHid; else step.dungeonHistoryId = _nHid;
     }
     try {
         if (window.walletSession) await window.walletSession.transact({actions: step.actions});
