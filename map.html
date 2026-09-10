@@ -1135,7 +1135,9 @@
     }
 
     var _playerLockedArenas=new Set();   // "planet.x.y" arenas where player's fighter is defending
-    var _arenaDefenderIds={};            // planet.x.y -> {fid, wallet} for all live arenas
+    // planet.x.y -> {team[], count, last_fight, fid, wallet, lead} for all live arenas.
+    // fid/wallet describe the strongest defender so existing single-defender UI keeps working.
+    var _arenaDefenderIds={};
     var _landBuildingNames={};           // "planet.x.y" -> building display name from lands.ale
     var _fighterCache={};               // assetId -> fighter row cache
     var _myFighters=[];                  // loaded from fighters.ale for logged-in wallet
@@ -1173,25 +1175,47 @@
         if(tv)onCell(_playerPos.x,_playerPos.y);
     }
 
+    // arena.ale::livearena is scoped PER PLANET — scope 'arena.ale' returns nothing.
+    // A row is { planet, land_id, fighters[], last_fight, template_ids[] }: there is no
+    // row-level defender/owner/x/y. Each arena is held by a TEAM, and its fighters can
+    // belong to several different wallets, so "I defend this" means any fighter in the
+    // team is mine. fighter_id 99999999999 is the NFT weapon slot, not a real fighter.
     async function fetchArenaLock(wallet){
         if(!wallet)return;
-        try{
-            var res=await fetchRows({code:'arena.ale',scope:'arena.ale',table:'livearena',limit:1000,json:true});
-            if(!res||!res.rows)return;
-            _playerLockedArenas=new Set();
-            res.rows.forEach(function(row){
-                var def=row.defender||row.defender_wallet||row.owner||'';
-                var planet=row.planet?normalizePlanet(row.planet):null;
-                var x=row.x,y=row.y;
-                if((!x||!y)&&row.land_id){var c=decodeLandId(row.land_id);if(c){x=c.x;y=c.y;}}
-                if(!planet||!x||!y)return;
-                var arKey=planet+'.'+x+'.'+y;
-                var fid=row.fighter_id||row.fighter||row.defender_fighter||row.defender_id||row.asset_id||null;
-                _arenaDefenderIds[arKey]={fid:fid,wallet:def};
-                if(def===wallet)_playerLockedArenas.add(arKey);
-            });
-            if(_playerLockedArenas.size>0)_refreshAllMaps();
-        }catch(e){}
+        var planets=['magor','naron','eyeke','kavian','neri','veles'];
+        var locked=new Set(), defenders={};
+        for(var pi=0;pi<planets.length;pi++){
+            var p=planets[pi];
+            try{
+                var res=await fetchRows({code:'arena.ale',scope:p,table:'livearena',limit:200,json:true});
+                if(!res||!res.rows)continue;
+                res.rows.forEach(function(row){
+                    var planet=normalizePlanet(row.planet)||p;
+                    var c=decodeLandId(row.land_id);
+                    if(!planet||!c)return;
+                    var arKey=planet+'.'+c.x+'.'+c.y;
+                    var team=(row.fighters||[]).filter(function(f){
+                        return String(f.fighter_id)!=='99999999999';
+                    });
+                    // strongest defender fronts the summary badge
+                    var lead=team.slice().sort(function(a,b){
+                        return ((b.level||0)-(a.level||0))||((b.max_health||0)-(a.max_health||0));
+                    })[0]||null;
+                    defenders[arKey]={
+                        team:team,
+                        count:team.length,
+                        last_fight:row.last_fight||null,
+                        fid:lead?lead.fighter_id:null,
+                        wallet:lead?(lead.owner||''):'',
+                        lead:lead
+                    };
+                    if(team.some(function(f){return f.owner===wallet;})) locked.add(arKey);
+                });
+            }catch(e){}
+        }
+        _playerLockedArenas=locked;
+        _arenaDefenderIds=defenders;
+        _refreshAllMaps();
     }
 
     async function fetchAllDungeons() {
@@ -1898,47 +1922,29 @@
             var isArenaLocked=_playerLockedArenas.has(_activePlanet+'.'+x+'.'+y);
             var _arKey=_activePlanet+'.'+x+'.'+y;
             var _defEntry=_arenaDefenderIds[_arKey]||null;
+            // livearena carries the full defending team inline, so render straight from
+            // it — no per-fighter lookup needed.
             var _defBadge='';
-            if(_defEntry&&_defEntry.fid){
-                var _fid=String(_defEntry.fid);
-                var _fwal=_defEntry.wallet||'';
-                var _cached=_fighterCache[_fid];
-                var _badgeId='arena-def-'+x+'-'+y;
-                if(_cached){
-                    var _cls=(_cached.class||_cached.fighter_class||'').toLowerCase().replace(/[\s_-]/g,'');
-                    var _ci=FIGHTER_CLASSES[_cls]||{e:'⚔️',n:_cached.class||'Fighter'};
-                    var _el=(_cached.element||_cached.fighter_element||'').toLowerCase();
-                    var _ee=FIGHTER_ELEMENTS[_el]||'';
-                    var _rc=_cached.race||_cached.fighter_race||'';
-                    _defBadge='<span class="ale-fighter-badge"'
-                        +' data-fid="'+_fid+'"'
-                        +' data-fwal="'+_fwal+'"'
-                        +' onmouseenter="fetchAndShowStatPane(this.dataset.fid,this.dataset.fwal,event)"'
-                        +' onmousemove="_moveStatPane(event)" onmouseleave="hideStatPane()">'
-                        +_ci.e+' '+_ci.n+(_ee?' '+_ee:'')+(_rc?' · '+_rc:'')+'</span>';
-                } else {
-                    _defBadge='<span class="ale-fighter-badge"'
-                        +' id="'+_badgeId+'"'
-                        +' data-fid="'+_fid+'"'
-                        +' data-fwal="'+_fwal+'"'
-                        +' onmouseenter="fetchAndShowStatPane(this.dataset.fid,this.dataset.fwal,event)"'
-                        +' onmousemove="_moveStatPane(event)" onmouseleave="hideStatPane()">⚔️ DEFENDER</span>';
-                    fetchFighterData(_fid,_fwal).then(function(d){
-                        if(!d)return;
-                        var b=document.getElementById(''+_badgeId);
-                        if(!b)return;
-                        var cls2=(d.class||d.fighter_class||'').toLowerCase().replace(/[\s_-]/g,'');
-                        var ci2=FIGHTER_CLASSES[cls2]||{e:'⚔️',n:d.class||'Fighter'};
-                        var el2=(d.element||d.fighter_element||'').toLowerCase();
-                        var ee2=FIGHTER_ELEMENTS[el2]||'';
-                        var rc2=d.race||d.fighter_race||'';
-                        b.textContent=ci2.e+' '+ci2.n+(ee2?' '+ee2:'')+(rc2?' · '+rc2:'');
-                    });
-                }
+            if(_defEntry&&_defEntry.team&&_defEntry.team.length){
+                var _myWal=getWallet();
+                _defBadge=_defEntry.team.slice()
+                    .sort(function(a,b){return (b.level||0)-(a.level||0);})
+                    .map(function(f){
+                        var _c=(f.classname||'').toLowerCase().replace(/[\s_-]/g,'');
+                        var _ci=FIGHTER_CLASSES[_c]||{e:'⚔️',n:f.classname||'Fighter'};
+                        var _ee=FIGHTER_ELEMENTS[(f.element||'').toLowerCase()]||'';
+                        var _own=f.owner===_myWal;
+                        return '<span class="ale-fighter-badge" style="'
+                            +(_own?'border-color:rgba(112,184,255,0.6);color:#70b8ff;':'')+'" title="'
+                            +(f.gamertag||f.owner||'')+' — LV'+(f.level||'?')+', '+(f.max_health||0)+' HP">'
+                            +_ci.e+' LV'+(f.level||'?')+(_ee?' '+_ee:'')+(_own?' ★':'')+'</span>';
+                    }).join(' ');
             }
             // Arenas use the centred enter card instead of the side panel
             var _arInfo='';
-            if(_defBadge) _arInfo+='DEFENDED BY<br>'+_defBadge;
+            if(_defBadge){
+                _arInfo+='DEFENDED BY '+_defEntry.count+' FIGHTER'+(_defEntry.count===1?'':'S')+'<br>'+_defBadge;
+            }
             if(isArenaLocked) _arInfo+='<br><span style="color:#70b8ff;">🛡 Your fighter is defending this arena</span>';
             openEnterCard({
                 kind:'arena', x:x, y:y, planet:_activePlanet,
@@ -4667,13 +4673,13 @@ function arunPickerConfirm() {
 
 // Up to 3 fighters that out-level this arena's defender. Empty when the defender
 // is unknown — better to show nothing than to guess.
+// livearena gives the whole defending team inline, so match against the team's
+// strongest member rather than a single defender.
 async function _arunSuggest(arenaItem, pool) {
     try {
         var def = _arenaDefenderIds[arenaItem.planet+'.'+arenaItem.x+'.'+arenaItem.y];
-        if (!def || !def.fid) return [];
-        var d = _fighterCache[String(def.fid)];
-        if (!d) d = await fetchFighterData(def.fid, def.wallet);
-        var defLv = d && d.stats ? Number(d.stats.level||0) : 0;
+        if (!def || !def.team || !def.team.length) return [];
+        var defLv = def.team.reduce(function(mx,f){ return Math.max(mx, Number(f.level||0)); }, 0);
         if (!defLv) return [];
         return pool.filter(function(f){ return Number((f.stats||{}).level||0) >= defLv; })
                    .sort(function(a,b){ return ((b.stats||{}).level||0) - ((a.stats||{}).level||0); })
