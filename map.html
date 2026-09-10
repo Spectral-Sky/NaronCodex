@@ -952,6 +952,15 @@
         return {x:cx,y:cy};
     }
 
+    // Inverse of decodeLandId — digits map a=0..j=9, halves joined by 'x'. (25,12) -> "cfxbc"
+    function encodeLandId(x,y) {
+        var enc=function(n){
+            return String(n).split('').map(function(d){ return String.fromCharCode(97+Number(d)); }).join('');
+        };
+        if (!x||!y) return '';
+        return enc(x)+'x'+enc(y);
+    }
+
     function _addDungeonCoord(planet,x,y,owner,land_id,boost) {
         if (!planet||!x||!y||!ALE_LOCATIONS[planet]) return false;
         var dup=ALE_LOCATIONS[planet].dungeons.some(function(d){return d.x===x&&d.y===y;});
@@ -4824,9 +4833,11 @@ async function runTxQueue() {
             }
             var _aHid = genHistoryId();
             step.arenaHistoryId = _aHid;
+            // lands.ale rows don't always carry land_id — derive it from the coords when missing
+            var _aLand = av.land_id || encodeLandId(Number(av.x), Number(av.y));
             step.actions = [{ account:'arena.ale', name:'playarena',
                 authorization:[{actor:wallet,permission:'active'}],
-                data:{ wallet:wallet, planet:av.planet, land_id:av.land_id||'',
+                data:{ wallet:wallet, planet:av.planet, land_id:_aLand,
                        x:Number(av.x), y:Number(av.y),
                        fighter_ids: afids,
                        crew_asset_id: _bpCrew   ? Number(_bpCrew.asset_id)   : 0,
