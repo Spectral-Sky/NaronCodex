@@ -479,6 +479,8 @@
         .txq-fs-loss { color:#ff6644; font-weight:bold; }
         .txq-fs-stats { color:#6a7a8a; }
         .txq-fs-stats b { color:#c0a060; font-weight:normal; }
+        .txq-fs-reward { color:#60c890; }
+        .txq-fs-reward b { color:#80e0a8; font-weight:normal; }
         .txq-fs-team { display:flex; gap:5px; flex-wrap:wrap; margin-top:2px; }
         .txq-fs-f { padding:0 4px; border:1px solid rgba(96,200,255,0.14); border-radius:4px; color:#8898a8; white-space:nowrap; }
         .txq-fs-f.fell { border-color:rgba(255,80,80,0.3); color:#a05858; text-decoration:line-through; opacity:0.75; }
@@ -4594,6 +4596,19 @@ function _buildFightSummary(row, label) {
 
     var survived = mine.filter(function(f){ return Number((f.battlestats||{}).survived||0); }).length;
 
+    // Mining power earned — only present on a win (pools: tlmdung/shrddung, tlmarena/shrdarena)
+    var rwByType = {};
+    (row.reward_power_added || []).forEach(function(p){
+        var t = (p.type || p.pool || '').toLowerCase();
+        rwByType[t] = (rwByType[t] || 0) + Number(p.power || 0);
+    });
+    var rwKeys = Object.keys(rwByType).filter(function(k){ return rwByType[k] > 0; });
+    var rwLine = rwKeys.length
+        ? '<div class="txq-fs-reward">⛏ ' + rwKeys.map(function(k){
+              return '+<b>' + rwByType[k] + '</b> ' + k.toUpperCase();
+          }).join(' · ') + ' mining power</div>'
+        : '';
+
     return '<div class="txq-fight-sum">'
         + '<div class="txq-fs-head">' + (label ? label + ' — ' : '')
         +   '<span class="' + (won?'txq-fs-win':'txq-fs-loss') + '">' + (won?'WON':'LOST') + '</span>'
@@ -4603,6 +4618,7 @@ function _buildFightSummary(row, label) {
         +   '⚔ dealt <b>'+tot.dealt+'</b> · 💔 taken <b>'+tot.taken+'</b> · 🛡 blocked <b>'+tot.blocked+'</b>'
         +   ' · 💀 <b>'+tot.kos+'</b> KO' + (tot.kos===1?'':'s') + ' · '+tot.atk+' attacks'
         + '</div>'
+        + rwLine
         + '<div class="txq-fs-team">' + chips + '</div>'
         + '</div>';
 }
