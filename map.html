@@ -1123,6 +1123,17 @@
             else localStorage.removeItem('naron_used_taverns');
         }catch(e){}
     })();
+    // players.ale stores played_dungeons as a COMMA-SEPARATED STRING, not an array:
+    //   "neri.cjxh,neri.bgxba,magor.bhxj,..."
+    // new Set(thatString) iterates characters, yielding {"n","e","r","i",".",...} —
+    // so every has("neri.bgxba") lookup fails and nothing ever shows as locked.
+    // Tolerates an array too, in case the ABI ever changes.
+    function _parsePlayedDungeons(v) {
+        if (!v) return [];
+        if (Array.isArray(v)) return v.map(String).filter(Boolean);
+        return String(v).split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    }
+
     var _playerLockedArenas=new Set();   // "planet.x.y" arenas where player's fighter is defending
     var _arenaDefenderIds={};            // planet.x.y -> {fid, wallet} for all live arenas
     var _landBuildingNames={};           // "planet.x.y" -> building display name from lands.ale
@@ -1139,7 +1150,7 @@
             var res=await fetchRows({code:'players.ale',scope:'players.ale',table:'players',lower_bound:wallet,upper_bound:wallet,limit:1,json:true});
             if(!res||!res.rows||!res.rows[0]||res.rows[0].wallet!==wallet)return;
             // Dungeons beaten today
-            _playerPlayedDungeons=new Set(res.rows[0].played_dungeons||[]);
+            _playerPlayedDungeons=new Set(_parsePlayedDungeons(res.rows[0].played_dungeons));
             // Build new tavern list atomically to avoid a gap where onCell sees empty taverns
             var newTaverns={};
             Object.keys(ALE_LOCATIONS).forEach(function(p){newTaverns[p]=[];});
@@ -1556,7 +1567,7 @@
                 _playerPos={planet:playerPlanet,x:row.x||1,y:row.y||1};
                 _playerAP=parseAP(row.activestats&&row.activestats.action_points);
                 // Pre-load taverns so they're ready when the map builds
-                _playerPlayedDungeons=new Set(row.played_dungeons||[]);
+                _playerPlayedDungeons=new Set(_parsePlayedDungeons(row.played_dungeons));
                 Object.keys(ALE_LOCATIONS).forEach(function(p){ALE_LOCATIONS[p].taverns=[];});
                 (row.active_taverns||[]).forEach(function(t){
                     var planet=normalizePlanet(t.planet);
@@ -2628,7 +2639,7 @@
                     _playerPos={planet:pn,x:row.x||1,y:row.y||1};
                     _playerAP=parseAP(row.activestats&&row.activestats.action_points);
                     // Refresh dungeons beaten today
-                    _playerPlayedDungeons=new Set(row.played_dungeons||[]);
+                    _playerPlayedDungeons=new Set(_parsePlayedDungeons(row.played_dungeons));
                     // Refresh active taverns across all planets
                     var newTaverns={};
                     Object.keys(ALE_LOCATIONS).forEach(function(p){newTaverns[p]=[];});
@@ -4475,7 +4486,7 @@ async function txqAddDungeonRun() {
         var _pdRes = await fetchRows({code:'players.ale', scope:'players.ale', table:'players',
             lower_bound:wallet, upper_bound:wallet, limit:1, json:true});
         if (_pdRes && _pdRes.rows && _pdRes.rows[0]) {
-            _playerPlayedDungeons = new Set(_pdRes.rows[0].played_dungeons || []);
+            _playerPlayedDungeons = new Set(_parsePlayedDungeons(_pdRes.rows[0].played_dungeons));
         }
     } catch(e) {}
 

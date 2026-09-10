@@ -823,7 +823,15 @@
 
     // Called if chain table had no data — reads from player row's played_dungeons
     function populateDungeonsFromPlayer(playedDungeons) {
-        if (!playedDungeons || !playedDungeons.length) return;
+        if (!playedDungeons) return;
+        // players.ale stores this as a comma-separated string, not an array —
+        // calling .forEach on it directly throws.
+        if (typeof playedDungeons === 'string') {
+            playedDungeons = playedDungeons.split(',')
+                .map(function(s){ return s.trim(); })
+                .filter(Boolean);
+        }
+        if (!playedDungeons.length) return;
         var added = 0;
         playedDungeons.forEach(function(entry) {
             var planet = null, landId = null;
