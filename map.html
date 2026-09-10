@@ -583,6 +583,9 @@
         .txq-fs-team { display:flex; gap:5px; flex-wrap:wrap; margin-top:2px; }
         .txq-fs-f { padding:0 4px; border:1px solid rgba(96,200,255,0.14); border-radius:4px; color:#8898a8; white-space:nowrap; }
         .txq-fs-f.fell { border-color:rgba(255,80,80,0.3); color:#a05858; text-decoration:line-through; opacity:0.75; }
+        /* same summary, reused inside the battle pane after a single fight */
+        #bp-result { display:none; margin:0 10px 8px; border:1px solid rgba(96,200,255,0.14); border-radius:7px; overflow:hidden; }
+        #bp-result .txq-fight-sum { padding:7px 10px 8px; border-bottom:none; }
         .txq-item-retry { background:transparent; border:1px solid rgba(255,120,80,0.35); color:#c06040;
             font-size:0.72em; cursor:pointer; padding:1px 5px; line-height:1.3; border-radius:6px;
             transition:all 0.15s; flex-shrink:0; }
@@ -3800,21 +3803,24 @@
             var weapId=Number(_bpWeapon.asset_id);
             var authz=[{actor:wallet,permission:'active'}];
 
-            var action;
+            var _hid=genHistoryId();
+            var action, _lbl;
             if(_bpMode==='dungeon'){
                 var de=_bpDungeonEntry;
+                _lbl='DUNGEON '+(de.x)+','+(de.y);
                 action={account:'dungeons.ale',name:'playdungeon',authorization:authz,
                     data:{wallet:wallet,planet:de.planet||_activePlanet,land_id:de.land_id||'',
                         x:Number(de.x),y:Number(de.y),difficulty:_bpDifficulty,
                         fighter_ids:fighterIds,crew_asset_id:crewId,weapon_asset_id:weapId,
-                        use_gems:false,history_id:genHistoryId()}};
+                        use_gems:false,history_id:_hid}};
             } else {
                 var ae=_bpArenaEntry;
+                _lbl='ARENA '+(ae.x)+','+(ae.y);
                 action={account:'arena.ale',name:'playarena',authorization:authz,
                     data:{wallet:wallet,planet:ae.planet||_activePlanet,land_id:ae.land_id||'',
                         x:Number(ae.x),y:Number(ae.y),
                         fighter_ids:fighterIds,crew_asset_id:crewId,weapon_asset_id:weapId,
-                        history_id:genHistoryId()}};
+                        history_id:_hid}};
             }
 
             await _signTx([action]);
@@ -3823,9 +3829,22 @@
             var lsKey=_bpMode==='dungeon'?'naron_dg_fighters':'naron_ar_fighters';
             try{localStorage.setItem(lsKey,JSON.stringify(fighterIds));}catch(e){}
 
-            _bpSetStatus('✓ SUCCESS','ok');
             if(btn){btn.disabled=false;btn.textContent='FIGHT ▶';}
-            setTimeout(function(){closeBattlePane();},2500);
+
+            // The TX landing only means the fight was accepted — read battle.ale::fights
+            // to find out whether it was actually won, and show the same summary the
+            // queue does. Without this a single fight gave no result at all.
+            if(typeof _skipFights!=='undefined'&&_skipFights){
+                _bpSetStatus('✓ SENT','ok');
+                setTimeout(function(){closeBattlePane();},2000);
+            } else {
+                _bpSetStatus('⏳ RESOLVING FIGHT…','');
+                var _res=null;
+                try{ _res=await _checkFightResult(_hid); }catch(e){}
+                _bpSetStatus(_res==='win'?'✓ VICTORY':_res==='loss'?'✗ DEFEAT':'✓ SENT — result pending',
+                             _res==='loss'?'err':'ok');
+                _bpShowResult(_lastFightRow,_lbl);
+            }
 
             // reload fighters to update in_use status
             setTimeout(function(){
@@ -3836,10 +3855,26 @@
                     renderMarkedPanel();
                 }).catch(function(){});
             },3000);
+            // arena win parks a fighter — refresh locks so the map badge updates
+            if(_bpMode==='arena'){ setTimeout(function(){ var w=getWallet(); if(w) fetchArenaLock(w); },3500); }
         }catch(e){
             _bpSetStatus('✗ '+((e&&e.message)||'Failed').substring(0,70),'err');
             if(btn){btn.disabled=false;btn.textContent='FIGHT ▶';}
         }
+    }
+
+    // Render the queue's fight summary inside the battle pane after a single fight.
+    // _buildFightSummary lives in the queue script — guarded in case it isn't loaded.
+    function _bpShowResult(row,label){
+        var el=document.getElementById('bp-result');
+        if(!el) return;
+        if(!row||typeof _buildFightSummary!=='function'){ el.innerHTML=''; el.style.display='none'; return; }
+        el.innerHTML=_buildFightSummary(row,label);
+        el.style.display='';
+    }
+    function _bpClearResult(){
+        var el=document.getElementById('bp-result');
+        if(el){ el.innerHTML=''; el.style.display='none'; }
     }
 
     function _bpSetStatus(msg,cls){
@@ -3889,6 +3924,8 @@
     function closeBattlePane() {
         var ov=document.getElementById('battle-overlay');
         if(ov) ov.classList.remove('open');
+        _bpClearResult();   // don't leave the last fight's result on the next open
+        _bpSetStatus('','');
         closePicker();
     }
 
@@ -3968,6 +4005,7 @@
         <div id="bp-defender-info">Loading…</div>
       </div>
     </div>
+    <div id="bp-result"></div>
     <div id="bp-footer">
       <button id="bp-lvup-btn" class="bp-btn lvup" onclick="_levelUpReady()">LV↑ READY</button>
       <span id="bp-status"></span>
