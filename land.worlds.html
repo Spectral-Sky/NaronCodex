@@ -940,6 +940,26 @@ const priceCache     = new Map();  // template_id → { floor, last, sugg }
 const listingCache   = new Map();  // template_id → Set of listed asset_ids
 const currentSubImg  = {};         // template_id → ipfs hash (for sub-row clicks)
 
+// ─── IPFS IMAGES ──────────────────────────────────────────────────────────────
+// Loading ipfs.io directly gave ERR_BLOCKED_BY_RESPONSE.NotSameOrigin — it serves
+// a restrictive Cross-Origin-Resource-Policy. The AtomicHub resizer sets
+// `cross-origin-resource-policy: cross-origin` and returns webp, so it embeds cleanly.
+// Two gotchas, both verified against the live endpoint:
+//   1. the size param is REQUIRED — omitting it returns 500
+//   2. only these exact sizes work; any other value (100, 300, 560…) returns 500
+const IPFS_SIZES = [64, 128, 256, 370, 512];
+function ipfsImg(hash, size) {
+    const want = Number(size) || 370;
+    const s = IPFS_SIZES.find(v => v >= want) || 512;   // snap up to a supported size
+    return 'https://resizer.atomichub.io/images/v1/preview?ipfs=' + hash + '&size=' + s;
+}
+// Pinata serves the original file and is the fallback if the resizer misses.
+function ipfsFallback(el, hash) {
+    if (!el || el.dataset.ipfsFb) return;   // guard against a fallback loop
+    el.dataset.ipfsFb = '1';
+    el.src = 'https://gateway.pinata.cloud/ipfs/' + hash;
+}
+
 // ─── MARKET DECK CONFIG ───────────────────────────────────────────────────────
 const SALES_BASE    = 'https://wax.api.atomicassets.io/atomicmarket/v1/sales/templates';
 const HISTORY_BASE  = 'https://wax.api.atomicassets.io/atomicmarket/v2/sales';
@@ -1027,7 +1047,8 @@ function showPreview(imgHash, labelText, subLabel) {
     const name  = document.getElementById('label-name');
     const idlbl = document.getElementById('label-id');
     if (imgHash) {
-        img.src = `https://ipfs.io/ipfs/${imgHash}`;
+        img.src = ipfsImg(imgHash, 560);
+        img.onerror = function(){ ipfsFallback(img, imgHash); };
         img.style.display = 'block'; stat.style.display = 'none';
     } else {
         img.style.display = 'none'; stat.style.display = 'block'; stat.textContent = 'NO IMAGE';
@@ -1388,7 +1409,7 @@ function renderAssetTable() {
                 : `<span style="color:#333">—</span>`;
         return `<tr class="tpl-row" style="cursor:pointer" onclick="onAssetRowClick('${a.asset_id}','${a.img}','${a.owner.replace(/'/g,"\\'")}','${a.tpl_id}')">
             <td style="text-align:center;color:#446;font-size:0.8em!important">${a.asset_id}</td>
-            <td style="text-align:center;padding:4px!important">${a.img ? `<img src="https://ipfs.io/ipfs/${a.img}" style="height:52px;width:auto;max-width:58px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
+            <td style="text-align:center;padding:4px!important">${a.img ? `<img src="${ipfsImg(a.img, 128)}" onerror="ipfsFallback(this,'${a.img}')" style="height:52px;width:auto;max-width:58px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
             <td style="text-align:center;font-weight:bold;text-transform:uppercase">${a.planet}</td>
             <td style="text-align:center">${a.type || '—'}</td>
             <td class="tag-${rar(a.rarity)}">${a.rarity || '—'}</td>
@@ -1512,7 +1533,7 @@ function renderTemplateTable() {
         <tr class="tpl-row" style="cursor:pointer" onclick="onTplRowClick(event,'${t.template_id}','${t.img}','${(t.type+' on '+t.planet).replace(/'/g,"\\'")}')">
             <td style="text-align:center;padding:4px!important" onclick="event.stopPropagation()"><button class="expand-btn" onclick="toggleExpand('${t.template_id}',this)">▶</button></td>
             <td style="color:#557;font-size:0.8em!important">${t.template_id}</td>
-            <td style="text-align:center;padding:4px!important">${t.img ? `<img src="https://ipfs.io/ipfs/${t.img}" style="height:56px;width:auto;max-width:64px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
+            <td style="text-align:center;padding:4px!important">${t.img ? `<img src="${ipfsImg(t.img, 128)}" onerror="ipfsFallback(this,'${t.img}')" style="height:56px;width:auto;max-width:64px;object-fit:contain;border:1px solid #1a3320;" loading="lazy">` : '—'}</td>
             <td style="text-align:center;font-weight:bold;text-transform:uppercase;letter-spacing:1px">${t.planet}</td>
             <td style="text-align:center">${t.type || '—'}</td>
             <td class="tag-${rar(t.rarity)}">${t.rarity || '—'}</td>
