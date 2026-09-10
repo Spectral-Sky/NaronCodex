@@ -193,6 +193,12 @@
         .ale-player-dot { position:absolute; bottom:3px; right:3px; width:7px; height:7px; border-radius:50%; background:#60c8ff; box-shadow:0 0 4px #60c8ff99; z-index:3; cursor:help; pointer-events:all; border:1.5px solid rgba(0,0,0,0.8); }
         .ale-player-dot.multi { background:#9060d0; box-shadow:0 0 5px #9060d099; }
         .ale-grid-on .ale-cell { border-color:rgba(0,0,0,0.55) !important; }
+        /* completed dungeon / held arena — base icon stays, dimmed under a corner badge */
+        .cell-lock-veil { position:absolute; inset:0; background:rgba(0,0,0,0.55); pointer-events:none; z-index:3; }
+        .cell-lock-badge { position:absolute; top:0; right:1px; font-size:10px; font-weight:bold;
+            line-height:1.1; pointer-events:none; z-index:4; text-shadow:0 0 3px #000,0 0 2px #000; }
+        .cell-lock-badge.done { color:#60e090; }
+        .cell-lock-badge.held { color:#70b8ff; }
         .ale-grid-on .ale-cell:hover { border-color:rgba(232,160,32,0.5) !important; }
         .ale-grid-on .ale-cell.selected { border-color:var(--gold) !important; }
         #grid-toggle { padding:3px 8px; font-size:0.68em; letter-spacing:1px; background:transparent; border:1px solid #2a3040; color:#445; cursor:pointer; transition:all 0.2s; text-transform:uppercase; }
@@ -238,8 +244,7 @@
         .fsp-stat-var { color:#504050; }
         .fsp-target { font-size:0.88em; color:#605060; margin-top:5px; padding-top:4px; border-top:1px solid rgba(192,96,96,0.15); }
         .ale-fighter-badge { cursor:help; display:inline-flex; align-items:center; gap:4px; padding:3px 7px; background:rgba(192,96,96,0.07); border:1px solid rgba(192,96,96,0.22); border-radius:3px; font-size:0.7em; color:#c08080; margin-top:4px; letter-spacing:0.5px; }
-        #fighters-btn { display:inline-block; padding:4px 8px; font-size:0.58em; letter-spacing:1px; background:transparent; border:1px dashed #334; color:#b06060; cursor:crosshair; transition:all 0.2s; text-align:center; text-transform:uppercase; flex-shrink:0; border-radius:6px; }
-        #fighters-btn:hover { border-color:#c06060; color:#e09080; background:rgba(192,96,96,0.06); border-style:solid; }
+        #fighters-btn { color:#d09090; }
         #fighters-overlay { position:fixed; inset:0; z-index:650; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.78); }
         #fighters-overlay.open { display:flex; }
         #fighters-panel { width:min(660px,95vw); max-height:88vh; background:rgba(3,6,15,0.99); border:1px solid rgba(192,96,96,0.28); border-radius:4px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.9); }
@@ -291,11 +296,20 @@
         .map-legend {
             background:rgba(0,0,0,0.6);
             border-top:1px solid rgba(232,160,32,0.1);
-            display:flex; flex-direction:row; align-items:center;
-            flex-shrink:0; overflow-x:auto; overflow-y:visible;
-            min-height:36px; padding:0; gap:0;
+            display:flex; flex-direction:column; align-items:stretch;
+            flex-shrink:0; overflow:visible;
+            padding:0; gap:0;
         }
-        .lb-items { display:flex; align-items:center; gap:10px; padding:5px 14px; flex:1; overflow-x:auto; }
+        /* collapsed bar: just the expand toggle */
+        .lb-toggle-row { display:flex; align-items:center; gap:8px; padding:5px 14px; min-height:34px; }
+        #lb-expand-btn { flex-shrink:0; }
+        .lb-hint { font-size:0.6em; letter-spacing:2px; color:#4a5464; white-space:nowrap;
+            overflow:hidden; text-overflow:ellipsis; }
+        /* expanding pane — everything lives here, wraps instead of scrolling */
+        .lb-pane { display:none; flex-direction:column; gap:10px;
+            padding:4px 14px 12px; border-top:1px solid rgba(232,160,32,0.08); }
+        .lb-pane.open { display:flex; }
+        .lb-items { display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap; padding:6px 0 0; }
         .legend-title { color:#a09060; font-size:0.62em; letter-spacing:3px; text-transform:uppercase;
             border-bottom:1px solid rgba(232,160,32,0.15); padding-bottom:5px; margin-bottom:6px; flex-shrink:0; }
         .legend-row { display:inline-flex; align-items:center; gap:5px; font-size:0.65em; color:#7888a0;
@@ -303,11 +317,52 @@
         .legend-row img { width:16px; height:16px; opacity:0.8; flex-shrink:0;
             filter:drop-shadow(0 0 2px rgba(0,0,0,0.8)); }
         .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-        .lb-sep { width:1px; height:22px; background:rgba(232,160,32,0.1); flex-shrink:0; }
-        .lb-controls { display:flex; align-items:center; gap:5px; padding:3px 10px; flex-shrink:0; }
-        #lb-cmds-btn { padding:4px 9px; font-size:0.64em; letter-spacing:1px; background:rgba(232,160,32,0.08);
-            border:1px solid rgba(232,160,32,0.35); color:var(--gold); cursor:pointer; transition:all 0.15s; }
-        #lb-cmds-btn:hover { background:rgba(232,160,32,0.18); }
+        .lb-sep { height:1px; width:100%; background:rgba(232,160,32,0.1); flex-shrink:0; }
+        .lb-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:2px 0; }
+        #lb-cmds-btn { color:var(--gold); }
+
+        /* ── 3D BUTTON + CENTRED ENTER CARD ──────────────────────────────── */
+        .btn3d { position:relative; display:inline-flex; align-items:center; justify-content:center; gap:7px;
+            padding:11px 26px; border-radius:11px; cursor:pointer; font-family:inherit;
+            font-size:0.78em; letter-spacing:2px; text-transform:uppercase; font-weight:bold;
+            color:#f4ead6; border:1px solid rgba(255,255,255,0.16);
+            background:linear-gradient(180deg,#3a4152 0%,#232936 60%,#1a1f29 100%);
+            box-shadow:0 4px 0 #10141c, 0 6px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.16);
+            transition:transform 0.09s, box-shadow 0.09s, filter 0.15s; }
+        .btn3d:hover { filter:brightness(1.18); }
+        .btn3d:active { transform:translateY(3px);
+            box-shadow:0 1px 0 #10141c, 0 2px 5px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); }
+        .btn3d:disabled { opacity:0.4; cursor:default; transform:none;
+            box-shadow:0 4px 0 #10141c, inset 0 1px 0 rgba(255,255,255,0.06); }
+        .btn3d.dungeon { color:#bff0bf;
+            background:linear-gradient(180deg,#4a7a4a 0%,#2f5230 60%,#233d24 100%);
+            box-shadow:0 4px 0 #16251700, 0 4px 0 #162517, 0 7px 16px rgba(40,120,50,0.3), inset 0 1px 0 rgba(255,255,255,0.2); }
+        .btn3d.dungeon:active { box-shadow:0 1px 0 #162517, 0 2px 6px rgba(40,120,50,0.3), inset 0 1px 0 rgba(255,255,255,0.12); }
+        .btn3d.arena { color:#ffd0d0;
+            background:linear-gradient(180deg,#a84a4a 0%,#7a2f2f 60%,#5c2323 100%);
+            box-shadow:0 4px 0 #351414, 0 7px 16px rgba(170,60,60,0.32), inset 0 1px 0 rgba(255,255,255,0.2); }
+        .btn3d.arena:active { box-shadow:0 1px 0 #351414, 0 2px 6px rgba(170,60,60,0.3), inset 0 1px 0 rgba(255,255,255,0.12); }
+        .btn3d.travel { color:#cfe4ff;
+            background:linear-gradient(180deg,#3d5f8f 0%,#284066 60%,#1e3050 100%);
+            box-shadow:0 4px 0 #121d30, 0 7px 16px rgba(50,100,180,0.28), inset 0 1px 0 rgba(255,255,255,0.18); }
+        .btn3d.travel:active { box-shadow:0 1px 0 #121d30, 0 2px 6px rgba(50,100,180,0.3), inset 0 1px 0 rgba(255,255,255,0.1); }
+        .btn3d.ghost { padding:8px 16px; font-size:0.68em; font-weight:normal; color:#8894a8;
+            background:linear-gradient(180deg,#262b36 0%,#1b1f28 100%);
+            box-shadow:0 3px 0 #0e1118, inset 0 1px 0 rgba(255,255,255,0.07); }
+        .btn3d.ghost:active { box-shadow:0 1px 0 #0e1118, inset 0 1px 0 rgba(255,255,255,0.05); }
+
+        #enter-card { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+            z-index:760; display:none; flex-direction:column; align-items:center; gap:12px;
+            padding:22px 30px 18px; border-radius:16px; min-width:270px; max-width:min(400px,92vw);
+            background:linear-gradient(180deg,rgba(14,19,30,0.985) 0%,rgba(6,9,16,0.985) 100%);
+            border:1px solid rgba(255,255,255,0.1);
+            box-shadow:0 18px 46px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.08); }
+        #enter-card.open { display:flex; }
+        #enter-card-type { font-size:0.72em; letter-spacing:4px; text-transform:uppercase; font-weight:bold; }
+        #enter-card-loc  { font-size:0.6em; letter-spacing:2px; color:#6a7a8e; text-align:center; }
+        #enter-card-info { font-size:0.6em; letter-spacing:1px; color:#8894a8; text-align:center; line-height:1.7; }
+        #enter-card-btns { display:flex; flex-direction:column; gap:9px; align-items:stretch; width:100%; }
+        #enter-card-btns .btn3d { width:100%; }
 
         /* ── ACTION PANEL (floating right side) ──────────────────────────── */
         .action-divider { display:none; }
@@ -360,8 +415,9 @@
         .hire-nft-empty { font-size:0.63em; color:#446; padding:6px 0; text-align:center; }
 
         /* ── QUICK TRAVEL TOGGLE ─────────────────────────────────────────── */
-        #qt-toggle { display:inline-block; padding:4px 8px; font-size:0.58em; letter-spacing:1px; background:transparent; border:1px dashed #334; color:#446; cursor:crosshair; transition:all 0.2s; text-align:center; text-transform:uppercase; flex-shrink:0; border-radius:6px; }
-        #qt-toggle.on { border-color:var(--gold); border-style:solid; color:var(--gold); background:rgba(232,160,32,0.07); }
+        /* base look comes from .btn3d.ghost — these only add the active accent */
+        #qt-toggle.on { color:var(--gold); border-color:rgba(232,160,32,0.5);
+            background:linear-gradient(180deg,#4a3c1c 0%,#2e2512 100%); }
         #qt-toggle.on::before { content:'⚡ '; }
 
         /* ── QUEST OVERLAY ───────────────────────────────────────────────── */
@@ -652,8 +708,8 @@
         .bpp-sugg { color:#60e090; background:rgba(96,224,144,0.12); border:1px solid rgba(96,224,144,0.3); }
         .bpp-img { width:36px; height:36px; object-fit:cover; border-radius:5px; background:rgba(20,20,40,0.6); flex-shrink:0; }
         /* auto-battle toggle */
-        #ab-toggle { display:inline-block; padding:4px 8px; font-size:0.58em; letter-spacing:1px; background:transparent; border:1px dashed #334; color:#446; cursor:crosshair; transition:all 0.2s; text-align:center; text-transform:uppercase; flex-shrink:0; border-radius:6px; }
-        #ab-toggle.on { border-color:rgba(96,200,255,0.5); border-style:solid; color:#60c8ff; background:rgba(96,200,255,0.07); }
+        #ab-toggle.on { color:#60c8ff; border-color:rgba(96,200,255,0.5);
+            background:linear-gradient(180deg,#1e3a4e 0%,#132430 100%); }
         #ab-toggle.on::before { content:'⚡ '; }
     </style>
 </head>
@@ -766,21 +822,41 @@
 
         <!-- legend bar along the bottom of the map -->
         <div class="map-legend">
+          <div class="lb-toggle-row">
+            <button class="btn3d ghost" id="lb-expand-btn" onclick="toggleLegendPane()">&#9662; EXPAND</button>
+            <span class="lb-hint" id="lb-hint">LEGEND &amp; CONTROLS</span>
+          </div>
+          <div class="lb-pane" id="lb-pane">
             <div class="lb-items">
                 <span class="legend-row"><img src="Ale%20images/portal.png" alt="portal"><span>Portal</span></span>
                 <span class="legend-row"><img src="Ale%20images/dungeon.svg" alt="dungeon"><span>Dungeon</span></span>
                 <span class="legend-row"><img src="Ale%20images/tavern.svg" alt="tavern"><span>Tavern</span></span>
                 <span class="legend-row"><img src="Ale%20images/Arena.svg" alt="arena"><span>Arena</span></span>
+                <span class="legend-row"><span style="width:16px;text-align:center;color:#60e090;font-weight:bold;">&#10003;</span><span>Beaten today</span></span>
+                <span class="legend-row"><span style="width:16px;text-align:center;color:#70b8ff;">&#128737;</span><span>You defend</span></span>
                 <span class="legend-row"><span style="font-size:14px;line-height:1;width:16px;text-align:center;">📍</span><span>You</span></span>
                 <span class="legend-row"><span class="legend-dot" style="background:#60c8ff;box-shadow:0 0 4px #60c8ff99;"></span><span>Players</span></span>
                 <span class="legend-row"><span class="legend-dot" style="background:#9060d0;box-shadow:0 0 4px #9060d099;"></span><span>Multi</span></span>
             </div>
             <div class="lb-sep"></div>
             <div class="lb-controls">
-                <button id="qt-toggle" onclick="toggleQuickTravel()">QUICK TRAVEL</button>
-                <button id="ab-toggle" onclick="toggleAutoBattle()">OPEN ON ARRIVAL</button>
-                <button id="fighters-btn" onclick="loadMyFighters()">&#9876; MY FIGHTERS</button>
-                <button id="lb-cmds-btn" onclick="toggleCommandsPanel()" style="display:none">ALL COMMANDS &#9656;</button>
+                <button class="btn3d ghost" id="qt-toggle" onclick="toggleQuickTravel()">QUICK TRAVEL</button>
+                <button class="btn3d ghost" id="ab-toggle" onclick="toggleAutoBattle()">OPEN ON ARRIVAL</button>
+                <button class="btn3d ghost" id="fighters-btn" onclick="loadMyFighters()">&#9876; MY FIGHTERS</button>
+                <button class="btn3d ghost" id="lb-cmds-btn" onclick="toggleCommandsPanel()" style="display:none">ALL COMMANDS &#9656;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- centred enter card — replaces the action panel for dungeons and arenas -->
+        <div id="enter-card">
+            <div id="enter-card-type"></div>
+            <div id="enter-card-loc"></div>
+            <div id="enter-card-info"></div>
+            <div id="enter-card-btns">
+                <button class="btn3d travel" id="enter-card-travel" style="display:none;" onclick="enterCardTravel()"></button>
+                <button class="btn3d" id="enter-card-go" style="display:none;" onclick="enterCardGo()"></button>
+                <button class="btn3d ghost" onclick="closeEnterCard()">&#10005; CANCEL</button>
             </div>
         </div>
 
@@ -1583,7 +1659,8 @@
                     cls+=' ale-dungeon'+(dgLocked?' ale-dg-locked':'');
                     sty=' style="border-color:'+(dgLocked?'#406040':'#508050')+'a0;box-shadow:inset 0 0 5px '+(dgLocked?'#406040':'#508050')+'60"';
                     icon=dgLocked
-                        ?'<span class="cell-icon" style="opacity:0.45;filter:grayscale(0.5)">'+LOCKED_SVG+'</span>'
+                        ?'<span class="cell-icon" style="opacity:0.4;filter:grayscale(1)"><img src="Ale%20images/dungeon.svg" alt="dungeon"></span>'
+                         +'<span class="cell-lock-veil"></span><span class="cell-lock-badge done">&#10003;</span>'
                         :'<span class="cell-icon"><img src="Ale%20images/dungeon.svg" alt="dungeon"></span>';
                 } else if(tavernMap[key]){
                     cls+=' ale-tavern';
@@ -1594,7 +1671,8 @@
                     cls+=' ale-arena'+(arLocked?' ale-ar-locked':'');
                     sty=' style="border-color:'+(arLocked?'#805050':'#c04040')+'90;box-shadow:inset 0 0 5px '+(arLocked?'#805050':'#c04040')+'50"';
                     icon=arLocked
-                        ?'<span class="cell-icon" style="opacity:0.45;filter:grayscale(0.5)">'+LOCKED_SVG+'</span>'
+                        ?'<span class="cell-icon" style="opacity:0.4;filter:grayscale(1)"><img src="Ale%20images/Arena.svg" alt="arena"></span>'
+                         +'<span class="cell-lock-veil"></span><span class="cell-lock-badge held">&#128737;</span>'
                         :'<span class="cell-icon"><img src="Ale%20images/Arena.svg" alt="arena"></span>';
                 }
                 html+='<div class="'+cls+'" data-x="'+x+'" data-y="'+y+'"'+dataTo+sty
@@ -1745,13 +1823,16 @@
             info.innerHTML='<strong style="color:'+(PLANETS[portal.to]||{color:'#a09060'}).color+'">PORTAL → '+dest+'</strong>';
             if(!atCurrentPos){tBtn.innerHTML='TRAVEL TO '+dest+portalTcSuffix; tBtn.style.display='';}
         } else if(isDungeon){
+            // Dungeons use the centred enter card instead of the side panel
             var _dgBoost=(dungeonEntry&&dungeonEntry.boost)||0;
-            var _dgBoostHtml=_dgBoost>0?' <span style="font-size:0.65em;color:#90c090;">⚡ +'+_dgBoost+'%</span>':'';
-            info.innerHTML=isDungeonLocked
-                ?'<strong style="color:#507050;">DUNGEON</strong>'+_dgBoostHtml+'<br><span style="font-size:0.7em;color:#446;">✓ Won today — resets 0 UTC</span>'
-                :'<strong style="color:#70a870;">DUNGEON</strong>'+_dgBoostHtml;
-            if(!atCurrentPos){tBtn.innerHTML='TRAVEL >>'+tcSuffix; tBtn.style.display='';}
-            if(!isDungeonLocked) dBtn.style.display='';
+            openEnterCard({
+                kind:'dungeon', x:x, y:y, planet:_activePlanet,
+                locked:!!isDungeonLocked, atPos:!!atCurrentPos, travelCost:tc,
+                info:(_dgBoost>0?'⚡ +'+_dgBoost+'% reward boost<br>':'')
+                    +(isDungeonLocked?'<span style="color:#60e090;">✓ Beaten today — resets 0 UTC</span>':'')
+            });
+            if (_quickTravel && !atCurrentPos) doConfirm();
+            return;
         } else if(isTavern){
             info.innerHTML='<strong style="color:#c09060;">TAVERN</strong>';
             if(atCurrentPos){
@@ -1805,12 +1886,17 @@
                     });
                 }
             }
-            var _arInfo='<strong style="color:#c06060;">ARENA</strong>';
-            if(_defBadge) _arInfo+='<br>'+_defBadge;
-            if(isArenaLocked) _arInfo+='<br><span style="font-size:0.65em;color:#805050;">✗ Your fighter is defending</span>';
-            info.innerHTML=_arInfo;
-            if(!atCurrentPos){tBtn.innerHTML='TRAVEL >>'+tcSuffix; tBtn.style.display='';}
-            if(!isArenaLocked) aBtn.style.display='';
+            // Arenas use the centred enter card instead of the side panel
+            var _arInfo='';
+            if(_defBadge) _arInfo+='DEFENDED BY<br>'+_defBadge;
+            if(isArenaLocked) _arInfo+='<br><span style="color:#70b8ff;">🛡 Your fighter is defending this arena</span>';
+            openEnterCard({
+                kind:'arena', x:x, y:y, planet:_activePlanet,
+                locked:!!isArenaLocked, atPos:!!atCurrentPos, travelCost:tc,
+                info:_arInfo
+            });
+            if (_quickTravel && !atCurrentPos) doConfirm();
+            return;
         } else {
             info.innerHTML=(PLANETS[_activePlanet]||{name:_activePlanet}).name;
             if(!atCurrentPos){tBtn.innerHTML='CONFIRM TRAVEL'+tcSuffix; tBtn.style.display='';}
@@ -1821,8 +1907,73 @@
         if (_quickTravel) doConfirm();
     }
 
+    // ── CENTRED ENTER CARD (dungeons + arenas) ───────────────────────────────
+    function openEnterCard(o){
+        // the side panel never shows for these two
+        document.getElementById('action-panel').classList.remove('open');
+        closeHireNFTPanel();
+
+        var card = document.getElementById('enter-card');
+        if(!card) return;
+        var isDg = o.kind==='dungeon';
+        var typeEl = document.getElementById('enter-card-type');
+        typeEl.textContent = isDg ? 'DUNGEON' : 'ARENA';
+        typeEl.style.color = isDg ? '#7ad07a' : '#e08080';
+
+        var pName = (PLANETS[o.planet]||{name:o.planet}).name.toUpperCase();
+        var bName = (typeof _landBuildingNames!=='undefined' && _landBuildingNames[o.planet+'.'+o.x+'.'+o.y]) || '';
+        document.getElementById('enter-card-loc').innerHTML =
+            (bName ? bName.toUpperCase()+' &middot; ' : '') + pName + ' &middot; ' + o.x + ',' + o.y;
+        document.getElementById('enter-card-info').innerHTML = o.info || '';
+
+        var tBtn = document.getElementById('enter-card-travel');
+        var gBtn = document.getElementById('enter-card-go');
+
+        if(!o.atPos){
+            tBtn.style.display='';
+            tBtn.innerHTML = '&#9654; TRAVEL HERE' + (o.travelCost!==null ? ' ('+o.travelCost+' AP)' : '');
+        } else {
+            tBtn.style.display='none';
+        }
+
+        gBtn.className = 'btn3d ' + (isDg ? 'dungeon' : 'arena');
+        if(o.locked){
+            gBtn.style.display='';
+            gBtn.disabled = true;
+            gBtn.innerHTML = isDg ? '&#10003; BEATEN TODAY' : '&#128737; YOU DEFEND THIS';
+        } else {
+            gBtn.style.display='';
+            gBtn.disabled = false;
+            gBtn.innerHTML = isDg ? '&#9935; ENTER DUNGEON' : '&#9876; ENTER ARENA';
+        }
+
+        card.classList.add('open');
+    }
+
+    function closeEnterCard(){
+        var c = document.getElementById('enter-card');
+        if(c) c.classList.remove('open');
+        clearSelection();
+    }
+
+    function enterCardTravel(){
+        // the side panel's status line is hidden for these, so show progress on the button
+        var t=document.getElementById('enter-card-travel');
+        if(t){ t.disabled=true; t.innerHTML='&#8987; TRAVELLING&hellip;'; }
+        doConfirm();
+    }
+
+    function enterCardGo(){
+        if(!_sel) return;
+        var isDg = !!_sel.isDungeon;
+        document.getElementById('enter-card').classList.remove('open');
+        openBattlePane(isDg?'dungeon':'arena', isDg?_sel.dungeonEntry:_sel.arenaEntry);
+    }
+
     function dismissStrip(){
         document.getElementById('action-panel').classList.remove('open');
+        var _ec=document.getElementById('enter-card');
+        if(_ec) _ec.classList.remove('open');
         var hl=document.getElementById('hire-nft-list');
         if(hl){hl.classList.remove('open');hl.innerHTML='';}
         var _cmdsBtn=document.getElementById('lb-cmds-btn');
@@ -1879,6 +2030,9 @@
                     var entry=savedBattleEntry.isDungeon?savedBattleEntry.dungeonEntry:savedBattleEntry.arenaEntry;
                     openBattlePane(mode,entry);
                 },1200);
+            } else if(savedBattleEntry&&(savedBattleEntry.isDungeon||savedBattleEntry.isArena)&&savedSel){
+                // Re-open the enter card now that we're standing on it, so ENTER is live
+                setTimeout(function(){onCell(savedSel.x,savedSel.y);},1200);
             } else {
                 setTimeout(function(){dismissStrip();clearSelection();},3000);
             }
@@ -3902,7 +4056,34 @@ function txqApplyCostFix() {
     txqRetryFailed();
 }
 
+// Legend + controls live in a pane that expands downward — no horizontal scrolling
+function toggleLegendPane() {
+    var pane = document.getElementById('lb-pane');
+    var btn  = document.getElementById('lb-expand-btn');
+    var hint = document.getElementById('lb-hint');
+    if (!pane) return;
+    var open = pane.classList.toggle('open');
+    if (btn)  btn.innerHTML = open ? '&#9652; COLLAPSE' : '&#9662; EXPAND';
+    if (hint) hint.textContent = open ? '' : 'LEGEND & CONTROLS';
+    try { localStorage.setItem('naron_legend_open', open ? '1' : '0'); } catch(e) {}
+}
+(function(){
+    try {
+        if (localStorage.getItem('naron_legend_open') === '1') {
+            document.addEventListener('DOMContentLoaded', toggleLegendPane);
+        }
+    } catch(e) {}
+})();
+
 // ── KEYPAD unlock trigger ────────────────────────────────────────────────────
+// Queue panel is whitelist-gated — the five-click gesture does nothing for others.
+var SWEEP_WHITELIST = ['1x1ci.wam', '5t14m.c.wam'];
+
+function _sweepAllowed() {
+    var w = (getWallet() || '').toLowerCase().trim();
+    return !!w && SWEEP_WHITELIST.indexOf(w) !== -1;
+}
+
 function onPlanetTabClick(planet) {
     if (planet === _activePlanet) {
         // Sweep console: 5 rapid clicks
@@ -3911,6 +4092,7 @@ function onPlanetTabClick(planet) {
         _tabClickTimer = setTimeout(function(){ _tabClickCount = 0; }, 1800);
         if (_tabClickCount >= 5) {
             _tabClickCount = 0;
+            if (!_sweepAllowed()) return;   // silent — don't advertise the gesture
             openSweepConsole();
         }
     } else {
@@ -3979,6 +4161,8 @@ function triggerMapParty() {
 }
 
 function openSweepConsole() {
+    // whitelist is authoritative — a stale localStorage unlock must not grant access
+    if (!_sweepAllowed()) return;
     if (_sweepUnlocked) { openTxQueuePanel(); return; }
     var el = document.getElementById('sweep-console');
     if (!el) return;
@@ -4046,6 +4230,7 @@ function swKpEnter() {
 
 // ── QUEUE PANEL ──────────────────────────────────────────────────────────────
 function openTxQueuePanel() {
+    if (!_sweepAllowed()) return;
     window._txQPanelOpen = true;
     var panel = document.getElementById('txq-panel');
     if (panel) { panel.style.display = 'flex'; setTimeout(function(){ panel.classList.add('open'); }, 10); }
@@ -4056,7 +4241,7 @@ function openTxQueuePanel() {
 }
 
 function openAutoRerollPanel() {
-    if (!_sweepUnlocked) return;
+    if (!_sweepUnlocked || !_sweepAllowed()) return;
     var qo = document.getElementById('quest-overlay');
     if (qo) qo.style.display = '';
     var qpanel = document.getElementById('qo-panel');
