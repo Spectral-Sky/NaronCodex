@@ -395,6 +395,18 @@
             transition:color 0.15s, background 0.15s; padding:0; }
         #enter-card-x:hover { color:#ff8080; background:rgba(255,90,90,0.12); }
 
+        /* tiny environment readout — toggles with the legend pane */
+        #env-frame { position:fixed; left:10px; bottom:52px; z-index:755; display:none;
+            min-width:132px; max-width:210px; padding:6px 9px 7px; border-radius:8px;
+            background:rgba(3,6,15,0.96); border:1px solid rgba(255,255,255,0.1);
+            box-shadow:0 6px 18px rgba(0,0,0,0.6); }
+        #env-frame.open { display:block; }
+        .env-lbl { font-size:0.46em; letter-spacing:2px; color:#4a5464; }
+        .env-val { font-size:0.52em; letter-spacing:0.5px; color:#a8b8c8; line-height:1.35; margin-bottom:4px; }
+        .env-val:last-child { margin-bottom:0; }
+        .env-weather { color:#7fc4e8; }
+        .env-none { color:#3d4654; }
+
         /* ── ACTION PANEL (floating right side) ──────────────────────────── */
         .action-divider { display:none; }
         #action-panel {
@@ -859,6 +871,16 @@
           </div>
         </div>
 
+        <!-- tiny environment readout for the selected cell — toggles with the legend -->
+        <div id="env-frame">
+            <div class="env-lbl">WEATHER</div>
+            <div class="env-val env-weather" id="env-weather">—</div>
+            <div id="env-str-wrap" style="display:none;">
+                <div class="env-lbl">DEFENDER STRENGTH</div>
+                <div class="env-val" id="env-strength">—</div>
+            </div>
+        </div>
+
         <!-- centred enter card — replaces the action panel for dungeons and arenas -->
         <div id="enter-card">
             <button id="enter-card-x" onclick="closeEnterCard()" title="Close">&#10005;</button>
@@ -1173,6 +1195,51 @@
         var locs=ALE_LOCATIONS[_playerPos.planet]||{};
         var tv=(locs.taverns||[]).find(function(t){return t.x===_playerPos.x&&t.y===_playerPos.y;});
         if(tv)onCell(_playerPos.x,_playerPos.y);
+    }
+
+    // ── ENVIRONMENT: per-land weather + arena defender strength ──────────────
+    // Weather is a two-table join in battle.ale, both scoped per planet:
+    //   landtracking : land_id -> weather_id   ("standard" means none)
+    //   weather      : weather_id -> { displayname, weather_effects[] }
+    // weather_id is the primary key, so a definition can be fetched one row at a
+    // time on demand instead of caching ~1000 rows per planet.
+    // Defender strength is arena.ale::arenacheck.arena_power, out of 10000 = 100%.
+    var _landWeather  = {};   // "planet.land_id" -> weather_id
+    var _weatherName  = {};   // "planet.weather_id" -> displayname
+    var _arenaPower   = {};   // "planet.land_id" -> arena_power (0-10000)
+
+    async function fetchEnvData(){
+        var planets=['magor','naron','eyeke','kavian','neri','veles'];
+        for(var i=0;i<planets.length;i++){
+            var p=planets[i];
+            try{
+                var lt=await fetchRows({code:'battle.ale',scope:p,table:'landtracking',limit:1000,json:true});
+                (lt&&lt.rows||[]).forEach(function(r){
+                    if(r.weather_id&&r.weather_id!=='standard') _landWeather[p+'.'+r.land_id]=r.weather_id;
+                });
+            }catch(e){}
+        }
+        try{
+            var ac=await fetchRows({code:'arena.ale',scope:'arena.ale',table:'arenacheck',limit:500,json:true});
+            (ac&&ac.rows||[]).forEach(function(r){
+                if(r.planet&&r.land_id) _arenaPower[normalizePlanet(r.planet)+'.'+r.land_id]=Number(r.arena_power||0);
+            });
+        }catch(e){}
+    }
+
+    async function _weatherLabel(planet, landId){
+        var wid=_landWeather[planet+'.'+landId];
+        if(!wid) return '';
+        var ck=planet+'.'+wid;
+        if(_weatherName[ck]!==undefined) return _weatherName[ck];
+        _weatherName[ck]='';                      // avoid a refetch storm while in flight
+        try{
+            var res=await fetchRows({code:'battle.ale',scope:planet,table:'weather',
+                lower_bound:wid,upper_bound:wid,limit:1,json:true});
+            var row=(res&&res.rows||[])[0];
+            if(row) _weatherName[ck]=row.displayname||row.title||'';
+        }catch(e){}
+        return _weatherName[ck];
     }
 
     // arena.ale::livearena is scoped PER PLANET — scope 'arena.ale' returns nothing.
@@ -1632,6 +1699,7 @@
         fetchAllBuildings();
         fetchAllDungeons();
         if(w){ fetchPlayerTaverns(w); fetchArenaLock(w); }
+        fetchEnvData();   // weather + arena strength, needed before the env frame can populate
         fetchAllPlayers();
         loadTavernData(); // pre-warm template cache so first tavern click is instant
     }
@@ -1963,6 +2031,32 @@
         if (_quickTravel) doConfirm();
     }
 
+    // Populate the environment frame for a cell. landId is optional — derived from
+    // the coords when the caller doesn't have it.
+    async function _envUpdate(planet, x, y, isArena){
+        var wEl=document.getElementById('env-weather');
+        var sWrap=document.getElementById('env-str-wrap');
+        var sEl=document.getElementById('env-strength');
+        if(!wEl) return;
+        var landId=encodeLandId(x,y);
+
+        if(sWrap) sWrap.style.display=isArena?'':'none';
+        if(isArena&&sEl){
+            var pw=_arenaPower[planet+'.'+landId];
+            sEl.textContent = (pw===undefined) ? '—' : Math.round(pw/100)+'%';
+            sEl.className='env-val'+(pw===undefined?' env-none':'');
+        }
+
+        var wid=_landWeather[planet+'.'+landId];
+        if(!wid){ wEl.textContent='None'; wEl.className='env-val env-none'; return; }
+        wEl.textContent='…'; wEl.className='env-val env-weather';
+        var name=await _weatherLabel(planet, landId);
+        // guard against a later click having moved on while we awaited
+        if(_sel && (_sel.x!==x || _sel.y!==y || _sel.planet!==planet)) return;
+        wEl.textContent = name || wid;
+        wEl.className='env-val env-weather';
+    }
+
     // ── CENTRED ENTER CARD (dungeons + arenas) ───────────────────────────────
     function openEnterCard(o){
         // the side panel never shows for these two
@@ -1972,6 +2066,7 @@
         var card = document.getElementById('enter-card');
         if(!card) return;
         var isDg = o.kind==='dungeon';
+        _envUpdate(o.planet, o.x, o.y, !isDg);   // weather applies to both; strength to arenas
         var typeEl = document.getElementById('enter-card-type');
         typeEl.textContent = isDg ? 'DUNGEON' : 'ARENA';
         typeEl.style.color = isDg ? '#7ad07a' : '#e08080';
@@ -4121,6 +4216,8 @@ function toggleLegendPane() {
     var open = pane.classList.toggle('open');
     if (btn)  btn.innerHTML = open ? '&#9662; CLOSE' : '&#9652; EXPAND';
     if (hint) hint.textContent = open ? '' : 'LEGEND & CONTROLS';
+    var env = document.getElementById('env-frame');   // env readout rides with the legend
+    if (env) env.classList.toggle('open', open);
     try { localStorage.setItem('naron_legend_open', open ? '1' : '0'); } catch(e) {}
 }
 window.toggleLegendPane = toggleLegendPane;
