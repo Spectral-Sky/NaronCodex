@@ -351,18 +351,31 @@
             box-shadow:0 3px 0 #0e1118, inset 0 1px 0 rgba(255,255,255,0.07); }
         .btn3d.ghost:active { box-shadow:0 1px 0 #0e1118, inset 0 1px 0 rgba(255,255,255,0.05); }
 
-        #enter-card { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
-            z-index:760; display:none; flex-direction:column; align-items:center; gap:12px;
-            padding:22px 30px 18px; border-radius:16px; min-width:270px; max-width:min(400px,92vw);
+        /* sits just above the legend bar, wide enough for both buttons in one row */
+        #enter-card { position:fixed; left:50%; bottom:52px; transform:translateX(-50%);
+            z-index:760; display:none; flex-direction:column; align-items:center; gap:5px;
+            padding:9px 30px 9px 14px; border-radius:9px;
+            min-width:330px; max-width:min(540px,94vw);
             background:linear-gradient(180deg,rgba(14,19,30,0.985) 0%,rgba(6,9,16,0.985) 100%);
             border:1px solid rgba(255,255,255,0.1);
-            box-shadow:0 18px 46px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.08); }
+            box-shadow:0 10px 26px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08); }
         #enter-card.open { display:flex; }
-        #enter-card-type { font-size:0.72em; letter-spacing:4px; text-transform:uppercase; font-weight:bold; }
-        #enter-card-loc  { font-size:0.6em; letter-spacing:2px; color:#6a7a8e; text-align:center; }
-        #enter-card-info { font-size:0.6em; letter-spacing:1px; color:#8894a8; text-align:center; line-height:1.7; }
-        #enter-card-btns { display:flex; flex-direction:column; gap:9px; align-items:stretch; width:100%; }
-        #enter-card-btns .btn3d { width:100%; }
+        #enter-card-type { font-size:0.58em; letter-spacing:3px; text-transform:uppercase; font-weight:bold; line-height:1.2; }
+        #enter-card-loc  { font-size:0.5em; letter-spacing:1.5px; color:#6a7a8e; text-align:center; line-height:1.3; }
+        #enter-card-info { font-size:0.5em; letter-spacing:1px; color:#8894a8; text-align:center; line-height:1.5; }
+        #enter-card-loc:empty, #enter-card-info:empty { display:none; }
+        #enter-card-btns { display:flex; flex-direction:row; gap:7px; align-items:stretch;
+            justify-content:center; flex-wrap:wrap; margin-top:1px; }
+        #enter-card .btn3d { padding:7px 15px; font-size:0.62em; letter-spacing:1.4px;
+            border-radius:7px; box-shadow:0 3px 0 #10141c, 0 4px 8px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.14); }
+        #enter-card .btn3d:active { transform:translateY(2px);
+            box-shadow:0 1px 0 #10141c, 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1); }
+        #enter-card-x { position:absolute; top:4px; right:5px; width:17px; height:17px;
+            display:flex; align-items:center; justify-content:center;
+            background:transparent; border:none; border-radius:5px;
+            color:#4c5666; font-size:0.62em; line-height:1; cursor:pointer;
+            transition:color 0.15s, background 0.15s; padding:0; }
+        #enter-card-x:hover { color:#ff8080; background:rgba(255,90,90,0.12); }
 
         /* ── ACTION PANEL (floating right side) ──────────────────────────── */
         .action-divider { display:none; }
@@ -850,13 +863,13 @@
 
         <!-- centred enter card — replaces the action panel for dungeons and arenas -->
         <div id="enter-card">
+            <button id="enter-card-x" onclick="closeEnterCard()" title="Close">&#10005;</button>
             <div id="enter-card-type"></div>
             <div id="enter-card-loc"></div>
             <div id="enter-card-info"></div>
             <div id="enter-card-btns">
                 <button class="btn3d travel" id="enter-card-travel" style="display:none;" onclick="enterCardTravel()"></button>
                 <button class="btn3d" id="enter-card-go" style="display:none;" onclick="enterCardGo()"></button>
-                <button class="btn3d ghost" onclick="closeEnterCard()">&#10005; CANCEL</button>
             </div>
         </div>
 
