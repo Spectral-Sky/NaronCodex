@@ -305,11 +305,29 @@
         #lb-expand-btn { flex-shrink:0; }
         .lb-hint { font-size:0.6em; letter-spacing:2px; color:#4a5464; white-space:nowrap;
             overflow:hidden; text-overflow:ellipsis; }
-        /* expanding pane — everything lives here, wraps instead of scrolling */
-        .lb-pane { display:none; flex-direction:column; gap:10px;
-            padding:4px 14px 12px; border-top:1px solid rgba(232,160,32,0.08); }
-        .lb-pane.open { display:flex; }
-        .lb-items { display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap; padding:6px 0 0; }
+        /* Legend + controls dock — fixed to the viewport, slides up from the bottom.
+           Must sit outside #map-box (overflow:hidden + backdrop-filter). */
+        #lb-pane {
+            position:fixed; bottom:0; left:50%;
+            transform:translateX(-50%) translateY(100%);
+            width:660px; max-width:98vw; z-index:1400;
+            display:flex; flex-direction:column; gap:9px;
+            padding:10px 16px 14px;
+            background:rgba(3,4,12,0.975);
+            border:1px solid rgba(232,160,32,0.28); border-bottom:none;
+            border-radius:10px 10px 0 0;
+            box-shadow:0 -6px 30px rgba(0,0,0,0.8);
+            transition:transform 0.32s ease;
+            max-height:60vh; overflow-y:auto;
+        }
+        #lb-pane.open { transform:translateX(-50%) translateY(0); }
+        .lb-pane-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+        .lb-pane-title { font-size:0.6em; letter-spacing:3px; color:var(--gold); }
+        #lb-pane-x { background:transparent; border:none; color:#4c5666; font-size:0.7em;
+            cursor:pointer; padding:2px 5px; border-radius:5px; line-height:1;
+            transition:color 0.15s, background 0.15s; }
+        #lb-pane-x:hover { color:#ff8080; background:rgba(255,90,90,0.12); }
+        .lb-items { display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap; }
         .legend-title { color:#a09060; font-size:0.62em; letter-spacing:3px; text-transform:uppercase;
             border-bottom:1px solid rgba(232,160,32,0.15); padding-bottom:5px; margin-bottom:6px; flex-shrink:0; }
         .legend-row { display:inline-flex; align-items:center; gap:5px; font-size:0.65em; color:#7888a0;
@@ -836,28 +854,8 @@
         <!-- legend bar along the bottom of the map -->
         <div class="map-legend">
           <div class="lb-toggle-row">
-            <button class="btn3d ghost" id="lb-expand-btn" onclick="toggleLegendPane()">&#9662; EXPAND</button>
+            <button class="btn3d ghost" id="lb-expand-btn" onclick="toggleLegendPane()">&#9652; EXPAND</button>
             <span class="lb-hint" id="lb-hint">LEGEND &amp; CONTROLS</span>
-          </div>
-          <div class="lb-pane" id="lb-pane">
-            <div class="lb-items">
-                <span class="legend-row"><img src="Ale%20images/portal.png" alt="portal"><span>Portal</span></span>
-                <span class="legend-row"><img src="Ale%20images/dungeon.svg" alt="dungeon"><span>Dungeon</span></span>
-                <span class="legend-row"><img src="Ale%20images/tavern.svg" alt="tavern"><span>Tavern</span></span>
-                <span class="legend-row"><img src="Ale%20images/Arena.svg" alt="arena"><span>Arena</span></span>
-                <span class="legend-row"><span style="width:16px;text-align:center;color:#60e090;font-weight:bold;">&#10003;</span><span>Beaten today</span></span>
-                <span class="legend-row"><span style="width:16px;text-align:center;color:#70b8ff;">&#128737;</span><span>You defend</span></span>
-                <span class="legend-row"><span style="font-size:14px;line-height:1;width:16px;text-align:center;">📍</span><span>You</span></span>
-                <span class="legend-row"><span class="legend-dot" style="background:#60c8ff;box-shadow:0 0 4px #60c8ff99;"></span><span>Players</span></span>
-                <span class="legend-row"><span class="legend-dot" style="background:#9060d0;box-shadow:0 0 4px #9060d099;"></span><span>Multi</span></span>
-            </div>
-            <div class="lb-sep"></div>
-            <div class="lb-controls">
-                <button class="btn3d ghost" id="qt-toggle" onclick="toggleQuickTravel()">QUICK TRAVEL</button>
-                <button class="btn3d ghost" id="ab-toggle" onclick="toggleAutoBattle()">OPEN ON ARRIVAL</button>
-                <button class="btn3d ghost" id="fighters-btn" onclick="loadMyFighters()">&#9876; MY FIGHTERS</button>
-                <button class="btn3d ghost" id="lb-cmds-btn" onclick="toggleCommandsPanel()" style="display:none">ALL COMMANDS &#9656;</button>
-            </div>
           </div>
         </div>
 
@@ -891,6 +889,34 @@
     </div>
     <div class="map-footer"></div>
 </div>
+</div>
+
+<!-- Legend + controls dock. Lives outside #map-box: that box is overflow:hidden
+     with a backdrop-filter, which also makes it a containing block for fixed
+     children — so a pane nested inside it can never escape its bounds. -->
+<div id="lb-pane">
+    <div class="lb-pane-head">
+        <span class="lb-pane-title">LEGEND &amp; CONTROLS</span>
+        <button id="lb-pane-x" onclick="toggleLegendPane()" title="Close">&#10005;</button>
+    </div>
+    <div class="lb-items">
+        <span class="legend-row"><img src="Ale%20images/portal.png" alt="portal"><span>Portal</span></span>
+        <span class="legend-row"><img src="Ale%20images/dungeon.svg" alt="dungeon"><span>Dungeon</span></span>
+        <span class="legend-row"><img src="Ale%20images/tavern.svg" alt="tavern"><span>Tavern</span></span>
+        <span class="legend-row"><img src="Ale%20images/Arena.svg" alt="arena"><span>Arena</span></span>
+        <span class="legend-row"><span style="width:16px;text-align:center;color:#60e090;font-weight:bold;">&#10003;</span><span>Beaten today</span></span>
+        <span class="legend-row"><span style="width:16px;text-align:center;color:#70b8ff;">&#128737;</span><span>You defend</span></span>
+        <span class="legend-row"><span style="font-size:14px;line-height:1;width:16px;text-align:center;">📍</span><span>You</span></span>
+        <span class="legend-row"><span class="legend-dot" style="background:#60c8ff;box-shadow:0 0 4px #60c8ff99;"></span><span>Players</span></span>
+        <span class="legend-row"><span class="legend-dot" style="background:#9060d0;box-shadow:0 0 4px #9060d099;"></span><span>Multi</span></span>
+    </div>
+    <div class="lb-sep"></div>
+    <div class="lb-controls">
+        <button class="btn3d ghost" id="qt-toggle" onclick="toggleQuickTravel()">QUICK TRAVEL</button>
+        <button class="btn3d ghost" id="ab-toggle" onclick="toggleAutoBattle()">OPEN ON ARRIVAL</button>
+        <button class="btn3d ghost" id="fighters-btn" onclick="loadMyFighters()">&#9876; MY FIGHTERS</button>
+        <button class="btn3d ghost" id="lb-cmds-btn" onclick="toggleCommandsPanel()" style="display:none">ALL COMMANDS &#9656;</button>
+    </div>
 </div>
 
 <script>
@@ -4069,23 +4095,29 @@ function txqApplyCostFix() {
     txqRetryFailed();
 }
 
-// Legend + controls live in a pane that expands downward — no horizontal scrolling
+// Legend + controls dock — slides up from the bottom of the viewport, outside #map-box
 function toggleLegendPane() {
     var pane = document.getElementById('lb-pane');
     var btn  = document.getElementById('lb-expand-btn');
     var hint = document.getElementById('lb-hint');
     if (!pane) return;
     var open = pane.classList.toggle('open');
-    if (btn)  btn.innerHTML = open ? '&#9652; COLLAPSE' : '&#9662; EXPAND';
+    if (btn)  btn.innerHTML = open ? '&#9662; CLOSE' : '&#9652; EXPAND';
     if (hint) hint.textContent = open ? '' : 'LEGEND & CONTROLS';
     try { localStorage.setItem('naron_legend_open', open ? '1' : '0'); } catch(e) {}
 }
+window.toggleLegendPane = toggleLegendPane;
+
+// Restore last state. This script runs at the end of body, so DOMContentLoaded
+// may already have fired — check readyState rather than relying on the event.
 (function(){
-    try {
-        if (localStorage.getItem('naron_legend_open') === '1') {
-            document.addEventListener('DOMContentLoaded', toggleLegendPane);
-        }
-    } catch(e) {}
+    function _restoreLegend(){
+        try {
+            if (localStorage.getItem('naron_legend_open') === '1') toggleLegendPane();
+        } catch(e) {}
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _restoreLegend);
+    else _restoreLegend();
 })();
 
 // ── KEYPAD unlock trigger ────────────────────────────────────────────────────
