@@ -1649,7 +1649,8 @@
         var wallet=getWallet();
         if(!wallet)return;
         rampStars(22,900);
-        document.getElementById('skip-btn').style.display='';
+        // needs an explicit value — '' falls back to the stylesheet's display:none
+        document.getElementById('skip-btn').style.display='block';
         var playerPlanet='magor';
         try {
             var _timeout=new Promise(function(res){setTimeout(res,6000,null);});
@@ -2918,24 +2919,35 @@
     // always zeroed, so only your own side can be summarised.
     var _lastFightRow = null;   // full row from the most recent _checkFightResult
 
+    // history_id is the primary key of battle.ale::fights, so look the row up directly.
+    // The old code scanned the newest 20 rows, which silently missed results whenever
+    // more than 20 fights landed while we waited.
     async function _fetchFightRow(historyId) {
         if (!historyId) return null;
         try {
             var res = await fetchRows({code:'battle.ale', scope:'battle.ale', table:'fights',
-                limit:20, json:true, reverse:true});
-            if (!res || !res.rows) return null;
-            return (res.rows||[]).find(function(r){ return r.history_id === historyId; }) || null;
-        } catch(e) { return null; }
+                lower_bound:historyId, upper_bound:historyId, limit:1, json:true});
+            var row = (res && res.rows || [])[0];
+            if (row) return row;
+        } catch(e) {}
+        return null;
     }
 
     async function _checkFightResult(historyId) {
         if (!historyId) return null;
-        // Give the chain 2.5s to write the fight result
-        await new Promise(function(r){ setTimeout(r, 2500); });
-        var row = await _fetchFightRow(historyId);
-        _lastFightRow = row;
-        if (!row) return null; // result not found — treat as inconclusive
-        return row.log === 'Team 1 wins' ? 'win' : 'loss';
+        // The chain needs a moment to write the result — retry instead of giving up
+        // after a single 2.5s wait, which reported "pending" on a fight that resolved fine.
+        var delays = [2500, 1500, 2000];
+        for (var i = 0; i < delays.length; i++) {
+            await new Promise(function(r){ setTimeout(r, delays[i]); });
+            var row = await _fetchFightRow(historyId);
+            if (row) {
+                _lastFightRow = row;
+                return row.log === 'Team 1 wins' ? 'win' : 'loss';
+            }
+        }
+        _lastFightRow = null;
+        return null;   // genuinely not readable yet
     }
 
     async function _refreshBpFighters() {
@@ -3870,7 +3882,9 @@
         if(!el) return;
         if(!row||typeof _buildFightSummary!=='function'){ el.innerHTML=''; el.style.display='none'; return; }
         el.innerHTML=_buildFightSummary(row,label);
-        el.style.display='';
+        // must be an explicit value: '' clears the inline style and falls back to
+        // the stylesheet, which sets #bp-result to display:none
+        el.style.display='block';
     }
     function _bpClearResult(){
         var el=document.getElementById('bp-result');
