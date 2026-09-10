@@ -471,6 +471,17 @@
         .txq-item-del { background:transparent; border:none; color:#332; font-size:0.9em;
             cursor:pointer; padding:0 3px; line-height:1; transition:color 0.1s; }
         .txq-item-del:hover { color:#ff6666; }
+        /* compact fight result, sits under its queue row */
+        .txq-fight-sum { padding:4px 8px 6px 26px; border-bottom:1px solid rgba(192,144,96,0.06);
+            background:rgba(96,200,255,0.02); font-size:0.56em; letter-spacing:1px; line-height:1.7; }
+        .txq-fs-head { color:#8090a0; }
+        .txq-fs-win  { color:#60e090; font-weight:bold; }
+        .txq-fs-loss { color:#ff6644; font-weight:bold; }
+        .txq-fs-stats { color:#6a7a8a; }
+        .txq-fs-stats b { color:#c0a060; font-weight:normal; }
+        .txq-fs-team { display:flex; gap:5px; flex-wrap:wrap; margin-top:2px; }
+        .txq-fs-f { padding:0 4px; border:1px solid rgba(96,200,255,0.14); border-radius:4px; color:#8898a8; white-space:nowrap; }
+        .txq-fs-f.fell { border-color:rgba(255,80,80,0.3); color:#a05858; text-decoration:line-through; opacity:0.75; }
         .txq-item-retry { background:transparent; border:1px solid rgba(255,120,80,0.35); color:#c06040;
             font-size:0.72em; cursor:pointer; padding:1px 5px; line-height:1.3; border-radius:6px;
             transition:all 0.15s; flex-shrink:0; }
@@ -2592,19 +2603,29 @@
         return '<span style="color:#446;font-size:0.55em">'+String(m).slice(0,3).toUpperCase()+'</span>';
     }
 
-    // battle.ale::fights holds both dungeon and arena results, keyed by history_id
-    async function _checkFightResult(historyId) {
+    // battle.ale::fights holds both dungeon and arena results, keyed by history_id.
+    // The row also carries per-fighter battlestats — for team 1 only; team 2's are
+    // always zeroed, so only your own side can be summarised.
+    var _lastFightRow = null;   // full row from the most recent _checkFightResult
+
+    async function _fetchFightRow(historyId) {
         if (!historyId) return null;
-        // Give the chain 2.5s to write the fight result
-        await new Promise(function(r){ setTimeout(r, 2500); });
         try {
             var res = await fetchRows({code:'battle.ale', scope:'battle.ale', table:'fights',
                 limit:20, json:true, reverse:true});
             if (!res || !res.rows) return null;
-            var row = (res.rows||[]).find(function(r){ return r.history_id === historyId; });
-            if (!row) return null; // result not found — treat as inconclusive
-            return row.log === 'Team 1 wins' ? 'win' : 'loss';
+            return (res.rows||[]).find(function(r){ return r.history_id === historyId; }) || null;
         } catch(e) { return null; }
+    }
+
+    async function _checkFightResult(historyId) {
+        if (!historyId) return null;
+        // Give the chain 2.5s to write the fight result
+        await new Promise(function(r){ setTimeout(r, 2500); });
+        var row = await _fetchFightRow(historyId);
+        _lastFightRow = row;
+        if (!row) return null; // result not found — treat as inconclusive
+        return row.log === 'Team 1 wins' ? 'win' : 'loss';
     }
 
     async function _refreshBpFighters() {
@@ -3681,6 +3702,7 @@
             <button class="txq-mode-btn" id="txq-mode-sep" onclick="setTxqRunMode('separate')">SPLIT</button>
         </div>
         <button class="txq-qm-btn" id="txq-qm-btn" onclick="toggleTxQueueMode()">○ QUEUE MODE</button>
+        <button class="txq-qm-btn" id="txq-skip-btn" onclick="toggleSkipFights()" title="When off, each fight's result is summarised in the queue">○ SKIP FIGHTS</button>
         <button class="txq-add-btn" id="txq-recruit-btn" onclick="txqAddAllTaverns()" style="border-color:rgba(60,200,100,0.45);color:#50c878;">RECRUIT RUN</button>
         <button class="txq-add-btn" id="txq-dungeon-btn" onclick="txqAddDungeonRun()" style="border-color:rgba(60,140,255,0.45);color:#5090e0;">DUNGEON RUN</button>
         <button class="txq-add-btn" id="txq-arena-btn" onclick="txqAddArenaRun()" style="border-color:rgba(192,96,96,0.45);color:#c06060;">ARENA RUN</button>
@@ -4107,6 +4129,20 @@ function txqWarpPickerConfirm() {
     setTxqRunMode('fastwarp');
 }
 
+// SKIP FIGHTS: when on, fights resolve silently. When off (default), each fight
+// drops a compact result summary under its queue row.
+var _skipFights     = false;
+var _fightSummaries = {};   // qIdx -> summary html, so it survives a re-render
+
+function toggleSkipFights() {
+    _skipFights = !_skipFights;
+    var b = document.getElementById('txq-skip-btn');
+    if (b) {
+        b.textContent = _skipFights ? '◉ SKIP FIGHTS: ON' : '○ SKIP FIGHTS';
+        b.classList.toggle('active', _skipFights);
+    }
+}
+
 function toggleTxQueueMode() {
     window._txQueueMode = !window._txQueueMode;
     var btn = document.getElementById('txq-qm-btn');
@@ -4488,6 +4524,7 @@ function drunPickerConfirm() {
 function txqClear() {
     _txQueue = [];
     _failedPlan = [];
+    _fightSummaries = {};
     var pw = document.getElementById('txq-prog-wrap');
     if (pw) pw.style.display = 'none';
     var pl = document.getElementById('txq-prog-lbl');
@@ -4524,6 +4561,64 @@ function _txqLocLabel(fallbackType, planet, x, y) {
     var pName = (PLANETS[planet] || {name: planet || ''}).name || '';
     var bName = (typeof _landBuildingNames !== 'undefined' && _landBuildingNames[planet+'.'+x+'.'+y]) || fallbackType;
     return String(bName).toUpperCase() + (pName ? ', ' + pName.toUpperCase() : '') + ', ' + x + ',' + y;
+}
+
+// Compact fight result from a battle.ale::fights row. Only team 1 (yours) carries
+// battlestats — team 2's are always zeroed — so the numbers describe your side.
+function _buildFightSummary(row, label) {
+    if (!row) return '';
+    var won  = row.log === 'Team 1 wins';
+    var mine = (row.team1_fighters || []);
+    var tot  = {dealt:0, taken:0, blocked:0, kos:0, atk:0};
+    var chips = '';
+
+    mine.forEach(function(f){
+        var bs = f.battlestats || {};
+        tot.dealt   += Number(bs.damage_dealt   || 0);
+        tot.taken   += Number(bs.damage_taken   || 0);
+        tot.blocked += Number(bs.damage_blocked || 0);
+        tot.kos     += Number(bs.knockouts      || 0);
+        tot.atk     += Number(bs.attacks_made   || 0);
+
+        var isWeapon = String(f.fighter_id) === '99999999999';
+        var cls = (f.classname||'').toLowerCase().replace(/[\s_-]/g,'');
+        var em  = isWeapon ? '⚔' : ((FIGHTER_CLASSES[cls]||{e:'?'}).e);
+        var fell = !Number(bs.survived || 0);
+        chips += '<span class="txq-fs-f'+(fell?' fell':'')+'" title="'
+              +  (isWeapon?'NFT weapon':(f.classname||'fighter'))+' LV'+(f.level||'?')
+              +  ' — dealt '+(bs.damage_dealt||0)+', taken '+(bs.damage_taken||0)+'">'
+              +  em + ' ' + (bs.damage_dealt||0)
+              +  (Number(bs.knockouts||0) ? ' 💀'+bs.knockouts : '')
+              +  '</span>';
+    });
+
+    var survived = mine.filter(function(f){ return Number((f.battlestats||{}).survived||0); }).length;
+
+    return '<div class="txq-fight-sum">'
+        + '<div class="txq-fs-head">' + (label ? label + ' — ' : '')
+        +   '<span class="' + (won?'txq-fs-win':'txq-fs-loss') + '">' + (won?'WON':'LOST') + '</span>'
+        +   ' · ' + (row.turns||'?') + ' turns · ' + survived + '/' + mine.length + ' survived'
+        + '</div>'
+        + '<div class="txq-fs-stats">'
+        +   '⚔ dealt <b>'+tot.dealt+'</b> · 💔 taken <b>'+tot.taken+'</b> · 🛡 blocked <b>'+tot.blocked+'</b>'
+        +   ' · 💀 <b>'+tot.kos+'</b> KO' + (tot.kos===1?'':'s') + ' · '+tot.atk+' attacks'
+        + '</div>'
+        + '<div class="txq-fs-team">' + chips + '</div>'
+        + '</div>';
+}
+
+// Store against the queue index and inject under that row now
+function _showFightSummary(qIdx, row, label) {
+    var html = _buildFightSummary(row, label);
+    if (!html) return;
+    _fightSummaries[qIdx] = html;
+    var itemEl = document.getElementById('txq-item-' + qIdx);
+    if (!itemEl || !itemEl.parentNode) return;
+    var existing = itemEl.nextElementSibling;
+    if (existing && existing.classList.contains('txq-fight-sum')) existing.remove();
+    var holder = document.createElement('div');
+    holder.innerHTML = html;
+    itemEl.parentNode.insertBefore(holder.firstChild, itemEl.nextSibling);
 }
 
 function renderTxQueue() {
@@ -4564,12 +4659,14 @@ function renderTxQueue() {
                       : item.type==='dungeon'     ? (item.name||_txqLocLabel('DUNGEON', _lp, item.x, item.y))
                       : item.type==='arena'       ? (item.name||_txqLocLabel('ARENA', _lp, item.x, item.y))
                       : (item.name || _txqLocLabel('TAVERN', _lp, item.x, item.y));
+            var _sum = _fightSummaries[i] || '';
             return '<div class="txq-item" id="txq-item-'+i+'">'
                 + '<span class="txq-item-icon">' + (icons[item.type]||'→') + '</span>'
                 + '<span class="txq-item-label">' + label + '</span>'
                 + '<span class="txq-item-ap">' + ap + ' AP</span>'
                 + '<button class="txq-item-del" onclick="txqRemove('+i+')" title="Remove">×</button>'
-                + '</div>';
+                + '</div>'
+                + _sum;
         }).join('');
     }
 
@@ -4614,6 +4711,7 @@ async function runTxQueue() {
     _txQueueRunning = true;
     _txQueueAbort   = false;
     _failedPlan     = []; // clear failures from previous run
+    _fightSummaries = {}; // drop fight results from the previous run
 
     var runBtn   = document.getElementById('txq-run-btn');
     var closeBtn = document.getElementById('txq-close-btn');
@@ -4914,10 +5012,13 @@ async function runTxQueue() {
                         if (_rl2) { _rl2.style.color = '#ff6644'; _rl2.textContent = (_rl2.textContent||'') + ' — LOSS ×2 · queue paused'; }
                     }
                     if (progLbl) progLbl.textContent = '⚠ Dungeon lost twice — check your team and retry.';
+                    if (!_skipFights) _showFightSummary(step.qIdx, _lastFightRow, step.label);
                     _txQueueAbort = true;
                     failed++;
                     continue;
                 }
+
+                if (!_skipFights) _showFightSummary(step.qIdx, _lastFightRow, step.label);
 
                 // Win (or inconclusive — proceed)
                 _playerPlayedDungeons.add(_dk);
@@ -4960,10 +5061,13 @@ async function runTxQueue() {
                         if (_al2) { _al2.style.color = '#ff6644'; _al2.textContent = (_al2.textContent||'') + ' — LOSS ×2 · queue paused'; }
                     }
                     if (progLbl) progLbl.textContent = '⚠ Arena lost twice — check your team and retry.';
+                    if (!_skipFights) _showFightSummary(step.qIdx, _lastFightRow, step.label);
                     _txQueueAbort = true;
                     failed++;
                     continue;
                 }
+
+                if (!_skipFights) _showFightSummary(step.qIdx, _lastFightRow, step.label);
 
                 // Win — the contract parks one of our five here as the defender.
                 // Find which slot went in_use and refill it before the next arena.
