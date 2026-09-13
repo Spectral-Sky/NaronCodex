@@ -183,7 +183,7 @@
         /* ── OFFERS GRID ──────────────────────────────────────────────────── */
         .offers-row {
             display:grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px,1fr)) 230px;
+            grid-template-columns: repeat(auto-fill, minmax(320px,1fr)) 230px;
             gap:16px; margin-bottom:24px; align-items:start;
         }
 
@@ -401,6 +401,9 @@
         .sg-add-btn:disabled, .sg-add input:disabled { opacity:0.5; cursor:default; }
         .sg-msg.ok  { color:#60e090; }
         .sg-msg.err { color:var(--red); }
+        .simple-table td.sg-names { white-space:normal; max-width:280px; line-height:1.5; }
+        .sg-me { color:var(--gold); font-weight:bold; }
+        .contrib-addr { color:var(--muted); font-size:0.85em; margin-left:5px; }
 
         /* loading */
         .loading-pulse { display:inline-block; animation:fade-pulse 1.2s infinite; }
@@ -663,14 +666,14 @@
     <div class="content-wrap">
         <div class="req-section simple-section">
             <div class="req-header">
-                <h2>◆ Simplified</h2>
+                <h2>◆ Candle Shop</h2>
                 <span class="req-count sg-msg" id="simple-status"></span>
             </div>
             <div style="overflow-x:auto;">
                 <table class="req-table simple-table">
-                    <thead><tr><th>Rewards</th><th>Requirements</th><th>Contributions</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Rewards</th><th>Requirements</th><th>Contributions</th><th>Contributors</th><th>Names</th><th>Status</th></tr></thead>
                     <tbody id="simple-body">
-                        <tr><td colspan="4"><div class="req-empty"><span class="loading-pulse">Querying recovery.ale…</span></div></td></tr>
+                        <tr><td colspan="6"><div class="req-empty"><span class="loading-pulse">Querying recovery.ale…</span></div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1093,7 +1096,7 @@
             }
             return `<div class="contrib-row${isMe ? ' contrib-me' : ''}">
                 <img src="${LOGO_GEMS}" style="width:11px;height:11px;object-fit:contain;opacity:0.7;flex-shrink:0;">
-                <span class="contrib-wallet">${isMe ? '◈ ' : ''}${c.wallet}</span>
+                <span class="contrib-wallet" title="${c.wallet}">${isMe ? '◈ ' : ''}${sgEsc(playerName(c.wallet))}${_playerNames[c.wallet] ? `<span class="contrib-addr">${c.wallet}</span>` : ''}</span>
                 <span class="contrib-amt">${fmtBig(c.amount)}</span>
                 <span class="contrib-share">${pctDisplay}</span>
                 ${rwdShareHtml}
@@ -1113,6 +1116,9 @@
     // ADD GEMS replaces the progress only once the requirement is met AND the offer is active.
     let _sgPending = new Set();   // offer_ids with a contribute TX in flight
     let _sgTimer   = null;
+    let _playerNames = {};        // wallet -> players.ale playertag ('' when none)
+
+    function playerName(w) { return (_playerNames[w] || w || ''); }
 
     function sgEsc(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -1136,7 +1142,7 @@
         if (!body) return;
         if (_sgTimer) { clearInterval(_sgTimer); _sgTimer = null; }
         if (!offers || !offers.length) {
-            body.innerHTML = '<tr><td colspan="4"><div class="req-empty">No offers found in recovery.ale</div></td></tr>';
+            body.innerHTML = '<tr><td colspan="6"><div class="req-empty">No offers found in recovery.ale</div></td></tr>';
             return;
         }
 
@@ -1192,6 +1198,12 @@
                 <td><span class="gem-cell"><img src="${logo}" onerror="this.style.display='none'">${sgRewardFmt(amount, type)}</span></td>
                 <td class="sg-req">${sgEsc(reqName)} [${fmtBig(reqAmt)}]<div class="sg-sub">${sub}</div></td>
                 <td>${contrib}</td>
+                <td>${list ? list.length : '…'}</td>
+                <td class="sg-names">${list
+                    ? (list.length
+                        ? list.map(c => `<span class="${c.wallet === me ? 'sg-me' : ''}" title="${sgEsc(c.wallet)} — ${fmtBig(c.amount)} gems">${sgEsc(playerName(c.wallet))}</span>`).join(', ')
+                        : '—')
+                    : '…'}</td>
                 <td>${status}</td>
             </tr>`;
         }).join('');
@@ -1664,7 +1676,7 @@
             document.getElementById('offers-row').innerHTML =
                 '<div class="no-offers">Error: ' + (e.message || e) + '</div>';
             const sb = document.getElementById('simple-body');
-            if (sb) sb.innerHTML = '<tr><td colspan="4"><div class="req-empty">Error loading offers</div></td></tr>';
+            if (sb) sb.innerHTML = '<tr><td colspan="6"><div class="req-empty">Error loading offers</div></td></tr>';
         }
     }
 
@@ -1742,6 +1754,18 @@
                     .slice()
                     .sort((a, b) => b.amount - a.amount);
             } catch(e) { _allContribs[o.offer_id] = []; }
+        }));
+        // Resolve contributor names (players.ale playertag), keyed by wallet so each
+        // is only looked up once
+        const wallets = new Set();
+        Object.values(_allContribs).forEach(l => l.forEach(c => { if (!(c.wallet in _playerNames)) wallets.add(c.wallet); }));
+        await Promise.all([...wallets].map(async (w) => {
+            try {
+                const r = await fetchRows({ code:'players.ale', scope:'players.ale', table:'players',
+                    lower_bound: w, upper_bound: w, limit: 1 });
+                const row = (r.rows || []).find(x => x.wallet === w);
+                _playerNames[w] = (row && row.playertag) ? String(row.playertag) : '';
+            } catch(e) { _playerNames[w] = ''; }
         }));
         renderOffers(_offersCache);
         renderOptimizer();
