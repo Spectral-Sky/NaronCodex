@@ -16,7 +16,8 @@
 
 var WAX_NODE   = 'https://wax.greymass.com';
 var SHEET_NAME = 'fights';
-var MAX_ROWS   = 100000;
+var MAX_ROWS   = 100000;   // live sheet cap; also how often a full copy is archived
+var ARCHIVE_PROP = 'rowsSinceArchive';
 
 // eosphere first: eosusa's index is missing actions (e.g. all of 1–2 Sep 2026), and when
 // it answered first the missing fights were written with a blank fight_type.
@@ -159,12 +160,16 @@ function processFightsData_(sheet) {
   }
 
   repairBlankRows_(sheet, enrichMap);
+  var unarchived = archiveIfDue_(sheet, newRows.length);   // before the trim, so the copy is complete
 
-  // Trim oldest rows if sheet exceeds MAX_ROWS
+  // Trim oldest rows down to MAX_ROWS. If an archive copy is overdue (it failed), keep
+  // the rows not yet archived so the retry can still save them — capped at 5,000 extra
+  // rows so a lasting failure can't grow the live sheet without limit.
+  var keep  = Math.min(Math.max(MAX_ROWS, unarchived), MAX_ROWS + 5000);
   var total = sheet.getLastRow() - 1;
-  if (total > MAX_ROWS) {
-    sheet.deleteRows(2, total - MAX_ROWS);
-    Logger.log('Trimmed to ' + MAX_ROWS + ' rows.');
+  if (total > keep) {
+    sheet.deleteRows(2, total - keep);
+    Logger.log('Trimmed to ' + keep + ' rows.');
   }
 
   return newRows.length;
@@ -282,6 +287,39 @@ function repairBlankRows_(sheet, shallowMap) {
   return fixed;
 }
 
+// Saves a full copy of the live sheet as a new tab once every MAX_ROWS rows added.
+// A running count of rows added since the last copy is kept in script properties,
+// because the live sheet sits at MAX_ROWS once trimming starts, so "is it full?" would
+// be true on every run. Each copy is cut down to exactly the rows added since the
+// previous one, so consecutive archives line up with no overlap and no gaps.
+// Workbook limit: Google Sheets allows 10M cells; each copy is ~1.6M (100k x 16 cols).
+function archiveIfDue_(sheet, added) {
+  if (sheet.getName() !== SHEET_NAME) return 0;   // manual timestamped scans aren't archived
+  var props = PropertiesService.getScriptProperties();
+  var raw   = props.getProperty(ARCHIVE_PROP);
+  // First run with this version: start from the rows already in the sheet, so the first
+  // copy is made when the sheet itself first reaches MAX_ROWS.
+  var since = raw === null ? sheet.getLastRow() - 1 : Number(raw) + added;
+  if (since >= MAX_ROWS) {
+    try {
+      var name = 'fights_archive_' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmm');
+      var copy = sheet.copyTo(sheet.getParent()).setName(name);
+      // The live sheet can hold rows the previous archive already saved (it keeps the
+      // newest MAX_ROWS rows plus this run's additions), so drop the oldest from the copy
+      // until it holds exactly the rows added since the last archive.
+      var extra = (copy.getLastRow() - 1) - since;
+      if (extra > 0) copy.deleteRows(2, extra);
+      Logger.log('Archived ' + (copy.getLastRow() - 1) + ' rows to "' + name + '".');
+      since = 0;
+    } catch (e) {
+      // most likely the 10M-cell workbook limit; keep the count so it retries next run
+      Logger.log('Archive FAILED (will retry next run): ' + e);
+    }
+  }
+  props.setProperty(ARCHIVE_PROP, String(since));
+  return since;   // rows not yet archived — the trim keeps these while a copy is overdue
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // REPAIR — fixes the header row only, keeps all existing data rows intact,
 // then appends any new fights from chain (duplicates are skipped automatically)
@@ -317,6 +355,7 @@ function fullResetSheet() {
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) { Logger.log('Sheet "' + SHEET_NAME + '" not found.'); return; }
   sheet.clearContents();
+  PropertiesService.getScriptProperties().deleteProperty(ARCHIVE_PROP);   // restart the count for the fresh sheet
   writeHeader_(sheet);
   var count = processFightsData_(sheet);
   ss.toast('Full reset done. ' + count + ' rows written.', 'Reset Complete');
