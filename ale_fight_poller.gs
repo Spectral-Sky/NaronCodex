@@ -18,11 +18,13 @@ var WAX_NODE   = 'https://wax.greymass.com';
 var SHEET_NAME = 'fights';
 var MAX_ROWS   = 100000;
 
+// eosphere first: eosusa's index is missing actions (e.g. all of 1–2 Sep 2026), and when
+// it answered first the missing fights were written with a blank fight_type.
 var HYPERION_NODES = [
-  'https://wax.eosusa.io',
   'https://wax.eosphere.io',
   'https://api.waxsweden.org',
-  'https://wax.eosrio.io'
+  'https://wax.eosrio.io',
+  'https://wax.eosusa.io'
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -156,6 +158,8 @@ function processFightsData_(sheet) {
     Logger.log('No new fights.');
   }
 
+  repairBlankRows_(sheet, enrichMap);
+
   // Trim oldest rows if sheet exceeds MAX_ROWS
   var total = sheet.getLastRow() - 1;
   if (total > MAX_ROWS) {
@@ -216,32 +220,66 @@ function fetchHyperionData_(path) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Build enrichment map: history_id → {fight_type, difficulty, crew, weapon}
 // ─────────────────────────────────────────────────────────────────────────────
-function buildEnrichMap_() {
+// pages: how many 1,000-action pages to read back per fight type (default 1 = newest 1,000)
+function buildEnrichMap_(pages) {
+  pages = pages || 1;
   var map = {};
-
-  var d1 = fetchHyperionData_('/v2/history/get_actions?account=arena.ale&filter=arena.ale%3Aplayarena&limit=1000&sort=desc');
-  if (d1 && d1.actions) {
-    d1.actions.forEach(function(a) {
-      var d = a.act && a.act.data;
-      if (d && d.history_id) {
-        map[d.history_id] = { fight_type:'arena', difficulty:0,
-          crew_asset_id:String(d.crew_asset_id||''), weapon_asset_id:String(d.weapon_asset_id||'') };
-      }
-    });
-  }
-
-  var d2 = fetchHyperionData_('/v2/history/get_actions?account=dungeons.ale&filter=dungeons.ale%3Aplaydungeon&limit=1000&sort=desc');
-  if (d2 && d2.actions) {
-    d2.actions.forEach(function(a) {
-      var d = a.act && a.act.data;
-      if (d && d.history_id) {
-        map[d.history_id] = { fight_type:'dungeon', difficulty:Number(d.difficulty||0),
-          crew_asset_id:String(d.crew_asset_id||''), weapon_asset_id:String(d.weapon_asset_id||'') };
-      }
-    });
-  }
-
+  [['arena.ale', 'playarena', 'arena'], ['dungeons.ale', 'playdungeon', 'dungeon']].forEach(function(src) {
+    for (var p = 0; p < pages; p++) {
+      var d = fetchHyperionData_('/v2/history/get_actions?account=' + src[0] + '&filter=' + src[0] + '%3A' + src[1]
+        + '&limit=1000&skip=' + (p * 1000) + '&sort=desc');
+      var acts = (d && d.actions) || [];
+      acts.forEach(function(a) {
+        var x = a.act && a.act.data;
+        if (x && x.history_id) {
+          map[x.history_id] = { fight_type: src[2], difficulty: src[2] === 'arena' ? 0 : Number(x.difficulty || 0),
+            crew_asset_id: String(x.crew_asset_id || ''), weapon_asset_id: String(x.weapon_asset_id || '') };
+        }
+      });
+      if (acts.length < 1000) break;
+    }
+  });
   return map;
+}
+
+// Rows appended before their playarena/playdungeon action reached the history node were
+// left with a blank fight_type and, being skipped as duplicates, never revisited — on
+// 12–13 Sep 2026 that was ~2,000 fights a day. Re-type them from history. Only rows from
+// the last 3 days are considered, so unfixable old blanks don't force a deep history read
+// on every 5-minute run; the deeper read happens only when the newest page can't fix them.
+function repairBlankRows_(sheet, shallowMap) {
+  var n = sheet.getLastRow() - 1;
+  if (n < 1) return 0;
+  var vals = sheet.getRange(2, 1, n, 8).getValues();   // A..H
+  var cutoff = Date.now() - 3 * 86400000;
+  var blanks = [];
+  for (var i = 0; i < n; i++) {
+    if (!vals[i][0] || vals[i][3]) continue;           // no id, or fight_type already set
+    var ts = vals[i][2] instanceof Date ? vals[i][2].getTime() : Date.parse(String(vals[i][2]) + 'Z');
+    if (ts && ts >= cutoff) blanks.push(i);
+  }
+  if (!blanks.length) return 0;
+
+  var map = shallowMap;
+  var unresolved = blanks.some(function(i) { return !map[String(vals[i][0])]; });
+  if (unresolved) map = buildEnrichMap_(8);            // ~8,000 actions per type, under the 10,000 skip cap
+
+  var fixed = 0;
+  blanks.forEach(function(i) {
+    var en = map[String(vals[i][0])];
+    if (!en) return;
+    vals[i][3] = en.fight_type;
+    vals[i][4] = en.difficulty || 0;
+    vals[i][6] = en.crew_asset_id || '';
+    vals[i][7] = en.weapon_asset_id || '';
+    fixed++;
+  });
+  if (fixed) {
+    // write D..H back in one call rather than a round trip per row
+    sheet.getRange(2, 4, n, 5).setValues(vals.map(function(r) { return r.slice(3, 8); }));
+    Logger.log('Repaired ' + fixed + ' of ' + blanks.length + ' recent rows with a blank fight_type.');
+  }
+  return fixed;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

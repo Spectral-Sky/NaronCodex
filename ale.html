@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -671,6 +672,7 @@
         <div style="padding:30px 40px;">
             <div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.5);margin-bottom:20px;">◈ USAGE STATISTICS</div>
             <div id="stats-loading" style="color:#666;font-size:0.7em;letter-spacing:2px;display:none;">LOADING DATA…</div>
+            <div id="stats-trends" style="margin-bottom:32px;"></div>
             <div id="stats-arena" style="margin-bottom:32px;"></div>
             <div id="stats-dungeon"></div>
         </div>
@@ -2144,6 +2146,157 @@ window.runRecentScan = async function() {
     }
 };
 
+// ── ACTIVITY OVER TIME: arenas won · dungeons won · fighters recruited, per day ────
+// Wins come from the stats sheet the tab has already downloaded (~14 MB — never fetch
+// it twice). "Won" means the player's team (team 1) won. Rows with a blank fight_type
+// can't be classed as arena or dungeon, so they're counted and left out.
+// Recruits come from chain history: one players.ale::hire action per recruit, fetched a
+// day at a time in parallel. Offset paging would soon break — history nodes cap skip at
+// 10,000 and hires run ~600/day — and eosphere is first because other nodes' indexes are
+// missing early September. Finished days are cached; today always refetches.
+var TREND_HYPERION  = ['https://wax.eosphere.io', 'https://wax.eosusa.io'];
+var TREND_CACHE_KEY = 'ale_recruits_by_day_v2';
+var _trendChart = null;
+
+function _utcDay(ms) { return new Date(ms).toISOString().slice(0, 10); }
+
+function _trendDays(fromDay) {
+    var out = [], d = new Date(fromDay + 'T00:00:00Z'), today = _utcDay(Date.now());
+    while (_utcDay(d.getTime()) <= today) { out.push(_utcDay(d.getTime())); d.setUTCDate(d.getUTCDate() + 1); }
+    return out;
+}
+
+function _winsByDay(csv) {
+    var lines = csv.replace(/\r/g, '').split('\n');
+    var hdr = (lines[0] || '').split(',').map(function(h){ return h.replace(/"/g, '').trim().toLowerCase(); });
+    var iTs = hdr.indexOf('timestamp'), iFt = hdr.indexOf('fight_type'), iW = hdr.indexOf('winner');
+    var arena = {}, dungeon = {}, rows = {}, blank = {}, firstDay = null;
+    for (var i = 1; i < lines.length; i++) {
+        if (!lines[i]) continue;
+        var c  = lines[i].split(',');
+        var ts = (c[iTs] || '').replace(/"/g, '').trim();
+        if (!ts) continue;
+        var ms = new Date(ts.indexOf('Z') >= 0 ? ts : ts + 'Z').getTime();
+        if (isNaN(ms)) continue;
+        var day = _utcDay(ms);
+        if (!firstDay || day < firstDay) firstDay = day;
+        rows[day] = (rows[day] || 0) + 1;
+        var ft = (c[iFt] || '').replace(/"/g, '').trim();
+        if (ft !== 'arena' && ft !== 'dungeon') { blank[day] = (blank[day] || 0) + 1; continue; }
+        if (Number((c[iW] || '1').replace(/"/g, '')) !== 1) continue;
+        var bucket = ft === 'arena' ? arena : dungeon;
+        bucket[day] = (bucket[day] || 0) + 1;
+    }
+    // If the sheet couldn't type most of a day's fights, its win counts would chart as a
+    // false collapse — mark those days incomplete so they show as gaps instead.
+    var incomplete = Object.keys(blank).filter(function(d){ return blank[d] / rows[d] > 0.1; }).sort();
+    return { arena: arena, dungeon: dungeon, incomplete: incomplete, firstDay: firstDay };
+}
+
+async function _hireCountForDay(day) {
+    // The trailing Z matters: without it the history node reads the window as a local
+    // time 8 hours off, which shifts hires into the neighbouring day.
+    var start = day + 'T00:00:00Z';
+    var end   = _utcDay(new Date(day + 'T00:00:00Z').getTime() + 86400000) + 'T00:00:00Z';
+    var query = '/v2/history/get_actions?account=players.ale&filter=players.ale%3Ahire&after=' + start + '&before=' + end;
+    for (var n = 0; n < TREND_HYPERION.length; n++) {
+        try {
+            // track=true returns the exact count in one small request instead of paging
+            var r = await fetch(TREND_HYPERION[n] + query + '&limit=1&track=true');
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            var total = (await r.json()).total;
+            if (total && total.relation === 'eq') return { count: Number(total.value), complete: n === 0 };
+            var count = 0, skip = 0;   // count wasn't exact — page through instead
+            while (true) {
+                var p = await fetch(TREND_HYPERION[n] + query + '&limit=1000&skip=' + skip + '&sort=asc');
+                if (!p.ok) throw new Error('HTTP ' + p.status);
+                var got = ((await p.json()).actions || []).length;
+                count += got;
+                if (got < 1000) break;
+                skip += 1000;
+            }
+            return { count: count, complete: n === 0 };
+        } catch (e) { /* try the next node */ }
+    }
+    return null;
+}
+
+async function _recruitsByDay(days) {
+    var cache = {};
+    try { cache = JSON.parse(localStorage.getItem(TREND_CACHE_KEY) || '{}'); } catch (e) {}
+    var today = _utcDay(Date.now()), out = {};
+    var queue = days.filter(function(d){
+        if (d !== today && cache[d] != null) { out[d] = cache[d]; return false; }
+        return true;
+    });
+    async function worker() {
+        while (queue.length) {
+            var d = queue.shift();
+            var res = await _hireCountForDay(d);
+            if (!res) continue;
+            out[d] = res.count;
+            // only cache finished days from the complete node; a fallback node may be missing actions
+            if (d !== today && res.complete) cache[d] = res.count;
+        }
+    }
+    await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+    try { localStorage.setItem(TREND_CACHE_KEY, JSON.stringify(cache)); } catch (e) {}
+    return out;
+}
+
+function renderTrends(csv) {
+    var el = document.getElementById('stats-trends');
+    if (!el || !csv) return;
+    var w = _winsByDay(csv);
+    if (!w.firstDay) { el.innerHTML = ''; return; }
+    var days   = _trendDays(w.firstDay);
+    var labels = days.map(function(d, i){ return d.slice(5) + (i === days.length - 1 ? '*' : ''); });
+
+    el.innerHTML = '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ ACTIVITY OVER TIME — ALL PLAYERS</div>'
+        + '<div id="trend-note" style="font-size:0.58em;color:#505060;letter-spacing:1px;margin-bottom:8px;"></div>'
+        + '<div style="position:relative;height:300px;"><canvas id="trend-canvas"></canvas></div>';
+    var note = document.getElementById('trend-note');
+    var baseNote = 'Per day (UTC) · * today, still counting · wins from the stats sheet'
+        + (w.incomplete.length
+            ? ' (not shown for ' + w.incomplete.map(function(d){ return d.slice(5); }).join(', ')
+              + ': fight type missing for most of that day)'
+            : '')
+        + ' · recruits from chain history';
+    if (typeof Chart === 'undefined') { note.textContent = 'Chart library failed to load.'; return; }
+    note.textContent = baseNote + ' · loading recruits…';
+
+    function series(label, color, data) {
+        return { label: label, data: data, borderColor: color, backgroundColor: color,
+                 borderWidth: 2, pointRadius: 2, tension: 0.25, spanGaps: false };   // gaps stay visible, never bridged
+    }
+    if (_trendChart) { _trendChart.destroy(); _trendChart = null; }
+    var chart = _trendChart = new Chart(document.getElementById('trend-canvas'), {
+        type: 'line',
+        data: { labels: labels, datasets: [
+            series('Dungeons won',       '#e8a020', days.map(function(d){ return w.incomplete.indexOf(d) >= 0 ? null : (w.dungeon[d] || 0); })),
+            series('Arenas won',         '#e05a5a', days.map(function(d){ return w.incomplete.indexOf(d) >= 0 ? null : (w.arena[d] || 0); })),
+            series('Fighters recruited', '#50dc8c', days.map(function(){ return null; }))
+        ]},
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { labels: { color: '#9098a8', font: { size: 11 } } } },
+            scales: {
+                x: { ticks: { color: '#606878' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                y: { beginAtZero: true, ticks: { color: '#606878' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+            }
+        }
+    });
+
+    _recruitsByDay(days).then(function(rec) {
+        if (_trendChart !== chart) return;   // stats were reloaded while recruits were fetching
+        var missing = days.filter(function(d){ return rec[d] == null; }).length;
+        chart.data.datasets[2].data = days.map(function(d){ return rec[d] != null ? rec[d] : null; });
+        chart.update();
+        note.textContent = baseNote + (missing ? ' · recruits unavailable for ' + missing + ' day' + (missing === 1 ? '' : 's') : '');
+    });
+}
+
 window.runHistoricalScan = async function() {
     if (!_statsGSheetURL) { _showStatsSetup(); return; }
     _setStatsMsg('FETCHING SHEET DATA…');
@@ -2151,6 +2304,7 @@ window.runHistoricalScan = async function() {
     try {
         var res = await fetch(_statsGSheetURL);
         _rawCSV = await res.text();
+        renderTrends(_rawCSV);   // async recruit fetch; doesn't hold up the stats below
         var cutoff = _timeFilter ? Date.now() - _timeFilter * 86400000 : 0;
         var myWallet = localStorage.getItem('naron_wallet') || '';
         var agg = _parseSheetCSV(_rawCSV, cutoff, myWallet);
