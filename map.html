@@ -12,6 +12,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="NCico.png">
     <script src="waxjs.js"></script>
+    <script src="ale_fightsim.js"></script>
+    <script src="ale_fightreplay.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script type="module">
         import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
@@ -940,6 +942,7 @@
         <button class="btn3d ghost" id="qt-toggle" onclick="toggleQuickTravel()">QUICK TRAVEL</button>
         <button class="btn3d ghost" id="ab-toggle" onclick="toggleAutoBattle()">OPEN ON ARRIVAL</button>
         <button class="btn3d ghost" id="fighters-btn" onclick="loadMyFighters()">&#9876; MY FIGHTERS</button>
+        <button class="btn3d ghost" id="replays-btn" onclick="AleReplay.open()">FIGHT REPLAYS</button>
         <button class="btn3d ghost" id="lb-cmds-btn" onclick="toggleCommandsPanel()" style="display:none">ALL COMMANDS &#9656;</button>
     </div>
 </div>
@@ -2918,6 +2921,8 @@
     // The row also carries per-fighter battlestats — for team 1 only; team 2's are
     // always zeroed, so only your own side can be summarised.
     var _lastFightRow = null;   // full row from the most recent _checkFightResult
+    // Not strictly needed (the replay tries both venues), but saves a second simulation.
+    var _replayArenaHid = null, _replayDungeonHid = null;
 
     // history_id is the primary key of battle.ale::fights, so look the row up directly.
     // The old code scanned the newest 20 rows, which silently missed results whenever
@@ -2943,6 +2948,13 @@
             var row = await _fetchFightRow(historyId);
             if (row) {
                 _lastFightRow = row;
+                // The chain drops fight rows after about a minute, so save every one for
+                // replay now; open the replay pane unless SKIP FIGHTS is on.
+                try {
+                    if (window.AleReplay) window.AleReplay.onFight(row,
+                        historyId === _replayArenaHid ? 'arena' : historyId === _replayDungeonHid ? 'dungeon' : null,
+                        !(typeof _skipFights !== 'undefined' && _skipFights));
+                } catch(e) {}
                 return row.log === 'Team 1 wins' ? 'win' : 'loss';
             }
         }
@@ -3816,6 +3828,7 @@
             var authz=[{actor:wallet,permission:'active'}];
 
             var _hid=genHistoryId();
+            if(_bpMode==='dungeon') _replayDungeonHid=_hid; else _replayArenaHid=_hid;
             var action, _lbl;
             if(_bpMode==='dungeon'){
                 var de=_bpDungeonEntry;
@@ -5318,6 +5331,7 @@ async function runTxQueue() {
             }
             var _dHid = genHistoryId();
             step.dungeonHistoryId = _dHid;
+            _replayDungeonHid = _dHid;
             step.actions = [{ account:'dungeons.ale', name:'playdungeon',
                 authorization:[{actor:wallet,permission:'active'}],
                 data:{ wallet:wallet, planet:d.planet, land_id:d.land_id,
@@ -5343,6 +5357,7 @@ async function runTxQueue() {
             }
             var _aHid = genHistoryId();
             step.arenaHistoryId = _aHid;
+            _replayArenaHid = _aHid;
             // lands.ale rows don't always carry land_id — derive it from the coords when missing
             var _aLand = av.land_id || encodeLandId(Number(av.x), Number(av.y));
             step.actions = [{ account:'arena.ale', name:'playarena',
