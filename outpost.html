@@ -115,12 +115,12 @@
         .op-tabs { display:flex; gap:6px; }
         .op-tab {
             border-radius:20px; padding:8px 22px; background:rgba(0,0,0,0.82);
-            border:1px solid rgba(0,255,204,0.35); color:rgba(0,255,204,0.6);
+            border:1px solid rgba(255,170,51,0.5); color:rgba(255,190,100,0.9);
             cursor:pointer; font-family:'Courier New',monospace; font-size:0.8em;
             letter-spacing:2px; text-transform:uppercase; transition:all 0.2s;
         }
-        .op-tab:hover  { border-color:var(--theme-color); color:var(--theme-color); }
-        .op-tab.active { background:var(--theme-color); color:#000; border-color:var(--theme-color); box-shadow:0 0 16px rgba(0,255,204,0.4); }
+        .op-tab:hover  { border-color:#ffaa33; color:#ffaa33; }
+        .op-tab.active { background:#ffaa33; color:#000; border-color:#ffaa33; box-shadow:0 0 16px rgba(255,170,51,0.45); }
         #history-panel {
             display:none; background:#020810; border:1px solid rgba(0,255,204,0.2);
             border-radius:4px; font-family:'Courier New',monospace;
@@ -145,7 +145,7 @@
         @media (max-width:700px)  { .offers-grid { grid-template-columns:repeat(2,1fr); } }
 
         /* OFFER CARD — 3D FLIP */
-        .card-wrap { perspective:900px; height:300px; }
+        .card-wrap { perspective:900px; height:350px; }
         .offer-card {
             width:100%; height:100%;
             position:relative;
@@ -163,13 +163,22 @@
         .card-front {
             background:#040810;
             border:1px solid rgba(0,255,204,0.22);
-            display:flex; flex-direction:column; align-items:center; gap:7px;
-            padding:12px 8px; text-align:center;
+            display:flex; flex-direction:column; align-items:center; gap:5px;
+            padding:7px 6px; text-align:center;
             transition:border-color 0.2s, box-shadow 0.2s;
         }
         .offer-card:not(.flipped):hover .card-front { border-color:var(--theme-color); box-shadow:0 0 14px rgba(0,255,204,0.22); }
-        .offer-card.active .card-front   { border-color:rgba(0,255,100,0.45); }
-        .offer-card.upcoming .card-front { border-color:rgba(0,170,255,0.38); }
+        .offer-card.active .card-front   { border-color:rgba(0,255,100,0.6); background:linear-gradient(180deg,rgba(0,255,100,0.08),#040810 45%); }
+        .offer-card.upcoming .card-front { border-color:rgba(0,170,255,0.55); background:linear-gradient(180deg,rgba(0,170,255,0.08),#040810 45%); }
+        .card-status {
+            align-self:stretch; font-size:0.6em; letter-spacing:1.5px; font-weight:bold;
+            padding:3px 6px; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .card-status.active   { color:#00ff77; background:rgba(0,255,100,0.12); border:1px solid rgba(0,255,100,0.4); }
+        .card-status.upcoming { color:#44aaff; background:rgba(0,170,255,0.12); border:1px solid rgba(0,170,255,0.4); }
+        .arc-status { font-size:0.9em; letter-spacing:1px; font-weight:bold; padding:1px 8px; border-radius:8px; white-space:nowrap; }
+        .arc-status.active   { color:#00ff77; background:rgba(0,255,100,0.1); border:1px solid rgba(0,255,100,0.35); }
+        .arc-status.upcoming { color:#44aaff; background:rgba(0,170,255,0.1); border:1px solid rgba(0,170,255,0.35); }
         .card-back {
             transform:rotateY(180deg);
             background:#04040f;
@@ -179,8 +188,8 @@
         }
         .card-back-img { width:100%; flex:1; object-fit:contain; min-height:0; border-radius:6px; }
         .card-back-label { color:var(--theme-color); font-size:0.68em; letter-spacing:1px; text-transform:uppercase; text-align:center; line-height:1.3; }
-        .offer-img { width:110px; height:110px; object-fit:contain; border-radius:8px; background:#080818; border:1px solid #1a1a2e; }
-        .offer-img-placeholder { width:110px; height:110px; border-radius:8px; background:#080818; border:1px solid #1a1a2e; display:flex; align-items:center; justify-content:center; color:#252535; font-size:0.68em; letter-spacing:1px; }
+        .offer-img { width:100%; height:180px; object-fit:contain; border-radius:8px; background:#080818; border:1px solid #1a1a2e; }
+        .offer-img-placeholder { width:100%; height:180px; border-radius:8px; background:#080818; border:1px solid #1a1a2e; display:flex; align-items:center; justify-content:center; color:#252535; font-size:0.68em; letter-spacing:1px; }
         .offer-name { color:var(--theme-color); font-size:0.74em; letter-spacing:1px; font-weight:bold; text-transform:uppercase; line-height:1.35; }
         .offer-badge { font-size:0.6em; letter-spacing:2px; padding:2px 10px; border-radius:10px; font-weight:bold; text-transform:uppercase; }
         .element-earth     { color:#c8a827; border:1px solid rgba(200,168,39,0.35); }
@@ -301,8 +310,8 @@
             #hamburger-btn { display:block; }
             .title-bar-left h1 { font-size:1.3em; letter-spacing:4px; }
             .offers-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
-            .card-wrap { height:270px; }
-            .offer-img, .offer-img-placeholder { width:90px; height:90px; }
+            .card-wrap { height:300px; }
+            .offer-img, .offer-img-placeholder { width:100%; height:140px; }
         }
     </style>
 </head>
@@ -469,12 +478,14 @@
     });
 
     // ─── DATA ──────────────────────────────────────────────────────────────────
+    // Ordered by measured response time. eosnation / alohaeos no longer respond and
+    // each cost a ~3s stall before the next endpoint was tried.
     var RPC_ENDPOINTS = [
+        'https://wax.eosphere.io',
+        'https://wax.eosusa.io',
         'https://wax.greymass.com',
         'https://api.waxsweden.org',
-        'https://wax.eosphere.io',
-        'https://wax.eosnation.io',
-        'https://wax.alohaeos.com'
+        'https://wax.cryptolions.io'
     ];
     var AA_BASE_ENDPOINTS = [
         'https://wax.api.atomicassets.io',
@@ -506,73 +517,120 @@
         });
     }
 
+    // text/plain keeps this a CORS "simple request", so the browser skips the OPTIONS
+    // preflight. wax.greymass.com answers that preflight with HTTP 400 — the "doesn't
+    // pass access control check" error — while its actual POST works fine.
+    // Each endpoint gets a 5s timeout, and the last one that worked is tried first.
+    var _rpcActive = null;
     async function fetchTableRows(params) {
-        for (var i = 0; i < RPC_ENDPOINTS.length; i++) {
+        var list = _rpcActive
+            ? [_rpcActive].concat(RPC_ENDPOINTS.filter(function(u){ return u !== _rpcActive; }))
+            : RPC_ENDPOINTS;
+        for (var i = 0; i < list.length; i++) {
+            var ctl = new AbortController();
+            var timer = setTimeout(function(){ ctl.abort(); }, 5000);
             try {
-                var res = await fetch(RPC_ENDPOINTS[i] + '/v1/chain/get_table_rows', {
+                var res = await fetch(list[i] + '/v1/chain/get_table_rows', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain' },
                     cache: 'no-store',
-                    body: JSON.stringify(params)
+                    body: JSON.stringify(params),
+                    signal: ctl.signal
                 });
                 if (!res.ok) continue;
                 var json = await res.json();
-                if (json.rows !== undefined) return json;
+                if (json.rows !== undefined) { _rpcActive = list[i]; return json; }
             } catch(e) { continue; }
+            finally { clearTimeout(timer); }
         }
         return null;
     }
 
-    async function fetchTemplateInfo(tmplId) {
-        if (_tmplCache[tmplId]) return _tmplCache[tmplId];
-        var tryList = _aaActiveBase
+    // Build the cached card info from one AtomicAssets template record
+    function buildTmplInfo(d, tmplId) {
+        var im = d.immutable_data || {};
+        // Collect elements — scan immutable_data then mutable_data fallback
+        // Accept string or number values (some AW templates store element as int)
+        var elements = [];
+        function scanForElements(obj) {
+            Object.keys(obj).forEach(function(k) {
+                if (k.toLowerCase().indexOf('element') !== -1) {
+                    var v = obj[k];
+                    if (v != null) {
+                        var val = String(v).trim();
+                        if (val && val.toLowerCase() !== 'none' && elements.indexOf(val) === -1) elements.push(val);
+                    }
+                }
+            });
+        }
+        scanForElements(im);
+        if (elements.length === 0) scanForElements(d.mutable_data || {});
+        return {
+            name:     im.name ? String(im.name) : ('Template #' + tmplId),
+            img:      im.img || im.image || null,   // raw hash; ipfsImg() builds the URL at render
+            elements: elements,
+            element:  elements[0] || null,
+            type:     im.type ? String(im.type) : null,
+            schema:   (d.schema && d.schema.schema_name) ? d.schema.schema_name : null,
+            rarity:   im.rarity ? String(im.rarity) : null
+        };
+    }
+
+    function aaTryList() {
+        return _aaActiveBase
             ? [_aaActiveBase].concat(AA_BASE_ENDPOINTS.filter(function(u){ return u !== _aaActiveBase; }))
             : AA_BASE_ENDPOINTS;
+    }
+
+    async function fetchTemplateInfo(tmplId) {
+        if (_tmplCache[tmplId]) return _tmplCache[tmplId];
+        var tryList = aaTryList();
         for (var i = 0; i < tryList.length; i++) {
             try {
-                var res = await fetch(tryList[i] + '/atomicassets/v1/templates?collection_name=alien.worlds&template_id=' + tmplId + '&limit=1&_ts=' + Date.now(), { cache: 'no-store' });
+                var res = await fetch(tryList[i] + '/atomicassets/v1/templates?collection_name=alien.worlds&ids=' + tmplId + '&limit=1');
                 if (!res.ok) continue;
                 var json = await res.json();
                 if (json.data && json.data[0]) {
                     _aaActiveBase = tryList[i];
-                    var d = json.data[0];
-                    var im = d.immutable_data || {};
-                    // Collect elements — scan immutable_data then mutable_data fallback
-                    // Accept string or number values (some AW templates store element as int)
-                    var elements = [];
-                    function scanForElements(obj) {
-                        Object.keys(obj).forEach(function(k) {
-                            var lk = k.toLowerCase();
-                            if (lk === 'element' || lk === 'element2' || lk.indexOf('element') !== -1) {
-                                var v = obj[k];
-                                if (v != null) {
-                                    var val = String(v).trim();
-                                    if (val && val.toLowerCase() !== 'none' && elements.indexOf(val) === -1) {
-                                        elements.push(val);
-                                    }
-                                }
-                            }
-                        });
-                    }
-                    scanForElements(im);
-                    if (elements.length === 0) scanForElements(d.mutable_data || {});
-                    var rarityRaw = im.rarity ? String(im.rarity) : (d.template_id ? null : null);
-                    var info = {
-                        name:     im.name ? String(im.name) : ('Template #' + tmplId),
-                        img:      im.img  ? IPFS_GATEWAY + im.img : null,
-                        elements: elements,
-                        element:  elements[0] || null,
-                        type:     im.type ? String(im.type) : null,
-                        schema:   (d.schema && d.schema.schema_name) ? d.schema.schema_name : null,
-                        rarity:   rarityRaw || null
-                    };
-                    _tmplCache[tmplId] = info;
-                    return info;
+                    _tmplCache[tmplId] = buildTmplInfo(json.data[0], tmplId);
+                    return _tmplCache[tmplId];
                 }
             } catch(e) { continue; }
         }
-        _tmplCache[tmplId] = { name: 'Template #' + tmplId, img: null };
-        return _tmplCache[tmplId];
+        // Deliberately not cached: caching the failure made a card stay blank for the
+        // whole session even after the API recovered.
+        return { name: 'Template #' + tmplId, img: null };
+    }
+
+    // One request for many templates (ids=1,2,3) instead of one per card. Sending ~45
+    // separate requests up to 10 at a time tripped AtomicAssets rate limits, which is
+    // what left some cards without images.
+    async function fetchTemplatesBatch(ids) {
+        var need = ids.filter(function(id){ return !_tmplCache[id]; });
+        for (var start = 0; start < need.length; start += 100) {
+            var chunk = need.slice(start, start + 100);
+            var tryList = aaTryList();
+            for (var i = 0; i < tryList.length; i++) {
+                try {
+                    var res = await fetch(tryList[i] + '/atomicassets/v1/templates?collection_name=alien.worlds&ids='
+                        + chunk.join(',') + '&limit=' + chunk.length);
+                    if (!res.ok) continue;
+                    var json = await res.json();
+                    if (!json.data) continue;
+                    _aaActiveBase = tryList[i];
+                    json.data.forEach(function(d){
+                        var id = String(d.template_id);
+                        _tmplCache[id] = buildTmplInfo(d, id);
+                    });
+                    break;
+                } catch(e) { continue; }
+            }
+        }
+        // anything the batch missed gets one individual attempt
+        var missing = need.filter(function(id){ return !_tmplCache[id]; });
+        if (missing.length) {
+            await pLimit(missing.map(function(id){ return function(){ return fetchTemplateInfo(id); }; }), 4);
+        }
     }
 
     async function fetchFloorPrice(tmplId) {
@@ -611,6 +669,13 @@
         var s = String(val);
         var d = new Date(s.indexOf('Z') === -1 && s.indexOf('+') === -1 ? s + 'Z' : s);
         return isNaN(d.getTime()) ? null : d.getTime() / 1000;
+    }
+
+    // "2d 4h" / "5h 12m" / "8m" until a unix timestamp
+    function timeLeft(ts) {
+        var s = Math.max(0, Math.floor(ts - Date.now() / 1000));
+        var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+        return d > 0 ? d + 'd ' + h + 'h' : h > 0 ? h + 'h ' + m + 'm' : m + 'm';
     }
 
     function formatTime(epoch) {
@@ -793,17 +858,13 @@
 
         upcoming.sort(function(a, b) { return (a.startTs || 0) - (b.startTs || 0); });
 
-        // Fetch template details + floor prices concurrently (up to 5 at a time each)
+        // Template details in batched requests. Floor prices aren't shown on the cards \u2014
+        // only in the price-history table, which fetches its own \u2014 so they no longer
+        // hold up the reveal.
         var allIds = active.concat(upcoming).map(function(e){ return e.tmplId; });
         var uniqueIds = allIds.filter(function(v, i, a){ return a.indexOf(v) === i; });
-        var minWarpEnd = Date.now() + 500; // minimum 0.5s warp flight
         setStatus('LOADING ' + uniqueIds.length + ' TEMPLATE' + (uniqueIds.length !== 1 ? 'S' : '') + '\u2026');
-        await pLimit(uniqueIds.map(function(id){ return function(){ return fetchTemplateInfo(id); }; }), 10);
-        setStatus('LOADING MARKET PRICES\u2026');
-        await pLimit(uniqueIds.map(function(id){ return function(){ return fetchFloorPrice(id); }; }), 10);
-        // Hold remaining warp time so journey always feels like at least 0.5s
-        var remaining = minWarpEnd - Date.now();
-        if (remaining > 0) await new Promise(function(r){ setTimeout(r, remaining); });
+        await fetchTemplatesBatch(uniqueIds);
 
         // Pick planet now so arrival banner can name it
         var _PLIST = ['eyeke','kavian','magor','naron','neri','veles'];
@@ -821,7 +882,7 @@
         triggerArrival(_chosenPlanet);
 
         // Pause to let user appreciate the planet before welcome message (skippable)
-        await skippableWait(3500);
+        await skippableWait(1200);
 
         var statusEl = document.getElementById('arrival-status-msg');
         if (statusEl) {
@@ -831,7 +892,7 @@
         }
 
         // Short pause for welcome message, then reveal wares (skippable)
-        await skippableWait(700);
+        await skippableWait(300);
 
         setSkipBtn(false);
         _skipWarpResolve = null;
@@ -972,14 +1033,21 @@
             return byTmpl[a].minCost - byTmpl[b].minCost;
         });
 
-        // Build current-offer lookup by template_id for comparison
-        var _currentCostByTmpl = {};
-        result.rows.forEach(function(r) {
+        // Current cost + ACTIVE/UPCOMING status per template, from ALL pages. This used to
+        // read `result.rows` — only the last page fetched — so templates on earlier pages
+        // showed no current cost.
+        var _currentCostByTmpl = {}, _statusByTmpl = {};
+        allRows.forEach(function(r) {
             var endTs = parseTs(r.end != null ? r.end : (r.end_time != null ? r.end_time : r.ends));
-            if (endTs == null || now <= endTs) {
-                var rawCost = r.required != null ? r.required : (r.cost != null ? r.cost : r.points_required);
-                var tmplId = String(r.template_id || '');
-                if (tmplId) _currentCostByTmpl[tmplId] = (rawCost || 0) / 10;
+            if (endTs != null && now > endTs) return;
+            var tmplId = String(r.template_id || '');
+            if (!tmplId) return;
+            var startTs = parseTs(r.start != null ? r.start : (r.start_time != null ? r.start_time : r.starts));
+            var rawCost = r.required != null ? r.required : (r.cost != null ? r.cost : r.points_required);
+            var st = (startTs != null && now < startTs) ? 'upcoming' : 'active';
+            if (_statusByTmpl[tmplId] !== 'active') {   // live now beats coming later
+                _statusByTmpl[tmplId] = st;
+                _currentCostByTmpl[tmplId] = (rawCost || 0) / 10;
             }
         });
 
@@ -990,7 +1058,7 @@
         tbl.className = 'arc-table';
         tbl.innerHTML = '<thead><tr>'
             + '<th style="width:36px;"></th><th>TEMPLATE</th><th>SCHEMA</th><th>TYPE</th>'
-            + '<th>PAST LOW (SHD)</th><th>CURRENT (SHD)</th><th>FLOOR (WAX)</th><th>SHARDS / WAX</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
+            + '<th>PAST LOW (SHD)</th><th>CURRENT (SHD)</th><th>STATUS</th><th>FLOOR (WAX)</th><th>SHARDS / WAX</th><th>TIMES SEEN</th><th>LAST OFFERED</th>'
             + '</tr></thead>';
         var tbody = document.createElement('tbody');
 
@@ -1000,6 +1068,10 @@
             var elList = (info.elements && info.elements.length) ? info.elements.join(' / ') : (info.type || '\u2014');
             var dateStr = b.minEndTs ? formatDateOnly(b.minEndTs) : '\u2014';
             var currentCost = _currentCostByTmpl[tid];
+            var st = _statusByTmpl[tid];
+            var statusCell = st === 'active'   ? '<span class="arc-status active">ACTIVE</span>'
+                           : st === 'upcoming' ? '<span class="arc-status upcoming">UPCOMING</span>'
+                           : '<span style="color:#2a4a3a;">—</span>';
             var currentStr  = currentCost != null ? fmtNum(currentCost) : '\u2014';
             var floorWax = _floorCache[tid];
             var floorStr = floorWax ? fmtNum(floorWax) + ' WAX' : '\u2014';
@@ -1023,6 +1095,7 @@
                 + '<td>' + elList + '</td>'
                 + '<td class="cost-col"><img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + fmtNum(b.minCost) + '</td>'
                 + '<td class="cost-col">' + (currentCost != null ? '<img src="Shards.png" style="width:26px;height:26px;vertical-align:middle;margin-right:3px;object-fit:contain;"> ' + currentStr : '<span style="color:#2a4a3a;">\u2014</span>') + '</td>'
+                + '<td>' + statusCell + '</td>'
                 + '<td style="color:#4a9a8a;text-align:right;white-space:nowrap;">' + floorStr + '</td>'
                 + '<td style="color:#00cc99;text-align:right;white-space:nowrap;font-weight:bold;">' + ratioStr + '</td>'
                 + '<td style="color:#1e6a5a;text-align:center;">' + b.count + '</td>'
@@ -1080,6 +1153,11 @@
                     }
                     windowHtml += '</div>';
 
+                    // Status ribbon so active vs upcoming reads at a glance on every card
+                    var statusHtml = cls === 'upcoming'
+                        ? '<div class="card-status upcoming">&#9684; UPCOMING' + (e.startTs != null ? ' &middot; in ' + timeLeft(e.startTs) : '') + '</div>'
+                        : '<div class="card-status active">&#9679; ACTIVE' + (e.endTs != null ? ' &middot; ' + timeLeft(e.endTs) + ' left' : '') + '</div>';
+
                     // Back face: large image
                     var backImg = info.img
                         ? '<img src="' + ipfsImg(info.img, 370) + '" class="card-back-img" onerror="imgFallback(this)">'
@@ -1088,6 +1166,7 @@
                     return '<div class="card-wrap">'
                         + '<div class="offer-card ' + cls + '" onclick="toggleFlip(this)">'
                         + '<div class="card-face card-front">'
+                        + statusHtml
                         + frontImg
                         + '<div class="offer-name ' + rarityClass(info.rarity) + '">' + info.name + '</div>'
                         + badge
@@ -1446,7 +1525,7 @@ function _inj(){
   var ws=document.getElementById('lang-picker')||document.querySelector('.wallet-section')||document.querySelector('.global-header');
   if(!ws)return;
   var fd=document.createElement('div');fd.className='nav-dropdown-wrap pg-font-dd';
-  fd.innerHTML='<button class="nav-dropdown-btn">Aa &#9660;<\/button><div class="nav-dropdown-menu"><a class="nav-dropdown-item font-opt" href="#" data-font="segoe" onclick="pgSetFont(this.dataset.font);return false;">CLEAN<span class="font-preview" style="font-family:'Segoe UI',sans-serif;">Segoe UI<\/span><\/a><a class="nav-dropdown-item font-opt" href="#" data-font="calibri" onclick="pgSetFont(this.dataset.font);return false;">SOFT<span class="font-preview" style="font-family:'Calibri',sans-serif;">Calibri<\/span><\/a><a class="nav-dropdown-item font-opt" href="#" data-font="georgia" onclick="pgSetFont(this.dataset.font);return false;">CLASSIC<span class="font-preview" style="font-family:'Georgia',serif;">Georgia<\/span><\/a><a class="nav-dropdown-item font-opt active" href="#" data-font="terminal" onclick="pgSetFont(this.dataset.font);return false;">TERMINAL<span class="font-preview" style="font-family:'Courier New',monospace;">Courier New<\/span><\/a><\/div>';
+  fd.innerHTML='<button class="nav-dropdown-btn">Aa &#9660;<\/button><div class="nav-dropdown-menu"><a class="nav-dropdown-item font-opt" href="#" data-font="segoe" onclick="pgSetFont(this.dataset.font);return false;">CLEAN<span class="font-preview" style="font-family:\'Segoe UI\',sans-serif;">Segoe UI<\/span><\/a><a class="nav-dropdown-item font-opt" href="#" data-font="calibri" onclick="pgSetFont(this.dataset.font);return false;">SOFT<span class="font-preview" style="font-family:\'Calibri\',sans-serif;">Calibri<\/span><\/a><a class="nav-dropdown-item font-opt" href="#" data-font="georgia" onclick="pgSetFont(this.dataset.font);return false;">CLASSIC<span class="font-preview" style="font-family:\'Georgia\',serif;">Georgia<\/span><\/a><a class="nav-dropdown-item font-opt active" href="#" data-font="terminal" onclick="pgSetFont(this.dataset.font);return false;">TERMINAL<span class="font-preview" style="font-family:\'Courier New\',monospace;">Courier New<\/span><\/a><\/div>';
   var mb=document.createElement('button');mb.id='pg-mode-btn';mb.className='pg-mode-btn';mb.title='Toggle day/night mode';
   var isDay=document.documentElement.classList.contains('day');mb.textContent=isDay?'🌙':'☀';
   mb.onclick=pgToggleDay;ws.insertAdjacentElement('afterend',fd);fd.insertAdjacentElement('afterend',mb);
