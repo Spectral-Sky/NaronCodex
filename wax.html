@@ -376,6 +376,32 @@
         .req-table .gem-cell img { width:13px; height:13px; object-fit:contain; }
         .req-empty { padding:30px; text-align:center; color:var(--muted); font-size:0.75em; letter-spacing:2px; }
 
+        /* ── SIMPLIFIED VIEW ──────────────────────────────────────────────── */
+        .simple-section { margin-bottom:18px; }
+        .simple-table td { white-space:nowrap; }
+        .simple-table td.sg-req { white-space:normal; }
+        .sg-sub { margin-top:4px; font-size:0.92em; }
+        .sg-prog.met   { color:#60e090; }
+        .sg-prog.unmet { color:var(--muted); }
+        .sg-status.active  { color:#60e090; }
+        .sg-status.pending { color:var(--gold); }
+        .sg-status.ended   { color:var(--muted); }
+        .sg-add { display:flex; gap:5px; align-items:center; }
+        .sg-add input {
+            width:76px; padding:3px 6px; background:rgba(0,0,0,0.4);
+            border:1px solid var(--border-gold); border-radius:2px;
+            color:var(--text); font-family:inherit; font-size:1em;
+        }
+        .sg-add-btn {
+            padding:3px 10px; background:rgba(255,170,0,0.12);
+            border:1px solid var(--gold); border-radius:2px; color:var(--gold);
+            font-family:inherit; font-size:0.9em; font-weight:bold; letter-spacing:1px; cursor:pointer;
+        }
+        .sg-add-btn:hover:not(:disabled) { background:rgba(255,170,0,0.25); }
+        .sg-add-btn:disabled, .sg-add input:disabled { opacity:0.5; cursor:default; }
+        .sg-msg.ok  { color:#60e090; }
+        .sg-msg.err { color:var(--red); }
+
         /* loading */
         .loading-pulse { display:inline-block; animation:fade-pulse 1.2s infinite; }
         @keyframes fade-pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
@@ -635,6 +661,21 @@
     </div>
 
     <div class="content-wrap">
+        <div class="req-section simple-section">
+            <div class="req-header">
+                <h2>◆ Simplified</h2>
+                <span class="req-count sg-msg" id="simple-status"></span>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="req-table simple-table">
+                    <thead><tr><th>Rewards</th><th>Requirements</th><th>Contributions</th><th>Status</th></tr></thead>
+                    <tbody id="simple-body">
+                        <tr><td colspan="4"><div class="req-empty"><span class="loading-pulse">Querying recovery.ale…</span></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="offers-row" id="offers-row">
             <div class="offer-box" style="grid-column:1/-1">
                 <div class="offer-id"><span class="loading-pulse">Querying recovery.ale::offers…</span></div>
@@ -1065,10 +1106,151 @@
     }
 
     // ── RENDER OFFERS ─────────────────────────────────────────────────────────
+    // ── SIMPLIFIED VIEW ───────────────────────────────────────────────────────
+    // Mirrors the in-game offer table: Rewards · Requirements · Contributions · Status.
+    // Progress is the player's lifetime permstat for the offer's requirement_type —
+    // verified against the game (level_ups 452/1335, recruits 425/230). As in the game,
+    // ADD GEMS replaces the progress only once the requirement is met AND the offer is active.
+    let _sgPending = new Set();   // offer_ids with a contribute TX in flight
+    let _sgTimer   = null;
+
+    function sgEsc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+            ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // game precision: TLM to 3 dp, shards to 1 dp
+    function sgRewardFmt(amount, type) {
+        if (!amount) return '—';
+        const d = type.includes('tlm') ? 3 : type.includes('shard') ? 1 : type.includes('wax') ? 4 : 0;
+        return Number(amount).toLocaleString(undefined, { maximumFractionDigits: d });
+    }
+
+    function sgSay(msg, cls) {
+        const el = document.getElementById('simple-status');
+        if (el) { el.textContent = msg || ''; el.className = 'req-count sg-msg ' + (cls || ''); }
+    }
+
+    function renderSimplified(offers) {
+        const body = document.getElementById('simple-body');
+        if (!body) return;
+        if (_sgTimer) { clearInterval(_sgTimer); _sgTimer = null; }
+        if (!offers || !offers.length) {
+            body.innerHTML = '<tr><td colspan="4"><div class="req-empty">No offers found in recovery.ale</div></td></tr>';
+            return;
+        }
+
+        // renderOffers re-runs whenever contributions or player stats finish loading —
+        // keep a gem amount that's mid-typing instead of wiping it
+        const typed = {};
+        body.querySelectorAll('input[data-offer]').forEach(i => { if (i.value) typed[i.dataset.offer] = i.value; });
+
+        const me        = localStorage.getItem('naron_wallet') || '';
+        const haveStats = Object.keys(_playerStats).length > 0;
+
+        body.innerHTML = offers.map(o => {
+            const oid     = o.offer_id;
+            const state   = String(deriveState(o)).toLowerCase();
+            const reqAmt  = Number(o.requirement_amount || 0);
+            const reqName = o.requirements || _reqMap[o.requirement_type] || o.requirement_type || 'Requirement';
+            const { amount, type } = parseReward(o);
+            const logo = type.includes('wax') ? LOGO_WAX : type.includes('tlm') ? LOGO_TLM
+                       : type.includes('shard') ? LOGO_SHARDS : LOGO_GEMS;
+
+            // contributions read "total (yours)", as in the game
+            const list    = _allContribs[oid];
+            const total   = Number(o.total_gems || 0);
+            const mine    = (me && list) ? ((list.find(c => c.wallet === me) || {}).amount || 0) : null;
+            const contrib = fmtBig(total) + (me ? ' (' + (mine === null ? '…' : fmtBig(mine)) + ')' : '');
+
+            const myVal = haveStats ? Number(_playerStats[o.requirement_type] || 0) : null;
+            const met   = myVal !== null && reqAmt > 0 && myVal >= reqAmt;
+            let sub;
+            if (met && state === 'active') {
+                const busy = _sgPending.has(oid);
+                sub = `<div class="sg-add">
+                    <input type="number" min="1" step="1" placeholder="gems" data-offer="${oid}"
+                           value="${sgEsc(typed[oid] || '')}"${busy ? ' disabled' : ''}
+                           onkeydown="if(event.key==='Enter')simpleAddGems('${oid}')">
+                    <button class="sg-add-btn" onclick="simpleAddGems('${oid}')"${busy ? ' disabled' : ''}>${busy ? 'SENDING…' : 'ADD GEMS'}</button>
+                </div>`;
+            } else if (myVal === null) {
+                sub = `<span class="sg-prog unmet">${me ? 'loading…' : 'connect wallet to see progress'}</span>`;
+            } else {
+                sub = `<span class="sg-prog ${met ? 'met' : 'unmet'}">${fmtBig(myVal)}/${fmtBig(reqAmt)}</span>`;
+            }
+
+            let status;
+            if (state === 'pending')
+                status = `<span class="sg-status pending">starts in <span class="sg-cd" data-ts="${o.offer_start}">${countdown(o.offer_start).text}</span></span>`;
+            else if (state === 'active')
+                status = `<span class="sg-status active">ends in <span class="sg-cd" data-ts="${o.offer_end}">${countdown(o.offer_end).text}</span></span>`;
+            else
+                status = `<span class="sg-status ended">ended</span>`;
+
+            return `<tr>
+                <td><span class="gem-cell"><img src="${logo}" onerror="this.style.display='none'">${sgRewardFmt(amount, type)}</span></td>
+                <td class="sg-req">${sgEsc(reqName)} [${fmtBig(reqAmt)}]<div class="sg-sub">${sub}</div></td>
+                <td>${contrib}</td>
+                <td>${status}</td>
+            </tr>`;
+        }).join('');
+
+        _sgTimer = setInterval(() => {
+            let flipped = false;
+            document.querySelectorAll('#simple-body .sg-cd[data-ts]').forEach(el => {
+                const cd = countdown(el.dataset.ts);
+                if (cd.text === 'EXPIRED') flipped = true;
+                else el.textContent = cd.text;
+            });
+            // a countdown reached zero: pending→active or active→ended, which changes
+            // both the status text and whether ADD GEMS is offered
+            if (flipped) renderSimplified(_offersCache);
+        }, 1000);
+    }
+
+    async function simpleAddGems(offerId) {
+        const inp    = document.querySelector('#simple-body input[data-offer="' + offerId + '"]');
+        const gems   = inp ? Math.floor(Number(inp.value)) : 0;
+        const wallet = localStorage.getItem('naron_wallet');
+        if (!wallet) { sgSay('✗ Connect a wallet first', 'err'); return; }
+        if (!Number.isFinite(gems) || gems < 1) { sgSay('✗ Enter a whole number of gems', 'err'); if (inp) inp.focus(); return; }
+        if (_sgPending.has(offerId)) return;
+
+        const action = {
+            account: 'recovery.ale', name: 'contribute',
+            authorization: [{ actor: wallet, permission: 'active' }],
+            data: { wallet: wallet, offer_id: offerId, gems: gems }   // gems are whole units, unscaled on chain
+        };
+        _sgPending.add(offerId);
+        renderSimplified(_offersCache);
+        sgSay('Sending ' + fmtBig(gems) + ' gems…', '');
+        let ok = false;
+        try {
+            if (window.walletSession) await window.walletSession.transact({ actions: [action] });
+            else if (wax && wax.api)  await wax.api.transact({ actions: [action] }, { blocksBehind: 3, expireSeconds: 30 });
+            else throw new Error('No wallet session — reconnect your wallet');
+            ok = true;
+            sgSay('✓ Added ' + fmtBig(gems) + ' gems', 'ok');
+        } catch (e) {
+            sgSay('✗ ' + String((e && e.message) || e).slice(0, 90), 'err');
+        } finally {
+            _sgPending.delete(offerId);
+            if (ok) {   // the pending re-render replaced the input, so clear the fresh one
+                const fresh = document.querySelector('#simple-body input[data-offer="' + offerId + '"]');
+                if (fresh) fresh.value = '';
+            }
+            renderSimplified(_offersCache);
+        }
+        if (ok) setTimeout(refreshAll, 1500);   // pick up the new total_gems and contribution rows
+    }
+    window.simpleAddGems = simpleAddGems;
+
     let _offerTimerIds = [];
     function renderOffers(offers) {
         _offerTimerIds.forEach(clearInterval);
         _offerTimerIds = [];
+        renderSimplified(offers);
         const row = document.getElementById('offers-row');
         if (!offers || !offers.length) {
             row.innerHTML = '<div class="no-offers">No offers found in recovery.ale</div>'; return;
@@ -1481,6 +1663,8 @@
             setStatus('✗ ' + (e.message || String(e)), 'err');
             document.getElementById('offers-row').innerHTML =
                 '<div class="no-offers">Error: ' + (e.message || e) + '</div>';
+            const sb = document.getElementById('simple-body');
+            if (sb) sb.innerHTML = '<tr><td colspan="4"><div class="req-empty">Error loading offers</div></td></tr>';
         }
     }
 
