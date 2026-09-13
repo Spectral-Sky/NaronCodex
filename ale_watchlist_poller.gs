@@ -15,6 +15,13 @@
 // watched_fights columns:
 //   history_id | wallet | gamertag | timestamp | fight_type | dungeon_difficulty |
 //   planet | x | y | result | turns | row_json
+//
+// Optional forwarding — Project Settings (gear) → Script Properties → Add property:
+//   DISCORD_WEBHOOK_URL   posts a one-line summary per fight, with the full fight as a .json file
+//   FORWARD_URL           POSTs {"fights":[...]} as JSON to any URL (e.g. a Cloudflare Worker)
+//   FORWARD_SECRET        sent with FORWARD_URL as the X-Watchlist-Secret header
+// Leave them unset and the script only writes to the sheet. A failed forward is logged,
+// not retried — the fight is still saved in the sheet.
 
 var WATCH_LIST_SHEET   = 'watchlist';
 var WATCH_FIGHTS_SHEET = 'watched_fights';
@@ -117,6 +124,12 @@ function scanWatchlist() {
     // plain text, so ids like "1e5abc" aren't turned into numbers
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, WATCH_HEADER.length).setNumberFormat('@').setValues(rows);
     Logger.log('Watchlist: saved ' + rows.length + ' fight(s).');
+
+    watchForward_(mine.map(function(f, k) {
+      var r = rows[k];
+      return { history_id: r[0], wallet: r[1], gamertag: r[2], timestamp: r[3], fight_type: r[4],
+               dungeon_difficulty: r[5], planet: r[6], x: r[7], y: r[8], result: r[9], turns: r[10], row: f };
+    }));
   } finally {
     lock.releaseLock();
   }
@@ -134,6 +147,45 @@ function watchFetchFights_() {
     } catch (e) { Logger.log('Watchlist chain fail ' + WATCH_CHAIN_NODES[i] + ': ' + e); }
   }
   return null;
+}
+
+// Sends new fights to Discord and/or a custom URL when those script properties are set
+function watchForward_(fights) {
+  var props   = PropertiesService.getScriptProperties();
+  var discord = props.getProperty('DISCORD_WEBHOOK_URL');
+  var url     = props.getProperty('FORWARD_URL');
+
+  if (url) {
+    try {
+      var res = UrlFetchApp.fetch(url, {
+        method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+        headers: { 'X-Watchlist-Secret': props.getProperty('FORWARD_SECRET') || '' },
+        payload: JSON.stringify({ fights: fights })
+      });
+      if (res.getResponseCode() >= 300) Logger.log('Forward got HTTP ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200));
+    } catch (e) { Logger.log('Forward failed: ' + e); }
+  }
+
+  if (discord) {
+    fights.forEach(function(f, i) {
+      if (i) Utilities.sleep(500);   // stay under Discord's webhook rate limit
+      var where = f.planet ? ' · ' + f.planet + ' ' + f.x + ',' + f.y : '';
+      var content = (f.result === 'win' ? '✅ **WIN**' : f.result === 'loss' ? '❌ **LOSS**' : f.result)
+        + ' · ' + (f.gamertag || f.wallet) + ' · ' + (f.fight_type || 'fight')
+        + (f.fight_type === 'dungeon' ? ' lvl ' + f.dungeon_difficulty : '') + where
+        + ' · ' + f.turns + ' blows · `' + f.history_id + '`';
+      try {
+        var res = UrlFetchApp.fetch(discord, {
+          method: 'post', muteHttpExceptions: true,
+          payload: {
+            payload_json: JSON.stringify({ content: content }),
+            'files[0]': Utilities.newBlob(JSON.stringify(f.row), 'application/json', 'fight-' + f.history_id + '.json')
+          }
+        });
+        if (res.getResponseCode() >= 300) Logger.log('Discord got HTTP ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200));
+      } catch (e) { Logger.log('Discord failed: ' + e); }
+    });
+  }
 }
 
 // Hyperion with failover across nodes
