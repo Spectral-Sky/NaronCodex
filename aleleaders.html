@@ -137,6 +137,12 @@
     .lb-table tr:hover td { background:var(--hover); }
     .lb-table tr.me td { background:rgba(232,160,32,0.06); }
     .lb-table tr.me td:nth-child(2) { color:#fff; text-shadow:0 0 8px rgba(232,160,32,0.5); }
+    /* TOTAL / AVERAGE rows pinned above the players */
+    .lb-table tr.lb-sum td { background:#0d1018; color:#c8d0e0; font-weight:bold; border-bottom:1px solid rgba(232,160,32,0.25); }
+    .lb-table tr.lb-sum td:nth-child(2) { color:var(--gold); letter-spacing:1px; cursor:help; }
+    .lb-table tr.lb-sum.lb-sum-last td { border-bottom:2px solid var(--gold); }
+    .lb-table tr.lb-sum:hover td { background:#0d1018; }
+    html.day .lb-table tr.lb-sum td { background:#e4ecf8; color:#1a2850; }
     .lb-table .rank-top { color:var(--gold); font-weight:bold; }
     .rank-1  td:first-child { color:#ffd700; }
     .rank-2  td:first-child { color:#c0c0c0; }
@@ -1102,7 +1108,9 @@
             rows += '</tr>';
         });
 
-        document.getElementById('lb-tbody').innerHTML = rows || '<tr><td colspan="99" style="text-align:center;color:#445;padding:24px;">No results</td></tr>';
+        document.getElementById('lb-tbody').innerHTML = rows
+            ? buildSummaryRows(visCols) + rows
+            : '<tr><td colspan="99" style="text-align:center;color:#445;padding:24px;">No results</td></tr>';
         document.getElementById('lb-table').style.display = '';
         document.getElementById('lb-empty').style.display = 'none';
         if (_myRank > 0) {
@@ -1114,6 +1122,60 @@
         document.getElementById('dl-xlsx-btn').disabled = false;
         document.getElementById('dl-json-btn').disabled = false;
         renderStats();
+    }
+
+    // ── TOTAL / AVERAGE ROWS ─────────────────────────────────────────────────
+    // Both cover every loaded player, not just search results. AVERAGE leaves out the
+    // least active 5% — ranked by fights played (dungeons + arenas) — so alt accounts and
+    // people who tried the game once don't drag the averages down.
+    var AVG_EXCLUDE_PCT = 0.05;
+    var RATE_PARTS = {   // % columns total as an overall ratio, not a sum of percentages
+        dungeon_win_rate: ['dungeons_won', 'dungeons_played'],
+        arena_win_rate:   ['arenas_won',   'arenas_played']
+    };
+
+    function fightsPlayed(fp) {
+        return (fp.perm['dungeons_played'] || 0) + (fp.perm['arenas_played'] || 0);
+    }
+
+    function buildSummaryRows(visCols) {
+        var all = _allPlayers;
+        if (!all.length) return '';
+        var cut = Math.floor(all.length * AVG_EXCLUDE_PCT);
+        var avgSet = all.slice().sort(function(a, b) { return fightsPlayed(a) - fightsPlayed(b); }).slice(cut);
+
+        var totalCells = '', avgCells = '';
+        visCols.forEach(function(c) {
+            var tot;
+            if (RATE_PARTS[c.key]) {
+                var p = RATE_PARTS[c.key], won = 0, played = 0;
+                all.forEach(function(fp) { won += fp.perm[p[0]] || 0; played += fp.perm[p[1]] || 0; });
+                tot = played > 0 ? won / played * 100 : null;
+            } else {
+                var any = false;
+                tot = 0;
+                all.forEach(function(fp) {
+                    var v = getVal(fp, c.key, c.src);
+                    if (typeof v === 'number' && isFinite(v)) { tot += v; any = true; }
+                });
+                if (!any) tot = null;
+            }
+            var sum = 0, n = 0;
+            avgSet.forEach(function(fp) {
+                var v = getVal(fp, c.key, c.src);
+                if (typeof v === 'number' && isFinite(v)) { sum += v; n++; }
+            });
+            var avg = n ? sum / n : null;
+            // whole-number stats read better to 1 dp than as long decimals
+            if (avg !== null && !(c.key in CALC_COLS) && !DECIMAL_COLS[c.key]) avg = Math.round(avg * 10) / 10;
+            totalCells += '<td>' + formatVal(c.key, tot) + '</td>';
+            avgCells   += '<td>' + formatVal(c.key, avg) + '</td>';
+        });
+
+        var avgTitle = 'Average of ' + avgSet.length.toLocaleString() + ' players. Excludes the least active '
+            + cut.toLocaleString() + ' (bottom 5% by dungeons + arenas played).';
+        return '<tr class="lb-sum"><td></td><td title="Sum across all ' + all.length.toLocaleString() + ' players">TOTAL</td><td></td><td></td>' + totalCells + '</tr>'
+             + '<tr class="lb-sum lb-sum-last"><td></td><td title="' + avgTitle + '">AVERAGE</td><td></td><td></td>' + avgCells + '</tr>';
     }
 
     function renderStats() {
