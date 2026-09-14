@@ -79,17 +79,17 @@
             animation:hue-spin 4s linear infinite; opacity:0.85;
         }
         #header-planet-canvas { position:relative; width:36px; height:36px; border-radius:50%; cursor:pointer; display:block; }
-        .back { color:var(--muted); text-decoration:none; font-size:0.76em; letter-spacing:2px; font-family:'Courier New',monospace; }
+        .back { color:var(--muted); text-decoration:none; font-size:0.76em; letter-spacing:2px; font-family:inherit; }
         .back:hover { color:var(--teal); }
-        .hdr h1 { font-size:1.15em; letter-spacing:4px; font-weight:600; color:var(--teal); font-family:'Courier New',monospace; margin-top:8px; }
+        .hdr h1 { font-size:1.15em; letter-spacing:4px; font-weight:600; color:var(--teal); font-family:inherit; margin-top:8px; }
         .hdr .sub { font-size:0.7em; color:var(--muted); letter-spacing:1px; margin-top:3px; }
-        .wbtn { background:transparent; border:1px solid var(--line-hi); color:var(--teal); font-family:'Courier New',monospace; font-size:0.74em; letter-spacing:1px; padding:6px 12px; border-radius:4px; cursor:pointer; }
+        .wbtn { background:transparent; border:1px solid var(--line-hi); color:var(--teal); font-family:inherit; font-size:0.74em; letter-spacing:1px; padding:6px 12px; border-radius:4px; cursor:pointer; }
         .wbtn:hover { background:var(--halo); }
         .wbtn.logged { color:var(--gold); border-color:var(--gold); }
         .dd { position:relative; }
         .dd-menu { display:none; position:absolute; right:0; top:calc(100% + 4px); min-width:120px; background:var(--menu-bg); border:1px solid var(--line-hi); border-radius:6px; padding:4px; z-index:50; }
         .dd.open .dd-menu { display:block; }
-        .dd-item { display:flex; align-items:center; gap:7px; padding:6px 9px; color:var(--text); text-decoration:none; font-family:'Courier New',monospace; font-size:0.74em; letter-spacing:1px; border-radius:4px; }
+        .dd-item { display:flex; align-items:center; gap:7px; padding:6px 9px; color:var(--text); text-decoration:none; font-family:inherit; font-size:0.74em; letter-spacing:1px; border-radius:4px; }
         .dd-item:hover { background:var(--halo); color:var(--teal); }
         .dd-item.active { color:var(--gold); }
         .dd-item img { border-radius:1px; }
@@ -97,19 +97,19 @@
         /* control bar */
         .bar { display:flex; gap:14px; flex-wrap:wrap; align-items:stretch; margin:16px 0; }
         .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
-        .lbl { font-family:'Courier New',monospace; font-size:0.62em; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
+        .lbl { font-family:inherit; font-size:0.62em; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
         .levels { display:flex; gap:6px; flex-wrap:wrap; }
         .lvl { background:transparent; border:1px solid var(--line); color:var(--text); border-radius:6px; padding:6px 10px; cursor:pointer; text-align:center; min-width:68px; }
-        .lvl b { display:block; font-size:1.05em; font-family:'Courier New',monospace; }
+        .lvl b { display:block; font-size:1.05em; font-family:inherit; }
         .lvl span { font-size:0.66em; color:var(--muted); }
         .lvl.on { border-color:var(--gold); background:var(--gold-glow); box-shadow:0 0 12px var(--gold-glow); }
         .lvl.on span { color:var(--gold); }
         .stats { display:flex; gap:22px; flex-wrap:wrap; flex:1; min-width:260px; }
-        .stat .v { font-family:'Courier New',monospace; font-size:1.15em; color:var(--text); font-variant-numeric:tabular-nums; }
+        .stat .v { font-family:inherit; font-size:1.15em; color:var(--text); font-variant-numeric:tabular-nums; }
         .stat .v.gold { color:var(--gold); }
         .stat .sub-v { font-size:0.66em; color:var(--muted); margin-top:3px; line-height:1.45; max-width:260px; }
         .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
-        .go { border:1px solid transparent; border-radius:6px; padding:10px 16px; cursor:pointer; font-family:'Courier New',monospace; letter-spacing:1px; font-size:0.8em; font-weight:bold; text-align:left; line-height:1.35; }
+        .go { border:1px solid transparent; border-radius:6px; padding:10px 16px; cursor:pointer; font-family:inherit; letter-spacing:1px; font-size:0.8em; font-weight:bold; text-align:left; line-height:1.35; }
         .go small { display:block; font-weight:normal; font-size:0.85em; opacity:0.85; letter-spacing:0; }
         .go.once { background:var(--teal); color:var(--on-teal); }
         .go.fill { background:var(--gold); color:var(--on-gold); border-width:1px; animation:rgb-border 2.5s linear infinite; }
@@ -126,20 +126,20 @@
         .card.off { opacity:0.5; }
         .card-img { position:relative; height:120px; background:var(--img-bg); overflow:hidden; }
         .card-img img { width:100%; height:100%; object-fit:cover; object-position:center 25%; display:block; }
-        .chip { position:absolute; top:8px; right:8px; z-index:1; font-family:'Courier New',monospace; font-size:0.66em; letter-spacing:1px; padding:3px 8px; border-radius:10px; font-weight:bold; }
+        .chip { position:absolute; top:8px; right:8px; z-index:1; font-family:inherit; font-size:0.66em; letter-spacing:1px; padding:3px 8px; border-radius:10px; font-weight:bold; }
         .chip.max   { background:var(--green); color:var(--on-teal); }
         .chip.ready { background:var(--teal);  color:var(--on-teal); }
         .chip.full  { background:var(--chip-full-bg); color:var(--chip-full-fg); }
         .chip.min   { background:var(--chip-min-bg); color:var(--gold); }
-        .include { position:absolute; top:8px; left:8px; z-index:1; display:flex; align-items:center; gap:5px; background:var(--menu-bg); border:1px solid var(--line-hi); border-radius:10px; padding:2px 8px 2px 5px; font-family:'Courier New',monospace; font-size:0.64em; letter-spacing:1px; color:var(--text); cursor:pointer; }
+        .include { position:absolute; top:8px; left:8px; z-index:1; display:flex; align-items:center; gap:5px; background:var(--menu-bg); border:1px solid var(--line-hi); border-radius:10px; padding:2px 8px 2px 5px; font-family:inherit; font-size:0.64em; letter-spacing:1px; color:var(--text); cursor:pointer; }
         .include input { accent-color:var(--teal); cursor:pointer; }
         .card-title { padding:9px 12px 0; }
         .card-title .nm { font-weight:600; font-size:0.95em; }
-        .card-title .at { font-size:0.68em; color:var(--muted); font-family:'Courier New',monospace; }
+        .card-title .at { font-size:0.68em; color:var(--muted); font-family:inherit; }
         .card-body { padding:10px 12px 12px; display:flex; flex-direction:column; gap:9px; flex:1; }
         .row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:0.78em; }
-        .row .k { color:var(--muted); font-family:'Courier New',monospace; font-size:0.9em; letter-spacing:1px; }
-        .row .val { font-family:'Courier New',monospace; font-variant-numeric:tabular-nums; }
+        .row .k { color:var(--muted); font-family:inherit; font-size:0.9em; letter-spacing:1px; }
+        .row .val { font-family:inherit; font-variant-numeric:tabular-nums; }
         .meter { height:9px; border-radius:5px; background:var(--track); overflow:hidden; }
         /* the full spectrum spans the whole track; the fill reveals as much of it as the land has reached */
         .meter > div { height:100%; border-radius:5px; background-image:linear-gradient(90deg, #ff2a3d 0%, #ff8a1f 20%, #ffd61f 40%, #33d17a 60%, #ff3fd0 80%, #8b3dff 100%); background-repeat:no-repeat; }
@@ -150,12 +150,12 @@
         .forecast b { color:var(--text); font-weight:600; }
         .warn { font-size:0.72em; color:var(--gold); background:var(--gold-glow); border:1px solid var(--gold); border-radius:6px; padding:7px 9px; line-height:1.45; }
         .warn label { display:flex; gap:6px; align-items:flex-start; margin-top:5px; cursor:pointer; color:var(--text); }
-        .unlock { background:transparent; border:1px dashed var(--line-hi); color:var(--teal); border-radius:6px; padding:6px 8px; cursor:pointer; font-family:'Courier New',monospace; font-size:0.7em; letter-spacing:1px; text-align:center; }
+        .unlock { background:transparent; border:1px dashed var(--line-hi); color:var(--teal); border-radius:6px; padding:6px 8px; cursor:pointer; font-family:inherit; font-size:0.7em; letter-spacing:1px; text-align:center; }
         .unlock:hover { border-style:solid; background:var(--halo); }
         .unlock:disabled { opacity:0.4; cursor:not-allowed; }
         .unlock.maxed { border-style:solid; color:var(--muted); cursor:default; }
         .claim-row { display:flex; align-items:center; gap:8px; }
-        .claim-btn { background:transparent; border:1px solid var(--gold); color:var(--gold); border-radius:4px; padding:2px 8px; cursor:pointer; font-family:'Courier New',monospace; font-size:0.66em; letter-spacing:1px; }
+        .claim-btn { background:transparent; border:1px solid var(--gold); color:var(--gold); border-radius:4px; padding:2px 8px; cursor:pointer; font-family:inherit; font-size:0.66em; letter-spacing:1px; }
         .claim-btn:hover { background:var(--gold-glow); }
         .claim-btn:disabled { opacity:0.35; cursor:not-allowed; }
         .empty { text-align:center; color:var(--muted); padding:60px 10px; font-size:0.9em; line-height:1.7; grid-column:1/-1; }
