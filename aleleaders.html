@@ -493,6 +493,7 @@
         { key:'arenas_won',                 label:'Arenas Won',              src:'perm',   def:true  },
         { key:'arenas_played',              label:'Arenas Played',           src:'perm',   def:false },
         { key:'arena_win_rate',             label:'Arena Win %',             src:'calc',   def:true,  title:'arenas_won ÷ arenas_played × 100' },
+        { key:'arenas_held',                label:'Arenas Held',             src:'arena',  def:true,  title:'Arenas where this player has at least one fighter defending right now, across all planets (arena.ale::livearena). Arenas are shared: each is defended by fighters from several players.' },
         // Travel
         { key:'portals_used',               label:'Portals',                 src:'perm',   def:true  },
         { key:'total_travel_distance',      label:'Travel',                  src:'perm',   def:true  },
@@ -556,6 +557,8 @@
     var _visibleCols = {};
     var _allPlayers  = [];
     var _dgByWallet  = {}; // wallet → {rating, gamertag} from dungeons.ale lb
+    var _arenaHeld   = null; // wallet → arenas with at least one of their fighters defending
+    var _arenaLiveTotal = null; // distinct live arenas, for the TOTAL row (per-player counts overlap)
     var _filtered    = [];
     var _sortKey     = 'dungeons_won';
     var _sortDir     = 1; // 1 = desc for numeric, asc alpha for tag
@@ -799,6 +802,7 @@
         if (src === 'perm')   return fp.perm[key]   || 0;
         if (src === 'active') return fp.active[key] || 0;
         if (src === 'comp')   return _compData.hasOwnProperty(fp.wallet) ? _compData[fp.wallet] : null;
+        if (src === 'arena')  return _arenaHeld ? (_arenaHeld[fp.wallet] || 0) : null;
         if (src === 'dungeon') {
             var dge = _dgByWallet[fp.wallet];
             if (!dge) return null;
@@ -1147,7 +1151,9 @@
         var totalCells = '', avgCells = '';
         visCols.forEach(function(c) {
             var tot;
-            if (RATE_PARTS[c.key]) {
+            if (c.src === 'arena') {
+                tot = _arenaLiveTotal;   // players share arenas, so summing their counts would overcount
+            } else if (RATE_PARTS[c.key]) {
                 var p = RATE_PARTS[c.key], won = 0, played = 0;
                 all.forEach(function(fp) { won += fp.perm[p[0]] || 0; played += fp.perm[p[1]] || 0; });
                 tot = played > 0 ? won / played * 100 : null;
@@ -1305,7 +1311,7 @@
                         .then(function() { return fetchMineAssetInfo(collectMineAssetIds(_allPlayers)); })
                         .then(refreshNFTImages);
 
-                    loadDungeonLBSilent();
+                    loadDungeonLBSilent(); loadArenasHeldSilent();
                     return;
                 }
             } catch(e) {}
@@ -1335,7 +1341,7 @@
                         .then(function() { return fetchMineAssetInfo(collectMineAssetIds(_allPlayers)); })
                         .then(refreshNFTImages);
             fetchCompData();
-            loadDungeonLBSilent();
+            loadDungeonLBSilent(); loadArenasHeldSilent();
 
             var ts = Date.now();
             localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: ts, players: _allPlayers }));
@@ -1408,6 +1414,30 @@
             }
             _dgByWallet = {};
             rows.forEach(function(r) { _dgByWallet[r.wallet] = { rating: r.rating, gamertag: r.gamertag }; });
+            if (_allPlayers.length) renderTable();
+        } catch(e) {}
+    };
+
+    // arena.ale::livearena is scoped per planet; each row is one arena and its defending
+    // team, with fighters from several different owners.
+    var ARENA_PLANETS = ['eyeke', 'kavian', 'magor', 'naron', 'neri', 'veles'];
+    window.loadArenasHeldSilent = async function() {
+        try {
+            var results = await Promise.all(ARENA_PLANETS.map(function(p) {
+                return fetchTableRows({ code: 'arena.ale', scope: p, table: 'livearena', limit: 1000, json: true })
+                    .then(function(d) { return d.rows || []; });
+            }));
+            var held = {}, total = 0;
+            results.forEach(function(rows) {
+                rows.forEach(function(r) {
+                    total++;
+                    var owners = {};
+                    (r.fighters || []).forEach(function(f) { if (f.owner) owners[f.owner] = 1; });
+                    Object.keys(owners).forEach(function(w) { held[w] = (held[w] || 0) + 1; });
+                });
+            });
+            _arenaHeld = held;
+            _arenaLiveTotal = total;
             if (_allPlayers.length) renderTable();
         } catch(e) {}
     };

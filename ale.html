@@ -673,6 +673,8 @@
             <div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.5);margin-bottom:20px;">◈ USAGE STATISTICS</div>
             <div id="stats-loading" style="color:#666;font-size:0.7em;letter-spacing:2px;display:none;">LOADING DATA…</div>
             <div id="stats-trends" style="margin-bottom:32px;"></div>
+            <script src="ale_insights.js"></script>
+            <div id="stats-insights" style="margin-bottom:32px;"></div>
             <div id="stats-arena" style="margin-bottom:32px;"></div>
             <div id="stats-dungeon"></div>
         </div>
@@ -2305,6 +2307,8 @@ window.runHistoricalScan = async function() {
         var res = await fetch(_statsGSheetURL);
         _rawCSV = await res.text();
         renderTrends(_rawCSV);   // async recruit fetch; doesn't hold up the stats below
+        try { if (window.AleInsights) AleInsights.render(_rawCSV, document.getElementById('stats-insights')); }
+        catch (e) { console.error('Insights failed:', e); }
         var cutoff = _timeFilter ? Date.now() - _timeFilter * 86400000 : 0;
         var myWallet = localStorage.getItem('naron_wallet') || '';
         var agg = _parseSheetCSV(_rawCSV, cutoff, myWallet);
