@@ -165,7 +165,7 @@
         A boost multiplies rating by 4 TLM +0.03% &middot; 8 TLM +0.05% &middot; 16 TLM +0.08% &middot; 32 TLM +0.13% &middot; 64 TLM +0.21%.
         The boost that reaches max rating is charged in full but only lifts the land to the cap, and a land at max rejects boosts,
         so those lands are excluded and no land gets boosts past the cap. Slots reset at 00:00 UTC.
-        Days to max assume every slot is used at 64 TLM.
+        Days to max assume every slot is used at the selected level.
     </div>
 </div>
 
@@ -176,11 +176,8 @@
     var RPC = ['https://wax.eosphere.io', 'https://wax.greymass.com', 'https://wax.eosusa.io'];
     var AA  = ['https://wax.api.atomicassets.io', 'https://aa.neftyblocks.com', 'https://atomic.wax.eosrio.io'];
     var PLANETS = { eyeke: 'Eyeke', kavian: 'Kavian', magor: 'Magor', naron: 'Naron', neri: 'Neri', veles: 'Veles' };
-    var LEVEL_KEY = 'naron_boost_level';
-    var FORECAST_TLM = 64;   // days-to-max always assumes High Boost, whatever level is selected
 
     var state = { wallet: null, lands: [], cap: 0, day: LB.contractDay(), tlm: 64, balance: null, downgrade: {}, busy: false, loading: false };
-    try { var saved = Number(localStorage.getItem(LEVEL_KEY)); if (LB.LEVELS.some(function (l) { return l.tlm === saved; })) state.tlm = saved; } catch (e) {}
 
     var wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: localStorage.getItem('naron_wallet') || '', tryAutoLogin: false });
 
@@ -279,7 +276,6 @@
         var b = e.target.closest('.lvl');
         if (!b) return;
         state.tlm = Number(b.dataset.tlm);
-        try { localStorage.setItem(LEVEL_KEY, String(state.tlm)); } catch (err) {}
         renderLevels();
         render();
     });
@@ -303,7 +299,7 @@
         }
         var cap = state.cap, day = state.day, left = 0;
         var cards = state.lands.map(function (land) {
-            var s = LB.status(land, cap, day), f = LB.forecast(land, cap, day, FORECAST_TLM);
+            var s = LB.status(land, cap, day), f = LB.forecast(land, cap, day, state.tlm);
             if (!s.capped) left += s.remaining;
             var chip, cls = '';
             if (s.capped) { chip = '<span class="chip max">MAX RATING</span>'; cls = ' max'; }
@@ -332,7 +328,7 @@
                 +   '<div class="row"><span class="k">SLOTS TODAY</span><span class="val">' + s.used + ' / ' + s.slots + ' used</span></div>'
                 +   '<div class="slots">' + slots + '</div>'
                 +   warn
-                +   '<div class="forecast">' + (s.capped ? 'At max rating &mdash; excluded from boosts.' : 'Max rating at ' + FORECAST_TLM + ' TLM per slot: ' + daysText(f)) + '</div>'
+                +   '<div class="forecast">' + (s.capped ? 'At max rating &mdash; excluded from boosts.' : 'Max rating at ' + state.tlm + ' TLM per slot: ' + daysText(f)) + '</div>'
                 + '</div></div>';
         });
         if (state.lands.length) $('lands').innerHTML = cards.join('');
