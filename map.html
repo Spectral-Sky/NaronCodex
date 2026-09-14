@@ -4925,8 +4925,6 @@ function drunPickerConfirm() {
         _txQueue.push({type:'dungeon', x:d.x, y:d.y, planet:d.planet, land_id:d.land_id,
             name:_txqLocLabel('DUNGEON', d.planet, d.x, d.y)+' — LVL '+_drunPickerDiff,
             difficulty:_drunPickerDiff});
-        // Level-up step always follows each dungeon — checked at runtime against refreshed XP
-        _txQueue.push({type:'levelup', name:'LEVEL UP (if ready)'});
     });
 
     renderTxQueue();
