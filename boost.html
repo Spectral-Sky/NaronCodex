@@ -107,6 +107,7 @@
         .stats { display:flex; gap:22px; flex-wrap:wrap; flex:1; min-width:260px; }
         .stat .v { font-family:'Courier New',monospace; font-size:1.15em; color:var(--text); font-variant-numeric:tabular-nums; }
         .stat .v.gold { color:var(--gold); }
+        .stat .sub-v { font-size:0.66em; color:var(--muted); margin-top:3px; line-height:1.45; max-width:260px; }
         .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
         .go { border:1px solid transparent; border-radius:6px; padding:10px 16px; cursor:pointer; font-family:'Courier New',monospace; letter-spacing:1px; font-size:0.8em; font-weight:bold; text-align:left; line-height:1.35; }
         .go small { display:block; font-weight:normal; font-size:0.85em; opacity:0.85; letter-spacing:0; }
@@ -227,6 +228,11 @@
             <div class="stat"><div class="lbl">Max rating</div><div class="v" id="st-cap">&mdash;</div></div>
             <div class="stat"><div class="lbl">Slots reset in</div><div class="v" id="st-reset">&mdash;</div></div>
             <div class="stat">
+                <div class="lbl">Land earnings / day</div>
+                <div class="v gold" id="st-earn">&mdash;</div>
+                <div class="sub-v" id="st-earn-sub"></div>
+            </div>
+            <div class="stat">
                 <div class="lbl">Land commissions</div>
                 <div class="claim-row"><div class="v gold" id="st-comms">&mdash;</div><button class="claim-btn" id="btn-comms" onclick="runClaim('comms')" disabled>CLAIM</button></div>
             </div>
@@ -244,6 +250,8 @@
     <div class="grid" id="lands"><div class="empty">Connect your wallet to load your lands.</div></div>
 
     <div class="foot">
+        PAYOUT / DAY is each land's rating payout, paid once a day around 10:36 UTC: rating &divide; 1,000,000 &times; the current rate per million rating points.
+        Mining commission is paid per wallet and can't be split by land, so the daily figure is an average of your recent commission claims.
         Untick INCLUDE on a land to leave it out of both buttons.
         Unlocking slot #2&ndash;15 costs 160 &middot; 260 &middot; 420 &middot; 680 &middot; 1,100 &middot; 1,800 &middot; 2,800 &middot; 4,600 &middot; 7,400 &middot; 12,000 &middot; 18,000 &middot; 30,000 &middot; 50,000 &middot; 80,000 TLM.
         Each boost is a TLM transfer to boost.worlds plus awlndratings::boost, the same as the official site.
@@ -261,7 +269,7 @@
     var RPC = ['https://wax.eosphere.io', 'https://wax.greymass.com', 'https://wax.eosusa.io'];
     var AA  = ['https://wax.api.atomicassets.io', 'https://aa.neftyblocks.com', 'https://atomic.wax.eosrio.io'];
 
-    var state = { wallet: null, lands: [], cap: 0, day: LB.contractDay(), tlm: 64, balance: null, comms: null, payout: null, downgrade: {}, off: {}, busy: false, loading: false };
+    var state = { wallet: null, lands: [], cap: 0, day: LB.contractDay(), tlm: 64, balance: null, comms: null, payout: null, rate: null, commsPerDay: null, downgrade: {}, off: {}, busy: false, loading: false };
 
     var wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: localStorage.getItem('naron_wallet') || '', tryAutoLogin: false });
 
@@ -314,6 +322,38 @@
         var row = r.filter(function (x) { return /TLM$/.test(x.balance); })[0];
         return row ? parseFloat(row.balance) : 0;
     }
+    // Land rating payout: awlndratings pays once a day (~10:36 UTC); each land gets
+    // rating (raw, 4 implied decimals) / 1,000,000 x payAmountPerMLandRatingPoints.
+    // Checked against real claims: within about 1%.
+    async function loadPayoutRate() {
+        var g = (await rows({ code: 'awlndratings', scope: 'awlndratings', table: 'global', limit: 1, json: true }))[0];
+        return g ? parseFloat(g.payAmountPerMLandRatingPoints) : null;
+    }
+    function payoutPerDay(land) { return state.rate == null ? null : land.rating / 1e6 * state.rate; }
+
+    // Mining commission can't be split per land (mines can't be looked up by land), so
+    // average the wallet's recent m.federation commission claims into TLM per day.
+    var HYPERION = ['https://wax.eosphere.io', 'https://wax.eosusa.io'];
+    async function loadCommsPerDay(wallet) {
+        for (var i = 0; i < HYPERION.length; i++) {
+            try {
+                var r = await fetch(HYPERION[i] + '/v2/history/get_actions?account=' + encodeURIComponent(wallet)
+                    + '&filter=alien.worlds%3Atransfer&transfer.from=m.federation&limit=10&sort=desc');
+                if (!r.ok) continue;
+                var claims = ((await r.json()).actions || []).filter(function (a) {
+                    var d = a.act && a.act.data;
+                    return d && d.from === 'm.federation' && d.to === wallet && /Mined Trilium/i.test(d.memo || '');
+                }).map(function (a) { return { ms: Date.parse(a['@timestamp'] + 'Z'), tlm: parseFloat(a.act.data.quantity) }; });
+                if (claims.length < 2) return null;
+                // each claim pays what built up since the claim before it
+                var span = (claims[0].ms - claims[claims.length - 1].ms) / 86400000;
+                var total = claims.slice(0, -1).reduce(function (s, c) { return s + c.tlm; }, 0);
+                return span > 0.5 ? { perDay: total / span, days: span, claims: claims.length } : null;
+            } catch (e) { /* try the next node */ }
+        }
+        return null;
+    }
+
     // unclaimed land commissions (m.federation::landcomms) and land rating payout (awlndratings::payouts)
     async function loadClaims(wallet) {
         var res = await Promise.all([
@@ -355,9 +395,15 @@
         if (!quiet) say('Loading your lands…', 'busy');
         try {
             var res = await Promise.all([loadCap(), loadLands(state.wallet), loadBalance(state.wallet).catch(function () { return null; }),
-                                         loadClaims(state.wallet).catch(function () { return { comms: null, payout: null }; })]);
+                                         loadClaims(state.wallet).catch(function () { return { comms: null, payout: null }; }),
+                                         loadPayoutRate().catch(function () { return null; })]);
             state.cap = res[0]; state.lands = res[1]; state.balance = res[2];
-            state.comms = res[3].comms; state.payout = res[3].payout;
+            state.comms = res[3].comms; state.payout = res[3].payout; state.rate = res[4];
+            if (state.commsPerDay === null) {   // claim history changes rarely; fetch once per wallet
+                state.commsPerDay = false;
+                var w = state.wallet;
+                loadCommsPerDay(w).then(function (c) { if (state.wallet === w) { state.commsPerDay = c; render(); } });
+            }
             state.day = LB.contractDay();
             if (!quiet) say('');
             render();
@@ -438,6 +484,8 @@
                 +   '<div class="row"><span class="k">RATING</span><span class="val">' + fmtRating(land.rating) + ' / ' + fmtRating(cap) + '</span></div>'
                 +   '<div class="meter" title="' + pct.toFixed(3) + '% of max"><div style="' + fillStyle + '"></div></div>'
                 +   '<div class="row"><span class="k">OF MAX</span><span class="val">' + pct.toFixed(2) + '%</span></div>'
+                +   '<div class="row" title="Land rating payout, paid daily around 10:36 UTC: rating / 1,000,000 x ' + (state.rate == null ? '?' : state.rate) + ' TLM"><span class="k">PAYOUT / DAY</span><span class="val" style="color:var(--gold)">'
+                +     (payoutPerDay(land) == null ? '&mdash;' : '&asymp; ' + fmtTlm(payoutPerDay(land).toFixed(2))) + '</span></div>'
                 +   '<div class="row"><span class="k">SLOTS TODAY</span><span class="val">' + s.used + ' / ' + s.slots + ' used</span></div>'
                 +   '<div class="slots">' + slots + '</div>'
                 +   (function () {
@@ -452,6 +500,13 @@
         if (state.lands.length) $('lands').innerHTML = cards.join('');
 
         $('st-bal').textContent = state.balance == null ? '—' : fmtTlm(state.balance);
+        var payDay = state.rate == null ? null : state.lands.reduce(function (s, l) { return s + payoutPerDay(l); }, 0);
+        var cpd = state.commsPerDay && state.commsPerDay.perDay;
+        $('st-earn').textContent = payDay == null ? '—' : '≈ ' + fmtTlm(((payDay || 0) + (cpd || 0)).toFixed(2));
+        $('st-earn-sub').textContent = payDay == null ? '' :
+            fmtTlm(payDay.toFixed(2)) + ' rating payout'
+            + (cpd ? ' + ' + fmtTlm(cpd.toFixed(2)) + ' commission (avg of last ' + state.commsPerDay.days.toFixed(0) + ' days)'
+                   : state.commsPerDay === false ? ' · loading commission…' : ' · commission average unavailable');
         $('st-comms').textContent = state.comms == null ? '—' : fmtTlm(state.comms);
         $('btn-comms').disabled = state.busy || !(state.comms > 0);
         $('payout-stat').hidden = !(state.payout > 0);
@@ -579,7 +634,7 @@
         $('wallet-btn-anchor').style.display = account ? 'none' : '';
         $('wallet-btn-wcc').style.display = account ? 'none' : '';
         if (account !== state.wallet) {
-            state.wallet = account; state.lands = []; state.downgrade = {}; state.balance = null; state.comms = null; state.payout = null;
+            state.wallet = account; state.lands = []; state.downgrade = {}; state.balance = null; state.comms = null; state.payout = null; state.commsPerDay = null;
             state.off = account ? loadOff() : {};
             render();
             if (account) refresh();
