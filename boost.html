@@ -3,9 +3,10 @@
 <head>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
     <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-48CCMEYHXG');</script>
+    <script>try{if(localStorage.getItem('naron_day')==='1')document.documentElement.classList.add('day');}catch(e){}</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Land Booster — Naron Codex</title>
+    <title>Smart Land Booster — Naron Codex</title>
     <link rel="icon" type="image/png" href="NCico.png">
     <style>
         :root {
@@ -21,69 +22,116 @@
             --muted:     #6c8790;
             --red:       #ff6070;
             --green:     #5fe39a;
+            --grid:      rgba(70,210,190,0.035);
+            --halo:      rgba(70,210,190,0.07);
+            --track:     rgba(255,255,255,0.06);
+            --img-bg:    #0b1418;
+            --on-teal:   #03201c;
+            --on-gold:   #2a1a00;
+            --chip-full-bg: #33424a; --chip-full-fg: #b8c8cf;
+            --chip-min-bg:  #4a3a22;
+            --menu-bg:   rgba(8,14,20,0.98);
+        }
+        :root.day {
+            --bg:        #eef3f5;
+            --panel:     rgba(255,255,255,0.94);
+            --line:      rgba(15,120,108,0.18);
+            --line-hi:   rgba(15,120,108,0.5);
+            --teal:      #0e8c7d;
+            --teal-dim:  #6cbcb1;
+            --gold:      #a86e00;
+            --gold-glow: rgba(168,110,0,0.2);
+            --text:      #13262c;
+            --muted:     #55717a;
+            --red:       #c42638;
+            --green:     #188f52;
+            --grid:      rgba(15,120,108,0.06);
+            --halo:      rgba(15,140,125,0.08);
+            --track:     rgba(0,0,0,0.08);
+            --img-bg:    #d6e2e6;
+            --on-teal:   #ffffff;
+            --on-gold:   #ffffff;
+            --chip-full-bg: #c5d2d7; --chip-full-fg: #33474e;
+            --chip-min-bg:  #f1dfb8;
+            --menu-bg:   rgba(255,255,255,0.99);
         }
         *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
         html, body { background:var(--bg); color:var(--text); font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif; min-height:100%; }
         body::before {
             content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
-            background-image:
-                linear-gradient(rgba(70,210,190,0.035) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(70,210,190,0.035) 1px, transparent 1px);
+            background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
             background-size:44px 44px;
         }
-        body::after {
-            content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
-            background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(70,210,190,0.07), transparent 70%);
-        }
-        .mono { font-family:'Courier New',monospace; }
+        body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 60% 40% at 50% 0%, var(--halo), transparent 70%); }
         #app { position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:18px 16px 60px; }
 
+        @keyframes rgb-border { 0%{border-color:#ff3366;box-shadow:0 0 8px #ff336677}16%{border-color:#ff8800;box-shadow:0 0 8px #ff880077}33%{border-color:#ddcc00;box-shadow:0 0 8px #ddcc0077}50%{border-color:#33cc55;box-shadow:0 0 8px #33cc5577}66%{border-color:#3399ff;box-shadow:0 0 8px #3399ff77}83%{border-color:#aa44ff;box-shadow:0 0 8px #aa44ff77}100%{border-color:#ff3366;box-shadow:0 0 8px #ff336677} }
+        @keyframes hue-spin { from { filter:blur(6px) hue-rotate(0deg); } to { filter:blur(6px) hue-rotate(360deg); } }
+
         /* header */
-        .hdr { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding-bottom:14px; border-bottom:1px solid var(--line); }
-        .hdr h1 { font-size:1.15em; letter-spacing:4px; font-weight:600; color:var(--teal); font-family:'Courier New',monospace; }
-        .hdr .sub { font-size:0.7em; color:var(--muted); letter-spacing:1px; margin-top:3px; }
-        .hdr .grow { flex:1; min-width:200px; }
-        .back { color:var(--muted); text-decoration:none; font-size:0.72em; letter-spacing:2px; font-family:'Courier New',monospace; }
+        .hdr { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:14px; border-bottom:1px solid var(--line); }
+        .hdr .grow { flex:1; min-width:220px; }
+        .brand { display:flex; align-items:center; gap:10px; }
+        .planet-wrap { position:relative; width:36px; height:36px; flex-shrink:0; }
+        .planet-wrap::before {
+            content:''; position:absolute; inset:-5px; border-radius:50%;
+            background:conic-gradient(#ff3366, #ff8800, #ddcc00, #33cc55, #3399ff, #aa44ff, #ff3366);
+            animation:hue-spin 4s linear infinite; opacity:0.85;
+        }
+        #header-planet-canvas { position:relative; width:36px; height:36px; border-radius:50%; cursor:pointer; display:block; }
+        .back { color:var(--muted); text-decoration:none; font-size:0.76em; letter-spacing:2px; font-family:'Courier New',monospace; }
         .back:hover { color:var(--teal); }
+        .hdr h1 { font-size:1.15em; letter-spacing:4px; font-weight:600; color:var(--teal); font-family:'Courier New',monospace; margin-top:8px; }
+        .hdr .sub { font-size:0.7em; color:var(--muted); letter-spacing:1px; margin-top:3px; }
         .wbtn { background:transparent; border:1px solid var(--line-hi); color:var(--teal); font-family:'Courier New',monospace; font-size:0.74em; letter-spacing:1px; padding:6px 12px; border-radius:4px; cursor:pointer; }
-        .wbtn:hover { background:rgba(70,210,190,0.08); }
-        .wbtn.logged { color:var(--gold); border-color:rgba(242,180,65,0.45); }
+        .wbtn:hover { background:var(--halo); }
+        .wbtn.logged { color:var(--gold); border-color:var(--gold); }
+        .dd { position:relative; }
+        .dd-menu { display:none; position:absolute; right:0; top:calc(100% + 4px); min-width:120px; background:var(--menu-bg); border:1px solid var(--line-hi); border-radius:6px; padding:4px; z-index:50; }
+        .dd.open .dd-menu { display:block; }
+        .dd-item { display:flex; align-items:center; gap:7px; padding:6px 9px; color:var(--text); text-decoration:none; font-family:'Courier New',monospace; font-size:0.74em; letter-spacing:1px; border-radius:4px; }
+        .dd-item:hover { background:var(--halo); color:var(--teal); }
+        .dd-item.active { color:var(--gold); }
+        .dd-item img { border-radius:1px; }
 
         /* control bar */
         .bar { display:flex; gap:14px; flex-wrap:wrap; align-items:stretch; margin:16px 0; }
         .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
         .lbl { font-family:'Courier New',monospace; font-size:0.62em; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
         .levels { display:flex; gap:6px; flex-wrap:wrap; }
-        .lvl { background:rgba(255,255,255,0.02); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:6px 10px; cursor:pointer; text-align:center; min-width:68px; }
+        .lvl { background:transparent; border:1px solid var(--line); color:var(--text); border-radius:6px; padding:6px 10px; cursor:pointer; text-align:center; min-width:68px; }
         .lvl b { display:block; font-size:1.05em; font-family:'Courier New',monospace; }
         .lvl span { font-size:0.66em; color:var(--muted); }
-        .lvl.on { border-color:var(--gold); background:rgba(242,180,65,0.09); box-shadow:0 0 12px var(--gold-glow); }
+        .lvl.on { border-color:var(--gold); background:var(--gold-glow); box-shadow:0 0 12px var(--gold-glow); }
         .lvl.on span { color:var(--gold); }
         .stats { display:flex; gap:22px; flex-wrap:wrap; flex:1; min-width:260px; }
         .stat .v { font-family:'Courier New',monospace; font-size:1.15em; color:var(--text); font-variant-numeric:tabular-nums; }
         .stat .v.gold { color:var(--gold); }
-        .actions { display:flex; gap:8px; flex-wrap:wrap; }
-        .go { border:none; border-radius:6px; padding:10px 16px; cursor:pointer; font-family:'Courier New',monospace; letter-spacing:1px; font-size:0.8em; font-weight:bold; text-align:left; line-height:1.35; }
-        .go small { display:block; font-weight:normal; font-size:0.85em; opacity:0.8; letter-spacing:0; }
-        .go.once { background:var(--teal); color:#03201c; }
-        .go.fill { background:var(--gold); color:#2a1a00; }
+        .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
+        .go { border:1px solid transparent; border-radius:6px; padding:10px 16px; cursor:pointer; font-family:'Courier New',monospace; letter-spacing:1px; font-size:0.8em; font-weight:bold; text-align:left; line-height:1.35; }
+        .go small { display:block; font-weight:normal; font-size:0.85em; opacity:0.85; letter-spacing:0; }
+        .go.once { background:var(--teal); color:var(--on-teal); }
+        .go.fill { background:var(--gold); color:var(--on-gold); border-width:1px; animation:rgb-border 2.5s linear infinite; }
         .go:disabled { opacity:0.35; cursor:not-allowed; }
+        .go.fill:disabled { animation:none; }
         .go:focus-visible, .lvl:focus-visible, .wbtn:focus-visible { outline:2px solid var(--text); outline-offset:2px; }
         #msg { min-height:1.3em; font-size:0.78em; letter-spacing:0.5px; margin:-4px 0 12px; color:var(--muted); }
         #msg.ok { color:var(--green); } #msg.err { color:var(--red); } #msg.busy { color:var(--gold); }
 
         /* land cards */
         .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; }
-        .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
-        .card.max { border-color:rgba(95,227,154,0.35); }
-        .card.skip { opacity:0.8; }
-        .card-img { position:relative; height:120px; background:#0b1418 center/cover no-repeat; }
-        .card-img::after { content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(10,18,24,0.95), transparent 60%); }
+        .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; transition:opacity .2s; }
+        .card.max { border-color:var(--green); }
+        .card.off { opacity:0.5; }
+        .card-img { position:relative; height:120px; background:var(--img-bg); overflow:hidden; }
+        .card-img img { width:100%; height:100%; object-fit:cover; object-position:center 25%; display:block; }
         .chip { position:absolute; top:8px; right:8px; z-index:1; font-family:'Courier New',monospace; font-size:0.66em; letter-spacing:1px; padding:3px 8px; border-radius:10px; font-weight:bold; }
-        .chip.max   { background:var(--green); color:#032012; }
-        .chip.ready { background:var(--teal);  color:#03201c; }
-        .chip.full  { background:#33424a; color:#b8c8cf; }
-        .chip.min   { background:#4a3a22; color:var(--gold); }
+        .chip.max   { background:var(--green); color:var(--on-teal); }
+        .chip.ready { background:var(--teal);  color:var(--on-teal); }
+        .chip.full  { background:var(--chip-full-bg); color:var(--chip-full-fg); }
+        .chip.min   { background:var(--chip-min-bg); color:var(--gold); }
+        .include { position:absolute; top:8px; left:8px; z-index:1; display:flex; align-items:center; gap:5px; background:var(--menu-bg); border:1px solid var(--line-hi); border-radius:10px; padding:2px 8px 2px 5px; font-family:'Courier New',monospace; font-size:0.64em; letter-spacing:1px; color:var(--text); cursor:pointer; }
+        .include input { accent-color:var(--teal); cursor:pointer; }
         .card-title { padding:9px 12px 0; }
         .card-title .nm { font-weight:600; font-size:0.95em; }
         .card-title .at { font-size:0.68em; color:var(--muted); font-family:'Courier New',monospace; }
@@ -91,20 +139,24 @@
         .row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:0.78em; }
         .row .k { color:var(--muted); font-family:'Courier New',monospace; font-size:0.9em; letter-spacing:1px; }
         .row .val { font-family:'Courier New',monospace; font-variant-numeric:tabular-nums; }
-        .meter { height:8px; border-radius:4px; background:rgba(255,255,255,0.06); overflow:hidden; }
-        .meter > div { height:100%; background:linear-gradient(90deg, var(--teal-dim), var(--teal)); border-radius:4px; }
-        .card.max .meter > div { background:var(--green); }
+        .meter { height:9px; border-radius:5px; background:var(--track); overflow:hidden; }
+        /* the full spectrum spans the whole track; the fill reveals as much of it as the land has reached */
+        .meter > div { height:100%; border-radius:5px; background-image:linear-gradient(90deg, #ff2a3d 0%, #ff8a1f 20%, #ffd61f 40%, #33d17a 60%, #ff3fd0 80%, #8b3dff 100%); background-repeat:no-repeat; }
         .slots { display:flex; gap:4px; flex-wrap:wrap; }
         .slot { width:16px; height:16px; border-radius:3px; border:1px solid var(--line-hi); }
         .slot.used { background:var(--teal-dim); border-color:var(--teal-dim); }
         .forecast { font-size:0.74em; color:var(--muted); line-height:1.5; border-top:1px dashed var(--line); padding-top:8px; }
         .forecast b { color:var(--text); font-weight:600; }
-        .warn { font-size:0.72em; color:var(--gold); background:rgba(242,180,65,0.07); border:1px solid rgba(242,180,65,0.25); border-radius:6px; padding:7px 9px; line-height:1.45; }
+        .warn { font-size:0.72em; color:var(--gold); background:var(--gold-glow); border:1px solid var(--gold); border-radius:6px; padding:7px 9px; line-height:1.45; }
         .warn label { display:flex; gap:6px; align-items:flex-start; margin-top:5px; cursor:pointer; color:var(--text); }
-        .empty { text-align:center; color:var(--muted); padding:60px 10px; font-size:0.9em; line-height:1.7; }
+        .empty { text-align:center; color:var(--muted); padding:60px 10px; font-size:0.9em; line-height:1.7; grid-column:1/-1; }
         .foot { margin-top:26px; font-size:0.68em; color:var(--muted); line-height:1.7; border-top:1px solid var(--line); padding-top:12px; }
+        /* Google Translate injects a banner and shifts the page; hide it */
+        .goog-te-banner-frame, .skiptranslate iframe { display:none !important; } body { top:0 !important; }
         @media (max-width:640px) { .go { flex:1; } .stats { gap:14px; } }
+        @media (prefers-reduced-motion: reduce) { .go.fill, .planet-wrap::before { animation:none; } }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script src="waxjs.js"></script>
     <script type="module">
         import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
@@ -132,10 +184,25 @@
 <div id="app">
     <div class="hdr">
         <div class="grow">
-            <a class="back" href="index.html">&larr; NARON CODEX</a>
-            <h1>LAND BOOSTER</h1>
+            <div class="brand">
+                <span class="planet-wrap"><canvas id="header-planet-canvas" width="36" height="36" title="Naron"></canvas></span>
+                <a class="back" href="index.html">&larr; NARON CODEX</a>
+            </div>
+            <h1>SMART LAND BOOSTER</h1>
             <div class="sub">Boost all your Alien Worlds lands at once &middot; lands at max rating are left out automatically</div>
         </div>
+        <div class="dd" id="lang-picker">
+            <button class="wbtn" id="lang-btn" onclick="toggleMenu('lang-picker', event)" title="Language">&#127760; &#9660;</button>
+            <div class="dd-menu">
+                <a class="dd-item" href="#" onclick="setLang('fr');return false;"><img src="https://flagcdn.com/16x12/fr.png" width="16" height="12" alt=""> FR</a>
+                <a class="dd-item" href="#" onclick="setLang('de');return false;"><img src="https://flagcdn.com/16x12/de.png" width="16" height="12" alt=""> DE</a>
+                <a class="dd-item" href="#" onclick="setLang('it');return false;"><img src="https://flagcdn.com/16x12/it.png" width="16" height="12" alt=""> IT</a>
+                <a class="dd-item" href="#" onclick="setLang('tl');return false;"><img src="https://flagcdn.com/16x12/ph.png" width="16" height="12" alt=""> PH</a>
+                <a class="dd-item" href="#" onclick="setLang('id');return false;"><img src="https://flagcdn.com/16x12/id.png" width="16" height="12" alt=""> ID</a>
+                <a class="dd-item active" href="#" onclick="setLang('en');return false;"><img src="https://flagcdn.com/16x12/gb.png" width="16" height="12" alt=""> EN</a>
+            </div>
+        </div>
+        <button class="wbtn" id="mode-toggle-btn" onclick="toggleDayMode()" title="Toggle light / dark mode">&#9728;</button>
         <button id="wallet-connect-btn" class="wbtn logged" onclick="disconnectWallet()" style="display:none" title="Disconnect"></button>
         <button id="wallet-btn-anchor" class="wbtn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
         <button id="wallet-btn-wcc" class="wbtn" onclick="loginWithWCC()">[ &#9729; CLOUD ]</button>
@@ -161,6 +228,7 @@
     <div class="grid" id="lands"><div class="empty">Connect your wallet to load your lands.</div></div>
 
     <div class="foot">
+        Untick INCLUDE on a land to leave it out of both buttons.
         Each boost is a TLM transfer to boost.worlds plus awlndratings::boost, the same as the official site.
         A boost multiplies rating by 4 TLM +0.03% &middot; 8 TLM +0.05% &middot; 16 TLM +0.08% &middot; 32 TLM +0.13% &middot; 64 TLM +0.21%.
         The boost that reaches max rating is charged in full but only lifts the land to the cap, and a land at max rejects boosts,
@@ -175,9 +243,8 @@
     var LB = window.LandBoost;
     var RPC = ['https://wax.eosphere.io', 'https://wax.greymass.com', 'https://wax.eosusa.io'];
     var AA  = ['https://wax.api.atomicassets.io', 'https://aa.neftyblocks.com', 'https://atomic.wax.eosrio.io'];
-    var PLANETS = { eyeke: 'Eyeke', kavian: 'Kavian', magor: 'Magor', naron: 'Naron', neri: 'Neri', veles: 'Veles' };
 
-    var state = { wallet: null, lands: [], cap: 0, day: LB.contractDay(), tlm: 64, balance: null, downgrade: {}, busy: false, loading: false };
+    var state = { wallet: null, lands: [], cap: 0, day: LB.contractDay(), tlm: 64, balance: null, downgrade: {}, off: {}, busy: false, loading: false };
 
     var wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: localStorage.getItem('naron_wallet') || '', tryAutoLogin: false });
 
@@ -186,6 +253,12 @@
     function say(text, cls) { var m = $('msg'); m.textContent = text || ''; m.className = cls || ''; }
     function fmtRating(raw) { return (raw / 10000).toLocaleString(undefined, { maximumFractionDigits: 0 }); }
     function fmtTlm(n) { return Number(n).toLocaleString(undefined, { maximumFractionDigits: 4 }) + ' TLM'; }
+
+    // lands the player unticked, remembered per wallet
+    function offKey() { return 'naron_boost_off_' + state.wallet; }
+    function loadOff() { try { var a = JSON.parse(localStorage.getItem(offKey()) || '[]'); var o = {}; a.forEach(function (id) { o[id] = true; }); return o; } catch (e) { return {}; } }
+    function saveOff() { try { localStorage.setItem(offKey(), JSON.stringify(Object.keys(state.off).filter(function (k) { return state.off[k]; }))); } catch (e) {} }
+    function included() { return state.lands.filter(function (l) { return !state.off[l.asset_id]; }); }
 
     // ── chain / atomic reads ────────────────────────────────────────────────
     async function rows(body) {
@@ -227,19 +300,18 @@
     async function loadLands(wallet) {
         var assets = await atomic('/atomicassets/v1/assets?owner=' + encodeURIComponent(wallet)
             + '&collection_name=alien.worlds&schema_name=land.worlds&limit=100&order=asc&sort=asset_id');
-        var lands = await Promise.all((assets || []).map(async function (a) {
-            var m = a.mutable_data || {}, d = a.data || {};
+        return Promise.all((assets || []).map(async function (a) {
+            var m = a.mutable_data || {}, d = a.data || {}, tpl = (a.template && a.template.immutable_data) || {};
             var boostRow = null;
             try {
                 boostRow = (await rows({ code: 'awlndratings', scope: 'awlndratings', table: 'boosts',
                     lower_bound: a.asset_id, upper_bound: a.asset_id, limit: 1, json: true }))[0] || null;
             } catch (e) { /* fall back to the NFT's own day counters */ }
-            var planetKey = String((a.template && a.template.immutable_data && a.template.immutable_data.planet) || d.planet || '').replace('.world', '');
             return {
                 asset_id: a.asset_id,
-                name: d.name || a.name || ('Land ' + a.asset_id),
-                planet: PLANETS[planetKey] || '',
-                x: d.x, y: d.y, img: d.img || '',
+                name: d.name || tpl.name || a.name || ('Land ' + a.asset_id),
+                x: d.x, y: d.y,
+                img: d.img || tpl.img || '',
                 rating: Number(m.landrating || d.landrating || 0),
                 slots: Number(m.openslots || 0),
                 minBoost: Number(m.MinBoostAmount || 0),
@@ -248,7 +320,6 @@
                 boostRow: boostRow
             };
         }));
-        return lands;
     }
 
     async function refresh(quiet) {
@@ -259,7 +330,7 @@
             var res = await Promise.all([loadCap(), loadLands(state.wallet), loadBalance(state.wallet).catch(function () { return null; })]);
             state.cap = res[0]; state.lands = res[1]; state.balance = res[2];
             state.day = LB.contractDay();
-            if (!quiet) say(state.lands.length ? '' : '');
+            if (!quiet) say('');
             render();
         } catch (e) {
             say('Could not load lands: ' + (e && e.message ? e.message : e) + ' — try again in a moment.', 'err');
@@ -286,6 +357,15 @@
         return '<b>' + f.days + ' more day' + (f.days === 1 ? '' : 's') + '</b> after today &middot; ' + f.boosts.toLocaleString() + ' boosts &middot; ' + fmtTlm(f.tlm);
     }
 
+    // AtomicHub resizer first, Pinata if that fails, then hide the image
+    function imgTag(hash) {
+        if (!hash) return '';
+        var h = encodeURIComponent(hash);
+        return '<img alt="" loading="lazy" src="https://resizer.atomichub.io/images/v1/preview?ipfs=' + h + '&size=370"'
+            + ' data-fb="https://gateway.pinata.cloud/ipfs/' + h + '"'
+            + ' onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb=\'\';}else{this.style.display=\'none\';}">';
+    }
+
     function render() {
         if (!state.wallet) {
             $('lands').innerHTML = '<div class="empty">Connect your wallet to load your lands.</div>';
@@ -299,32 +379,36 @@
         }
         var cap = state.cap, day = state.day, left = 0;
         var cards = state.lands.map(function (land) {
-            var s = LB.status(land, cap, day), f = LB.forecast(land, cap, day, state.tlm);
-            if (!s.capped) left += s.remaining;
-            var chip, cls = '';
-            if (s.capped) { chip = '<span class="chip max">MAX RATING</span>'; cls = ' max'; }
-            else if (state.tlm < s.minTlm) { chip = '<span class="chip min">MIN ' + s.minTlm + ' TLM</span>'; cls = ' skip'; }
-            else if (!s.remaining) { chip = '<span class="chip full">FULL TODAY</span>'; cls = ' skip'; }
+            var s = LB.status(land, cap, day), f = LB.forecast(land, cap, day, state.tlm), on = !state.off[land.asset_id];
+            if (!s.capped && on) left += s.remaining;
+            var chip, cls = on ? '' : ' off';
+            if (s.capped) { chip = '<span class="chip max">MAX RATING</span>'; cls += ' max'; }
+            else if (state.tlm < s.minTlm) chip = '<span class="chip min">MIN ' + s.minTlm + ' TLM</span>';
+            else if (!s.remaining) chip = '<span class="chip full">FULL TODAY</span>';
             else chip = '<span class="chip ready">' + s.remaining + ' SLOT' + (s.remaining === 1 ? '' : 'S') + ' LEFT</span>';
 
             var slots = '';
             for (var i = 0; i < s.slots; i++) slots += '<span class="slot' + (i < s.used ? ' used' : '') + '"></span>';
 
             var warn = '';
-            var nearCap = !s.capped && s.remaining && state.tlm >= s.minTlm && land.rating * LB.multiplier(state.tlm) * 1.0001 >= cap;
+            var nearCap = on && !s.capped && s.remaining && state.tlm >= s.minTlm && land.rating * LB.multiplier(state.tlm) * 1.0001 >= cap;
             if (nearCap) {
                 var gain = (cap - land.rating) / (land.rating * (LB.multiplier(state.tlm) - 1)) * 100;
-                warn = '<div class="warn">One boost reaches max rating: a ' + state.tlm + ' TLM boost only uses about ' + Math.max(1, Math.round(gain)) + '% of its effect.'
+                warn = '<div class="warn">One boost reaches max rating: a ' + state.tlm + ' TLM boost only uses about ' + Math.max(1, Math.min(100, Math.round(gain))) + '% of its effect.'
                     + '<label><input type="checkbox" data-down="' + esc(land.asset_id) + '"' + (state.downgrade[land.asset_id] ? ' checked' : '') + '> Use the smallest boost that still reaches max</label></div>';
             }
-            var img = land.img ? "background-image:url('https://resizer.atomichub.io/images/v1/preview?ipfs=" + encodeURIComponent(land.img) + "&size=370')" : '';
+            var pct = s.pctOfCap;
+            // stretch the gradient to the full track width so the colour at the tip matches how full the land is
+            var fillStyle = 'width:' + pct.toFixed(2) + '%;background-size:' + (pct > 0 ? (10000 / pct).toFixed(1) : 100) + '% 100%';
             return '<div class="card' + cls + '">'
-                + '<div class="card-img" style="' + img + '">' + chip + '</div>'
+                + '<div class="card-img">' + imgTag(land.img)
+                +   '<label class="include" title="Include this land in BOOST ALL ONCE and FILL ALL SLOTS"><input type="checkbox" data-inc="' + esc(land.asset_id) + '"' + (on ? ' checked' : '') + '> INCLUDE</label>'
+                +   chip + '</div>'
                 + '<div class="card-title"><div class="nm">' + esc(land.name) + '</div><div class="at">' + (land.x != null ? esc(land.x) + ',' + esc(land.y) + ' &middot; ' : '') + '#' + esc(land.asset_id) + '</div></div>'
                 + '<div class="card-body">'
                 +   '<div class="row"><span class="k">RATING</span><span class="val">' + fmtRating(land.rating) + ' / ' + fmtRating(cap) + '</span></div>'
-                +   '<div class="meter" title="' + s.pctOfCap.toFixed(3) + '% of max"><div style="width:' + s.pctOfCap.toFixed(2) + '%"></div></div>'
-                +   '<div class="row"><span class="k">OF MAX</span><span class="val">' + s.pctOfCap.toFixed(2) + '%</span></div>'
+                +   '<div class="meter" title="' + pct.toFixed(3) + '% of max"><div style="' + fillStyle + '"></div></div>'
+                +   '<div class="row"><span class="k">OF MAX</span><span class="val">' + pct.toFixed(2) + '%</span></div>'
                 +   '<div class="row"><span class="k">SLOTS TODAY</span><span class="val">' + s.used + ' / ' + s.slots + ' used</span></div>'
                 +   '<div class="slots">' + slots + '</div>'
                 +   warn
@@ -337,8 +421,9 @@
         $('st-left').textContent = left.toLocaleString();
         $('st-cap').textContent = cap ? fmtRating(cap) : '—';
 
-        var once = LB.plan(state.lands, { cap: cap, day: day, tlm: state.tlm, mode: 'once', downgrade: state.downgrade });
-        var fill = LB.plan(state.lands, { cap: cap, day: day, tlm: state.tlm, mode: 'fill', downgrade: state.downgrade });
+        var pool = included();
+        var once = LB.plan(pool, { cap: cap, day: day, tlm: state.tlm, mode: 'once', downgrade: state.downgrade });
+        var fill = LB.plan(pool, { cap: cap, day: day, tlm: state.tlm, mode: 'fill', downgrade: state.downgrade });
         $('cost-once').textContent = once.boosts.length ? once.boosts.length + ' land' + (once.boosts.length === 1 ? '' : 's') + ' · ' + fmtTlm(once.totalTlm) : 'nothing to boost';
         var txs = LB.batches(fill.boosts).length;
         $('cost-fill').textContent = fill.boosts.length ? fill.boosts.length + ' boosts · ' + fmtTlm(fill.totalTlm) + (txs > 1 ? ' · ' + txs + ' TXs' : '') : 'nothing to boost';
@@ -347,10 +432,9 @@
     }
 
     $('lands').addEventListener('change', function (e) {
-        var id = e.target.dataset && e.target.dataset.down;
-        if (!id) return;
-        state.downgrade[id] = e.target.checked;
-        render();
+        var t = e.target, ds = t.dataset || {};
+        if (ds.down) { state.downgrade[ds.down] = t.checked; render(); }
+        else if (ds.inc) { state.off[ds.inc] = !t.checked; saveOff(); render(); }
     });
 
     function tickReset() {
@@ -370,7 +454,7 @@
     window.runBoost = async function (mode) {
         if (state.busy || !state.wallet) return;
         await refresh(true);   // re-check slots and caps right before building the transaction
-        var p = LB.plan(state.lands, { cap: state.cap, day: state.day, tlm: state.tlm, mode: mode, downgrade: state.downgrade });
+        var p = LB.plan(included(), { cap: state.cap, day: state.day, tlm: state.tlm, mode: mode, downgrade: state.downgrade });
         if (!p.boosts.length) { say('Nothing to boost right now.', 'err'); return; }
         if (state.balance != null && state.balance < p.totalTlm) {
             say('Not enough TLM: this needs ' + fmtTlm(p.totalTlm) + ' and the wallet holds ' + fmtTlm(state.balance) + '.', 'err');
@@ -406,6 +490,7 @@
         $('wallet-btn-wcc').style.display = account ? 'none' : '';
         if (account !== state.wallet) {
             state.wallet = account; state.lands = []; state.downgrade = {}; state.balance = null;
+            state.off = account ? loadOff() : {};
             render();
             if (account) refresh();
             else say('');
@@ -436,10 +521,87 @@
         checkWalletState();
     };
 
+    // ── light / dark mode (shared naron_day setting) ────────────────────────
+    function syncModeBtn() { $('mode-toggle-btn').textContent = document.documentElement.classList.contains('day') ? '🌙' : '☀'; }
+    window.toggleDayMode = function () {
+        var isDay = document.documentElement.classList.toggle('day');
+        try { localStorage.setItem('naron_day', isDay ? '1' : '0'); } catch (e) {}
+        syncModeBtn();
+    };
+
+    // ── dropdowns ───────────────────────────────────────────────────────────
+    window.toggleMenu = function (id, ev) {
+        if (ev) ev.stopPropagation();
+        $(id).classList.toggle('open');
+    };
+    document.addEventListener('click', function () {
+        document.querySelectorAll('.dd.open').forEach(function (d) { d.classList.remove('open'); });
+    });
+
+    // ── header planet ───────────────────────────────────────────────────────
+    (function () {
+        var hc = $('header-planet-canvas');
+        if (!hc || typeof THREE === 'undefined') return;
+        var R = new THREE.WebGLRenderer({ canvas: hc, antialias: true, alpha: true });
+        R.setClearColor(0x000000, 0);
+        R.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        R.setSize(36, 36);
+        var sc = new THREE.Scene();
+        var cam = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+        cam.position.z = 4;
+        sc.add(new THREE.AmbientLight(0xffffff, 0.5));
+        var sl = new THREE.DirectionalLight(0xffffff, 2.0);
+        sl.position.set(3, 3, 5); sc.add(sl);
+        var tx = new THREE.TextureLoader().load('planets/naron.jpg');
+        tx.minFilter = THREE.LinearFilter; tx.generateMipmaps = false;
+        var pm = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshStandardMaterial({ map: tx }));
+        sc.add(pm);
+        var spd = 0.008, BASE = 0.008, BOOST = 0.35, MAX = 1.2, DECAY = 0.018;
+        hc.addEventListener('click', function () { spd = Math.min(spd + BOOST, MAX); });
+        (function anim() {
+            requestAnimationFrame(anim);
+            spd -= (spd - BASE) * DECAY;
+            if (spd < BASE) spd = BASE;
+            pm.rotation.y += spd;
+            R.render(sc, cam);
+        })();
+    })();
+
+    syncModeBtn();
     renderLevels();
     tickReset();
     checkWalletState();
 })();
 </script>
+<div id="google_translate_element" style="display:none;"></div>
+<script>
+    function googleTranslateElementInit(){
+        new google.translate.TranslateElement({pageLanguage:'en',includedLanguages:'fr,de,it,tl,id',autoDisplay:false},'google_translate_element');
+    }
+    function markLang(lang){
+        var map = { tl: 'PH' };
+        document.querySelectorAll('#lang-picker .dd-item').forEach(function(a){
+            a.classList.toggle('active', a.textContent.trim().toUpperCase() === (map[lang] || lang).toUpperCase());
+        });
+    }
+    function setLang(lang){
+        markLang(lang);
+        if(lang==='en'){
+            document.cookie='googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            document.cookie='googtrans=; path=/; domain='+location.hostname+'; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            location.reload();
+            return;
+        }
+        var el=document.querySelector('.goog-te-combo');
+        if(el){el.value=lang;el.dispatchEvent(new Event('change'));return;}
+        document.cookie='googtrans=/en/'+lang+'; path=/';
+        location.reload();
+    }
+    (function(){
+        var m=document.cookie.match(/googtrans=\/en\/(\w+)/);
+        if(m&&m[1]&&m[1]!=='en') markLang(m[1]);
+    })();
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
