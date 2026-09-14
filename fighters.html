@@ -90,6 +90,8 @@
     #class-filter:focus { border-color:var(--gold); }
     #count-display { font-size:0.65em; color:var(--muted); margin-left:auto; letter-spacing:1px; }
 
+    /* STAT RANK ICONS — where a stat sits for the fighter's class */
+    .rank-ico { width:14px; height:14px; vertical-align:middle; margin-left:4px; object-fit:contain; }
     /* COLUMN TOGGLES */
     .col-toggles { padding:8px 28px; border-bottom:1px solid rgba(232,160,32,0.06); background:rgba(3,6,15,0.4); display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
     .col-toggle-label { font-size:0.66em; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-right:4px; }
@@ -413,6 +415,7 @@
     <button class="col-toggle on"                  data-col="cd"     onclick="toggleCol(this)">CD</button>
     <button class="col-toggle on"                  data-col="wu"     onclick="toggleCol(this)">WU</button>
     <button class="col-toggle col-toggle-blue on"  data-col="tnt"    onclick="toggleCol(this)">TNT</button>
+    <button class="col-toggle on"                  data-col="res"    onclick="toggleCol(this)" title="Fire, air, metal, gem, nature and neutral resistance columns">RES</button>
     <div class="col-toggles-sep"></div>
     <button class="col-toggle on" data-col="xp"  onclick="toggleCol(this)">XP</button>
     <button class="col-toggle on" data-col="age" onclick="toggleCol(this)">AGE</button>
@@ -650,6 +653,12 @@ var COL_DEFS = [
     { key:'cd',        label:'COOLDOWN ▲', title:'Cooldown — mean, lower is faster', defaultDir:1, sortVal: function(f){ var s=f.stats||{}; return s.attackspeed_min!=null?Math.floor((Number(s.attackspeed_min||0)+Number(s.attackspeed_max||0))/2*Math.sqrt(_ageBonus(f))/10.2):9999; } },
     { key:'wu',        label:'WINDUP ▲',   title:'Wind Up — mean, lower is faster',  defaultDir:1, sortVal: function(f){ var s=f.stats||{}; return s.initiative_min!=null?Math.floor((Number(s.initiative_min||0)+Number(s.initiative_max||0))/2*Math.sqrt(_ageBonus(f))/10.2):9999; } },
     { key:'tnt',       label:'TAUNT',      title:'Taunt — mean (±half-range)',  sortVal: function(f){ var s=f.stats||{}; return Math.floor((Number(s.taunt_min||0)+Number(s.taunt_max||0))/2*Math.sqrt(_ageBonus(f))/10.2); } },
+    { key:'res_fire',    group:'res', label:'FIRE RES',    title:'Fire resistance',    sortVal: function(f){ return Number((f.stats||{}).res_fire||0); } },
+    { key:'res_air',     group:'res', label:'AIR RES',     title:'Air resistance',     sortVal: function(f){ return Number((f.stats||{}).res_air||0); } },
+    { key:'res_metal',   group:'res', label:'METAL RES',   title:'Metal resistance',   sortVal: function(f){ return Number((f.stats||{}).res_metal||0); } },
+    { key:'res_gem',     group:'res', label:'GEM RES',     title:'Gem resistance',     sortVal: function(f){ return Number((f.stats||{}).res_gem||0); } },
+    { key:'res_nature',  group:'res', label:'NATURE RES',  title:'Nature resistance',  sortVal: function(f){ return Number((f.stats||{}).res_nature||0); } },
+    { key:'res_neutral', group:'res', label:'NEUTRAL RES', title:'Neutral resistance', sortVal: function(f){ return Number((f.stats||{}).res_neutral||0); } },
     { key:'dps',       label:'DPS',        title:'DPS Rating — Damage ÷ Cooldown × 10 (estimated, not exact)',  sortVal: function(f){ return _dpsRating(f); } },
     { key:'xp',        label:'XP',         title:'XP progress to next level',   sortVal: function(f){ var s=f.stats||{}; return s.required_experience?Number(s.experience||0)/Number(s.required_experience):0; } },
     { key:'age',       label:'AGE',        title:'Days since creation',         sortVal: function(f){ return fighterAgeDays(f)||0; } },
@@ -743,6 +752,77 @@ function _convertStat(raw, isHPDMG, f) {
     return Math.floor(r * sqAb / 10.2);
 }
 
+// ── STAT RANKS ───────────────────────────────────────────────────────────────
+// Same idea as the in-game rank arrows: each stat is placed within the full range its
+// class can roll, from creation.ale::classtemps total_min_max_stats (all races of the
+// class). Damage/health/cooldown/windup use the fighter's mid roll between the class's
+// average lowest and highest roll, in bands at 10/30/50/70/90% (cooldown and windup:
+// lower is better). Resistances compare against the class maximum at 20/40/60/80/95%.
+// Taunt isn't ranked.
+var RANK_ORDER = ['red2d', 'red1d', 'middle', 'green1u', 'green2u', 'goldup'];
+var RANK_LABEL = {
+    goldup: 'Exceptional for this class', green2u: 'Very good for this class', green1u: 'Good for this class',
+    middle: 'Average for this class', red1d: 'Below average for this class', red2d: 'Poor for this class'
+};
+var CLASS_RANGES_KEY = 'naron_classtemps_v1';
+var _classRanges = null;   // classname -> total_min_max_stats
+
+async function loadClassRanges() {
+    try {
+        var c = JSON.parse(localStorage.getItem(CLASS_RANGES_KEY) || 'null');
+        if (c && Date.now() - c.ts < 12 * 3600 * 1000 && c.map) { _classRanges = c.map; return; }
+    } catch (e) {}
+    try {
+        var res  = await fetchRows({ code:'creation.ale', scope:'creation.ale', table:'classtemps', limit:50, json:true });
+        var rows = Array.isArray(res) ? res : ((res && res.rows) || []);
+        var map  = {};
+        rows.forEach(function(r) {
+            var t = r.total_min_max_stats;
+            if (typeof t === 'string') { try { t = JSON.parse(t); } catch (e) { t = null; } }
+            if (r.classname && t) map[String(r.classname).toLowerCase()] = t;
+        });
+        if (!Object.keys(map).length) return;
+        _classRanges = map;
+        try { localStorage.setItem(CLASS_RANGES_KEY, JSON.stringify({ ts: Date.now(), map: map })); } catch (e) {}
+        if (_fighters && _fighters.length) renderTable();
+    } catch (e) { console.warn('Class ranges failed to load:', e); }
+}
+
+function statRank(field, f) {
+    var r = _classRanges && _classRanges[String(f.classname || '').toLowerCase()];
+    if (!r) return null;
+    var s = f.stats || {};
+    if (field.indexOf('res_') === 0) {
+        var cap = Number(r[field + '_max'] || 0), v = Number(s[field] || 0);
+        if (cap <= 0) return 'middle';
+        var rb = [0.2, 0.4, 0.6, 0.8, 0.95], k = 0;
+        while (k < rb.length && v > cap * rb[k]) k++;
+        return RANK_ORDER[k];
+    }
+    var lo = (Number(r[field + '_min_min'] || 0) + Number(r[field + '_max_min'] || 0)) / 2;
+    var hi = (Number(r[field + '_min_max'] || 0) + Number(r[field + '_max_max'] || 0)) / 2;
+    if (hi - lo <= 0) return 'middle';
+    var pos = ((Number(s[field + '_min'] || 0) + Number(s[field + '_max'] || 0)) / 2 - lo) / (hi - lo);
+    var bands = [0.1, 0.3, 0.5, 0.7, 0.9], i = 0;
+    if (field === 'attackspeed' || field === 'initiative') {
+        while (i < bands.length && pos >= bands[i]) i++;
+        return RANK_ORDER[RANK_ORDER.length - 1 - i];
+    }
+    while (i < bands.length && pos > bands[i]) i++;
+    return RANK_ORDER[i];
+}
+
+function rankIcon(field, f) {
+    var rk = statRank(field, f);
+    return rk ? '<img class="rank-ico" src="Ale%20images/' + rk + '.png" alt="' + RANK_LABEL[rk] + '" title="' + RANK_LABEL[rk] + '">' : '';
+}
+
+function resCell(field, f) {
+    var v = (f.stats || {})[field];
+    if (v == null) return '<span class="zero">—</span>';
+    return Math.round(Number(v) / 10) + '%' + rankIcon(field, f);
+}
+
 function _dpsRating(f) {
     var s = f.stats || {};
     var sqAb = Math.sqrt(_ageBonus(f));
@@ -790,10 +870,12 @@ function cellContent(key, f) {
             return av > 0 ? '<span class="asc-val">' + '★'.repeat(Math.min(av,5)) + (av > 5 ? ' '+av : '') + '</span>'
                           : '<span class="zero">—</span>';
         }
-        case 'hp':  return convertedMeanRange(s.health_min,     s.health_max,     true,  f);
-        case 'dmg': return convertedMeanRange(s.damage_min,      s.damage_max,     true,  f);
-        case 'cd':  return convertedMeanRange(s.attackspeed_min, s.attackspeed_max,false, f);
-        case 'wu':  return convertedMeanRange(s.initiative_min,  s.initiative_max, false, f);
+        case 'hp':  return convertedMeanRange(s.health_min,     s.health_max,     true,  f) + rankIcon('health', f);
+        case 'dmg': return convertedMeanRange(s.damage_min,      s.damage_max,     true,  f) + rankIcon('damage', f);
+        case 'cd':  return convertedMeanRange(s.attackspeed_min, s.attackspeed_max,false, f) + rankIcon('attackspeed', f);
+        case 'wu':  return convertedMeanRange(s.initiative_min,  s.initiative_max, false, f) + rankIcon('initiative', f);
+        case 'res_fire': case 'res_air': case 'res_metal': case 'res_gem': case 'res_nature': case 'res_neutral':
+            return resCell(key, f);
         case 'tnt': return convertedMeanRange(s.taunt_min,       s.taunt_max,      false, f);
         case 'dps': {
             var dps = _dpsRating(f);
@@ -960,7 +1042,7 @@ function renderTable() {
         return;
     }
 
-    var visibleCols = COL_DEFS.filter(function(d){ return !d.fixed && !_hiddenCols[d.key]; });
+    var visibleCols = COL_DEFS.filter(function(d){ return !d.fixed && !_hiddenCols[d.group || d.key]; });
     var allFilteredSelected = _filtered.length > 0 && _filtered.every(function(f){ return _selected.has(String(f.fighter_id)); });
 
     function _sortArrow(key) {
@@ -1355,6 +1437,7 @@ function toggleHamburger() {
     var savedFont = localStorage.getItem('naron_font') || 'segoe';
     ftSetFont(savedFont);
     checkWalletState();
+    loadClassRanges();
     if (getWallet()) loadFighters();
 })();
 
