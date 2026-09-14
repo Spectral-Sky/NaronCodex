@@ -1114,17 +1114,16 @@
 
     // ── IMAGE CACHE & LOADER ─────────────────────────────────────────────────────
     var ALE_IMG_CACHE = {};
-    var IPFS_GATEWAYS = [
-        h => `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/'+h)}&w=40&h=60&output=webp&fit=cover`,
-        h => `https://ipfs.atomichub.io/ipfs/${h}`,
-        h => `https://cloudflare-ipfs.com/ipfs/${h}`,
-        h => `https://ipfs.io/ipfs/${h}`
+    // AtomicHub's resizer first (size must be 64/128/256/370/512), Pinata as the backup.
+    // ipfs.atomichub.io and cloudflare-ipfs.com no longer resolve, and ipfs.io blocks
+    // cross-origin images. On window because inline onerror attributes reference them.
+    var IPFS_GATEWAYS = window.IPFS_GATEWAYS = [
+        h => `https://resizer.atomichub.io/images/v1/preview?ipfs=${h}&size=128`,
+        h => `https://gateway.pinata.cloud/ipfs/${h}`
     ];
-    var IPFS_GATEWAYS_LG = [
-        h => `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/'+h)}&w=250&h=350&output=webp&fit=contain`,
-        h => `https://ipfs.atomichub.io/ipfs/${h}`,
-        h => `https://cloudflare-ipfs.com/ipfs/${h}`,
-        h => `https://ipfs.io/ipfs/${h}`
+    var IPFS_GATEWAYS_LG = window.IPFS_GATEWAYS_LG = [
+        h => `https://resizer.atomichub.io/images/v1/preview?ipfs=${h}&size=370`,
+        h => `https://gateway.pinata.cloud/ipfs/${h}`
     ];
     window._ipfsFallback = function(img, hash, gateways, idx) {
         idx = (idx || 0) + 1;
@@ -1252,7 +1251,7 @@
             const tr = document.createElement('tr');
             const cid = row[4];
             if (cid) ALE_IMG_CACHE[row[0]] = cid;
-            const imgHtml = cid ? `<img src="${IPFS_GATEWAYS[0](cid)}" data-tid="${row[0]}" data-folder="tool.worlds" style="height:46px!important;width:auto!important;display:block;margin:0 auto;border-radius:4px;" loading="lazy" onerror="window._ipfsFallback(this,'${cid}',IPFS_GATEWAYS,0);">` : '';
+            const imgHtml = cid ? `<img src="${IPFS_GATEWAYS[0](cid)}" data-tid="${row[0]}" data-folder="tool.worlds" style="height:46px!important;width:auto!important;display:block;margin:0 auto;border-radius:4px;" loading="lazy" onerror="window._ipfsFallback(this,'${cid}',window.IPFS_GATEWAYS,0);">` : '';
             tr.onclick = () => openDeck(row[0], row[1], row[2], row[3], null);
             tr.innerHTML = `
                 <td>${row[0]}</td>
