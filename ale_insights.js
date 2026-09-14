@@ -169,15 +169,19 @@
         + '.ain-tabs button.on{border-color:rgba(232,160,32,0.75);color:#e8a020;background:rgba(232,160,32,0.07);}'
         + '.ain-tabs .ain-sep{width:10px;}'
         + '.ain-wrap{overflow-x:auto;}'
+        // ale.html styles every table and cell with !important (hidden until "system-ready",
+        // transparent backgrounds, borders, padding, fonts), so these rules must use it too
+        + 'table.ain-heat,table.ain-comp{opacity:1!important;visibility:visible!important;}'
         + '.ain-heat{border-collapse:separate;border-spacing:2px;font-family:"Courier New",monospace;font-size:0.62em;}'
         + '.ain-heat th{color:#606878;font-weight:normal;padding:2px 4px;white-space:nowrap;}'
-        + '.ain-heat td{min-width:34px;height:22px;text-align:center;color:#0a0c12;border-radius:2px;padding:0 3px;font-variant-numeric:tabular-nums;}'
-        + '.ain-heat td.empty{background:rgba(255,255,255,0.03);color:#404450;}'
+        + '.ain-heat td,.ain-heat td:first-of-type,.ain-heat td:nth-child(3),.ain-heat td:last-child{min-width:34px;max-width:none;height:22px;text-align:center!important;color:#0a0c12;border:none!important;border-radius:2px;padding:0 3px!important;white-space:nowrap!important;font-family:"Courier New",monospace!important;font-size:1em!important;font-variant-numeric:tabular-nums;}'
+        + '.ain-heat td.empty{background-color:rgba(255,255,255,0.03)!important;color:#404450!important;}'
         + '.ain-heat th.rowh{text-align:right;color:#9098a8;}'
         + '.ain-comp{width:100%;border-collapse:collapse;font-family:"Courier New",monospace;font-size:0.66em;}'
         + '.ain-comp th{color:#606878;font-weight:normal;text-align:left;padding:4px 8px;border-bottom:1px solid rgba(232,160,32,0.12);letter-spacing:1px;}'
-        + '.ain-comp td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.04);color:#c0c4cc;font-variant-numeric:tabular-nums;}'
-        + '.ain-comp td.num{text-align:right;} .ain-comp th.num{text-align:right;}'
+        + '.ain-comp td,.ain-comp td:first-of-type,.ain-comp td:nth-child(3),.ain-comp td:last-child{padding:5px 8px!important;border:none!important;border-bottom:1px solid rgba(255,255,255,0.04)!important;color:#c0c4cc!important;text-align:left!important;max-width:none;white-space:nowrap!important;font-family:"Courier New",monospace!important;font-size:1em!important;font-variant-numeric:tabular-nums;}'
+        + '.ain-comp td:nth-child(2){white-space:normal!important;}'
+        + '.ain-comp td.num{text-align:right!important;} .ain-comp th.num{text-align:right;}'
         + '.ain-cls{display:inline-block;border:1px solid rgba(232,160,32,0.2);color:#d8b870;padding:0 5px;margin:1px 2px 1px 0;border-radius:3px;text-transform:capitalize;}'
         + '.ain-bar{display:inline-block;height:6px;background:#50dc8c;border-radius:3px;vertical-align:middle;margin-left:6px;opacity:0.8;}';
 
@@ -239,19 +243,19 @@
                 var e = a.difficulty.grid[lv][b];
                 if (!e || e.played < MIN_CELL_FIGHTS) return '<td class="empty" title="' + (e ? e.played : 0) + ' fights">·</td>';
                 var p = e.wins / e.played * 100;
-                return '<td style="background:' + rateColor(p) + '" title="Level ' + lv + ' · ' + label(b, a.weekly) + ' · '
+                return '<td style="background-color:' + rateColor(p) + '!important" title="Level ' + lv + ' · ' + label(b, a.weekly) + ' · '
                     + e.wins + ' wins / ' + e.played + ' fights">' + Math.round(p) + '</td>';
             }).join('');
             var t = a.difficulty.totals[lv];
             var all = t.played >= MIN_CELL_FIGHTS
-                ? '<td style="background:' + rateColor(t.wins / t.played * 100) + '" title="' + t.wins + ' / ' + t.played + ' fights">' + Math.round(t.wins / t.played * 100) + '</td>'
+                ? '<td style="background-color:' + rateColor(t.wins / t.played * 100) + '!important" title="' + t.wins + ' / ' + t.played + ' fights">' + Math.round(t.wins / t.played * 100) + '</td>'
                 : '<td class="empty">·</td>';
             return '<tr><th class="rowh">LVL ' + lv + '</th>' + cells + '<th></th>' + all + '</tr>';
         }).join('');
         var h = '<div class="ain-sec"><div class="ain-h">◈ DUNGEON WIN RATE BY DIFFICULTY</div>'
             + '<div class="ain-note">Win % per ' + (a.weekly ? 'week (starting Monday)' : 'day') + ' · green high, red low · blank: fewer than '
             + MIN_CELL_FIGHTS + ' fights · hover a cell for counts</div>'
-            + '<div class="ain-wrap"><table class="ain-heat"><thead><tr><th></th>'
+            + '<div class="ain-wrap"><table class="ain-heat system-ready"><thead><tr><th></th>'
             + a.buckets.map(function (b) { return '<th>' + label(b, a.weekly) + '</th>'; }).join('')
             + '<th></th><th>ALL</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
         return { html: h };
@@ -324,7 +328,7 @@
                 : function (x, y) { return y.played - x.played; }).slice(0, 15);
             var body = document.getElementById('ain-comp-body');
             if (!list.length) { body.innerHTML = '<div class="ain-note">No line-up has ' + MIN_COMP_FIGHTS + '+ fights yet.</div>'; return; }
-            body.innerHTML = '<table class="ain-comp"><thead><tr><th>#</th><th>LINE-UP</th><th class="num">FIGHTS</th><th class="num">WIN %</th>'
+            body.innerHTML = '<table class="ain-comp system-ready"><thead><tr><th>#</th><th>LINE-UP</th><th class="num">FIGHTS</th><th class="num">WIN %</th>'
                 + (dung ? '<th class="num">AVG LVL</th><th class="num">VS AVG</th>' : '') + '</tr></thead><tbody>'
                 + list.map(function (c, i) {
                     return '<tr><td>' + (i + 1) + '</td><td>' + c.classes.map(function (k) { return '<span class="ain-cls">' + esc(k) + '</span>'; }).join('') + '</td>'
@@ -354,14 +358,14 @@
             return '<tr><th class="rowh">' + WEEKDAYS[d] + '</th>' + r.map(function (v, hr) {
                 if (!v) return '<td class="empty" title="' + WEEKDAYS[d] + ' ' + hr + ':00 UTC · 0 fights">·</td>';
                 var t = v / max;
-                return '<td style="background:rgba(96,184,255,' + (0.12 + t * 0.88).toFixed(2) + ');color:' + (t > 0.45 ? '#0a0c12' : '#c8d4e4') + '" title="'
+                return '<td style="background-color:rgba(96,184,255,' + (0.12 + t * 0.88).toFixed(2) + ')!important;color:' + (t > 0.45 ? '#0a0c12' : '#c8d4e4') + '!important" title="'
                     + WEEKDAYS[d] + ' ' + hr + ':00–' + (hr + 1) + ':00 UTC · ' + v.toLocaleString() + ' fights">' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) + '</td>';
             }).join('') + '</tr>';
         }).join('');
         var h = '<div class="ain-sec"><div class="ain-h">◈ BUSIEST HOURS</div>'
             + '<div class="ain-note">Total fights by weekday and hour (UTC) across the whole sheet · darker is busier · your local time is UTC'
             + (function () { var o = -new Date().getTimezoneOffset() / 60; return (o >= 0 ? '+' : '') + o; })() + '</div>'
-            + '<div class="ain-wrap"><table class="ain-heat"><thead><tr><th></th>'
+            + '<div class="ain-wrap"><table class="ain-heat system-ready"><thead><tr><th></th>'
             + Array.apply(null, Array(24)).map(function (_, i) { return '<th>' + (i < 10 ? '0' : '') + i + '</th>'; }).join('')
             + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
         return { html: h };
