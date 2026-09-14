@@ -149,6 +149,14 @@
         .forecast b { color:var(--text); font-weight:600; }
         .warn { font-size:0.72em; color:var(--gold); background:var(--gold-glow); border:1px solid var(--gold); border-radius:6px; padding:7px 9px; line-height:1.45; }
         .warn label { display:flex; gap:6px; align-items:flex-start; margin-top:5px; cursor:pointer; color:var(--text); }
+        .unlock { background:transparent; border:1px dashed var(--line-hi); color:var(--teal); border-radius:6px; padding:6px 8px; cursor:pointer; font-family:'Courier New',monospace; font-size:0.7em; letter-spacing:1px; text-align:center; }
+        .unlock:hover { border-style:solid; background:var(--halo); }
+        .unlock:disabled { opacity:0.4; cursor:not-allowed; }
+        .unlock.maxed { border-style:solid; color:var(--muted); cursor:default; }
+        .claim-row { display:flex; align-items:center; gap:8px; }
+        .claim-btn { background:transparent; border:1px solid var(--gold); color:var(--gold); border-radius:4px; padding:2px 8px; cursor:pointer; font-family:'Courier New',monospace; font-size:0.66em; letter-spacing:1px; }
+        .claim-btn:hover { background:var(--gold-glow); }
+        .claim-btn:disabled { opacity:0.35; cursor:not-allowed; }
         .empty { text-align:center; color:var(--muted); padding:60px 10px; font-size:0.9em; line-height:1.7; grid-column:1/-1; }
         .foot { margin-top:26px; font-size:0.68em; color:var(--muted); line-height:1.7; border-top:1px solid var(--line); padding-top:12px; }
         /* Google Translate injects a banner and shifts the page; hide it */
@@ -218,6 +226,14 @@
             <div class="stat"><div class="lbl">Slots left today</div><div class="v" id="st-left">&mdash;</div></div>
             <div class="stat"><div class="lbl">Max rating</div><div class="v" id="st-cap">&mdash;</div></div>
             <div class="stat"><div class="lbl">Slots reset in</div><div class="v" id="st-reset">&mdash;</div></div>
+            <div class="stat">
+                <div class="lbl">Land commissions</div>
+                <div class="claim-row"><div class="v gold" id="st-comms">&mdash;</div><button class="claim-btn" id="btn-comms" onclick="runClaim('comms')" disabled>CLAIM</button></div>
+            </div>
+            <div class="stat" id="payout-stat" hidden>
+                <div class="lbl">Rating payout</div>
+                <div class="claim-row"><div class="v gold" id="st-payout">&mdash;</div><button class="claim-btn" id="btn-payout" onclick="runClaim('payout')" disabled>CLAIM</button></div>
+            </div>
         </div>
         <div class="panel actions">
             <button class="go once" id="btn-once" onclick="runBoost('once')" disabled>BOOST ALL ONCE<small id="cost-once">&nbsp;</small></button>
@@ -229,6 +245,7 @@
 
     <div class="foot">
         Untick INCLUDE on a land to leave it out of both buttons.
+        Unlocking slot #2&ndash;15 costs 160 &middot; 260 &middot; 420 &middot; 680 &middot; 1,100 &middot; 1,800 &middot; 2,800 &middot; 4,600 &middot; 7,400 &middot; 12,000 &middot; 18,000 &middot; 30,000 &middot; 50,000 &middot; 80,000 TLM.
         Each boost is a TLM transfer to boost.worlds plus awlndratings::boost, the same as the official site.
         A boost multiplies rating by 4 TLM +0.03% &middot; 8 TLM +0.05% &middot; 16 TLM +0.08% &middot; 32 TLM +0.13% &middot; 64 TLM +0.21%.
         The boost that reaches max rating is charged in full but only lifts the land to the cap, and a land at max rejects boosts,
@@ -244,7 +261,7 @@
     var RPC = ['https://wax.eosphere.io', 'https://wax.greymass.com', 'https://wax.eosusa.io'];
     var AA  = ['https://wax.api.atomicassets.io', 'https://aa.neftyblocks.com', 'https://atomic.wax.eosrio.io'];
 
-    var state = { wallet: null, lands: [], cap: 0, day: LB.contractDay(), tlm: 64, balance: null, downgrade: {}, off: {}, busy: false, loading: false };
+    var state = { wallet: null, lands: [], cap: 0, day: LB.contractDay(), tlm: 64, balance: null, comms: null, payout: null, downgrade: {}, off: {}, busy: false, loading: false };
 
     var wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: localStorage.getItem('naron_wallet') || '', tryAutoLogin: false });
 
@@ -297,6 +314,16 @@
         var row = r.filter(function (x) { return /TLM$/.test(x.balance); })[0];
         return row ? parseFloat(row.balance) : 0;
     }
+    // unclaimed land commissions (m.federation::landcomms) and land rating payout (awlndratings::payouts)
+    async function loadClaims(wallet) {
+        var res = await Promise.all([
+            rows({ code: 'm.federation', scope: 'm.federation', table: 'landcomms', lower_bound: wallet, upper_bound: wallet, limit: 1, json: true }).catch(function () { return null; }),
+            rows({ code: 'awlndratings', scope: 'awlndratings', table: 'payouts', lower_bound: wallet, upper_bound: wallet, limit: 1, json: true }).catch(function () { return null; })
+        ]);
+        function amount(list, field) { return list == null ? null : (list[0] ? parseFloat(list[0][field]) : 0); }
+        return { comms: amount(res[0], 'comms'), payout: amount(res[1], 'payoutAmount') };
+    }
+
     async function loadLands(wallet) {
         var assets = await atomic('/atomicassets/v1/assets?owner=' + encodeURIComponent(wallet)
             + '&collection_name=alien.worlds&schema_name=land.worlds&limit=100&order=asc&sort=asset_id');
@@ -327,8 +354,10 @@
         state.loading = true;
         if (!quiet) say('Loading your lands…', 'busy');
         try {
-            var res = await Promise.all([loadCap(), loadLands(state.wallet), loadBalance(state.wallet).catch(function () { return null; })]);
+            var res = await Promise.all([loadCap(), loadLands(state.wallet), loadBalance(state.wallet).catch(function () { return null; }),
+                                         loadClaims(state.wallet).catch(function () { return { comms: null, payout: null }; })]);
             state.cap = res[0]; state.lands = res[1]; state.balance = res[2];
+            state.comms = res[3].comms; state.payout = res[3].payout;
             state.day = LB.contractDay();
             if (!quiet) say('');
             render();
@@ -411,6 +440,11 @@
                 +   '<div class="row"><span class="k">OF MAX</span><span class="val">' + pct.toFixed(2) + '%</span></div>'
                 +   '<div class="row"><span class="k">SLOTS TODAY</span><span class="val">' + s.used + ' / ' + s.slots + ' used</span></div>'
                 +   '<div class="slots">' + slots + '</div>'
+                +   (function () {
+                        var ns = LB.nextSlot(s.slots);
+                        if (!ns) return '<button class="unlock maxed" disabled>ALL ' + LB.MAX_SLOTS + ' SLOTS UNLOCKED</button>';
+                        return '<button class="unlock" data-unlock="' + esc(land.asset_id) + '"' + (state.busy ? ' disabled' : '') + '>UNLOCK SLOT #' + ns.slot + ' &middot; ' + ns.tlm.toLocaleString() + ' TLM</button>';
+                    })()
                 +   warn
                 +   '<div class="forecast">' + (s.capped ? 'At max rating &mdash; excluded from boosts.' : 'Max rating at ' + state.tlm + ' TLM per slot: ' + daysText(f)) + '</div>'
                 + '</div></div>';
@@ -418,6 +452,11 @@
         if (state.lands.length) $('lands').innerHTML = cards.join('');
 
         $('st-bal').textContent = state.balance == null ? '—' : fmtTlm(state.balance);
+        $('st-comms').textContent = state.comms == null ? '—' : fmtTlm(state.comms);
+        $('btn-comms').disabled = state.busy || !(state.comms > 0);
+        $('payout-stat').hidden = !(state.payout > 0);
+        $('st-payout').textContent = state.payout == null ? '—' : fmtTlm(state.payout);
+        $('btn-payout').disabled = state.busy || !(state.payout > 0);
         $('st-left').textContent = left.toLocaleString();
         $('st-cap').textContent = cap ? fmtRating(cap) : '—';
 
@@ -430,6 +469,53 @@
         $('btn-once').disabled = state.busy || !once.boosts.length;
         $('btn-fill').disabled = state.busy || !fill.boosts.length;
     }
+
+    $('lands').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-unlock]');
+        if (b && !b.disabled) unlockSlot(b.dataset.unlock);
+    });
+
+    async function unlockSlot(landId) {
+        if (state.busy || !state.wallet) return;
+        var land = state.lands.filter(function (l) { return String(l.asset_id) === String(landId); })[0];
+        if (!land) return;
+        var ns = LB.nextSlot(land.slots);
+        if (!ns) return;
+        if (state.balance != null && state.balance < ns.tlm) {
+            say('Not enough TLM to unlock slot #' + ns.slot + ': it costs ' + fmtTlm(ns.tlm) + ' and the wallet holds ' + fmtTlm(state.balance) + '.', 'err');
+            return;
+        }
+        if (!confirm('Unlock boost slot #' + ns.slot + ' on ' + land.name + ' for ' + ns.tlm.toLocaleString() + ' TLM?\n\nThis TLM is paid to boost.worlds and is not refunded.')) return;
+        state.busy = true; render();
+        try {
+            say('Sign the transaction to unlock slot #' + ns.slot + ' on ' + land.name + '…', 'busy');
+            await sign(LB.openslotActions(land.asset_id, state.wallet, ns.tlm));
+            say('Unlocked slot #' + ns.slot + ' on ' + land.name + '.', 'ok');
+        } catch (e) {
+            say('Unlock failed: ' + errText(e), 'err');
+        } finally {
+            state.busy = false;
+            setTimeout(function () { refresh(true); }, 3000);
+            render();
+        }
+    }
+
+    window.runClaim = async function (kind) {
+        if (state.busy || !state.wallet) return;
+        var label = kind === 'comms' ? 'land commissions' : 'land rating payout';
+        state.busy = true; render();
+        try {
+            say('Sign the transaction to claim your ' + label + '…', 'busy');
+            await sign(LB.claimActions(kind, state.wallet));
+            say('Claimed your ' + label + '.', 'ok');
+        } catch (e) {
+            say('Claim failed: ' + errText(e), 'err');
+        } finally {
+            state.busy = false;
+            setTimeout(function () { refresh(true); }, 3000);
+            render();
+        }
+    };
 
     $('lands').addEventListener('change', function (e) {
         var t = e.target, ds = t.dataset || {};
@@ -445,6 +531,10 @@
     setInterval(tickReset, 30000);
 
     // ── boosting ────────────────────────────────────────────────────────────
+    function errText(e) {
+        return e && (e.message || (e.json && e.json.error && e.json.error.details && e.json.error.details[0] && e.json.error.details[0].message)) || String(e);
+    }
+
     async function sign(actions) {
         if (window.walletSession) return window.walletSession.transact({ actions: actions });
         if (!wax.api) await wax.login();
@@ -489,7 +579,7 @@
         $('wallet-btn-anchor').style.display = account ? 'none' : '';
         $('wallet-btn-wcc').style.display = account ? 'none' : '';
         if (account !== state.wallet) {
-            state.wallet = account; state.lands = []; state.downgrade = {}; state.balance = null;
+            state.wallet = account; state.lands = []; state.downgrade = {}; state.balance = null; state.comms = null; state.payout = null;
             state.off = account ? loadOff() : {};
             render();
             if (account) refresh();

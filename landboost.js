@@ -21,6 +21,11 @@
         { tlm: 32, pct: 0.13, name: 'Lv 4 Boost' },
         { tlm: 64, pct: 0.21, name: 'High Boost' }
     ];
+    // TLM to unlock each slot number (awlndratings::openslot), read from every unlock on
+    // chain back to July 2023. Lands top out at 15 slots.
+    var SLOT_PRICES = { 2: 160, 3: 260, 4: 420, 5: 680, 6: 1100, 7: 1800, 8: 2800, 9: 4600,
+                        10: 7400, 11: 12000, 12: 18000, 13: 30000, 14: 50000, 15: 80000 };
+    var MAX_SLOTS = 15;
     var DAY_OFFSET = 828;
     var PER_TX     = 20;      // boosts per transaction (2 actions each)
     // Ratings grow a hair faster than the nominal % on some lands (×1.00211 seen for
@@ -128,6 +133,30 @@
         return out;
     }
 
+    // Next slot a land can unlock and its price, or null when the land is at MAX_SLOTS
+    function nextSlot(slots) {
+        var n = (slots || 1) + 1;
+        return n <= MAX_SLOTS && SLOT_PRICES[n] ? { slot: n, tlm: SLOT_PRICES[n] } : null;
+    }
+
+    function openslotActions(landId, wallet, tlm) {
+        var auth = [{ actor: wallet, permission: 'active' }];
+        return [
+            { account: 'alien.worlds', name: 'transfer', authorization: auth,
+              data: { from: wallet, to: 'boost.worlds', quantity: qty(tlm), memo: 'landrating - openslot for ' + landId } },
+            { account: 'awlndratings', name: 'openslot', authorization: auth,
+              data: { owner: wallet, land_id: String(landId) } }
+        ];
+    }
+
+    // kind: 'comms' = land commissions (m.federation), 'payout' = land rating payout (awlndratings)
+    function claimActions(kind, wallet) {
+        var auth = [{ actor: wallet, permission: 'active' }];
+        return kind === 'comms'
+            ? [{ account: 'm.federation', name: 'claimcomms', authorization: auth, data: { receiver: wallet } }]
+            : [{ account: 'awlndratings', name: 'claimpay', authorization: auth, data: { receiver: wallet } }];
+    }
+
     function batches(boosts, perTx) {
         perTx = perTx || PER_TX;
         var out = [];
@@ -137,7 +166,9 @@
 
     var api = { LEVELS: LEVELS, DAY_OFFSET: DAY_OFFSET, PER_TX: PER_TX, multiplier: multiplier,
                 contractDay: contractDay, msUntilReset: msUntilReset, status: status,
-                boostsToCap: boostsToCap, forecast: forecast, plan: plan, actionsFor: actionsFor, batches: batches };
+                boostsToCap: boostsToCap, forecast: forecast, plan: plan, actionsFor: actionsFor, batches: batches,
+                SLOT_PRICES: SLOT_PRICES, MAX_SLOTS: MAX_SLOTS, nextSlot: nextSlot,
+                openslotActions: openslotActions, claimActions: claimActions };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.LandBoost = api;
 })(typeof window !== 'undefined' ? window : this);
