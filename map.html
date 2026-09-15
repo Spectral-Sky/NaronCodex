@@ -4981,29 +4981,28 @@ function drunPickerConfirm() {
         return;
     }
 
-    // Pick the most boosted dungeons (ties: same planet, then nearest), then order that set
-    // into a short route: current planet first, then each other planet by its best boost,
-    // always walking to the nearest remaining dungeon.
+    // Current planet first, its highest-boost dungeons first; once it runs out, move to the
+    // other planets (the one holding the best boost first), highest boost first within each.
+    // Equal boosts (or no boost data yet) fall back to the nearest dungeon.
     var px = _playerPos ? _playerPos.x : 1, py = _playerPos ? _playerPos.y : 1;
     var curPlanet = _activePlanet;
-    var distOf = function(d){ return (d.planet !== curPlanet ? 9999 : 0) + Math.abs(d.x-px) + Math.abs(d.y-py); };
-    allDungeons.forEach(function(d){ d.boost = _dungeonBoostNow(d.planet, d.x, d.y); });
-    allDungeons.sort(function(a, b){ return (b.boost - a.boost) || (distOf(a) - distOf(b)); });
-
-    var picked = allDungeons.slice(0, 5);
-    var planetOrder = [];
-    picked.forEach(function(d){ if (planetOrder.indexOf(d.planet) < 0) planetOrder.push(d.planet); });   // best boost first
-    planetOrder.sort(function(a, b){ return (a === curPlanet ? -1 : 0) - (b === curPlanet ? -1 : 0); });
+    allDungeons.forEach(function(d){
+        d.boost = _dungeonBoostNow(d.planet, d.x, d.y);
+        d.dist  = Math.abs(d.x - px) + Math.abs(d.y - py);
+    });
+    var groups = {};
+    allDungeons.forEach(function(d){ (groups[d.planet] = groups[d.planet] || []).push(d); });
+    Object.keys(groups).forEach(function(pl){
+        groups[pl].sort(function(a, b){ return (b.boost - a.boost) || (a.dist - b.dist); });
+    });
+    var planetOrder = Object.keys(groups).sort(function(a, b){
+        if (a === curPlanet) return -1;
+        if (b === curPlanet) return 1;
+        return groups[b][0].boost - groups[a][0].boost;
+    });
     var chosen = [];
     planetOrder.forEach(function(pl){
-        var left = picked.filter(function(d){ return d.planet === pl; });
-        var cx = pl === curPlanet ? px : left[0].x, cy = pl === curPlanet ? py : left[0].y;
-        while (left.length) {
-            left.sort(function(a, b){ return (Math.abs(a.x-cx)+Math.abs(a.y-cy)) - (Math.abs(b.x-cx)+Math.abs(b.y-cy)); });
-            var next = left.shift();
-            chosen.push(next);
-            cx = next.x; cy = next.y;
-        }
+        groups[pl].forEach(function(d){ if (chosen.length < 5) chosen.push(d); });
     });
     var fromPlanet = curPlanet;
 
