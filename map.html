@@ -5399,25 +5399,28 @@ async function runTxQueue() {
                 });
             }
 
-            // Dungeon: check win/loss, retry once on loss, pause on double-loss
+            // Dungeon: check win/loss. On a loss, retry once at one difficulty lower; if that
+            // also loses (or it was already level 1), skip this dungeon and carry on.
             if (step.isDungeon && step.dungeonItem && step.dungeonItem.land_id) {
                 var _dk = step.dungeonItem.planet + '.' + step.dungeonItem.land_id;
                 var _dResult = null;
+                var _dDiff = Number(step.actions[0].data.difficulty || 1);
                 if (progLbl) progLbl.textContent = 'Checking battle result…';
                 try { _dResult = await _checkFightResult(step.dungeonHistoryId); } catch(e) {}
 
-                if (_dResult === 'loss') {
-                    // First loss — retry once with new history_id
+                if (_dResult === 'loss' && _dDiff > 1) {
+                    var _lowDiff = _dDiff - 1;
                     if (itemEl) {
                         itemEl.style.background = 'rgba(255,160,40,0.08)';
                         var _rl = itemEl.querySelector('.txq-item-label');
-                        if (_rl) _rl.textContent += ' — LOSS · retrying…';
+                        if (_rl) _rl.textContent += ' — LOSS at LVL ' + _dDiff + ' · retrying at LVL ' + _lowDiff + '…';
                     }
-                    if (progLbl) progLbl.textContent = '⚠ Dungeon loss — retrying once…';
+                    if (progLbl) progLbl.textContent = '⚠ Dungeon lost at LVL ' + _dDiff + ' — retrying at LVL ' + _lowDiff + '…';
                     await new Promise(function(r){ setTimeout(r, 1500); });
                     try {
                         var _rHid = genHistoryId();
                         step.actions[0].data.history_id = _rHid;
+                        step.actions[0].data.difficulty = _lowDiff;
                         step.dungeonHistoryId = _rHid;
                         if (window.walletSession) await window.walletSession.transact({actions: step.actions});
                         else if (wax && wax.api) await wax.api.transact({actions: step.actions},{blocksBehind:3,expireSeconds:30});
@@ -5430,15 +5433,17 @@ async function runTxQueue() {
                 }
 
                 if (_dResult === 'loss' || _dResult === 'error') {
-                    // Double loss or retry TX failed — pause queue
+                    // Lost the retry too (or couldn't go lower, or the retry TX failed) — skip it
                     if (itemEl) {
                         itemEl.style.background = 'rgba(255,68,68,0.06)';
                         var _rl2 = itemEl.querySelector('.txq-item-label');
-                        if (_rl2) { _rl2.style.color = '#ff6644'; _rl2.textContent = (_rl2.textContent||'') + ' — LOSS ×2 · queue paused'; }
+                        if (_rl2) {
+                            _rl2.style.color = '#ff6644';
+                            _rl2.textContent = (_rl2.textContent||'') + (_dResult === 'error' ? ' — retry failed · skipped' : ' — LOST · skipped, moving on');
+                        }
                     }
-                    if (progLbl) progLbl.textContent = '⚠ Dungeon lost twice — check your team and retry.';
+                    if (progLbl) progLbl.textContent = '⚠ Dungeon lost — skipping to the next battle.';
                     if (!_skipFights) _showFightSummary(step.qIdx, _lastFightRow, step.label);
-                    _txQueueAbort = true;
                     failed++;
                     continue;
                 }
