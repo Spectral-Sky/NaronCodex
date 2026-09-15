@@ -3696,6 +3696,58 @@
         if(aGoBtn) aGoBtn.disabled=_disabled;
     }
 
+    // ── GRIND helpers ────────────────────────────────────────────────────────
+    // Class roll ranges (creation.ale::classtemps total_min_max_stats), shared cache with fighters.html
+    var _CLASS_RANGES_KEY='naron_classtemps_v1';
+    var _classRanges=null;
+    (async function _loadClassRanges(){
+        try{
+            var c=JSON.parse(localStorage.getItem(_CLASS_RANGES_KEY)||'null');
+            if(c&&c.map&&Date.now()-c.ts<12*3600*1000){ _classRanges=c.map; return; }
+        }catch(e){}
+        try{
+            var res=await fetchRows({code:'creation.ale',scope:'creation.ale',table:'classtemps',limit:50,json:true});
+            var map={};
+            ((res&&res.rows)||[]).forEach(function(r){
+                var t=r.total_min_max_stats;
+                if(typeof t==='string'){ try{ t=JSON.parse(t); }catch(e){ t=null; } }
+                if(r.classname&&t) map[String(r.classname).toLowerCase()]=t;
+            });
+            if(!Object.keys(map).length) return;
+            _classRanges=map;
+            try{ localStorage.setItem(_CLASS_RANGES_KEY,JSON.stringify({ts:Date.now(),map:map})); }catch(e){}
+        }catch(e){}
+    })();
+
+    // 0..1: how tanky a fighter is for its class — the better of its health position in the
+    // class roll range and its average resistance against the class maximums
+    function _grindTankScore(f){
+        var s=f.stats||{};
+        var r=_classRanges&&_classRanges[String(f.classname||s.classname||'').toLowerCase()];
+        var hpMid=(Number(s.health_min||0)+Number(s.health_max||0))/2;
+        if(!r) return hpMid/1000;   // no class data yet: raw health
+        var lo=(Number(r.health_min_min||0)+Number(r.health_max_min||0))/2;
+        var hi=(Number(r.health_min_max||0)+Number(r.health_max_max||0))/2;
+        var hp=hi>lo?(hpMid-lo)/(hi-lo):0;
+        var resSum=0,resN=0;
+        ['res_gem','res_metal','res_air','res_fire','res_nature','res_neutral'].forEach(function(k){
+            var cap=Number(r[k+'_max']||0);
+            if(cap>0){ resSum+=Number(s[k]||0)/cap; resN++; }
+        });
+        return Math.max(hp,resN?resSum/resN:0);
+    }
+
+    // Biggest unlocked team XP bonus (%) from Dungeon Expert (dungexp*) or Trainer (trainer*)
+    function _grindXpBoost(f){
+        var best=0;
+        ((f.stats&&f.stats.abilities)||[]).forEach(function(a){
+            if(!a||a.locked) return;
+            if(!/^(dungexp|trainer)/.test(a.ability||'')&&!/dungeon expert|trainer/i.test(a.displayname||'')) return;
+            (a.eof_effects||[]).forEach(function(e){ if(e.effect_type==='xp') best=Math.max(best,Number(e.value||0)); });
+        });
+        return best;
+    }
+
     function _drunApplyPreset(preset){
         _drunLastPreset=preset;
         var avail=(_myFighters||[]).filter(function(f){ return !(f.in_use===1||f.in_use==='1'); });
@@ -3724,16 +3776,28 @@
             }
 
         } else if(preset==='grind'){
-            // Slot 0: best tank (any level)
-            var grindTank=tanks[0]||null;
+            // Slot 0: a level-10 fighter that's tanky for its class (health or resistances)
+            // Slot 1: a level 8-10 XP booster (Dungeon Expert or Trainer), biggest XP % first
+            // Slots 2-4: the lowest-level fighters, who soak up the boosted XP
+            var lvlOf=function(f){ return Number((f.stats&&f.stats.level)||0); };
+            var used2=new Set();
+            var lvl10=avail.filter(function(f){ return lvlOf(f)>=10; })
+                           .sort(function(a,b){ return _grindTankScore(b)-_grindTankScore(a); });
+            var grindTank=lvl10[0]||avail.slice().sort(byLevel)[0]||null;
             team[0]=grindTank;
-            // Slots 1-4: LOWEST level non-tank (not sacrificial-marked)
-            var lowLvl=nonTank.slice().reverse(); // ascending level
-            var used2=new Set(grindTank?[String(grindTank.fighter_id)]:[]);
+            if(grindTank) used2.add(String(grindTank.fighter_id));
+
+            var boosters=avail.filter(function(f){ var lv=lvlOf(f); return lv>=8&&lv<=10&&!used2.has(String(f.fighter_id))&&_grindXpBoost(f)>0; })
+                              .sort(function(a,b){ return (_grindXpBoost(b)-_grindXpBoost(a))||(lvlOf(b)-lvlOf(a)); });
+            if(boosters[0]){ team[1]=boosters[0]; used2.add(String(boosters[0].fighter_id)); }
+
+            var lowLvl=avail.slice().sort(function(a,b){ return lvlOf(a)-lvlOf(b); });
             for(var i=1;i<5;i++){
+                if(team[i]) continue;
                 var pick=lowLvl.find(function(f){ return !used2.has(String(f.fighter_id)); });
                 if(pick){ team[i]=pick; used2.add(String(pick.fighter_id)); }
             }
+            if(!boosters[0]) showToast('NO LVL 8-10 DUNGEON EXPERT / TRAINER — FILLED WITH LOW LEVELS');
         }
 
         _bpFighters=team;
@@ -4110,7 +4174,7 @@
         <div id="drun-hint"></div>
         <div id="drun-presets">
             <button class="drun-preset-btn" id="dpp-elite" onclick="_drunApplyPreset('elite')" title="1 tank (lvl 9-10) + 4 high-level fighters">⚡ ELITE<br>1 TANK + 4 HIGH</button>
-            <button class="drun-preset-btn" id="dpp-grind" onclick="_drunApplyPreset('grind')" title="1 tank + 4 lowest-level fighters for XP">📈 GRIND<br>1 TANK + 4 LOW</button>
+            <button class="drun-preset-btn" id="dpp-grind" onclick="_drunApplyPreset('grind')" title="Lvl 10 tank (best health or resistance for its class) + lvl 8-10 Dungeon Expert or Trainer + 3 lowest-level fighters">📈 GRIND<br>TANK + XP + 3 LOW</button>
             <button class="drun-preset-btn" id="dpp-top5" onclick="_drunApplyPreset('top5')" title="Top 5 fighters by level">🏆 TOP 5<br>BY LEVEL</button>
         </div>
         <div id="drun-team">
