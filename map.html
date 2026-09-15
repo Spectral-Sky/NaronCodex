@@ -14,6 +14,7 @@
     <script src="waxjs.js"></script>
     <script src="ale_fightsim.js"></script>
     <script src="ale_fightreplay.js"></script>
+    <script src="ale_data.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script type="module">
         import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
@@ -1128,6 +1129,8 @@
         var x=row.x,y=row.y;
         if ((!x||!y)&&row.land_id){var c=decodeLandId(row.land_id);if(c){x=c.x;y=c.y;}}
         var planet=(row.planet!==undefined&&row.planet!==null)?normalizePlanet(row.planet):defaultPlanet;
+        // keep the defending team, used to counter-pick NFTs
+        if(row.fighters&&planet&&x&&y){ window._dungeonDefenders=window._dungeonDefenders||{}; window._dungeonDefenders[planet+'.'+x+'.'+y]=row.fighters; }
         return _addDungeonCoord(planet,x,y,row.owner||row.account||null,row.land_id||null,row.boost||row.reward_boost||0);
     }
 
@@ -3428,6 +3431,11 @@
         }
 
         _restoreBattleNFTs();
+        // counter-pick NFTs against this dungeon's / arena's defending team
+        _nftManual={};
+        var _ep=entry.planet||_activePlanet;
+        _nftCtx={kind:'battle', defenders:mode==='dungeon'?_dungeonDefenders(_ep,entry.x,entry.y):_arenaDefenders(_ep,entry.x,entry.y)};
+        _autoPickNFTs().then(function(){ _renderBattlePane(); }).catch(function(){});
         var ov=document.getElementById('battle-overlay');
         if(ov) ov.classList.add('open');
         _renderBattlePane();
@@ -3530,7 +3538,7 @@
         var crewName=document.getElementById('bp-crew-name');
         if(_bpCrew){
             if(crewImg) crewImg.src=_nftImgSrc('crew.worlds',_bpCrew.template_id);
-            if(crewName) crewName.textContent=_bpCrew.name||'CREW NFT';
+            if(crewName){ crewName.textContent=(_bpCrew.name||'CREW NFT')+_nftStar('crew',_bpCrew); crewName.title=_nftStar('crew',_bpCrew)?'SUGGESTED vs these defenders: '+_nftSuggest.crew.reason:''; }
         } else {
             if(crewImg) crewImg.src='';
             if(crewName) crewName.textContent='SELECT CREW NFT';
@@ -3541,7 +3549,7 @@
         var wpnName=document.getElementById('bp-weapon-name');
         if(_bpWeapon){
             if(wpnImg) wpnImg.src=_nftImgSrc('arms.worlds',_bpWeapon.template_id);
-            if(wpnName) wpnName.textContent=_bpWeapon.name||'WEAPON NFT';
+            if(wpnName){ wpnName.textContent=(_bpWeapon.name||'WEAPON NFT')+_nftStar('weapon',_bpWeapon); wpnName.title=_nftStar('weapon',_bpWeapon)?'SUGGESTED vs these defenders: '+_nftSuggest.weapon.reason:''; }
         } else {
             if(wpnImg) wpnImg.src='';
             if(wpnName) wpnName.textContent='SELECT WEAPON NFT';
@@ -3699,6 +3707,7 @@
         if(goBtn) goBtn.disabled=_disabled;
         var aGoBtn=document.getElementById('arun-go-btn');
         if(aGoBtn) aGoBtn.disabled=_disabled;
+        _renderRunNftChips();
     }
 
     // ── GRIND helpers ────────────────────────────────────────────────────────
@@ -3753,6 +3762,201 @@
         return best;
     }
 
+    // ── ELITE MARKER FILL ────────────────────────────────────────────────────
+    // ELITE keeps its tank, then fills the other four slots from fighters carrying a chosen
+    // marker in a level band (HIGH 6-10, LOW 1-5), topping up from a second marker.
+    var _mkState={primary:'',secondary:'',band:'high'};
+    try{ var _mkSaved=JSON.parse(localStorage.getItem('naron_mk_fill')||'null'); if(_mkSaved) _mkState=Object.assign(_mkState,_mkSaved); }catch(e){}
+    function _mkSave(){ try{ localStorage.setItem('naron_mk_fill',JSON.stringify(_mkState)); }catch(e){} }
+    function _mkInBand(f){
+        var lv=Number((f.stats&&f.stats.level)||0);
+        return _mkState.band==='high'?(lv>=6&&lv<=10):(lv>=1&&lv<=5);
+    }
+    function _renderMarkerControls(){
+        var avail=(_myFighters||[]).filter(function(f){ return !(f.in_use===1||f.in_use==='1'); });
+        var counts={};
+        avail.forEach(function(f){ if(f.marker&&_mkInBand(f)) counts[f.marker]=(counts[f.marker]||0)+1; });
+        var names=Object.keys(counts).sort(function(a,b){ return (counts[b]-counts[a])||a.localeCompare(b); });
+        [_mkState.primary,_mkState.secondary].forEach(function(m){ if(m&&names.indexOf(m)<0) names.push(m); });
+        var clean=function(s){ return String(s).replace(/[<>"'&]/g,''); };
+        var opts=function(sel,none){
+            return '<option value="">'+none+'</option>'+names.map(function(m){
+                return '<option value="'+clean(m)+'"'+(m===sel?' selected':'')+'>'+clean(m).toUpperCase()+' ('+(counts[m]||0)+')</option>';
+            }).join('');
+        };
+        ['drun','arun'].forEach(function(p){
+            var a=document.getElementById(p+'-mk1'), b=document.getElementById(p+'-mk2');
+            if(a) a.innerHTML=opts(_mkState.primary,'ANY (by level)');
+            if(b) b.innerHTML=opts(_mkState.secondary,'— none —');
+            var hi=document.getElementById(p+'-mk-high'), lo=document.getElementById(p+'-mk-low');
+            if(hi) hi.classList.toggle('active',_mkState.band==='high');
+            if(lo) lo.classList.toggle('active',_mkState.band==='low');
+        });
+    }
+    function mkSet(field,value){
+        _mkState[field]=value;
+        _mkSave();
+        _renderMarkerControls();
+        _drunApplyPreset('elite');
+    }
+
+    // ── NFT COUNTER-PICK ─────────────────────────────────────────────────────
+    // Scores the player's crew and weapon NFTs against the defenders about to be fought,
+    // from each NFT's ability text (ale_data.js), and equips the best of each unless the
+    // player picked that NFT by hand.
+    var _nftCtx=null;        // {kind:'battle'|'drun'|'arun', defenders:[fighter,...]}
+    var _nftManual={};       // {crew:true} once the player picks that NFT themselves
+    var _nftSuggest={};      // {crew:{asset_id, reason}, weapon:{...}}
+    var _nftTok=0;
+    var _ownedNfts=null, _ownedNftsWallet=null;
+    var _NFT_ELEMS=['fire','air','gem','metal','nature','neutral'];
+
+    function _normName(s){ return String(s||'').toLowerCase().replace(/[\s_-]/g,''); }
+    function _isNftSlot(f){ return String(f&&f.fighter_id)==='99999999999'; }
+    function _dungeonDefenders(planet,x,y){ return ((window._dungeonDefenders||{})[planet+'.'+x+'.'+y])||[]; }
+    function _arenaDefenders(planet,x,y){ var d=_arenaDefenderIds[planet+'.'+x+'.'+y]; return (d&&d.team)||[]; }
+
+    function _nftRow(tid){
+        var t=String(tid);
+        var r=(window.ALE_ARMS||[]).find(function(x){ return String(x[0])===t; })
+            ||(window.ALE_CREW||[]).find(function(x){ return String(x[0])===t; });
+        return r?{name:r[1],ability:String(r[17]||'')}:null;
+    }
+
+    async function _loadOwnedNfts(wallet){
+        if(_ownedNfts&&_ownedNftsWallet===wallet) return _ownedNfts;
+        var out={crew:[],weapon:[]}, kinds=[['crew','crew.worlds'],['weapon','arms.worlds']];
+        for(var i=0;i<kinds.length;i++){
+            for(var page=1;page<=5;page++){
+                var r=await fetch('https://wax.api.atomicassets.io/atomicassets/v1/assets?owner='+wallet
+                    +'&collection_name=alien.worlds&schema_name='+kinds[i][1]+'&limit=100&page='+page+'&order=desc&sort=asset_id');
+                var data=((await r.json()).data)||[];
+                data.forEach(function(a){
+                    out[kinds[i][0]].push({asset_id:String(a.asset_id), template_id:String((a.template&&a.template.template_id)||''),
+                        name:a.name||(a.template&&a.template.immutable_data&&a.template.immutable_data.name)||('#'+a.asset_id), schema:kinds[i][1]});
+                });
+                if(data.length<100) break;
+            }
+        }
+        _ownedNfts=out; _ownedNftsWallet=wallet;
+        return out;
+    }
+
+    // Defenders: average resistance per element (%), highest resistance, share of their damage
+    // by element, and how many of each race/class they field
+    function _defProfile(defs){
+        var res={},resMax={},dmg={},tot=0,n=0,count={};
+        _NFT_ELEMS.forEach(function(e){ res[e]=0; resMax[e]=0; dmg[e]=0; });
+        defs.forEach(function(f){
+            if(!f||_isNftSlot(f)) return;
+            n++;
+            _NFT_ELEMS.forEach(function(e){ var v=Number(f['res_'+e]||0)/10; res[e]+=v; if(v>resMax[e]) resMax[e]=v; });
+            var el=String(f.element||'').toLowerCase(), d=Number(f.damage||0);
+            if(dmg[el]!=null){ dmg[el]+=d; tot+=d; }
+            [f.racename,f.classname].forEach(function(x){ var k=_normName(x); if(k) count[k]=(count[k]||0)+1; });
+        });
+        _NFT_ELEMS.forEach(function(e){ res[e]=n?res[e]/n:0; dmg[e]=tot?dmg[e]/tot:0; });
+        return {n:n,res:res,resMax:resMax,dmgShare:dmg,count:count};
+    }
+    // Your team: share of its damage by element
+    function _teamProfile(team){
+        var dmg={},tot=0;
+        _NFT_ELEMS.forEach(function(e){ dmg[e]=0; });
+        (team||[]).forEach(function(f){
+            if(!f) return;
+            var s=f.stats||{}, el=String(f.element||s.element||'').toLowerCase();
+            var d=(Number(s.damage_min||0)+Number(s.damage_max||0))/2;
+            if(dmg[el]!=null){ dmg[el]+=d; tot+=d; }
+        });
+        _NFT_ELEMS.forEach(function(e){ dmg[e]=tot?dmg[e]/tot:0; });
+        return {dmgShare:dmg};
+    }
+    // How much an ability helps against these defenders. Only abilities that depend on the
+    // opponent or on elements are scored; flat self-buffs score 0 and are never suggested.
+    function _scoreAbility(text,team,def){
+        var t=String(text||''), m, E='(fire|air|gem|metal|nature|neutral)';
+        var pct=function(x){ return Math.round(x*100)+'%'; };
+        if((m=t.match(new RegExp('Increases allied '+E+' damage by (\\d+)','i')))){
+            var e1=m[1].toLowerCase(), n1=+m[2];
+            return {score:team.dmgShare[e1]*n1*(1-def.res[e1]/100), reason:'+'+n1+'% '+e1+' damage — '+pct(team.dmgShare[e1])+' of your team damage, defenders average '+Math.round(def.res[e1])+'% '+e1+' res'};
+        }
+        if((m=t.match(new RegExp('Reduces '+E+' resistance of all enemies by (\\d+)','i')))){
+            var e2=m[1].toLowerCase(), n2=+m[2];
+            return {score:team.dmgShare[e2]*Math.min(n2,def.res[e2]), reason:'-'+n2+' '+e2+' res on every defender — '+pct(team.dmgShare[e2])+' of your team damage is '+e2};
+        }
+        if((m=t.match(new RegExp('Reduces the highest (?:enemy|opposing) '+E+' resistance (?:by )?(\\d+)%','i')))){
+            var e3=m[1].toLowerCase(), n3=+m[2];
+            return {score:team.dmgShare[e3]*def.resMax[e3]*n3/100, reason:'-'+n3+'% of the top defender '+e3+' res ('+Math.round(def.resMax[e3])+'%)'};
+        }
+        if((m=t.match(/Ignores (\d+)% of enemy resistances/i))){
+            var n4=+m[1], s4=0;
+            _NFT_ELEMS.forEach(function(e){ s4+=team.dmgShare[e]*def.res[e]*n4/100; });
+            return {score:s4, reason:'ignores '+n4+'% of defender resistances'};
+        }
+        if((m=t.match(new RegExp('Increases '+E+' resistance of all allies by (\\d+)','i')))){
+            var e5=m[1].toLowerCase(), n5=+m[2];
+            return {score:def.dmgShare[e5]*n5, reason:'+'+n5+' '+e5+' res for your team — '+pct(def.dmgShare[e5])+' of defender damage is '+e5};
+        }
+        if((m=t.match(/Increases all six resistances of all allies by (\d+)/i))){
+            return {score:+m[1], reason:'+'+m[1]+' to every resistance for your team'};
+        }
+        if((m=t.match(new RegExp('Increases the lowest allied '+E+' resistance by (\\d+)','i')))){
+            var e7=m[1].toLowerCase();
+            return {score:def.dmgShare[e7]*(+m[2])*0.4, reason:'+'+m[2]+' '+e7+' res on your weakest fighter — '+pct(def.dmgShare[e7])+' of defender damage is '+e7};
+        }
+        if((m=t.match(/Gains (\d+)\b.*?for each enemy ([A-Za-z ]+?)\s*$/i))){
+            var c=def.count[_normName(m[2])]||0;
+            return {score:c*(+m[1])/20, reason:m[1]+' per enemy '+m[2]+' — '+c+' among the defenders'};
+        }
+        return {score:0, reason:''};
+    }
+
+    async function _autoPickNFTs(){
+        var tok=++_nftTok, wallet=getWallet();
+        if(!wallet||!_nftCtx||!window.ALE_ARMS) return;
+        var defs=(_nftCtx.defenders||[]).filter(function(f){ return f&&!_isNftSlot(f); });
+        if(!defs.length){ _nftSuggest={}; return; }
+        var owned;
+        try{ owned=await _loadOwnedNfts(wallet); }catch(e){ return; }
+        if(tok!==_nftTok) return;   // a newer pick started while NFTs were loading
+        var team=_teamProfile(_bpFighters), def=_defProfile(defs);
+        ['crew','weapon'].forEach(function(kind){
+            var best=null;
+            (owned[kind]||[]).forEach(function(a){
+                var row=_nftRow(a.template_id);
+                if(!row) return;
+                var sc=_scoreAbility(row.ability,team,def);
+                if(sc.score>0&&(!best||sc.score>best.score)) best={asset:a,score:sc.score,reason:sc.reason,ability:row.ability};
+            });
+            if(!best){ delete _nftSuggest[kind]; return; }
+            _nftSuggest[kind]={asset_id:best.asset.asset_id, reason:best.ability+' ('+best.reason+')'};
+            if(!_nftManual[kind]){
+                var obj={asset_id:best.asset.asset_id,template_id:best.asset.template_id,name:best.asset.name,schema:best.asset.schema};
+                if(kind==='crew') _bpCrew=obj; else _bpWeapon=obj;
+            }
+        });
+    }
+
+    function _nftStar(kind,current){
+        var s=_nftSuggest[kind];
+        return (s&&current&&String(current.asset_id)===String(s.asset_id))?' ★':'';
+    }
+
+    function _renderRunNftChips(){
+        [['drun','crew'],['drun','weapon'],['arun','crew'],['arun','weapon']].forEach(function(p){
+            var el=document.getElementById(p[0]+'-'+p[1]+'-chip');
+            if(!el) return;
+            var cur=p[1]==='crew'?_bpCrew:_bpWeapon, star=_nftStar(p[1],cur);
+            el.textContent=(p[1]==='crew'?'CREW':'WEAPON')+': '+(cur?(cur.name||('#'+cur.asset_id))+star:'⚠ NOT SET');
+            el.className='drun-nft-chip'+(cur?'':' missing')+(star?' suggested':'');
+            el.title=star?'SUGGESTED vs these defenders: '+_nftSuggest[p[1]].reason:'';
+        });
+        ['drun-warn','arun-warn'].forEach(function(id){
+            var w=document.getElementById(id);
+            if(w&&_bpCrew&&_bpWeapon&&/select your NFTs/.test(w.textContent)) w.textContent='';
+        });
+    }
+
     function _drunApplyPreset(preset){
         _drunLastPreset=preset;
         var avail=(_myFighters||[]).filter(function(f){ return !(f.in_use===1||f.in_use==='1'); });
@@ -3771,13 +3975,29 @@
             // Slot 0: best tank preferring lvl 9-10
             var eliteTank=tanks.find(function(f){ return ((f.stats&&f.stats.level)||0)>=9; })||tanks[0]||null;
             team[0]=eliteTank;
-            // Slots 1-4: highest level non-tank in range 5-8, fallback to any high level
-            var highLvl=nonTank.filter(function(f){ var lv=(f.stats&&f.stats.level)||0; return lv>=5&&lv<=8; });
-            if(highLvl.length<4) highLvl=nonTank; // fallback
             var used=new Set(eliteTank?[String(eliteTank.fighter_id)]:[]);
-            for(var i=1;i<5;i++){
-                var pick=highLvl.find(function(f){ return !used.has(String(f.fighter_id)); });
-                if(pick){ team[i]=pick; used.add(String(pick.fighter_id)); }
+            if(_mkState.primary){
+                // Slots 1-4: the chosen marker in its level band (highest level first), then the second marker
+                [_mkState.primary,_mkState.secondary].forEach(function(mk){
+                    if(!mk) return;
+                    avail.filter(function(f){ return f.marker===mk&&_mkInBand(f)&&!used.has(String(f.fighter_id)); })
+                         .sort(byLevel)
+                         .forEach(function(f){
+                             var slot=team.indexOf(null,1);
+                             if(slot<1) return;
+                             team[slot]=f; used.add(String(f.fighter_id));
+                         });
+                });
+                var filled=team.slice(1).filter(Boolean).length;
+                if(filled<4) showToast('ONLY '+filled+' '+(_mkState.band==='high'?'LVL 6-10':'LVL 1-5')+' FIGHTER'+(filled===1?'':'S')+' WITH '+(_mkState.secondary?'THOSE MARKERS':'THAT MARKER')+' — PICK A SECOND MARKER OR FILL BY HAND');
+            } else {
+                // Slots 1-4: highest level non-tank in range 5-8, fallback to any high level
+                var highLvl=nonTank.filter(function(f){ var lv=(f.stats&&f.stats.level)||0; return lv>=5&&lv<=8; });
+                if(highLvl.length<4) highLvl=nonTank; // fallback
+                for(var i=1;i<5;i++){
+                    var pick=highLvl.find(function(f){ return !used.has(String(f.fighter_id)); });
+                    if(pick){ team[i]=pick; used.add(String(pick.fighter_id)); }
+                }
             }
 
         } else if(preset==='grind'){
@@ -3807,6 +4027,8 @@
 
         _bpFighters=team;
         _refreshDrunTeam();
+        // the team's elements changed, so re-check the NFT counter-pick
+        if(_nftCtx) _autoPickNFTs().then(_refreshDrunTeam).catch(function(){});
     }
 
     function drunSelectFighter(slotIdx){
@@ -3852,6 +4074,8 @@
                     +'<img class="bpp-img" src="'+imgSrc+'" onerror="this.src=\'\'" alt="">'
                     +'<span class="bpp-name">'+name+'</span>'
                     +(String(currentId)===String(asset.asset_id)?'<span class="bpp-badge bpp-sel">✓</span>':'')
+                    +(_nftSuggest[type]&&String(_nftSuggest[type].asset_id)===String(asset.asset_id)
+                        ?'<span class="bpp-badge bpp-sugg" title="'+String(_nftSuggest[type].reason).replace(/"/g,'')+'">★ SUGGESTED</span>':'')
                     +'</div>';
             });
             if(listEl) listEl.innerHTML=html;
@@ -3864,6 +4088,7 @@
         var obj={asset_id:assetId,template_id:templateId,name:name,schema:schema};
         if(type==='crew') _bpCrew=obj;
         else _bpWeapon=obj;
+        _nftManual[type]=true;   // don't let the counter-pick swap a hand-picked NFT back
         closePicker();
         _renderBattlePane();
     }
@@ -4170,6 +4395,15 @@
         </div>
     </div>
 </div>
+<style>
+    .mk-fill { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin:6px 0 2px; font-size:0.62em; letter-spacing:1px; }
+    .mk-lbl { color:#6a7a8a; }
+    .mk-fill select { background:#0a0e18; color:#c8d0e0; border:1px solid rgba(96,200,255,0.25); border-radius:3px; padding:2px 4px; font-size:1em; max-width:160px; }
+    .mk-band { background:transparent; border:1px solid rgba(96,200,255,0.25); color:#7a8a9a; border-radius:3px; padding:2px 6px; cursor:pointer; font-size:1em; }
+    .mk-band.active { border-color:#d4a017; color:#ffd060; }
+    .drun-nft-chip.suggested { border-color:rgba(212,160,23,0.7) !important; color:#ffd060 !important; }
+    .bpp-badge.bpp-sugg { background:rgba(212,160,23,0.15); color:#ffd060; border:1px solid rgba(212,160,23,0.5); }
+</style>
 <!-- DUNGEON RUN difficulty picker -->
 <div id="drun-picker">
     <div id="drun-picker-box">
@@ -4181,6 +4415,14 @@
             <button class="drun-preset-btn" id="dpp-elite" onclick="_drunApplyPreset('elite')" title="1 tank (lvl 9-10) + 4 high-level fighters">⚡ ELITE<br>1 TANK + 4 HIGH</button>
             <button class="drun-preset-btn" id="dpp-grind" onclick="_drunApplyPreset('grind')" title="Lvl 10 tank (best health or resistance for its class) + lvl 8-10 Dungeon Expert or Trainer + 3 lowest-level fighters">📈 GRIND<br>TANK + XP + 3 LOW</button>
             <button class="drun-preset-btn" id="dpp-top5" onclick="_drunApplyPreset('top5')" title="Top 5 fighters by level">🏆 TOP 5<br>BY LEVEL</button>
+        </div>
+        <div class="mk-fill">
+            <span class="mk-lbl" title="ELITE fills its 4 non-tank slots with fighters carrying this marker">ELITE MARKER</span>
+            <select id="drun-mk1" onchange="mkSet('primary',this.value)"></select>
+            <button class="mk-band" id="drun-mk-high" onclick="mkSet('band','high')" title="Marked fighters level 6-10">HIGH 6-10</button>
+            <button class="mk-band" id="drun-mk-low" onclick="mkSet('band','low')" title="Marked fighters level 1-5">LOW 1-5</button>
+            <span class="mk-lbl" title="Fills any slots the first marker can't">THEN</span>
+            <select id="drun-mk2" onchange="mkSet('secondary',this.value)"></select>
         </div>
         <div id="drun-team">
             <div class="drun-team-lbl">TEAM</div>
@@ -4210,6 +4452,14 @@
         <div id="arun-presets">
             <button class="drun-preset-btn" id="app-top5"  onclick="_drunApplyPreset('top5')"  title="Top 5 fighters by level">&#127942; TOP 5<br>BY LEVEL</button>
             <button class="drun-preset-btn" id="app-elite" onclick="_drunApplyPreset('elite')" title="1 tank (lvl 9-10) + 4 high-level fighters">&#9889; ELITE<br>1 TANK + 4 HIGH</button>
+        </div>
+        <div class="mk-fill">
+            <span class="mk-lbl" title="ELITE fills its 4 non-tank slots with fighters carrying this marker">ELITE MARKER</span>
+            <select id="arun-mk1" onchange="mkSet('primary',this.value)"></select>
+            <button class="mk-band" id="arun-mk-high" onclick="mkSet('band','high')" title="Marked fighters level 6-10">HIGH 6-10</button>
+            <button class="mk-band" id="arun-mk-low" onclick="mkSet('band','low')" title="Marked fighters level 1-5">LOW 1-5</button>
+            <span class="mk-lbl" title="Fills any slots the first marker can't">THEN</span>
+            <select id="arun-mk2" onchange="mkSet('secondary',this.value)"></select>
         </div>
         <div id="arun-team">
             <div class="drun-team-lbl">TEAM</div>
@@ -4772,6 +5022,13 @@ async function txqAddDungeonRun() {
             : '';
     }
 
+    // Counter-pick NFTs against the defenders of the dungeons this run will visit
+    _renderMarkerControls();
+    var _planned = _drunPlanDungeons(_drunUnplayedDungeons());
+    _nftManual = {};
+    _nftCtx = {kind:'drun', defenders:[].concat.apply([], _planned.map(function(d){ return _dungeonDefenders(d.planet, d.x, d.y); }))};
+    try { await _autoPickNFTs(); } catch(e) {}
+
     // Build team preview (chips are clickable to swap fighters)
     _refreshDrunTeam();
     var _crewChip   = document.getElementById('drun-crew-chip');
@@ -4784,6 +5041,7 @@ async function txqAddDungeonRun() {
     if (_warnEl)     { _warnEl.textContent     = _nftsMissing ? '⚠ Open the battle pane and select your NFTs first' : ''; }
     if (_goBtn)      { _goBtn.disabled         = _nftsMissing || activeFighters.length < 5; }
 
+    _renderRunNftChips();
     document.getElementById('drun-picker').classList.add('open');
 }
 
@@ -4856,6 +5114,12 @@ async function txqAddArenaRun() {
     if (_sub) _sub.textContent = (PLANETS[_activePlanet]||{name:_activePlanet}).name.toUpperCase()
         + ' — ' + _avail.length + ' ARENA' + (_avail.length===1?'':'S') + ' AVAILABLE';
 
+    // Counter-pick NFTs against the defending teams of the arenas this run can hit
+    _renderMarkerControls();
+    _nftManual = {};
+    _nftCtx = {kind:'arun', defenders:[].concat.apply([], _avail.map(function(a){ return _arenaDefenders(_activePlanet, a.x, a.y); }))};
+    try { await _autoPickNFTs(); } catch(e) {}
+
     _refreshDrunTeam();
     var _activeFighters = (_bpFighters||[]).filter(Boolean);
     var _crewChip = document.getElementById('arun-crew-chip');
@@ -4872,6 +5136,7 @@ async function txqAddArenaRun() {
     }
     if (_goBtn) _goBtn.disabled = _nftsMissing || _activeFighters.length < 5 || !_avail.length;
 
+    _renderRunNftChips();
     document.getElementById('arun-picker').classList.add('open');
 }
 
@@ -4955,35 +5220,22 @@ function _dungeonBoostNow(planet, x, y) {
     return Math.max(0, b.score - hours * DUNGEON_BOOST_DECAY_PER_HOUR);
 }
 
-function drunPickerConfirm() {
-    document.getElementById('drun-picker').classList.remove('open');
-
-    // Find fighters currently ready to level up
-    var readyFighters = (_myFighters||[]).filter(function(f){
-        var s = f.stats||{};
-        return (s.level||0) < 10 && Number(s.experience||0) >= Number(s.required_experience||1);
-    });
-
-    // Gather all unfought dungeons (played_dungeons was refreshed from chain on picker open)
-    var allDungeons = [];
+// Unplayed dungeons on every planet (played_dungeons is refreshed from chain on picker open)
+function _drunUnplayedDungeons() {
+    var all = [];
     Object.keys(ALE_LOCATIONS).forEach(function(planet){
-        var dungeons = ALE_LOCATIONS[planet].dungeons || [];
-        dungeons.forEach(function(d){
-            var key = planet+'.'+d.land_id;
-            if (!_playerPlayedDungeons.has(key) && !_playerPlayedDungeons.has(String(d.land_id))) {
-                allDungeons.push({planet:planet, x:d.x, y:d.y, land_id:d.land_id});
-            }
+        (ALE_LOCATIONS[planet].dungeons || []).forEach(function(d){
+            if (!_playerPlayedDungeons.has(planet+'.'+d.land_id) && !_playerPlayedDungeons.has(String(d.land_id)))
+                all.push({planet:planet, x:d.x, y:d.y, land_id:d.land_id});
         });
     });
+    return all;
+}
 
-    if (!allDungeons.length) {
-        alert('No unfought dungeons found!');
-        return;
-    }
-
-    // Current planet first, its highest-boost dungeons first; once it runs out, move to the
-    // other planets (the one holding the best boost first), highest boost first within each.
-    // Equal boosts (or no boost data yet) fall back to the nearest dungeon.
+// The five dungeons a run visits. Current planet first, its highest-boost dungeons first;
+// once it runs out, the other planets (the one holding the best boost first), highest boost
+// first within each. Equal boosts (or no boost data yet) fall back to the nearest dungeon.
+function _drunPlanDungeons(allDungeons) {
     var px = _playerPos ? _playerPos.x : 1, py = _playerPos ? _playerPos.y : 1;
     var curPlanet = _activePlanet;
     allDungeons.forEach(function(d){
@@ -5004,6 +5256,27 @@ function drunPickerConfirm() {
     planetOrder.forEach(function(pl){
         groups[pl].forEach(function(d){ if (chosen.length < 5) chosen.push(d); });
     });
+    return chosen;
+}
+
+function drunPickerConfirm() {
+    document.getElementById('drun-picker').classList.remove('open');
+
+    // Find fighters currently ready to level up
+    var readyFighters = (_myFighters||[]).filter(function(f){
+        var s = f.stats||{};
+        return (s.level||0) < 10 && Number(s.experience||0) >= Number(s.required_experience||1);
+    });
+
+    var allDungeons = _drunUnplayedDungeons();
+
+    if (!allDungeons.length) {
+        alert('No unfought dungeons found!');
+        return;
+    }
+
+    var curPlanet = _activePlanet;
+    var chosen = _drunPlanDungeons(allDungeons);
     var fromPlanet = curPlanet;
 
     chosen.forEach(function(d){

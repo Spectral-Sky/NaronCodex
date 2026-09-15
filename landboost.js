@@ -8,8 +8,9 @@
 //    (full TLM is still charged) and sets TopReachedAt; boosting a capped land fails.
 //  - The cap is awlndratings::global2 "top_landrating" (4 implied decimals).
 //  - A land takes at most `openslots` boosts per day (land NFT mutable data).
-//  - The contract day is the UTC day number minus 828 (day 19882 = 2026-09-14),
-//    so slots reset at 00:00 UTC.
+//  - The contract day is 25 hours long: day = floor(unix seconds / 90,000). Slots reset an
+//    hour later each day (day 19880 began 2026-09-12 08:00 UTC, 19881 at 09-13 09:00,
+//    19882 at 09-14 10:00), read from the day numbers of boosts on chain.
 //  - Owners can set MinBoostAmount (4 decimals); smaller boosts are refused.
 (function (root) {
     'use strict';
@@ -26,7 +27,7 @@
     var SLOT_PRICES = { 2: 160, 3: 260, 4: 420, 5: 680, 6: 1100, 7: 1800, 8: 2800, 9: 4600,
                         10: 7400, 11: 12000, 12: 18000, 13: 30000, 14: 50000, 15: 80000 };
     var MAX_SLOTS = 15;
-    var DAY_OFFSET = 828;
+    var DAY_SECONDS = 90000;   // 25-hour contract day
     var PER_TX     = 20;      // boosts per transaction (2 actions each)
     // Ratings grow a hair faster than the nominal % on some lands (×1.00211 seen for
     // ×1.0021), so treat a boost as reaching the cap slightly early. Stopping one boost
@@ -38,8 +39,8 @@
         throw new Error('Unknown boost level ' + tlm);
     }
     function multiplier(tlm) { return 1 + level(tlm).pct / 100; }
-    function contractDay(nowMs) { return Math.floor((nowMs == null ? Date.now() : nowMs) / 86400000) - DAY_OFFSET; }
-    function msUntilReset(nowMs) { var n = nowMs == null ? Date.now() : nowMs; return 86400000 - (n % 86400000); }
+    function contractDay(nowMs) { return Math.floor((nowMs == null ? Date.now() : nowMs) / 1000 / DAY_SECONDS); }
+    function msUntilReset(nowMs) { var n = nowMs == null ? Date.now() : nowMs; return (contractDay(n) + 1) * DAY_SECONDS * 1000 - n; }
 
     // Normalise a land from its NFT data (+ optional boosts-table row) for the given day.
     // land: { asset_id, name, planet, x, y, img, rating, slots, minBoost, lastDay, usedDay, boostRow }
@@ -164,7 +165,7 @@
         return out;
     }
 
-    var api = { LEVELS: LEVELS, DAY_OFFSET: DAY_OFFSET, PER_TX: PER_TX, multiplier: multiplier,
+    var api = { LEVELS: LEVELS, DAY_SECONDS: DAY_SECONDS, PER_TX: PER_TX, multiplier: multiplier,
                 contractDay: contractDay, msUntilReset: msUntilReset, status: status,
                 boostsToCap: boostsToCap, forecast: forecast, plan: plan, actionsFor: actionsFor, batches: batches,
                 SLOT_PRICES: SLOT_PRICES, MAX_SLOTS: MAX_SLOTS, nextSlot: nextSlot,
