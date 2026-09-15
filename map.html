@@ -1310,6 +1310,8 @@
         return added;
     }
 
+    window._dungeonBoost = window._dungeonBoost || {};   // "planet.x.y" -> {score, upd} from lands.ale
+
     async function fetchAllBuildings() {
         var planetList=['magor','naron','eyeke','kavian','neri','veles'],added=0;
         for (var pi=0;pi<planetList.length;pi++){
@@ -1333,6 +1335,9 @@
                     var nm = (typeof b==='string') ? b
                            : (b && (b.name||b.building_name||b.type||b.building)) || '';
                     if (nm) _landBuildingNames[rp+'.'+x+'.'+y]=String(nm);
+                    // dungeon boost, used to run the most boosted dungeons first
+                    if (b && b.building_name==='dungeon' && b.boost_score!=null)
+                        window._dungeonBoost[rp+'.'+x+'.'+y]={score:Number(b.boost_score)||0, upd:b.boost_score_update||null};
                 });
                 var bStr=JSON.stringify(buildings).toLowerCase();
                 if (bStr.indexOf('arena')>=0){
@@ -4938,6 +4943,18 @@ function _arunResolveChoice(fighter) {
     return true;
 }
 
+// Current dungeon boost: lands.ale stores boost_score at its last update and it decays by
+// boost_decay_per_hour (115) since then. 0 when boosts haven't loaded yet, which leaves the
+// dungeon run ordered by distance as before.
+var DUNGEON_BOOST_DECAY_PER_HOUR = 115;
+function _dungeonBoostNow(planet, x, y) {
+    var b = (window._dungeonBoost || {})[planet + '.' + x + '.' + y];
+    if (!b) return 0;
+    var t = b.upd ? Date.parse(b.upd + 'Z') : NaN;
+    var hours = isNaN(t) ? 0 : Math.max(0, (Date.now() - t) / 3600000);
+    return Math.max(0, b.score - hours * DUNGEON_BOOST_DECAY_PER_HOUR);
+}
+
 function drunPickerConfirm() {
     document.getElementById('drun-picker').classList.remove('open');
 
@@ -4964,16 +4981,30 @@ function drunPickerConfirm() {
         return;
     }
 
-    // Sort: same planet first, then Manhattan distance
+    // Pick the most boosted dungeons (ties: same planet, then nearest), then order that set
+    // into a short route: current planet first, then each other planet by its best boost,
+    // always walking to the nearest remaining dungeon.
     var px = _playerPos ? _playerPos.x : 1, py = _playerPos ? _playerPos.y : 1;
     var curPlanet = _activePlanet;
-    allDungeons.sort(function(a, b){
-        var aDist = (a.planet !== curPlanet ? 9999 : 0) + Math.abs(a.x-px) + Math.abs(a.y-py);
-        var bDist = (b.planet !== curPlanet ? 9999 : 0) + Math.abs(b.x-px) + Math.abs(b.y-py);
-        return aDist - bDist;
-    });
+    var distOf = function(d){ return (d.planet !== curPlanet ? 9999 : 0) + Math.abs(d.x-px) + Math.abs(d.y-py); };
+    allDungeons.forEach(function(d){ d.boost = _dungeonBoostNow(d.planet, d.x, d.y); });
+    allDungeons.sort(function(a, b){ return (b.boost - a.boost) || (distOf(a) - distOf(b)); });
 
-    var chosen = allDungeons.slice(0, 5);
+    var picked = allDungeons.slice(0, 5);
+    var planetOrder = [];
+    picked.forEach(function(d){ if (planetOrder.indexOf(d.planet) < 0) planetOrder.push(d.planet); });   // best boost first
+    planetOrder.sort(function(a, b){ return (a === curPlanet ? -1 : 0) - (b === curPlanet ? -1 : 0); });
+    var chosen = [];
+    planetOrder.forEach(function(pl){
+        var left = picked.filter(function(d){ return d.planet === pl; });
+        var cx = pl === curPlanet ? px : left[0].x, cy = pl === curPlanet ? py : left[0].y;
+        while (left.length) {
+            left.sort(function(a, b){ return (Math.abs(a.x-cx)+Math.abs(a.y-cy)) - (Math.abs(b.x-cx)+Math.abs(b.y-cy)); });
+            var next = left.shift();
+            chosen.push(next);
+            cx = next.x; cy = next.y;
+        }
+    });
     var fromPlanet = curPlanet;
 
     chosen.forEach(function(d){
