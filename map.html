@@ -5166,7 +5166,7 @@ function arunPickerConfirm() {
     });
 
     arenas.forEach(function(a){
-        var alreadyHere = _playerPos && a.x===_playerPos.x && a.y===_playerPos.y;
+        var alreadyHere = _playerPos && Number(a.x)===Number(_playerPos.x) && Number(a.y)===Number(_playerPos.y);
         if (!alreadyHere) _txQueue.push({type:'travel', x:a.x, y:a.y, planet:planet});
         _txQueue.push({type:'arena', x:a.x, y:a.y, planet:planet, land_id:a.land_id});
     });
@@ -5293,7 +5293,7 @@ function drunPickerConfirm() {
         }
         // Skip travel if already standing on this dungeon
         var alreadyHere = _playerPos && d.planet === _activePlanet
-            && d.x === _playerPos.x && d.y === _playerPos.y;
+            && Number(d.x) === Number(_playerPos.x) && Number(d.y) === Number(_playerPos.y);
         if (!alreadyHere) _txQueue.push({type:'travel', x:d.x, y:d.y, planet:d.planet});
         _txQueue.push({type:'dungeon', x:d.x, y:d.y, planet:d.planet, land_id:d.land_id,
             name:_txqLocLabel('DUNGEON', d.planet, d.x, d.y)+' — LVL '+_drunPickerDiff,
@@ -5756,6 +5756,30 @@ async function runTxQueue() {
                 authorization:[{actor:wallet,permission:'active'}], data:_hd }];
         }
 
+        // Already standing on the destination (a second arena or dungeon on the tile we just
+        // fought on, a queue built before moving…): don't send a travel there. Positions are
+        // compared as numbers — chain rows and queue items don't always agree on the type.
+        // Portal steps are never skipped: stepping onto the portal is what crosses planets.
+        var _qItem = _txQueue[step.qIdx];
+        var _atDest = function(x, y, planet){
+            return !!_playerPos && Number(_playerPos.x) === Number(x) && Number(_playerPos.y) === Number(y)
+                && (!planet || !_playerPos.planet || planet === _playerPos.planet);
+        };
+        if (_qItem && _qItem.type === 'travel' && !step.isPortal && step.actions && step.actions.length === 1
+            && step.actions[0].name === 'travel' && _atDest(step.actions[0].data.x, step.actions[0].data.y, _qItem.planet)) {
+            if (itemEl) {
+                itemEl.style.background = 'rgba(96,144,224,0.06)';
+                var _tl = itemEl.querySelector('.txq-item-label');
+                if (_tl) { _tl.style.color = '#8090c0'; _tl.textContent += ' — skipped (already here)'; }
+            }
+            succeeded++;
+            continue;
+        }
+        if (step.isTravelAndHire && step.actions && step.actions[0] && step.actions[0].name === 'travel'
+            && _atDest(step.actions[0].data.x, step.actions[0].data.y, _qItem && _qItem.planet)) {
+            step.actions = step.actions.slice(1);   // already on the tavern: hire only
+        }
+
         try {
             if (window.walletSession) await window.walletSession.transact({actions: step.actions});
             else if (wax && wax.api)  await wax.api.transact({actions: step.actions},{blocksBehind:3,expireSeconds:30});
@@ -5858,14 +5882,17 @@ async function runTxQueue() {
                 }
 
                 if (_aResult === 'loss' || _aResult === 'error') {
+                    // Lost the retry too (or the retry TX failed) — skip this arena and carry on
                     if (itemEl) {
                         itemEl.style.background = 'rgba(255,68,68,0.06)';
                         var _al2 = itemEl.querySelector('.txq-item-label');
-                        if (_al2) { _al2.style.color = '#ff6644'; _al2.textContent = (_al2.textContent||'') + ' — LOSS ×2 · queue paused'; }
+                        if (_al2) {
+                            _al2.style.color = '#ff6644';
+                            _al2.textContent = (_al2.textContent||'') + (_aResult === 'error' ? ' — retry failed · skipped' : ' — LOST ×2 · skipped, moving on');
+                        }
                     }
-                    if (progLbl) progLbl.textContent = '⚠ Arena lost twice — check your team and retry.';
+                    if (progLbl) progLbl.textContent = '⚠ Arena lost twice — skipping to the next battle.';
                     if (!_skipFights) _showFightSummary(step.qIdx, _lastFightRow, step.label);
-                    _txQueueAbort = true;
                     failed++;
                     continue;
                 }
