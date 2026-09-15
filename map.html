@@ -736,7 +736,8 @@
         #bp-picker.open { display:flex; }
         #bp-picker-box { width:min(400px,94vw); max-height:80vh; background:rgba(3,6,18,0.99); border:1.5px solid rgba(96,200,255,0.25); border-radius:10px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 0 40px rgba(0,0,0,0.9); }
         /* Sidebar mode — used when picker is opened from the dungeon picker */
-        #bp-picker.drun-sidebar { background:transparent; pointer-events:none; justify-content:flex-end; align-items:stretch; }
+        /* above the dungeon/arena run pickers (z-index 730), which would otherwise catch its clicks */
+        #bp-picker.drun-sidebar { z-index:740; background:transparent; pointer-events:none; justify-content:flex-end; align-items:stretch; }
         #bp-picker.drun-sidebar #bp-picker-box { pointer-events:all; width:260px; max-height:100vh; border-radius:0; border-right:none; border-top:none; border-bottom:none; border-left:1.5px solid rgba(96,200,255,0.22); box-shadow:-6px 0 30px rgba(0,0,0,0.85); }
         .drun-fighter-chip.slot-active { border-color:rgba(232,160,32,0.7) !important; color:var(--gold) !important; background:rgba(232,160,32,0.1) !important; }
         #bp-picker-header { display:flex; align-items:center; padding:9px 12px; border-bottom:1px solid rgba(96,200,255,0.1); flex-shrink:0; gap:8px; }
@@ -3764,13 +3765,15 @@
 
     // ── ELITE MARKER FILL ────────────────────────────────────────────────────
     // ELITE keeps its tank, then fills the other four slots from fighters carrying a chosen
-    // marker in a level band (HIGH 6-10, LOW 1-5), topping up from a second marker.
+    // marker in a level band (LOW 1-5, HIGH 6-9, MAX 10), topping up from a second marker.
     var _mkState={primary:'',secondary:'',band:'high'};
     try{ var _mkSaved=JSON.parse(localStorage.getItem('naron_mk_fill')||'null'); if(_mkSaved) _mkState=Object.assign(_mkState,_mkSaved); }catch(e){}
     function _mkSave(){ try{ localStorage.setItem('naron_mk_fill',JSON.stringify(_mkState)); }catch(e){} }
+    // level 10s can't gain XP, so they're their own band (for pushing difficulty)
+    var _MK_BANDS={low:[1,5,'LVL 1-5'], high:[6,9,'LVL 6-9'], max:[10,10,'LVL 10']};
     function _mkInBand(f){
-        var lv=Number((f.stats&&f.stats.level)||0);
-        return _mkState.band==='high'?(lv>=6&&lv<=10):(lv>=1&&lv<=5);
+        var lv=Number((f.stats&&f.stats.level)||0), b=_MK_BANDS[_mkState.band]||_MK_BANDS.high;
+        return lv>=b[0]&&lv<=b[1];
     }
     function _renderMarkerControls(){
         var avail=(_myFighters||[]).filter(function(f){ return !(f.in_use===1||f.in_use==='1'); });
@@ -3788,9 +3791,10 @@
             var a=document.getElementById(p+'-mk1'), b=document.getElementById(p+'-mk2');
             if(a) a.innerHTML=opts(_mkState.primary,'ANY (by level)');
             if(b) b.innerHTML=opts(_mkState.secondary,'— none —');
-            var hi=document.getElementById(p+'-mk-high'), lo=document.getElementById(p+'-mk-low');
-            if(hi) hi.classList.toggle('active',_mkState.band==='high');
-            if(lo) lo.classList.toggle('active',_mkState.band==='low');
+            ['low','high','max'].forEach(function(band){
+                var btn=document.getElementById(p+'-mk-'+band);
+                if(btn) btn.classList.toggle('active',_mkState.band===band);
+            });
         });
     }
     function mkSet(field,value){
@@ -3989,7 +3993,7 @@
                          });
                 });
                 var filled=team.slice(1).filter(Boolean).length;
-                if(filled<4) showToast('ONLY '+filled+' '+(_mkState.band==='high'?'LVL 6-10':'LVL 1-5')+' FIGHTER'+(filled===1?'':'S')+' WITH '+(_mkState.secondary?'THOSE MARKERS':'THAT MARKER')+' — PICK A SECOND MARKER OR FILL BY HAND');
+                if(filled<4) showToast('ONLY '+filled+' '+(_MK_BANDS[_mkState.band]||_MK_BANDS.high)[2]+' FIGHTER'+(filled===1?'':'S')+' WITH '+(_mkState.secondary?'THOSE MARKERS':'THAT MARKER')+' — PICK A SECOND MARKER OR FILL BY HAND');
             } else {
                 // Slots 1-4: highest level non-tank in range 5-8, fallback to any high level
                 var highLvl=nonTank.filter(function(f){ var lv=(f.stats&&f.stats.level)||0; return lv>=5&&lv<=8; });
@@ -4419,8 +4423,9 @@
         <div class="mk-fill">
             <span class="mk-lbl" title="ELITE fills its 4 non-tank slots with fighters carrying this marker">ELITE MARKER</span>
             <select id="drun-mk1" onchange="mkSet('primary',this.value)"></select>
-            <button class="mk-band" id="drun-mk-high" onclick="mkSet('band','high')" title="Marked fighters level 6-10">HIGH 6-10</button>
             <button class="mk-band" id="drun-mk-low" onclick="mkSet('band','low')" title="Marked fighters level 1-5">LOW 1-5</button>
+            <button class="mk-band" id="drun-mk-high" onclick="mkSet('band','high')" title="Marked fighters level 6-9">HIGH 6-9</button>
+            <button class="mk-band" id="drun-mk-max" onclick="mkSet('band','max')" title="Marked level 10 fighters — no XP gain, for pushing difficulty">MAX 10</button>
             <span class="mk-lbl" title="Fills any slots the first marker can't">THEN</span>
             <select id="drun-mk2" onchange="mkSet('secondary',this.value)"></select>
         </div>
@@ -4456,8 +4461,9 @@
         <div class="mk-fill">
             <span class="mk-lbl" title="ELITE fills its 4 non-tank slots with fighters carrying this marker">ELITE MARKER</span>
             <select id="arun-mk1" onchange="mkSet('primary',this.value)"></select>
-            <button class="mk-band" id="arun-mk-high" onclick="mkSet('band','high')" title="Marked fighters level 6-10">HIGH 6-10</button>
             <button class="mk-band" id="arun-mk-low" onclick="mkSet('band','low')" title="Marked fighters level 1-5">LOW 1-5</button>
+            <button class="mk-band" id="arun-mk-high" onclick="mkSet('band','high')" title="Marked fighters level 6-9">HIGH 6-9</button>
+            <button class="mk-band" id="arun-mk-max" onclick="mkSet('band','max')" title="Marked level 10 fighters — no XP gain, for pushing difficulty">MAX 10</button>
             <span class="mk-lbl" title="Fills any slots the first marker can't">THEN</span>
             <select id="arun-mk2" onchange="mkSet('secondary',this.value)"></select>
         </div>
