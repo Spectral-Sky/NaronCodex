@@ -714,8 +714,8 @@
         L:  { gems: 12500,  wax: 4999,  rate: 4999/12500 },
         XL: { gems: 140000, wax: 49999, rate: 49999/140000 },
     };
-    let _activeGemPack = 'M';
-    let GEM_TO_WAX     = GEM_PACKS.M.rate;
+    let _activeGemPack = 'L';
+    let GEM_TO_WAX     = GEM_PACKS.L.rate;
     const SHARDS_PER_TLM = 3;           // Zapps "good" price: 300 shards / 100 TLM
     let _liveWaxUsd  = null;
     let _liveTlmUsd  = null;
@@ -1371,7 +1371,7 @@
                 <button class="calc-custom-clear" onclick="clearCustomShard()">✕ RESET TO LIVE RATE</button>
             </div>
             <div class="calc-note">
-                <span id="calc-pack-note">PACK M: 499 WAX = 1,100 GEMS</span><br>
+                <span id="calc-pack-note">PACK L: 4999 WAX = 12,500 GEMS</span><br>
                 TLM &amp; SHARDS via live market<br>
                 <span id="calc-price-info" style="color:var(--muted);font-size:1.05em;line-height:1.6;"><span class="loading-pulse">fetching prices…</span></span>
             </div>
