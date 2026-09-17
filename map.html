@@ -711,6 +711,11 @@
         .bp-diff-btn.on { background:rgba(232,160,32,0.12); border-color:rgba(232,160,32,0.5); color:var(--gold); font-weight:bold; }
         .bp-diff-btn.high { border-color:rgba(192,60,60,0.2); color:#604040; }
         .bp-diff-btn.high.on { background:rgba(192,60,60,0.14); border-color:rgba(192,60,60,0.55); color:#e08080; }
+        #bp-preset-row { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-bottom:4px; }
+        .bp-preset-btn { padding:7px 3px; font-size:0.55em; letter-spacing:1px; line-height:1.6; background:rgba(96,200,255,0.04); border:1px solid rgba(96,200,255,0.12); color:#5a7a9a; cursor:crosshair; transition:all 0.15s; text-align:center; border-radius:5px; font-family:inherit; }
+        .bp-preset-btn:hover { border-color:rgba(232,160,32,0.4); color:#b09070; background:rgba(232,160,32,0.06); }
+        .bp-preset-btn.on { background:rgba(232,160,32,0.12); border-color:rgba(232,160,32,0.5); color:var(--gold); }
+        .bp-preset-sub { display:block; font-size:0.85em; opacity:0.75; letter-spacing:0; }
         #bp-diff-toggle { width:100%; padding:4px; font-size:0.52em; letter-spacing:2px; background:transparent; border:1px dashed rgba(80,40,40,0.35); color:#503030; cursor:crosshair; border-radius:5px; text-align:center; margin-bottom:3px; transition:all 0.15s; }
         #bp-diff-toggle:hover { border-color:rgba(192,60,60,0.4); color:#804040; }
 
@@ -3389,6 +3394,7 @@
         if(!wallet){showToast('⚠ PLEASE LOG IN');return;}
         _bpMode=mode;
         _bpFighters=[null,null,null,null,null];
+        _bpLastPreset=null;
         if(mode==='dungeon'){
             _bpDungeonEntry=entry;
             var planet=entry.planet||_activePlanet;
@@ -3533,6 +3539,10 @@
             }
             slotsEl.innerHTML=sHtml;
         }
+        ['standard','grind','elite'].forEach(function(p){
+            var pb=document.getElementById('bpp-'+p);
+            if(pb) pb.classList.toggle('on', p===_bpLastPreset);
+        });
 
         // crew
         var crewImg=document.getElementById('bp-crew-img');
@@ -3961,6 +3971,81 @@
         });
     }
 
+    // ── BATTLE PANE QUICK TEAMS ──────────────────────────────────────────────
+    // The single dungeon/arena pane builds its own teams: the run pickers' presets are
+    // tuned for a five-dungeon run, these are for the fight in front of you.
+    var _bpLastPreset=null;
+
+    // 0..1 strength for ELITE: damage per cooldown and health, both level-scaled and
+    // measured against the best in the pool, so the scale doesn't depend on stat units.
+    function _bpPowerParts(f){
+        var s=f.stats||{}, lm=1+(Number(s.level||1)-1)*0.15;
+        var dmg=(Number(s.damage_min||0)+Number(s.damage_max||0))/2*lm;
+        var hp=(Number(s.health_min||0)+Number(s.health_max||0))/2*lm;
+        var cd=(Number(s.attackspeed_min||0)+Number(s.attackspeed_max||0))/2;
+        return {dps:cd>0?dmg/cd:0, hp:hp};
+    }
+    function _bpPowerScored(pool){
+        var parts=pool.map(_bpPowerParts);
+        var maxDps=Math.max.apply(null,[0].concat(parts.map(function(p){ return p.dps; })));
+        var maxHp=Math.max.apply(null,[0].concat(parts.map(function(p){ return p.hp; })));
+        return pool.map(function(f,i){
+            return {f:f, score:(maxDps?parts[i].dps/maxDps:0)*0.6+(maxHp?parts[i].hp/maxHp:0)*0.4};
+        }).sort(function(a,b){ return b.score-a.score; });
+    }
+
+    window.bpApplyPreset=function(kind){
+        var avail=(_myFighters||[]).filter(function(f){ return !(f.in_use===1||f.in_use==='1'); });
+        if(!avail.length){ showToast('⚠ NO FIGHTERS AVAILABLE'); return; }
+        var lvlOf=function(f){ return Number((f.stats&&f.stats.level)||0); };
+        var byLevel=function(a,b){ return lvlOf(b)-lvlOf(a); };
+        var team=[null,null,null,null,null], used={};
+        var free=function(list){ return (list||avail).filter(function(f){ return !used[String(f.fighter_id)]; }); };
+        var put=function(f){
+            if(!f) return false;
+            var slot=team.indexOf(null);
+            if(slot<0) return false;
+            team[slot]=f; used[String(f.fighter_id)]=1; return true;
+        };
+        var short=null;
+
+        if(kind==='standard'){
+            var tanks=free().filter(function(f){ return _fmEffective(f)==='tank'; }).sort(byLevel);
+            put(tanks[0]||free().sort(byLevel)[0]);
+            var band=free().filter(function(f){ var lv=lvlOf(f); return lv>=6&&lv<=9; }).sort(byLevel);
+            band.forEach(put);
+            if(team.filter(Boolean).length<5){
+                short='ONLY '+(team.filter(Boolean).length-1)+' LVL 6-9 FIGHTERS — FILLED WITH YOUR NEXT HIGHEST';
+                free().sort(byLevel).forEach(put);
+            }
+
+        } else if(kind==='grind'){
+            var tens=free().filter(function(f){ return lvlOf(f)>=10; });
+            var tanky=tens.slice().sort(function(a,b){ return _grindTankScore(b)-_grindTankScore(a); });
+            put(tanky[0]);
+            var boosters=free(tens).filter(function(f){ return _grindXpBoost(f)>0; })
+                                   .sort(function(a,b){ return _grindXpBoost(b)-_grindXpBoost(a); });
+            put(boosters[0]||free(tens).sort(function(a,b){ return _grindTankScore(b)-_grindTankScore(a); })[0]);
+            var carried=team.filter(Boolean).length;
+            if(carried<2) short='ONLY '+carried+' LVL 10 FIGHTER'+(carried===1?'':'S')+' AVAILABLE';
+            var low=free().filter(function(f){ var lv=lvlOf(f); return lv>=1&&lv<=5; })
+                          .sort(function(a,b){ return lvlOf(a)-lvlOf(b); });
+            low.forEach(put);
+            if(team.filter(Boolean).length<5){
+                short=(short?short+' · ':'')+'NOT ENOUGH LVL 1-5 FIGHTERS — FILLED WITH YOUR LOWEST';
+                free().sort(function(a,b){ return lvlOf(a)-lvlOf(b); }).forEach(put);
+            }
+
+        } else {   // elite — the five strongest
+            _bpPowerScored(free()).forEach(function(x){ put(x.f); });
+        }
+
+        _bpFighters=team;
+        _bpLastPreset=kind;
+        if(short) showToast(short);
+        _renderBattlePane();
+    };
+
     function _drunApplyPreset(preset){
         _drunLastPreset=preset;
         var avail=(_myFighters||[]).filter(function(f){ return !(f.in_use===1||f.in_use==='1'); });
@@ -4300,6 +4385,12 @@
       <button id="bp-close" onclick="closeBattlePane()">&#215;</button>
     </div>
     <div id="bp-body">
+      <div class="bp-section-lbl">QUICK TEAM</div>
+      <div id="bp-preset-row">
+        <button class="bp-preset-btn" id="bpp-standard" onclick="bpApplyPreset('standard')" title="Your best tank plus the four highest-level fighters between 6 and 9">&#128737; STANDARD<span class="bp-preset-sub">1 TANK + 4 LVL 6-9</span></button>
+        <button class="bp-preset-btn" id="bpp-grind" onclick="bpApplyPreset('grind')" title="Two level 10s (tankiest, then the best Dungeon Expert / Trainer) carrying three level 1-5 fighters for XP">&#128200; GRIND<span class="bp-preset-sub">2 LVL 10 + 3 LVL 1-5</span></button>
+        <button class="bp-preset-btn" id="bpp-elite" onclick="bpApplyPreset('elite')" title="The five strongest fighters by damage per cooldown and health">&#9889; ELITE<span class="bp-preset-sub">TOP 5 DPS / TANKY</span></button>
+      </div>
       <div class="bp-section-lbl">FIGHTERS (SELECT 5)</div>
       <div id="bp-slots"></div>
       <div class="bp-section-lbl">NFTs</div>
