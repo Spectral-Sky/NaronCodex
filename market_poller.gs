@@ -2,7 +2,7 @@
 // Paste into Google Apps Script (Extensions → Apps Script) in its OWN spreadsheet.
 //
 // Setup:
-//   1. Reload the sheet → menu "ALE Market" → "Setup (tabs + 5 min trigger)".
+//   1. Reload the sheet → menu "ALE Market" → "Setup (tabs + 30 min trigger)".
 //      The first run backfills every sale market.ale has ever settled.
 //   2. Share both tabs: File → Share → Publish to web → "sales" → CSV, then "listings" → CSV.
 //
@@ -14,6 +14,11 @@
 //   market.ale::buyoffer     → only on instant buys; auctions settle under compauct
 //
 // Prices are in GEMS. The seller receives the net after the 15% processing fee (min 1 gem).
+//
+// Runs every 30 minutes on purpose: because sales come from history, no sale can be missed
+// whatever the interval — only the listings snapshot ages — and Apps Script's 90 min/day of
+// total trigger runtime is shared with the fight and watchlist pollers, which have to run
+// often because their chain rows are deleted within minutes. A steady run here is ~2s.
 
 var SALES_SHEET    = 'sales';
 var LISTINGS_SHEET = 'listings';
@@ -30,7 +35,7 @@ var LISTINGS_HEADER = ['listing_type', 'listing_id', 'fighter_id', 'classname', 
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('ALE Market')
-    .addItem('Setup (tabs + 5 min trigger)', 'setupMarket')
+    .addItem('Setup (tabs + 30 min trigger)', 'setupMarket')
     .addItem('Scan Now', 'scanMarket')
     .addSeparator()
     .addItem('Rebuild full sale history', 'rebuildSales')
@@ -44,7 +49,7 @@ function setupMarket() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'scanMarket') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('scanMarket').timeBased().everyMinutes(5).create();
+  ScriptApp.newTrigger('scanMarket').timeBased().everyMinutes(30).create();
   ss.toast('Backfilling sales and snapshotting listings…', 'ALE Market');
   scanMarket();
   ss.toast('Ready. Publish both tabs as CSV to share them.', 'ALE Market');
