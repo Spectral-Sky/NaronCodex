@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-48CCMEYHXG"></script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-48CCMEYHXG');</script>
+    <script>try{if(localStorage.getItem('naron_day')==='1')document.documentElement.classList.add('day');}catch(e){}</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fighter Market — Naron Codex</title>
+    <link rel="icon" type="image/png" href="NCico.png">
+    <style>
+        :root {
+            --bg:        #070a10;
+            --panel:     rgba(12,18,26,0.94);
+            --line:      rgba(120,180,255,0.14);
+            --line-hi:   rgba(120,180,255,0.45);
+            --blue:      #6aa9ff;
+            --blue-dim:  #35618f;
+            --gold:      #f2b441;
+            --gold-glow: rgba(242,180,65,0.28);
+            --green:     #5fe39a;
+            --red:       #ff6070;
+            --text:      #dce6f2;
+            --muted:     #6f8296;
+            --grid:      rgba(120,180,255,0.035);
+            --halo:      rgba(120,180,255,0.07);
+            --track:     rgba(255,255,255,0.06);
+            --img-bg:    #0b1118;
+            --on-blue:   #041018;
+            --on-gold:   #2a1a00;
+            --menu-bg:   rgba(9,14,22,0.98);
+            --chip-bg:   rgba(120,180,255,0.07);
+        }
+        :root.day {
+            --bg:        #eef2f7;
+            --panel:     rgba(255,255,255,0.94);
+            --line:      rgba(20,80,150,0.18);
+            --line-hi:   rgba(20,80,150,0.5);
+            --blue:      #1663b8;
+            --blue-dim:  #7aa8d8;
+            --gold:      #a86e00;
+            --gold-glow: rgba(168,110,0,0.2);
+            --green:     #188f52;
+            --red:       #c42638;
+            --text:      #12202e;
+            --muted:     #55707f;
+            --grid:      rgba(20,80,150,0.06);
+            --halo:      rgba(20,90,170,0.08);
+            --track:     rgba(0,0,0,0.08);
+            --img-bg:    #dbe5ef;
+            --on-blue:   #ffffff;
+            --on-gold:   #ffffff;
+            --menu-bg:   rgba(255,255,255,0.99);
+            --chip-bg:   rgba(20,80,150,0.07);
+        }
+        *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+        html, body { background:var(--bg); color:var(--text); font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif; min-height:100%; }
+        body::before {
+            content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+            background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+            background-size:44px 44px;
+        }
+        body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:0; background: radial-gradient(ellipse 60% 40% at 50% 0%, var(--halo), transparent 70%); }
+        #app { position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:18px 16px 60px; }
+
+        @keyframes hue-spin { from { filter:blur(6px) hue-rotate(0deg); } to { filter:blur(6px) hue-rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity:0.35; } 50% { opacity:0.9; } }
+
+        /* header */
+        .hdr { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:14px; border-bottom:1px solid var(--line); }
+        .hdr .grow { flex:1; min-width:230px; }
+        .brand { display:flex; align-items:center; gap:10px; }
+        .planet-wrap { position:relative; width:36px; height:36px; flex-shrink:0; }
+        .planet-wrap::before {
+            content:''; position:absolute; inset:-5px; border-radius:50%;
+            background:conic-gradient(#ff3366, #ff8800, #ddcc00, #33cc55, #3399ff, #aa44ff, #ff3366);
+            animation:hue-spin 4s linear infinite; opacity:0.85;
+        }
+        #header-planet-canvas { position:relative; width:36px; height:36px; border-radius:50%; cursor:pointer; display:block; }
+        .back { color:var(--muted); text-decoration:none; font-size:0.76em; letter-spacing:2px; }
+        .back:hover { color:var(--blue); }
+        .hdr h1 { font-size:1.15em; letter-spacing:4px; font-weight:600; color:var(--blue); margin-top:8px; }
+        .hdr .sub { font-size:0.7em; color:var(--muted); letter-spacing:1px; margin-top:3px; }
+        .wbtn { background:transparent; border:1px solid var(--line-hi); color:var(--blue); font-size:0.74em; letter-spacing:1px; padding:6px 12px; border-radius:4px; cursor:pointer; font-family:inherit; }
+        .wbtn:hover { background:var(--halo); }
+        .wbtn.logged { color:var(--gold); border-color:var(--gold); }
+        .dd { position:relative; }
+        .dd-menu { display:none; position:absolute; right:0; top:calc(100% + 4px); min-width:120px; background:var(--menu-bg); border:1px solid var(--line-hi); border-radius:6px; padding:4px; z-index:50; }
+        .dd.open .dd-menu { display:block; }
+        .dd-item { display:flex; align-items:center; gap:7px; padding:6px 9px; color:var(--text); text-decoration:none; font-size:0.74em; letter-spacing:1px; border-radius:4px; }
+        .dd-item:hover { background:var(--halo); color:var(--blue); }
+        .dd-item.active { color:var(--gold); }
+
+        /* stat strip */
+        .stats { display:flex; gap:26px; flex-wrap:wrap; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin:16px 0; }
+        .stat .lbl { font-size:0.6em; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:4px; }
+        .stat .v { font-size:1.15em; font-variant-numeric:tabular-nums; }
+        .stat .v.gold { color:var(--gold); } .stat .v.blue { color:var(--blue); }
+        .stat .sub-v { font-size:0.62em; color:var(--muted); margin-top:2px; }
+
+        /* tabs */
+        .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+        .tab { background:transparent; border:1px solid var(--line); color:var(--muted); border-radius:6px; padding:7px 16px; cursor:pointer; font-family:inherit; font-size:0.78em; letter-spacing:2px; }
+        .tab:hover { border-color:var(--line-hi); color:var(--text); }
+        .tab.on { border-color:var(--gold); color:var(--gold); background:var(--gold-glow); }
+        .panel-box { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; }
+        .hide { display:none !important; }
+
+        /* filters */
+        .filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+        .filters select, .filters input { background:var(--menu-bg); color:var(--text); border:1px solid var(--line); border-radius:5px; padding:6px 8px; font-family:inherit; font-size:0.78em; }
+        .filters input { min-width:190px; }
+        .fcount { font-size:0.74em; color:var(--muted); margin-left:auto; }
+
+        /* listing cards */
+        .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:12px; }
+        .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:9px; }
+        .card.auction { border-left:3px solid var(--blue); }
+        .card.instant { border-left:3px solid var(--gold); }
+        .card-top { display:flex; align-items:flex-start; gap:8px; }
+        .cls-emoji { font-size:1.5em; line-height:1; }
+        .card-name { flex:1; min-width:0; }
+        .card-name .nm { font-weight:600; font-size:0.95em; text-transform:capitalize; }
+        .card-name .meta { font-size:0.68em; color:var(--muted); text-transform:capitalize; }
+        .type-chip { font-size:0.6em; letter-spacing:1px; padding:3px 7px; border-radius:9px; font-weight:bold; white-space:nowrap; }
+        .type-chip.auction { background:var(--blue); color:var(--on-blue); }
+        .type-chip.instant { background:var(--gold); color:var(--on-gold); }
+        .statgrid { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; text-align:center; }
+        .statgrid div { background:var(--chip-bg); border-radius:4px; padding:4px 2px; }
+        .statgrid .k { font-size:0.54em; letter-spacing:1px; color:var(--muted); }
+        .statgrid .n { font-size:0.8em; font-variant-numeric:tabular-nums; }
+        .res-row { display:flex; gap:4px; flex-wrap:wrap; font-size:0.62em; color:var(--muted); }
+        .res-row span { background:var(--chip-bg); border-radius:3px; padding:2px 5px; font-variant-numeric:tabular-nums; }
+        .abils { display:flex; flex-direction:column; gap:2px; font-size:0.66em; }
+        .abil { color:var(--text); opacity:0.9; }
+        .abil .rar { font-size:0.9em; }
+        .price-row { display:flex; align-items:flex-end; justify-content:space-between; gap:8px; border-top:1px solid var(--line); padding-top:9px; margin-top:auto; }
+        .price .gems { font-size:1.15em; color:var(--gold); font-variant-numeric:tabular-nums; }
+        .price .wax { font-size:0.62em; color:var(--muted); }
+        .price .lbl { font-size:0.58em; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
+        .act-btn { border:1px solid var(--gold); background:var(--gold-glow); color:var(--gold); border-radius:6px; padding:7px 12px; cursor:pointer; font-family:inherit; font-size:0.76em; letter-spacing:1px; white-space:nowrap; }
+        .act-btn:hover { background:var(--gold); color:var(--on-gold); }
+        .act-btn:disabled { opacity:0.35; cursor:not-allowed; }
+        .ends { font-size:0.62em; color:var(--muted); }
+        .ends.soon { color:var(--red); }
+        .owner { font-size:0.62em; color:var(--muted); }
+
+        /* tables */
+        .tbl-wrap { overflow-x:auto; }
+        table.tbl { width:100%; border-collapse:collapse; font-size:0.78em; }
+        table.tbl th { text-align:left; font-weight:normal; color:var(--muted); font-size:0.82em; letter-spacing:1px; text-transform:uppercase; padding:6px 8px; border-bottom:1px solid var(--line); cursor:pointer; white-space:nowrap; }
+        table.tbl th:hover { color:var(--text); }
+        table.tbl td { padding:6px 8px; border-bottom:1px solid var(--track); font-variant-numeric:tabular-nums; white-space:nowrap; }
+        table.tbl tr:hover td { background:var(--halo); }
+        td.gold { color:var(--gold); } td.green { color:var(--green); } td.cap { text-transform:capitalize; }
+        .pill { font-size:0.82em; padding:1px 7px; border-radius:8px; background:var(--chip-bg); }
+        .pill.auction { color:var(--blue); } .pill.instant { color:var(--gold); }
+
+        .two-col { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:14px; }
+        .sec-h { font-size:0.62em; letter-spacing:3px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
+        .chart-box { position:relative; height:300px; }
+        .empty { text-align:center; color:var(--muted); padding:40px 10px; font-size:0.9em; grid-column:1/-1; }
+        .loading { animation:pulse 1.2s ease-in-out infinite; }
+        #msg { min-height:1.3em; font-size:0.78em; margin:6px 0 10px; color:var(--muted); }
+        #msg.ok { color:var(--green); } #msg.err { color:var(--red); } #msg.busy { color:var(--gold); }
+        .foot { margin-top:26px; font-size:0.68em; color:var(--muted); line-height:1.7; border-top:1px solid var(--line); padding-top:12px; }
+        .goog-te-banner-frame, .skiptranslate iframe { display:none !important; } body { top:0 !important; }
+        @media (prefers-reduced-motion: reduce) { .planet-wrap::before, .loading { animation:none; } }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor()],
+        });
+        window.walletKit = kit;
+        try {
+            const session = await kit.restore();
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+                if (typeof checkWalletState === 'function') checkWalletState();
+            }
+        } catch(e) { console.warn('Session restore failed:', e); }
+    </script>
+</head>
+<body>
+<div id="app">
+    <div class="hdr">
+        <div class="grow">
+            <div class="brand">
+                <span class="planet-wrap"><canvas id="header-planet-canvas" width="36" height="36" title="Naron"></canvas></span>
+                <a class="back" href="index.html">&larr; NARON CODEX</a>
+            </div>
+            <h1>FIGHTER MARKET</h1>
+            <div class="sub">Live auctions and instant buys on market.ale &middot; every sale ever settled</div>
+        </div>
+        <div class="dd" id="lang-picker">
+            <button class="wbtn" onclick="toggleMenu('lang-picker', event)" title="Language">&#127760; &#9660;</button>
+            <div class="dd-menu">
+                <a class="dd-item" href="#" onclick="setLang('fr');return false;"><img src="https://flagcdn.com/16x12/fr.png" width="16" height="12" alt=""> FR</a>
+                <a class="dd-item" href="#" onclick="setLang('de');return false;"><img src="https://flagcdn.com/16x12/de.png" width="16" height="12" alt=""> DE</a>
+                <a class="dd-item" href="#" onclick="setLang('it');return false;"><img src="https://flagcdn.com/16x12/it.png" width="16" height="12" alt=""> IT</a>
+                <a class="dd-item" href="#" onclick="setLang('tl');return false;"><img src="https://flagcdn.com/16x12/ph.png" width="16" height="12" alt=""> PH</a>
+                <a class="dd-item" href="#" onclick="setLang('id');return false;"><img src="https://flagcdn.com/16x12/id.png" width="16" height="12" alt=""> ID</a>
+                <a class="dd-item active" href="#" onclick="setLang('en');return false;"><img src="https://flagcdn.com/16x12/gb.png" width="16" height="12" alt=""> EN</a>
+            </div>
+        </div>
+        <button class="wbtn" id="mode-toggle-btn" onclick="toggleDayMode()" title="Toggle light / dark mode">&#9728;</button>
+        <button id="wallet-connect-btn" class="wbtn logged" onclick="disconnectWallet()" style="display:none" title="Disconnect"></button>
+        <button id="wallet-btn-anchor" class="wbtn" onclick="loginWithAnchor()">[ &#9875; ANCHOR ]</button>
+        <button id="wallet-btn-wcc" class="wbtn" onclick="loginWithWCC()">[ &#9729; CLOUD ]</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat"><div class="lbl">Live listings</div><div class="v blue" id="st-live">&mdash;</div><div class="sub-v" id="st-live-sub"></div></div>
+        <div class="stat"><div class="lbl">Sales all time</div><div class="v" id="st-sales">&mdash;</div><div class="sub-v" id="st-sales-sub"></div></div>
+        <div class="stat"><div class="lbl">Gems traded</div><div class="v gold" id="st-vol">&mdash;</div><div class="sub-v" id="st-vol-sub"></div></div>
+        <div class="stat"><div class="lbl">Average sale</div><div class="v" id="st-avg">&mdash;</div><div class="sub-v" id="st-avg-sub"></div></div>
+        <div class="stat" id="st-you-wrap" hidden><div class="lbl">Your gems</div><div class="v gold" id="st-you">&mdash;</div><div class="sub-v" id="st-you-sub"></div></div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab on" data-tab="listings" onclick="showTab('listings')">FOR SALE</button>
+        <button class="tab" data-tab="sales" onclick="showTab('sales')">SALE HISTORY</button>
+        <button class="tab" data-tab="traders" onclick="showTab('traders')">TRADERS</button>
+        <button class="tab" data-tab="prices" onclick="showTab('prices')">PRICES</button>
+    </div>
+    <div id="msg"></div>
+
+    <!-- FOR SALE -->
+    <div id="tab-listings">
+        <div class="filters">
+            <select id="f-type" onchange="renderListings()">
+                <option value="">All listings</option>
+                <option value="auction">Auctions only</option>
+                <option value="instant">Instant buy only</option>
+            </select>
+            <select id="f-class" onchange="renderListings()"><option value="">All classes</option></select>
+            <select id="f-element" onchange="renderListings()"><option value="">All elements</option></select>
+            <select id="f-sort" onchange="renderListings()">
+                <option value="ends">Ending soonest</option>
+                <option value="price-asc">Price: low to high</option>
+                <option value="price-desc">Price: high to low</option>
+                <option value="level-desc">Level: high to low</option>
+                <option value="new">Newest listed</option>
+            </select>
+            <input id="f-search" placeholder="Search class, race, ability, seller…" oninput="renderListings()">
+            <span class="fcount" id="f-count"></span>
+        </div>
+        <div class="grid" id="listings"><div class="empty loading">Loading listings from chain…</div></div>
+    </div>
+
+    <!-- SALE HISTORY -->
+    <div id="tab-sales" class="hide">
+        <div class="filters">
+            <select id="s-type" onchange="renderSales()">
+                <option value="">All sales</option>
+                <option value="auction">Auctions</option>
+                <option value="instant">Instant buys</option>
+            </select>
+            <input id="s-search" placeholder="Search buyer, seller, class, fighter id…" oninput="renderSales()">
+            <span class="fcount" id="s-count"></span>
+        </div>
+        <div class="panel-box tbl-wrap"><table class="tbl" id="sales-tbl"></table></div>
+    </div>
+
+    <!-- TRADERS -->
+    <div id="tab-traders" class="hide">
+        <div class="two-col">
+            <div class="panel-box"><div class="sec-h">Top buyers</div><div class="tbl-wrap"><table class="tbl" id="tbl-buyers"></table></div></div>
+            <div class="panel-box"><div class="sec-h">Top sellers</div><div class="tbl-wrap"><table class="tbl" id="tbl-sellers"></table></div></div>
+            <div class="panel-box"><div class="sec-h">Biggest sales</div><div class="tbl-wrap"><table class="tbl" id="tbl-biggest"></table></div></div>
+            <div class="panel-box"><div class="sec-h">Most traded classes</div><div class="tbl-wrap"><table class="tbl" id="tbl-classes"></table></div></div>
+        </div>
+    </div>
+
+    <!-- PRICES -->
+    <div id="tab-prices" class="hide">
+        <div class="panel-box" style="margin-bottom:14px;">
+            <div class="sec-h">Sale prices over time</div>
+            <div class="chart-box"><canvas id="chart-time"></canvas></div>
+        </div>
+        <div class="two-col">
+            <div class="panel-box"><div class="sec-h">Average price by class</div><div class="chart-box"><canvas id="chart-class"></canvas></div></div>
+            <div class="panel-box"><div class="sec-h">Average price by level</div><div class="chart-box"><canvas id="chart-level"></canvas></div></div>
+        </div>
+    </div>
+
+    <div class="foot">
+        Prices are in gems, exactly as market.ale records them. WAX values are an estimate only, converted at the large gem pack rate
+        (4,999 WAX for 12,500 gems) &mdash; the game sells gems in packs, so there is no true market rate.
+        Sellers receive the price minus a 15% processing fee (minimum 1 gem). Auctions run 48 hours; a bid must beat the current one by
+        2 gems or 10%, whichever is larger. Listings are read live from the chain; sale history comes from a sheet that rebuilds every sale
+        from chain history, so nothing is missed.
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    // Published CSVs of the market sheet (sales history is rebuilt from chain history by
+    // market_poller.gs). Hardcoded on purpose — never exposed in any settings UI.
+    var SALES_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9MFykUy5ERN09uhUql_4eCaPaNteEGIAOHXfQboyK-ewX6nWtsCSOmvD3tVJpDpTJbRrl1Abcg89k/pub?gid=583665589&single=true&output=csv';
+    var LISTINGS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9MFykUy5ERN09uhUql_4eCaPaNteEGIAOHXfQboyK-ewX6nWtsCSOmvD3tVJpDpTJbRrl1Abcg89k/pub?gid=662259769&single=true&output=csv';
+
+    var RPC = ['https://wax.eosphere.io', 'https://wax.greymass.com', 'https://wax.eosusa.io'];
+    // Gems are sold in packs, so there is no market rate — the large pack is the fairest yardstick
+    var WAX_PER_GEM = 4999 / 12500;
+    var CLASS_EMOJI = {
+        voidwarden:'🛡', juggernaut:'💪', lunatic:'🤪', arcanist:'✨', mystic:'🔮', tactician:'🎯',
+        hunter:'🏹', desperado:'🔫', explosioneer:'💥', mindblade:'🗡', astralknight:'⚔', voidcaller:'👁'
+    };
+    var ELEM_EMOJI = { fire:'🔥', air:'💨', gem:'💎', metal:'⚙', nature:'🌿', neutral:'⚪' };
+    var RARITY_COLOR = { abundant:'#9aa5b1', common:'#c8d2dc', rare:'#4f9cff', epic:'#b06bff', legendary:'#ffa32e', mythical:'#ff4d6d', mythic:'#ff4d6d' };
+
+    var state = { listings: [], sales: [], config: null, wallet: null, gems: null, tab: 'listings', busy: false };
+    var charts = {};
+    var wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: localStorage.getItem('naron_wallet') || '', tryAutoLogin: false });
+
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+    function say(t, cls) { var m = $('msg'); m.textContent = t || ''; m.className = cls || ''; }
+    function num(n) { return Number(n || 0).toLocaleString(); }
+    function gemsWax(g) { return (Number(g || 0) * WAX_PER_GEM).toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' WAX'; }
+    function cap(s) { return String(s || '').replace(/^\w/, function (c) { return c.toUpperCase(); }); }
+
+    // ── chain ────────────────────────────────────────────────────────────────
+    async function rows(body) {
+        var err;
+        for (var i = 0; i < RPC.length; i++) {
+            try {
+                var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 7000);
+                var r = await fetch(RPC[i] + '/v1/chain/get_table_rows', { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body), signal: ctl.signal });
+                clearTimeout(t);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return (await r.json()).rows || [];
+            } catch (e) { err = e; }
+        }
+        throw err;
+    }
+
+    // Listings come from the chain so they're always current; the sheet snapshot is the
+    // fallback for when every endpoint is unreachable.
+    async function loadListings() {
+        try {
+            var res = await Promise.all([
+                rows({ code:'market.ale', scope:'market.ale', table:'auctions', limit:1000, json:true }),
+                rows({ code:'market.ale', scope:'market.ale', table:'instantoffer', limit:1000, json:true })
+            ]);
+            var out = [];
+            res[0].forEach(function (r) {
+                out.push(listing('auction', r.auction_id, r.current_bid, r, r.auction_end, r.auction_start, r.bids, r.current_bidder, r.current_bidder_gamertag));
+            });
+            res[1].forEach(function (r) {
+                out.push(listing('instant', r.offer_id, r.gems, r, r.offer_end, r.offer_start, null, '', ''));
+            });
+            return out;
+        } catch (e) {
+            var csv = await (await fetch(LISTINGS_CSV)).text();
+            return parseCsv(csv).map(function (r) {
+                return { type:r.listing_type, id:r.listing_id, fighter_id:r.fighter_id, price:Number(r.price_gems||0),
+                    classname:r.classname, racename:r.racename, element:r.element, level:Number(r.level||0),
+                    bids:Number(r.bids||0), bidder:r.current_bidder, owner:r.owner, gamertag:r.owner_gamertag,
+                    ends:r.ends, started:r.started, ascension:Number(r.ascension_level||0),
+                    abilities:(r.abilities||'').split(' | ').filter(Boolean).map(function (a) { return { displayname:a }; }),
+                    hp:Number(r.health||0), dmg:Number(r.damage||0), taunt:Number(r.taunt||0),
+                    windup:Number(r.windup||0), cooldown:Number(r.cooldown||0),
+                    res:{ fire:+r.res_fire, air:+r.res_air, gem:+r.res_gem, metal:+r.res_metal, nature:+r.res_nature, neutral:+r.res_neutral },
+                    stale:true };
+            });
+        }
+    }
+    function listing(type, id, price, r, ends, started, bids, bidder, tag) {
+        var f = r.fighter || {};
+        var mid = function (a, b) { return Math.round((Number(a||0) + Number(b||0)) / 2); };
+        return {
+            type:type, id:String(id), fighter_id:String(r.fighter_id), price:Number(price||0),
+            classname:f.classname || r.classname || '', racename:f.racename || '', element:f.element || '',
+            level:Number(f.level||0), bids:bids==null?null:Number(bids||0), bidder:tag || bidder || '',
+            owner:r.owner || '', gamertag:r.owner_gamertag || '', ends:ends, started:started,
+            ascension:Number(r.ascension_level||0), abilities:f.abilities || [],
+            hp:mid(f.health_min,f.health_max), dmg:mid(f.damage_min,f.damage_max), taunt:mid(f.taunt_min,f.taunt_max),
+            windup:mid(f.initiative_min,f.initiative_max), cooldown:mid(f.attackspeed_min,f.attackspeed_max),
+            res:{ fire:+f.res_fire||0, air:+f.res_air||0, gem:+f.res_gem||0, metal:+f.res_metal||0, nature:+f.res_nature||0, neutral:+f.res_neutral||0 }
+        };
+    }
+
+    async function loadSales() {
+        var csv = await (await fetch(SALES_CSV)).text();
+        return parseCsv(csv).map(function (r) {
+            return { ts:r.timestamp, ms:Date.parse((r.timestamp||'').replace(' ','T') + 'Z'), type:r.sale_type,
+                fighter_id:r.fighter_id, classname:r.classname, racename:r.racename, element:r.element,
+                level:Number(r.level||0), gems:Number(r.gems_paid||0), net:Number(r.gems_to_seller||0),
+                fee:Number(r.fee_gems||0), buyer:r.buyer, seller:r.seller };
+        }).filter(function (s) { return s.gems > 0; });
+    }
+
+    // CSV with quoted fields (abilities carry commas)
+    function parseCsv(text) {
+        var lines = String(text).replace(/\r/g, '').split('\n').filter(function (l) { return l.length; });
+        if (!lines.length) return [];
+        var head = splitLine(lines[0]);
+        return lines.slice(1).map(function (l) {
+            var c = splitLine(l), o = {};
+            head.forEach(function (h, i) { o[h] = c[i] == null ? '' : c[i]; });
+            return o;
+        });
+    }
+    function splitLine(line) {
+        var out = [], cur = '', q = false;
+        for (var i = 0; i < line.length; i++) {
+            var ch = line[i];
+            if (q) {
+                if (ch === '"' && line[i+1] === '"') { cur += '"'; i++; }
+                else if (ch === '"') q = false;
+                else cur += ch;
+            } else if (ch === '"') q = true;
+            else if (ch === ',') { out.push(cur); cur = ''; }
+            else cur += ch;
+        }
+        out.push(cur);
+        return out;
+    }
+
+    async function loadConfig() {
+        try { return (await rows({ code:'market.ale', scope:'market.ale', table:'config', limit:1, json:true }))[0] || null; }
+        catch (e) { return null; }
+    }
+    async function loadGems(wallet) {
+        try {
+            var r = (await rows({ code:'players.ale', scope:'players.ale', table:'players', lower_bound:wallet, upper_bound:wallet, limit:1, json:true }))[0];
+            var a = r && r.activestats;
+            return a ? Number(a.gems || 0) : null;
+        } catch (e) { return null; }
+    }
+
+    // ── bid maths (mirrors the contract's config) ────────────────────────────
+    function minBid(l) {
+        var c = state.config;
+        if (!l.bids) return l.price;                       // no bids yet: the start price stands
+        var step = c ? Math.max(Number(c.gems_min_bid_increase || 2),
+                                Math.ceil(l.price * Number(c.gems_min_bid_increase_percent || 10) / 100)) : 2;
+        return l.price + step;
+    }
+    function timeLeft(ends) {
+        var ms = Date.parse((ends || '').replace(' ', 'T') + 'Z') - Date.now();
+        if (isNaN(ms)) return { txt:'', soon:false };
+        if (ms <= 0) return { txt:'settling…', soon:true };
+        var h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000);
+        return { txt: (h >= 24 ? Math.floor(h/24) + 'd ' + (h%24) + 'h' : h > 0 ? h + 'h ' + m + 'm' : m + 'm') + ' left', soon: ms < 3600000 };
+    }
+
+    // ── render: listings ─────────────────────────────────────────────────────
+    function abilityHtml(a) {
+        var raw = a.displayname || a.ability || '';
+        var m = /\[(\w+)\]\s*$/.exec(raw);
+        var rar = m ? m[1].toLowerCase() : '';
+        var name = m ? raw.slice(0, raw.lastIndexOf('[')).trim() : raw;
+        return '<div class="abil"><span class="rar" style="color:' + (RARITY_COLOR[rar] || 'var(--muted)') + '">◆</span> ' + esc(name) + '</div>';
+    }
+
+    function renderListings() {
+        var type = $('f-type').value, cls = $('f-class').value, el = $('f-element').value;
+        var sort = $('f-sort').value, q = ($('f-search').value || '').toLowerCase().trim();
+        var list = state.listings.filter(function (l) {
+            if (type && l.type !== type) return false;
+            if (cls && l.classname !== cls) return false;
+            if (el && l.element !== el) return false;
+            if (!q) return true;
+            var hay = [l.classname, l.racename, l.element, l.owner, l.gamertag, l.fighter_id,
+                       (l.abilities || []).map(function (a) { return a.displayname || a.ability || ''; }).join(' ')].join(' ').toLowerCase();
+            return hay.indexOf(q) >= 0;
+        });
+        var endMs = function (l) { var t = Date.parse((l.ends || '').replace(' ', 'T') + 'Z'); return isNaN(t) ? Infinity : t; };
+        list.sort(function (a, b) {
+            if (sort === 'price-asc')  return a.price - b.price;
+            if (sort === 'price-desc') return b.price - a.price;
+            if (sort === 'level-desc') return b.level - a.level || b.price - a.price;
+            if (sort === 'new')        return Date.parse((b.started||'').replace(' ','T')+'Z') - Date.parse((a.started||'').replace(' ','T')+'Z');
+            return endMs(a) - endMs(b);
+        });
+        $('f-count').textContent = list.length + ' of ' + state.listings.length + ' listings';
+        if (!list.length) { $('listings').innerHTML = '<div class="empty">Nothing matches those filters.</div>'; return; }
+
+        $('listings').innerHTML = list.map(function (l) {
+            var tl = timeLeft(l.ends);
+            var emoji = CLASS_EMOJI[(l.classname || '').toLowerCase()] || '⚔';
+            var isAuction = l.type === 'auction';
+            var next = minBid(l);
+            return '<div class="card ' + l.type + '">'
+                + '<div class="card-top"><span class="cls-emoji">' + emoji + '</span>'
+                +   '<div class="card-name"><div class="nm">' + esc(cap(l.classname)) + ' <span style="color:var(--muted);font-size:0.8em">LV ' + l.level + '</span></div>'
+                +     '<div class="meta">' + esc(cap(l.racename)) + ' &middot; ' + (ELEM_EMOJI[(l.element||'').toLowerCase()] || '') + ' ' + esc(cap(l.element))
+                +     (l.ascension ? ' &middot; ★' + l.ascension : '') + ' &middot; #' + esc(l.fighter_id) + '</div></div>'
+                +   '<span class="type-chip ' + l.type + '">' + (isAuction ? 'AUCTION' : 'BUY NOW') + '</span></div>'
+                + '<div class="statgrid">'
+                +   '<div><div class="k">HP</div><div class="n">' + num(l.hp) + '</div></div>'
+                +   '<div><div class="k">DMG</div><div class="n">' + num(l.dmg) + '</div></div>'
+                +   '<div><div class="k">TAUNT</div><div class="n">' + num(l.taunt) + '</div></div>'
+                +   '<div><div class="k">WIND</div><div class="n">' + num(l.windup) + '</div></div>'
+                +   '<div><div class="k">COOL</div><div class="n">' + num(l.cooldown) + '</div></div>'
+                + '</div>'
+                + '<div class="res-row">' + Object.keys(l.res).map(function (k) {
+                        return '<span>' + (ELEM_EMOJI[k] || '') + ' ' + Math.round(l.res[k] / 10) + '%</span>'; }).join('') + '</div>'
+                + '<div class="abils">' + (l.abilities || []).map(abilityHtml).join('') + '</div>'
+                + '<div class="owner">Seller: ' + esc(l.gamertag || l.owner) + (isAuction && l.bids ? ' &middot; ' + l.bids + ' bid' + (l.bids === 1 ? '' : 's') + ' &middot; high: ' + esc(l.bidder || '?') : '') + '</div>'
+                + '<div class="price-row">'
+                +   '<div class="price"><div class="lbl">' + (isAuction ? (l.bids ? 'Current bid' : 'Starting bid') : 'Price') + '</div>'
+                +     '<div class="gems">💎 ' + num(l.price) + '</div><div class="wax">≈ ' + gemsWax(l.price) + '</div>'
+                +     '<div class="ends' + (tl.soon ? ' soon' : '') + '">' + tl.txt + '</div></div>'
+                +   '<button class="act-btn" onclick="' + (isAuction ? 'doBid' : 'doBuy') + '(\'' + esc(l.id) + '\')">'
+                +     (isAuction ? 'BID ' + num(next) + ' 💎' : 'BUY ' + num(l.price) + ' 💎') + '</button>'
+                + '</div></div>';
+        }).join('');
+    }
+
+    // ── render: sales ────────────────────────────────────────────────────────
+    var salesSort = { key:'ms', dir:-1 };
+    function renderSales() {
+        var type = $('s-type').value, q = ($('s-search').value || '').toLowerCase().trim();
+        var list = state.sales.filter(function (s) {
+            if (type && s.type !== type) return false;
+            if (!q) return true;
+            return [s.buyer, s.seller, s.classname, s.racename, s.element, s.fighter_id].join(' ').toLowerCase().indexOf(q) >= 0;
+        });
+        list.sort(function (a, b) {
+            var k = salesSort.key, av = a[k], bv = b[k];
+            if (typeof av === 'string') return av.localeCompare(bv) * salesSort.dir;
+            return (av - bv) * salesSort.dir;
+        });
+        $('s-count').textContent = list.length + ' of ' + state.sales.length + ' sales';
+        var cols = [['ms','DATE'],['type','TYPE'],['classname','FIGHTER'],['level','LV'],['gems','GEMS'],['net','TO SELLER'],['buyer','BUYER'],['seller','SELLER']];
+        $('sales-tbl').innerHTML = '<thead><tr>' + cols.map(function (c) {
+                return '<th onclick="sortSales(\'' + c[0] + '\')">' + c[1] + (salesSort.key === c[0] ? (salesSort.dir === 1 ? ' ▲' : ' ▼') : '') + '</th>'; }).join('')
+            + '</tr></thead><tbody>' + list.slice(0, 500).map(function (s) {
+                return '<tr><td>' + esc((s.ts || '').slice(0, 16).replace('T', ' ')) + '</td>'
+                    + '<td><span class="pill ' + s.type + '">' + (s.type === 'auction' ? 'AUCTION' : 'BUY NOW') + '</span></td>'
+                    + '<td class="cap">' + (CLASS_EMOJI[(s.classname||'').toLowerCase()] || '') + ' ' + esc(s.classname) + ' <span style="color:var(--muted)">#' + esc(s.fighter_id) + '</span></td>'
+                    + '<td>' + s.level + '</td>'
+                    + '<td class="gold">' + num(s.gems) + '</td>'
+                    + '<td class="green">' + num(s.net) + '</td>'
+                    + '<td>' + esc(s.buyer) + '</td><td>' + esc(s.seller) + '</td></tr>';
+            }).join('') + '</tbody>';
+    }
+    window.sortSales = function (key) {
+        if (salesSort.key === key) salesSort.dir *= -1;
+        else { salesSort.key = key; salesSort.dir = (key === 'buyer' || key === 'seller' || key === 'classname' || key === 'type') ? 1 : -1; }
+        renderSales();
+    };
+
+    // ── render: traders ──────────────────────────────────────────────────────
+    function tally(list, key) {
+        var m = {};
+        list.forEach(function (s) {
+            var k = s[key];
+            if (!k) return;
+            var e = m[k] || (m[k] = { who:k, gems:0, n:0 });
+            e.gems += (key === 'seller' ? s.net : s.gems);
+            e.n++;
+        });
+        return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return b.gems - a.gems; });
+    }
+    function renderTraders() {
+        var mk = function (el, rowsArr, headers, cells) {
+            $(el).innerHTML = '<thead><tr>' + headers.map(function (h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead><tbody>'
+                + rowsArr.map(cells).join('') + '</tbody>';
+        };
+        mk('tbl-buyers', tally(state.sales, 'buyer').slice(0, 15), ['#','BUYER','GEMS SPENT','BOUGHT'], function (r, i) {
+            return '<tr><td style="color:var(--muted)">' + (i+1) + '</td><td>' + esc(r.who) + '</td><td class="gold">' + num(r.gems) + '</td><td>' + r.n + '</td></tr>'; });
+        mk('tbl-sellers', tally(state.sales, 'seller').slice(0, 15), ['#','SELLER','GEMS EARNED','SOLD'], function (r, i) {
+            return '<tr><td style="color:var(--muted)">' + (i+1) + '</td><td>' + esc(r.who) + '</td><td class="green">' + num(r.gems) + '</td><td>' + r.n + '</td></tr>'; });
+        mk('tbl-biggest', state.sales.slice().sort(function (a,b) { return b.gems - a.gems; }).slice(0, 15),
+            ['GEMS','FIGHTER','LV','BUYER','SELLER','DATE'], function (s) {
+            return '<tr><td class="gold">' + num(s.gems) + '</td><td class="cap">' + esc(s.classname) + '</td><td>' + s.level + '</td>'
+                + '<td>' + esc(s.buyer) + '</td><td>' + esc(s.seller) + '</td><td>' + esc((s.ts||'').slice(0,10)) + '</td></tr>'; });
+        var byClass = {};
+        state.sales.forEach(function (s) {
+            var e = byClass[s.classname] || (byClass[s.classname] = { who:s.classname, n:0, gems:0 });
+            e.n++; e.gems += s.gems;
+        });
+        mk('tbl-classes', Object.keys(byClass).map(function (k) { return byClass[k]; }).sort(function (a,b) { return b.n - a.n; }),
+            ['CLASS','SOLD','GEMS','AVERAGE'], function (r) {
+            return '<tr><td class="cap">' + (CLASS_EMOJI[(r.who||'').toLowerCase()] || '') + ' ' + esc(r.who) + '</td><td>' + r.n + '</td>'
+                + '<td class="gold">' + num(r.gems) + '</td><td>' + num(Math.round(r.gems / r.n)) + '</td></tr>'; });
+    }
+
+    // ── render: prices ───────────────────────────────────────────────────────
+    function chartOpts(extra) {
+        var grid = 'rgba(128,128,128,0.12)', tick = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#888';
+        return Object.assign({
+            responsive:true, maintainAspectRatio:false, animation:false,
+            plugins:{ legend:{ labels:{ color:tick, boxWidth:12, font:{ size:11 } } } },
+            scales:{ x:{ ticks:{ color:tick }, grid:{ color:grid } }, y:{ beginAtZero:true, ticks:{ color:tick }, grid:{ color:grid } } }
+        }, extra || {});
+    }
+    function median(a) {
+        if (!a.length) return 0;
+        var s = a.slice().sort(function (x, y) { return x - y; }), m = Math.floor(s.length / 2);
+        return s.length % 2 ? s[m] : Math.round((s[m-1] + s[m]) / 2);
+    }
+    function renderPrices() {
+        if (typeof Chart === 'undefined') return;
+        Object.keys(charts).forEach(function (k) { try { charts[k].destroy(); } catch (e) {} });
+        charts = {};
+
+        var byDay = {};
+        state.sales.forEach(function (s) {
+            if (!s.ms) return;
+            var d = new Date(s.ms).toISOString().slice(0, 10);
+            (byDay[d] = byDay[d] || []).push(s.gems);
+        });
+        var days = Object.keys(byDay).sort();
+        charts.time = new Chart($('chart-time'), {
+            type:'line',
+            data:{ labels:days.map(function (d) { return d.slice(5); }), datasets:[
+                { label:'Average', data:days.map(function (d) { return Math.round(byDay[d].reduce(function (a,b) { return a+b; }, 0) / byDay[d].length); }),
+                  borderColor:'#f2b441', backgroundColor:'#f2b441', borderWidth:2, pointRadius:2, tension:0.25 },
+                { label:'Highest', data:days.map(function (d) { return Math.max.apply(null, byDay[d]); }),
+                  borderColor:'#6aa9ff', backgroundColor:'#6aa9ff', borderWidth:1, pointRadius:2, borderDash:[5,4], tension:0.25 },
+                { label:'Sales', data:days.map(function (d) { return byDay[d].length; }), yAxisID:'y1',
+                  borderColor:'#5fe39a', backgroundColor:'#5fe39a', borderWidth:1, pointRadius:0, tension:0.25 }
+            ]},
+            options: chartOpts({ scales: Object.assign(chartOpts().scales, { y1:{ position:'right', beginAtZero:true, grid:{ display:false }, ticks:{ color:'#5fe39a' } } }) })
+        });
+
+        var byClass = {};
+        state.sales.forEach(function (s) { (byClass[s.classname] = byClass[s.classname] || []).push(s.gems); });
+        var cls = Object.keys(byClass).sort(function (a, b) { return median(byClass[b]) - median(byClass[a]); });
+        charts.cls = new Chart($('chart-class'), {
+            type:'bar',
+            data:{ labels:cls.map(cap), datasets:[
+                { label:'Average', data:cls.map(function (c) { return Math.round(byClass[c].reduce(function (a,b) { return a+b; }, 0) / byClass[c].length); }), backgroundColor:'#6aa9ff' },
+                { label:'Median', data:cls.map(function (c) { return median(byClass[c]); }), backgroundColor:'#f2b441' }
+            ]},
+            options: chartOpts()
+        });
+
+        var byLevel = {};
+        state.sales.forEach(function (s) { (byLevel[s.level] = byLevel[s.level] || []).push(s.gems); });
+        var lv = Object.keys(byLevel).map(Number).sort(function (a, b) { return a - b; });
+        charts.lvl = new Chart($('chart-level'), {
+            type:'bar',
+            data:{ labels:lv.map(function (l) { return 'LV ' + l; }), datasets:[
+                { label:'Average gems', data:lv.map(function (l) { return Math.round(byLevel[l].reduce(function (a,b) { return a+b; }, 0) / byLevel[l].length); }), backgroundColor:'#6aa9ff' },
+                { label:'Sales', data:lv.map(function (l) { return byLevel[l].length; }), backgroundColor:'#5fe39a' }
+            ]},
+            options: chartOpts()
+        });
+    }
+
+    // ── stats strip ──────────────────────────────────────────────────────────
+    function renderStats() {
+        var auctions = state.listings.filter(function (l) { return l.type === 'auction'; }).length;
+        $('st-live').textContent = state.listings.length;
+        $('st-live-sub').textContent = auctions + ' auctions · ' + (state.listings.length - auctions) + ' buy now';
+        var vol = state.sales.reduce(function (a, s) { return a + s.gems; }, 0);
+        $('st-sales').textContent = num(state.sales.length);
+        var instant = state.sales.filter(function (s) { return s.type === 'instant'; }).length;
+        $('st-sales-sub').textContent = (state.sales.length - instant) + ' auctions · ' + instant + ' buy now';
+        $('st-vol').textContent = '💎 ' + num(vol);
+        $('st-vol-sub').textContent = '≈ ' + gemsWax(vol);
+        var avg = state.sales.length ? Math.round(vol / state.sales.length) : 0;
+        $('st-avg').textContent = '💎 ' + num(avg);
+        $('st-avg-sub').textContent = 'median ' + num(median(state.sales.map(function (s) { return s.gems; })));
+        $('st-you-wrap').hidden = state.gems == null;
+        if (state.gems != null) {
+            $('st-you').textContent = '💎 ' + num(state.gems);
+            $('st-you-sub').textContent = 'enough for ' + state.listings.filter(function (l) { return l.price <= state.gems; }).length + ' listings';
+        }
+    }
+
+    function fillFilters() {
+        var classes = {}, elems = {};
+        state.listings.forEach(function (l) { if (l.classname) classes[l.classname] = 1; if (l.element) elems[l.element] = 1; });
+        var fill = function (sel, obj, label) {
+            var cur = $(sel).value;
+            $(sel).innerHTML = '<option value="">' + label + '</option>' + Object.keys(obj).sort().map(function (k) {
+                return '<option value="' + esc(k) + '"' + (k === cur ? ' selected' : '') + '>' + esc(cap(k)) + '</option>'; }).join('');
+        };
+        fill('f-class', classes, 'All classes');
+        fill('f-element', elems, 'All elements');
+    }
+
+    // ── tabs ─────────────────────────────────────────────────────────────────
+    window.showTab = function (tab) {
+        state.tab = tab;
+        if (location.hash.slice(1) !== tab) history.replaceState(null, '', '#' + tab);   // shareable per-tab links
+        ['listings','sales','traders','prices'].forEach(function (t) {
+            $('tab-' + t).classList.toggle('hide', t !== tab);
+            document.querySelector('.tab[data-tab="' + t + '"]').classList.toggle('on', t === tab);
+        });
+        if (tab === 'traders') renderTraders();
+        if (tab === 'prices') renderPrices();
+    };
+
+    // ── actions ──────────────────────────────────────────────────────────────
+    async function sign(actions) {
+        if (window.walletSession) return window.walletSession.transact({ actions: actions });
+        if (!wax.api) await wax.login();
+        return wax.api.transact({ actions: actions }, { blocksBehind: 3, expireSeconds: 90 });
+    }
+    function errText(e) {
+        return (e && (e.message || (e.json && e.json.error && e.json.error.details && e.json.error.details[0] && e.json.error.details[0].message))) || String(e);
+    }
+    function need(l) {
+        if (!state.wallet) { say('Connect your wallet first.', 'err'); return false; }
+        if (state.busy) return false;
+        if (!l) { say('That listing has just gone.', 'err'); return false; }
+        return true;
+    }
+    async function send(actions, busyMsg, okMsg) {
+        state.busy = true;
+        try {
+            say(busyMsg, 'busy');
+            await sign(actions);
+            say(okMsg, 'ok');
+            setTimeout(refresh, 2500);
+        } catch (e) {
+            say('Failed: ' + errText(e), 'err');
+        } finally { state.busy = false; }
+    }
+    window.doBid = async function (id) {
+        var l = state.listings.filter(function (x) { return x.type === 'auction' && x.id === String(id); })[0];
+        if (!need(l)) return;
+        var min = minBid(l);
+        var raw = prompt('Bid on this ' + cap(l.classname) + ' (LV ' + l.level + ')\n\n'
+            + (l.bids ? 'Current bid: ' + l.price + ' gems' : 'Starting bid: ' + l.price + ' gems')
+            + '\nMinimum bid: ' + min + ' gems'
+            + (state.gems != null ? '\nYour gems: ' + state.gems : '') + '\n\nGems to bid:', String(min));
+        if (raw == null) return;
+        var bid = Math.floor(Number(raw));
+        if (!bid || bid < min) { say('Bid must be at least ' + min + ' gems.', 'err'); return; }
+        if (state.gems != null && bid > state.gems) { say('That is more gems than you have (' + state.gems + ').', 'err'); return; }
+        await send([{ account:'market.ale', name:'bidauction', authorization:[{ actor:state.wallet, permission:'active' }],
+            data:{ wallet:state.wallet, scope:l.classname || '', auction_id:Number(l.id), gems_bid:bid } }],
+            'Sign the bid…', 'Bid of ' + bid + ' gems placed.');
+    };
+    window.doBuy = async function (id) {
+        var l = state.listings.filter(function (x) { return x.type === 'instant' && x.id === String(id); })[0];
+        if (!need(l)) return;
+        if (state.gems != null && l.price > state.gems) { say('That costs ' + l.price + ' gems and you have ' + state.gems + '.', 'err'); return; }
+        if (!confirm('Buy this ' + cap(l.classname) + ' (LV ' + l.level + ') for ' + l.price + ' gems?')) return;
+        await send([{ account:'market.ale', name:'buyoffer', authorization:[{ actor:state.wallet, permission:'active' }],
+            data:{ wallet:state.wallet, scope:l.classname || '', offer_id:Number(l.id), gems:l.price } }],
+            'Sign the purchase…', 'Bought for ' + l.price + ' gems.');
+    };
+
+    // ── load ─────────────────────────────────────────────────────────────────
+    async function refresh() {
+        try {
+            var res = await Promise.all([
+                loadListings(),
+                state.sales.length ? Promise.resolve(state.sales) : loadSales().catch(function () { return []; }),
+                state.config ? Promise.resolve(state.config) : loadConfig(),
+                state.wallet ? loadGems(state.wallet) : Promise.resolve(null)
+            ]);
+            state.listings = res[0]; state.sales = res[1]; state.config = res[2]; state.gems = res[3];
+            if (state.listings.some(function (l) { return l.stale; })) say('Chain unreachable — showing the last sheet snapshot of listings.', 'err');
+            fillFilters();
+            renderStats();
+            renderListings();
+            renderSales();
+            if (state.tab === 'traders') renderTraders();
+            if (state.tab === 'prices') renderPrices();
+        } catch (e) {
+            say('Could not load the market: ' + errText(e), 'err');
+        }
+    }
+
+    // ── wallet / chrome ──────────────────────────────────────────────────────
+    window.checkWalletState = function () {
+        var account = localStorage.getItem('naron_wallet') || null;
+        $('wallet-connect-btn').textContent = account ? '[ ' + account + ' ]' : '';
+        $('wallet-connect-btn').style.display = account ? '' : 'none';
+        $('wallet-btn-anchor').style.display = account ? 'none' : '';
+        $('wallet-btn-wcc').style.display = account ? 'none' : '';
+        if (account !== state.wallet) {
+            state.wallet = account;
+            state.gems = null;
+            if (account) loadGems(account).then(function (g) { state.gems = g; renderStats(); });
+            else renderStats();
+        }
+    };
+    window.loginWithAnchor = async function () {
+        try {
+            var r = await window.walletKit.login();
+            window.walletSession = r.session;
+            localStorage.setItem('naron_wallet', String(r.session.actor));
+            checkWalletState();
+        } catch (e) { console.error('Anchor login failed:', e); }
+    };
+    window.loginWithWCC = async function () {
+        try {
+            var account = await wax.login();
+            localStorage.setItem('naron_wallet', account);
+            checkWalletState();
+        } catch (e) { console.error('WCC login failed:', e); }
+    };
+    window.disconnectWallet = function () {
+        if (window.walletKit && window.walletSession) {
+            window.walletKit.logout(window.walletSession).catch(function () {});
+            window.walletSession = null;
+        }
+        localStorage.removeItem('naron_wallet');
+        if (wax) wax.userAccount = '';
+        checkWalletState();
+    };
+    function syncModeBtn() { $('mode-toggle-btn').textContent = document.documentElement.classList.contains('day') ? '🌙' : '☀'; }
+    window.toggleDayMode = function () {
+        var isDay = document.documentElement.classList.toggle('day');
+        try { localStorage.setItem('naron_day', isDay ? '1' : '0'); } catch (e) {}
+        syncModeBtn();
+        if (state.tab === 'prices') renderPrices();
+    };
+    window.toggleMenu = function (id, ev) { if (ev) ev.stopPropagation(); $(id).classList.toggle('open'); };
+    document.addEventListener('click', function () {
+        document.querySelectorAll('.dd.open').forEach(function (d) { d.classList.remove('open'); });
+    });
+
+    (function planet() {
+        var hc = $('header-planet-canvas');
+        if (!hc || typeof THREE === 'undefined') return;
+        var R = new THREE.WebGLRenderer({ canvas: hc, antialias: true, alpha: true });
+        R.setClearColor(0x000000, 0);
+        R.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        R.setSize(36, 36);
+        var sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+        cam.position.z = 4;
+        sc.add(new THREE.AmbientLight(0xffffff, 0.5));
+        var sl = new THREE.DirectionalLight(0xffffff, 2.0);
+        sl.position.set(3, 3, 5); sc.add(sl);
+        var tx = new THREE.TextureLoader().load('planets/naron.jpg');
+        tx.minFilter = THREE.LinearFilter; tx.generateMipmaps = false;
+        var pm = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshStandardMaterial({ map: tx }));
+        sc.add(pm);
+        var spd = 0.008, BASE = 0.008;
+        hc.addEventListener('click', function () { spd = Math.min(spd + 0.35, 1.2); });
+        (function anim() {
+            requestAnimationFrame(anim);
+            spd -= (spd - BASE) * 0.018;
+            if (spd < BASE) spd = BASE;
+            pm.rotation.y += spd;
+            R.render(sc, cam);
+        })();
+    })();
+
+    syncModeBtn();
+    var startTab = (location.hash || '').slice(1);
+    if (['listings','sales','traders','prices'].indexOf(startTab) >= 0) showTab(startTab);
+    window.addEventListener('hashchange', function () {
+        var t = (location.hash || '').slice(1);
+        if (['listings','sales','traders','prices'].indexOf(t) >= 0 && t !== state.tab) showTab(t);
+    });
+    checkWalletState();
+    refresh();
+    setInterval(function () { if (!state.busy) refresh(); }, 120000);   // listings drift as auctions settle
+})();
+</script>
+<div id="google_translate_element" style="display:none;"></div>
+<script>
+    function googleTranslateElementInit(){
+        new google.translate.TranslateElement({pageLanguage:'en',includedLanguages:'fr,de,it,tl,id',autoDisplay:false},'google_translate_element');
+    }
+    function markLang(lang){
+        var map = { tl: 'PH' };
+        document.querySelectorAll('#lang-picker .dd-item').forEach(function(a){
+            a.classList.toggle('active', a.textContent.trim().toUpperCase() === (map[lang] || lang).toUpperCase());
+        });
+    }
+    function setLang(lang){
+        markLang(lang);
+        if(lang==='en'){
+            document.cookie='googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            document.cookie='googtrans=; path=/; domain='+location.hostname+'; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            location.reload();
+            return;
+        }
+        var el=document.querySelector('.goog-te-combo');
+        if(el){el.value=lang;el.dispatchEvent(new Event('change'));return;}
+        document.cookie='googtrans=/en/'+lang+'; path=/';
+        location.reload();
+    }
+    (function(){
+        var m=document.cookie.match(/googtrans=\/en\/(\w+)/);
+        if(m&&m[1]&&m[1]!=='en') markLang(m[1]);
+    })();
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>
