@@ -3557,6 +3557,8 @@
             }
             slotsEl.innerHTML=sHtml;
         }
+        var bpSub=document.getElementById('bpp-standard-sub');
+        if(bpSub) bpSub.textContent='1 TANK + 4 '+(_MK_BANDS[_mkState.band]||_MK_BANDS.high)[2];
         ['standard','grind','elite'].forEach(function(p){
             var pb=document.getElementById('bpp-'+p);
             if(pb){ pb.classList.toggle('on', p===_bpLastPreset); pb.disabled=_bpLoading; pb.style.opacity=_bpLoading?'0.4':''; }
@@ -3726,7 +3728,7 @@
         if(_fc) _fc.innerHTML=_fh;
         if(_ac) _ac.innerHTML=_fh;
         // Highlight active preset button (dungeon picker: dpp-*, arena picker: app-*)
-        ['elite','grind','top5'].forEach(function(p){
+        ['standard','grind','elite'].forEach(function(p){
             var b=document.getElementById('dpp-'+p);
             if(b) b.classList.toggle('active', p===_drunLastPreset);
             var b2=document.getElementById('app-'+p);
@@ -3826,13 +3828,15 @@
                 var btn=document.getElementById(p+'-mk-'+band);
                 if(btn) btn.classList.toggle('active',_mkState.band===band);
             });
+            var sub=document.getElementById(p+'-standard-sub');
+            if(sub) sub.textContent='1 TANK + 4 '+(_MK_BANDS[_mkState.band]||_MK_BANDS.high)[2];
         });
     }
     function mkSet(field,value){
         _mkState[field]=value;
         _mkSave();
         _renderMarkerControls();
-        _drunApplyPreset('elite');
+        _drunApplyPreset('standard');
     }
 
     // ── NFT COUNTER-PICK ─────────────────────────────────────────────────────
@@ -4016,12 +4020,18 @@
         }).sort(function(a,b){ return b.score-a.score; });
     }
 
-    window.bpApplyPreset=function(kind){
+    // The one team builder behind every auto-pick button, so the same name always builds
+    // the same team in the battle pane and in both run pickers. The ELITE MARKER controls
+    // (marker + level band) narrow the fill for GRIND +; slots are always topped up so a
+    // team is never left short.
+    function _autoTeam(kind){
         var avail=(_myFighters||[]).filter(function(f){ return !(f.in_use===1||f.in_use==='1'); });
-        if(!avail.length){ showToast('⚠ NO FIGHTERS AVAILABLE'); return; }
+        if(!avail.length) return { team:[null,null,null,null,null], note:'⚠ NO FIGHTERS AVAILABLE' };
         var lvlOf=function(f){ return Number((f.stats&&f.stats.level)||0); };
         var byLevel=function(a,b){ return lvlOf(b)-lvlOf(a); };
-        var team=[null,null,null,null,null], used={};
+        var band=_MK_BANDS[_mkState.band]||_MK_BANDS.high;
+        var inBand=function(f){ var lv=lvlOf(f); return lv>=band[0]&&lv<=band[1]; };
+        var team=[null,null,null,null,null], used={}, note=null;
         var free=function(list){ return (list||avail).filter(function(f){ return !used[String(f.fighter_id)]; }); };
         var put=function(f){
             if(!f) return false;
@@ -4029,114 +4039,61 @@
             if(slot<0) return false;
             team[slot]=f; used[String(f.fighter_id)]=1; return true;
         };
-        var short=null;
+        var filled=function(){ return team.filter(Boolean).length; };
 
-        if(kind==='standard'){
-            var tanks=free().filter(function(f){ return _fmEffective(f)==='tank'; }).sort(byLevel);
-            put(tanks[0]||free().sort(byLevel)[0]);
-            var band=free().filter(function(f){ var lv=lvlOf(f); return lv>=6&&lv<=9; }).sort(byLevel);
-            band.forEach(put);
-            if(team.filter(Boolean).length<5){
-                short='ONLY '+(team.filter(Boolean).length-1)+' LVL 6-9 FIGHTERS — FILLED WITH YOUR NEXT HIGHEST';
-                free().sort(byLevel).forEach(put);
-            }
-
-        } else if(kind==='grind'){
+        if(kind==='grind'){
+            // two level 10s — the tankiest, then the best XP booster — carrying three low levels
             var tens=free().filter(function(f){ return lvlOf(f)>=10; });
-            var tanky=tens.slice().sort(function(a,b){ return _grindTankScore(b)-_grindTankScore(a); });
-            put(tanky[0]);
+            put(tens.slice().sort(function(a,b){ return _grindTankScore(b)-_grindTankScore(a); })[0]);
             var boosters=free(tens).filter(function(f){ return _grindXpBoost(f)>0; })
                                    .sort(function(a,b){ return _grindXpBoost(b)-_grindXpBoost(a); });
             put(boosters[0]||free(tens).sort(function(a,b){ return _grindTankScore(b)-_grindTankScore(a); })[0]);
-            var carried=team.filter(Boolean).length;
-            if(carried<2) short='ONLY '+carried+' LVL 10 FIGHTER'+(carried===1?'':'S')+' AVAILABLE';
-            var low=free().filter(function(f){ var lv=lvlOf(f); return lv>=1&&lv<=5; })
-                          .sort(function(a,b){ return lvlOf(a)-lvlOf(b); });
-            low.forEach(put);
-            if(team.filter(Boolean).length<5){
-                short=(short?short+' · ':'')+'NOT ENOUGH LVL 1-5 FIGHTERS — FILLED WITH YOUR LOWEST';
+            if(filled()<2) note='ONLY '+filled()+' LVL 10 FIGHTER'+(filled()===1?'':'S')+' AVAILABLE';
+            free().filter(function(f){ return lvlOf(f)>=1&&lvlOf(f)<=5; })
+                  .sort(function(a,b){ return lvlOf(a)-lvlOf(b); }).forEach(put);
+            if(filled()<5){
+                note=(note?note+' · ':'')+'NOT ENOUGH LVL 1-5 FIGHTERS — FILLED WITH YOUR LOWEST';
                 free().sort(function(a,b){ return lvlOf(a)-lvlOf(b); }).forEach(put);
             }
 
-        } else {   // elite — the five strongest
+        } else if(kind==='elite'||kind==='top5'){
+            // the five strongest by damage per cooldown and health
             _bpPowerScored(free()).forEach(function(x){ put(x.f); });
-        }
 
-        _bpFighters=team;
+        } else {
+            // GRIND + : a tank, then four from the chosen band — marked fighters first
+            var tanks=free().filter(function(f){ return _fmEffective(f)==='tank'; }).sort(byLevel);
+            put(tanks[0]||free().sort(byLevel)[0]);
+            [_mkState.primary,_mkState.secondary].forEach(function(mk){
+                if(!mk) return;
+                free().filter(function(f){ return f.marker===mk&&inBand(f); }).sort(byLevel).forEach(put);
+            });
+            var afterMarkers=filled();
+            free().filter(inBand).sort(byLevel).forEach(put);      // anyone in the band
+            var afterBand=filled();
+            free().sort(byLevel).forEach(put);                      // then simply the highest left
+            if(_mkState.primary&&afterMarkers<5)
+                note='ONLY '+(afterMarkers-1)+' '+band[2]+' WITH '+(_mkState.secondary?'THOSE MARKERS':'THAT MARKER')+' — TOPPED UP FROM '+band[2];
+            else if(afterBand<5)
+                note='ONLY '+(afterBand-1)+' '+band[2]+' FIGHTERS — TOPPED UP WITH YOUR NEXT HIGHEST';
+        }
+        return { team:team, note:note };
+    }
+
+    window.bpApplyPreset=function(kind){
+        var built=_autoTeam(kind);
+        _bpFighters=built.team;
         _bpLastPreset=kind;
-        if(short) showToast(short);
+        if(built.note) showToast(built.note);
         _renderBattlePane();
     };
 
     function _drunApplyPreset(preset){
+        if(preset==='top5') preset='elite';          // old key from before the buttons matched
         _drunLastPreset=preset;
-        var avail=(_myFighters||[]).filter(function(f){ return !(f.in_use===1||f.in_use==='1'); });
-        var byLevel=function(a,b){ return ((b.stats&&b.stats.level)||0)-((a.stats&&a.stats.level)||0); };
-        var tanks=avail.filter(function(f){ return _fmEffective(f)==='tank'; })
-                       .slice().sort(byLevel);
-        var nonTank=avail.filter(function(f){ return _fmEffective(f)!=='tank'; })
-                         .slice().sort(byLevel);
-
-        var team=[null,null,null,null,null];
-
-        if(preset==='top5'){
-            avail.slice().sort(byLevel).slice(0,5).forEach(function(f,i){ team[i]=f; });
-
-        } else if(preset==='elite'){
-            // Slot 0: best tank preferring lvl 9-10
-            var eliteTank=tanks.find(function(f){ return ((f.stats&&f.stats.level)||0)>=9; })||tanks[0]||null;
-            team[0]=eliteTank;
-            var used=new Set(eliteTank?[String(eliteTank.fighter_id)]:[]);
-            if(_mkState.primary){
-                // Slots 1-4: the chosen marker in its level band (highest level first), then the second marker
-                [_mkState.primary,_mkState.secondary].forEach(function(mk){
-                    if(!mk) return;
-                    avail.filter(function(f){ return f.marker===mk&&_mkInBand(f)&&!used.has(String(f.fighter_id)); })
-                         .sort(byLevel)
-                         .forEach(function(f){
-                             var slot=team.indexOf(null,1);
-                             if(slot<1) return;
-                             team[slot]=f; used.add(String(f.fighter_id));
-                         });
-                });
-                var filled=team.slice(1).filter(Boolean).length;
-                if(filled<4) showToast('ONLY '+filled+' '+(_MK_BANDS[_mkState.band]||_MK_BANDS.high)[2]+' FIGHTER'+(filled===1?'':'S')+' WITH '+(_mkState.secondary?'THOSE MARKERS':'THAT MARKER')+' — PICK A SECOND MARKER OR FILL BY HAND');
-            } else {
-                // Slots 1-4: highest level non-tank in range 5-8, fallback to any high level
-                var highLvl=nonTank.filter(function(f){ var lv=(f.stats&&f.stats.level)||0; return lv>=5&&lv<=8; });
-                if(highLvl.length<4) highLvl=nonTank; // fallback
-                for(var i=1;i<5;i++){
-                    var pick=highLvl.find(function(f){ return !used.has(String(f.fighter_id)); });
-                    if(pick){ team[i]=pick; used.add(String(pick.fighter_id)); }
-                }
-            }
-
-        } else if(preset==='grind'){
-            // Slot 0: a level-10 fighter that's tanky for its class (health or resistances)
-            // Slot 1: a level 8-10 XP booster (Dungeon Expert or Trainer), biggest XP % first
-            // Slots 2-4: the lowest-level fighters, who soak up the boosted XP
-            var lvlOf=function(f){ return Number((f.stats&&f.stats.level)||0); };
-            var used2=new Set();
-            var lvl10=avail.filter(function(f){ return lvlOf(f)>=10; })
-                           .sort(function(a,b){ return _grindTankScore(b)-_grindTankScore(a); });
-            var grindTank=lvl10[0]||avail.slice().sort(byLevel)[0]||null;
-            team[0]=grindTank;
-            if(grindTank) used2.add(String(grindTank.fighter_id));
-
-            var boosters=avail.filter(function(f){ var lv=lvlOf(f); return lv>=8&&lv<=10&&!used2.has(String(f.fighter_id))&&_grindXpBoost(f)>0; })
-                              .sort(function(a,b){ return (_grindXpBoost(b)-_grindXpBoost(a))||(lvlOf(b)-lvlOf(a)); });
-            if(boosters[0]){ team[1]=boosters[0]; used2.add(String(boosters[0].fighter_id)); }
-
-            var lowLvl=avail.slice().sort(function(a,b){ return lvlOf(a)-lvlOf(b); });
-            for(var i=1;i<5;i++){
-                if(team[i]) continue;
-                var pick=lowLvl.find(function(f){ return !used2.has(String(f.fighter_id)); });
-                if(pick){ team[i]=pick; used2.add(String(pick.fighter_id)); }
-            }
-            if(!boosters[0]) showToast('NO LVL 8-10 DUNGEON EXPERT / TRAINER — FILLED WITH LOW LEVELS');
-        }
-
-        _bpFighters=team;
+        var built=_autoTeam(preset);
+        _bpFighters=built.team;
+        if(built.note) showToast(built.note);
         _refreshDrunTeam();
         // the team's elements changed, so re-check the NFT counter-pick
         if(_nftCtx) _autoPickNFTs().then(_refreshDrunTeam).catch(function(){});
@@ -4409,7 +4366,7 @@
     <div id="bp-body">
       <div class="bp-section-lbl">AUTO PICK</div>
       <div id="bp-preset-row">
-        <button class="bp-preset-btn" id="bpp-standard" onclick="bpApplyPreset('standard')" title="Your best tank plus the four highest-level fighters between 6 and 9">&#128737; GRIND +<span class="bp-preset-sub">1 TANK + 4 LVL 6-9</span></button>
+        <button class="bp-preset-btn" id="bpp-standard" onclick="bpApplyPreset('standard')" title="Your best tank plus the four highest-level fighters between 6 and 9">&#128737; GRIND +<span class="bp-preset-sub" id="bpp-standard-sub">1 TANK + 4 LVL 6-9</span></button>
         <button class="bp-preset-btn" id="bpp-grind" onclick="bpApplyPreset('grind')" title="Two level 10s (tankiest, then the best Dungeon Expert / Trainer) carrying three level 1-5 fighters for XP">&#128200; GRIND<span class="bp-preset-sub">2 LVL 10 + 3 LVL 1-5</span></button>
         <button class="bp-preset-btn" id="bpp-elite" onclick="bpApplyPreset('elite')" title="The five strongest fighters by damage per cooldown and health">&#9889; ELITE<span class="bp-preset-sub">TOP 5 DPS / TANKY</span></button>
       </div>
@@ -4529,9 +4486,9 @@
         <div id="drun-diff-grid"></div>
         <div id="drun-hint"></div>
         <div id="drun-presets">
-            <button class="drun-preset-btn" id="dpp-elite" onclick="_drunApplyPreset('elite')" title="1 tank (lvl 9-10) + 4 high-level fighters">⚡ ELITE<br>1 TANK + 4 HIGH</button>
-            <button class="drun-preset-btn" id="dpp-grind" onclick="_drunApplyPreset('grind')" title="Lvl 10 tank (best health or resistance for its class) + lvl 8-10 Dungeon Expert or Trainer + 3 lowest-level fighters">📈 GRIND<br>TANK + XP + 3 LOW</button>
-            <button class="drun-preset-btn" id="dpp-top5" onclick="_drunApplyPreset('top5')" title="Top 5 fighters by level">🏆 TOP 5<br>BY LEVEL</button>
+            <button class="drun-preset-btn" id="dpp-standard" onclick="_drunApplyPreset('standard')" title="Your best tank plus four fighters from the level band chosen below (marked fighters first)">🛡 GRIND +<br><span id="dpp-standard-sub">1 TANK + 4 LVL 6-9</span></button>
+            <button class="drun-preset-btn" id="dpp-grind" onclick="_drunApplyPreset('grind')" title="Two level 10s (tankiest, then the best Dungeon Expert / Trainer) carrying three level 1-5 fighters for XP">📈 GRIND<br>2 LVL 10 + 3 LVL 1-5</button>
+            <button class="drun-preset-btn" id="dpp-elite" onclick="_drunApplyPreset('elite')" title="The five strongest fighters by damage per cooldown and health">⚡ ELITE<br>TOP 5 DPS / TANKY</button>
         </div>
         <div class="mk-fill">
             <span class="mk-lbl" title="ELITE fills its 4 non-tank slots with fighters carrying this marker">ELITE MARKER</span>
@@ -4568,8 +4525,9 @@
             <button class="drun-preset-btn"        id="arf-choose" onclick="setArunRefill('choose')" title="Pause the run and let you pick the replacement">&#128100; CHOOSE<br>PAUSE &amp; PICK</button>
         </div>
         <div id="arun-presets">
-            <button class="drun-preset-btn" id="app-top5"  onclick="_drunApplyPreset('top5')"  title="Top 5 fighters by level">&#127942; TOP 5<br>BY LEVEL</button>
-            <button class="drun-preset-btn" id="app-elite" onclick="_drunApplyPreset('elite')" title="1 tank (lvl 9-10) + 4 high-level fighters">&#9889; ELITE<br>1 TANK + 4 HIGH</button>
+            <button class="drun-preset-btn" id="app-standard" onclick="_drunApplyPreset('standard')" title="Your best tank plus four fighters from the level band chosen below (marked fighters first)">&#128737; GRIND +<br><span id="app-standard-sub">1 TANK + 4 LVL 6-9</span></button>
+            <button class="drun-preset-btn" id="app-grind" onclick="_drunApplyPreset('grind')" title="Two level 10s (tankiest, then the best Dungeon Expert / Trainer) carrying three level 1-5 fighters for XP">&#128200; GRIND<br>2 LVL 10 + 3 LVL 1-5</button>
+            <button class="drun-preset-btn" id="app-elite" onclick="_drunApplyPreset('elite')" title="The five strongest fighters by damage per cooldown and health">&#9889; ELITE<br>TOP 5 DPS / TANKY</button>
         </div>
         <div class="mk-fill">
             <span class="mk-lbl" title="ELITE fills its 4 non-tank slots with fighters carrying this marker">ELITE MARKER</span>
@@ -5082,9 +5040,9 @@ async function txqAddDungeonRun() {
         try { await _fetchAllFighters(wallet); } catch(e){}
     }
 
-    // Ensure _bpFighters is populated — default to ELITE preset (1 tank + 4 high-level)
+    // Ensure _bpFighters is populated — default to GRIND + (1 tank + 4 from the level band)
     if (!_bpFighters.some(Boolean)) {
-        _drunApplyPreset('elite');
+        _drunApplyPreset('standard');
     }
 
     // Re-fetch played dungeons from chain so we don't queue already-beaten ones
@@ -5203,7 +5161,7 @@ async function txqAddArenaRun() {
         try { await _fetchAllFighters(wallet); } catch(e){}
     }
     // Top-5-by-level is the sensible arena default — there's no difficulty to tune down for
-    if (!_bpFighters.some(Boolean)) _drunApplyPreset('top5');
+    if (!_bpFighters.some(Boolean)) _drunApplyPreset('elite');
 
     // Refresh locks + defender ids so we skip arenas we already hold and can suggest matchups
     try { await fetchArenaLock(wallet); } catch(e) {}
