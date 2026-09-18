@@ -156,6 +156,25 @@
         .pill { font-size:0.82em; padding:1px 7px; border-radius:8px; background:var(--chip-bg); }
         .pill.auction { color:var(--blue); } .pill.instant { color:var(--gold); }
 
+        .wax-note { font-size:0.82em; color:var(--muted); font-weight:normal; }
+        tr.click, .card-top.click { cursor:pointer; }
+        tr.click:hover td { background:var(--gold-glow); }
+        .card-top.click:hover .nm { color:var(--gold); }
+        .chips { display:flex; gap:6px; flex-wrap:wrap; margin:-6px 0 12px; }
+        .chip { font-size:0.72em; background:var(--chip-bg); border:1px solid var(--line); border-radius:12px; padding:3px 6px 3px 10px; color:var(--muted); }
+        .chip b { color:var(--gold); font-weight:600; }
+        .chip button { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:1em; padding:0 4px; }
+        .chip button:hover { color:var(--red); }
+        .modal { position:fixed; inset:0; z-index:200; background:rgba(0,0,6,0.8); display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal-box { width:min(460px,96vw); background:var(--panel); border:1px solid var(--line-hi); border-radius:10px; padding:16px; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+        .det-head { display:flex; align-items:center; gap:8px; font-size:1.05em; font-weight:600; text-transform:capitalize; margin-bottom:12px; }
+        .det-head span { flex:1; }
+        .det-x { background:transparent; border:none; color:var(--muted); font-size:1em; cursor:pointer; }
+        .det-x:hover { color:var(--red); }
+        .det-row { display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--track); font-size:0.82em; }
+        .det-row span { color:var(--muted); }
+        .det-actions { display:flex; flex-direction:column; gap:6px; margin-top:14px; }
+        .det-actions .act-btn { text-align:center; text-decoration:none; display:block; }
         .two-col { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:14px; }
         .sec-h { font-size:0.62em; letter-spacing:3px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
         .chart-box { position:relative; height:300px; }
@@ -267,8 +286,10 @@
                 <option value="instant">Instant buys</option>
             </select>
             <input id="s-search" placeholder="Search buyer, seller, class, fighter id…" oninput="renderSales()">
+            <button class="wbtn" onclick="clearAllSaleFilters()" title="Clear every filter">CLEAR</button>
             <span class="fcount" id="s-count"></span>
         </div>
+        <div id="sale-chips" class="chips"></div>
         <div class="panel-box tbl-wrap"><table class="tbl" id="sales-tbl"></table></div>
     </div>
 
@@ -292,6 +313,10 @@
             <div class="panel-box"><div class="sec-h">Average price by class</div><div class="chart-box"><canvas id="chart-class"></canvas></div></div>
             <div class="panel-box"><div class="sec-h">Average price by level</div><div class="chart-box"><canvas id="chart-level"></canvas></div></div>
         </div>
+    </div>
+
+    <div id="sale-modal" class="modal hide" onclick="if(event.target===this)closeSale()">
+        <div class="modal-box" id="sale-modal-box"></div>
     </div>
 
     <div class="foot">
@@ -321,7 +346,8 @@
     var ELEM_EMOJI = { fire:'🔥', air:'💨', gem:'💎', metal:'⚙', nature:'🌿', neutral:'⚪' };
     var RARITY_COLOR = { abundant:'#9aa5b1', common:'#c8d2dc', rare:'#4f9cff', epic:'#b06bff', legendary:'#ffa32e', mythical:'#ff4d6d', mythic:'#ff4d6d' };
 
-    var state = { listings: [], sales: [], config: null, wallet: null, gems: null, tab: 'listings', busy: false };
+    var state = { listings: [], sales: [], config: null, wallet: null, gems: null, tab: 'listings', busy: false,
+                  saleFilters: { who:null, cls:null, level:null, day:null } };
     var charts = {};
     var wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', userAccount: localStorage.getItem('naron_wallet') || '', tryAutoLogin: false });
 
@@ -329,7 +355,10 @@
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
     function say(t, cls) { var m = $('msg'); m.textContent = t || ''; m.className = cls || ''; }
     function num(n) { return Number(n || 0).toLocaleString(); }
-    function gemsWax(g) { return (Number(g || 0) * WAX_PER_GEM).toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' WAX'; }
+    function waxNum(g) { return Math.round(Number(g || 0) * WAX_PER_GEM).toLocaleString(); }
+    // Gems are the real price. Gems can't be sold back for WAX, so the WAX figure is only
+    // ever shown in brackets as a rough sense of scale.
+    function gemPrice(g) { return '💎 ' + num(g) + ' <span class="wax-note">(WAX ~' + waxNum(g) + ')</span>'; }
     function cap(s) { return String(s || '').replace(/^\w/, function (c) { return c.toUpperCase(); }); }
 
     // ── chain ────────────────────────────────────────────────────────────────
@@ -399,7 +428,8 @@
             return { ts:r.timestamp, ms:Date.parse((r.timestamp||'').replace(' ','T') + 'Z'), type:r.sale_type,
                 fighter_id:r.fighter_id, classname:r.classname, racename:r.racename, element:r.element,
                 level:Number(r.level||0), gems:Number(r.gems_paid||0), net:Number(r.gems_to_seller||0),
-                fee:Number(r.fee_gems||0), buyer:r.buyer, seller:r.seller };
+                fee:Number(r.fee_gems||0), buyer:r.buyer, seller:r.seller,
+                trx:r.trx_id, listing_id:r.listing_id, key:String(r.trx_id) + ':' + String(r.fighter_id) };
         }).filter(function (s) { return s.gems > 0; });
     }
 
@@ -498,7 +528,7 @@
             var isAuction = l.type === 'auction';
             var next = minBid(l);
             return '<div class="card ' + l.type + '">'
-                + '<div class="card-top"><span class="cls-emoji">' + emoji + '</span>'
+                + '<div class="card-top click" onclick="filterSales({cls:\'' + esc(l.classname) + '\'})" title="See what ' + esc(cap(l.classname)) + 's have sold for"><span class="cls-emoji">' + emoji + '</span>'
                 +   '<div class="card-name"><div class="nm">' + esc(cap(l.classname)) + ' <span style="color:var(--muted);font-size:0.8em">LV ' + l.level + '</span></div>'
                 +     '<div class="meta">' + esc(cap(l.racename)) + ' &middot; ' + (ELEM_EMOJI[(l.element||'').toLowerCase()] || '') + ' ' + esc(cap(l.element))
                 +     (l.ascension ? ' &middot; ★' + l.ascension : '') + ' &middot; #' + esc(l.fighter_id) + '</div></div>'
@@ -516,7 +546,7 @@
                 + '<div class="owner">Seller: ' + esc(l.gamertag || l.owner) + (isAuction && l.bids ? ' &middot; ' + l.bids + ' bid' + (l.bids === 1 ? '' : 's') + ' &middot; high: ' + esc(l.bidder || '?') : '') + '</div>'
                 + '<div class="price-row">'
                 +   '<div class="price"><div class="lbl">' + (isAuction ? (l.bids ? 'Current bid' : 'Starting bid') : 'Price') + '</div>'
-                +     '<div class="gems">💎 ' + num(l.price) + '</div><div class="wax">≈ ' + gemsWax(l.price) + '</div>'
+                +     '<div class="gems">💎 ' + num(l.price) + '</div><div class="wax">(WAX ~' + waxNum(l.price) + ')</div>'
                 +     '<div class="ends' + (tl.soon ? ' soon' : '') + '">' + tl.txt + '</div></div>'
                 +   '<button class="act-btn" onclick="' + (isAuction ? 'doBid' : 'doBuy') + '(\'' + esc(l.id) + '\')">'
                 +     (isAuction ? 'BID ' + num(next) + ' 💎' : 'BUY ' + num(l.price) + ' 💎') + '</button>'
@@ -528,11 +558,22 @@
     var salesSort = { key:'ms', dir:-1 };
     function renderSales() {
         var type = $('s-type').value, q = ($('s-search').value || '').toLowerCase().trim();
+        var ff = state.saleFilters;
         var list = state.sales.filter(function (s) {
             if (type && s.type !== type) return false;
+            if (ff.who && s.buyer !== ff.who && s.seller !== ff.who) return false;
+            if (ff.cls && s.classname !== ff.cls) return false;
+            if (ff.level != null && s.level !== ff.level) return false;
+            if (ff.day && new Date(s.ms).toISOString().slice(0, 10) !== ff.day) return false;
             if (!q) return true;
             return [s.buyer, s.seller, s.classname, s.racename, s.element, s.fighter_id].join(' ').toLowerCase().indexOf(q) >= 0;
         });
+        var chipLabels = { who:'Trader', cls:'Class', level:'Level', day:'Day' };
+        $('sale-chips').innerHTML = Object.keys(chipLabels).filter(function (k) { return ff[k] != null && ff[k] !== ''; })
+            .map(function (k) {
+                return '<span class="chip">' + chipLabels[k] + ': <b>' + esc(String(ff[k])) + '</b>'
+                     + '<button onclick="clearSaleFilter(\'' + k + '\')" title="Clear">✕</button></span>';
+            }).join('');
         list.sort(function (a, b) {
             var k = salesSort.key, av = a[k], bv = b[k];
             if (typeof av === 'string') return av.localeCompare(bv) * salesSort.dir;
@@ -543,12 +584,12 @@
         $('sales-tbl').innerHTML = '<thead><tr>' + cols.map(function (c) {
                 return '<th onclick="sortSales(\'' + c[0] + '\')">' + c[1] + (salesSort.key === c[0] ? (salesSort.dir === 1 ? ' ▲' : ' ▼') : '') + '</th>'; }).join('')
             + '</tr></thead><tbody>' + list.slice(0, 500).map(function (s) {
-                return '<tr><td>' + esc((s.ts || '').slice(0, 16).replace('T', ' ')) + '</td>'
+                return '<tr class="click" onclick="openSale(\'' + esc(s.key) + '\')"><td>' + esc((s.ts || '').slice(0, 16).replace('T', ' ')) + '</td>'
                     + '<td><span class="pill ' + s.type + '">' + (s.type === 'auction' ? 'AUCTION' : 'BUY NOW') + '</span></td>'
                     + '<td class="cap">' + (CLASS_EMOJI[(s.classname||'').toLowerCase()] || '') + ' ' + esc(s.classname) + ' <span style="color:var(--muted)">#' + esc(s.fighter_id) + '</span></td>'
                     + '<td>' + s.level + '</td>'
-                    + '<td class="gold">' + num(s.gems) + '</td>'
-                    + '<td class="green">' + num(s.net) + '</td>'
+                    + '<td class="gold">' + gemPrice(s.gems) + '</td>'
+                    + '<td class="green">' + gemPrice(s.net) + '</td>'
                     + '<td>' + esc(s.buyer) + '</td><td>' + esc(s.seller) + '</td></tr>';
             }).join('') + '</tbody>';
     }
@@ -557,6 +598,47 @@
         else { salesSort.key = key; salesSort.dir = (key === 'buyer' || key === 'seller' || key === 'classname' || key === 'type') ? 1 : -1; }
         renderSales();
     };
+
+    // Any data point — a chart column, a trader, a class — opens the sales behind it.
+    window.filterSales = function (patch) {
+        Object.keys(patch).forEach(function (k) { state.saleFilters[k] = patch[k]; });
+        showTab('sales');
+        renderSales();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.clearSaleFilter = function (k) { state.saleFilters[k] = null; renderSales(); };
+    window.clearAllSaleFilters = function () {
+        state.saleFilters = { who:null, cls:null, level:null, day:null };
+        $('s-search').value = ''; $('s-type').value = '';
+        renderSales();
+    };
+
+    window.openSale = function (key) {
+        var s = state.sales.filter(function (x) { return x.key === key; })[0];
+        if (!s) return;
+        var row = function (k, v) { return '<div class="det-row"><span>' + k + '</span><b>' + v + '</b></div>'; };
+        $('sale-modal-box').innerHTML =
+            '<div class="det-head"><span>' + (CLASS_EMOJI[(s.classname||'').toLowerCase()] || '⚔') + ' '
+              + esc(cap(s.classname)) + ' <span style="color:var(--muted)">LV ' + s.level + ' · #' + esc(s.fighter_id) + '</span></span>'
+            + '<button class="det-x" onclick="closeSale()">✕</button></div>'
+            + row('Sold', esc((s.ts || '').slice(0, 16).replace('T', ' ')) + ' UTC')
+            + row('Type', s.type === 'auction' ? 'Auction' : 'Instant buy')
+            + row('Price paid', gemPrice(s.gems))
+            + row('Seller received', gemPrice(s.net))
+            + row('Market fee', gemPrice(s.fee))
+            + row('Buyer', esc(s.buyer))
+            + row('Seller', esc(s.seller))
+            + row('Fighter', esc(cap(s.racename)) + ' · ' + (ELEM_EMOJI[(s.element||'').toLowerCase()] || '') + ' ' + esc(cap(s.element)))
+            + '<div class="det-actions">'
+            +   '<button class="act-btn" onclick="closeSale();filterSales({who:\'' + esc(s.buyer) + '\'})">All sales by ' + esc(s.buyer) + '</button>'
+            +   '<button class="act-btn" onclick="closeSale();filterSales({who:\'' + esc(s.seller) + '\'})">All sales by ' + esc(s.seller) + '</button>'
+            +   '<button class="act-btn" onclick="closeSale();filterSales({cls:\'' + esc(s.classname) + '\'})">All ' + esc(cap(s.classname)) + ' sales</button>'
+            +   (s.trx ? '<a class="act-btn" href="https://waxblock.io/transaction/' + esc(s.trx) + '" target="_blank" rel="noopener">View transaction ↗</a>' : '')
+            + '</div>';
+        $('sale-modal').classList.remove('hide');
+    };
+    window.closeSale = function () { $('sale-modal').classList.add('hide'); };
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSale(); });
 
     // ── render: traders ──────────────────────────────────────────────────────
     function tally(list, key) {
@@ -576,12 +658,12 @@
                 + rowsArr.map(cells).join('') + '</tbody>';
         };
         mk('tbl-buyers', tally(state.sales, 'buyer').slice(0, 15), ['#','BUYER','GEMS SPENT','BOUGHT'], function (r, i) {
-            return '<tr><td style="color:var(--muted)">' + (i+1) + '</td><td>' + esc(r.who) + '</td><td class="gold">' + num(r.gems) + '</td><td>' + r.n + '</td></tr>'; });
+            return '<tr class="click" onclick="filterSales({who:\'' + esc(r.who) + '\'})"><td style="color:var(--muted)">' + (i+1) + '</td><td>' + esc(r.who) + '</td><td class="gold">' + gemPrice(r.gems) + '</td><td>' + r.n + '</td></tr>'; });
         mk('tbl-sellers', tally(state.sales, 'seller').slice(0, 15), ['#','SELLER','GEMS EARNED','SOLD'], function (r, i) {
-            return '<tr><td style="color:var(--muted)">' + (i+1) + '</td><td>' + esc(r.who) + '</td><td class="green">' + num(r.gems) + '</td><td>' + r.n + '</td></tr>'; });
+            return '<tr class="click" onclick="filterSales({who:\'' + esc(r.who) + '\'})"><td style="color:var(--muted)">' + (i+1) + '</td><td>' + esc(r.who) + '</td><td class="green">' + gemPrice(r.gems) + '</td><td>' + r.n + '</td></tr>'; });
         mk('tbl-biggest', state.sales.slice().sort(function (a,b) { return b.gems - a.gems; }).slice(0, 15),
             ['GEMS','FIGHTER','LV','BUYER','SELLER','DATE'], function (s) {
-            return '<tr><td class="gold">' + num(s.gems) + '</td><td class="cap">' + esc(s.classname) + '</td><td>' + s.level + '</td>'
+            return '<tr class="click" onclick="openSale(\'' + esc(s.key) + '\')"><td class="gold">' + gemPrice(s.gems) + '</td><td class="cap">' + esc(s.classname) + '</td><td>' + s.level + '</td>'
                 + '<td>' + esc(s.buyer) + '</td><td>' + esc(s.seller) + '</td><td>' + esc((s.ts||'').slice(0,10)) + '</td></tr>'; });
         var byClass = {};
         state.sales.forEach(function (s) {
@@ -590,11 +672,19 @@
         });
         mk('tbl-classes', Object.keys(byClass).map(function (k) { return byClass[k]; }).sort(function (a,b) { return b.n - a.n; }),
             ['CLASS','SOLD','GEMS','AVERAGE'], function (r) {
-            return '<tr><td class="cap">' + (CLASS_EMOJI[(r.who||'').toLowerCase()] || '') + ' ' + esc(r.who) + '</td><td>' + r.n + '</td>'
-                + '<td class="gold">' + num(r.gems) + '</td><td>' + num(Math.round(r.gems / r.n)) + '</td></tr>'; });
+            return '<tr class="click" onclick="filterSales({cls:\'' + esc(r.who) + '\'})"><td class="cap">' + (CLASS_EMOJI[(r.who||'').toLowerCase()] || '') + ' ' + esc(r.who) + '</td><td>' + r.n + '</td>'
+                + '<td class="gold">' + gemPrice(r.gems) + '</td><td>' + gemPrice(Math.round(r.gems / r.n)) + '</td></tr>'; });
     }
 
     // ── render: prices ───────────────────────────────────────────────────────
+    // every chart column stands for a set of sales — clicking it opens exactly those
+    function clickOpen(getFilter) {
+        return function (evt, els) {
+            if (!els || !els.length) return;
+            var patch = getFilter(els[0].index);
+            if (patch) filterSales(patch);
+        };
+    }
     function chartOpts(extra) {
         var grid = 'rgba(128,128,128,0.12)', tick = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#888';
         return Object.assign({
@@ -630,7 +720,8 @@
                 { label:'Sales', data:days.map(function (d) { return byDay[d].length; }), yAxisID:'y1',
                   borderColor:'#5fe39a', backgroundColor:'#5fe39a', borderWidth:1, pointRadius:0, tension:0.25 }
             ]},
-            options: chartOpts({ scales: Object.assign(chartOpts().scales, { y1:{ position:'right', beginAtZero:true, grid:{ display:false }, ticks:{ color:'#5fe39a' } } }) })
+            options: chartOpts({ onClick: clickOpen(function (i) { return { day: days[i], cls:null, level:null }; }),
+                scales: Object.assign(chartOpts().scales, { y1:{ position:'right', beginAtZero:true, grid:{ display:false }, ticks:{ color:'#5fe39a' } } }) })
         });
 
         var byClass = {};
@@ -642,7 +733,7 @@
                 { label:'Average', data:cls.map(function (c) { return Math.round(byClass[c].reduce(function (a,b) { return a+b; }, 0) / byClass[c].length); }), backgroundColor:'#6aa9ff' },
                 { label:'Median', data:cls.map(function (c) { return median(byClass[c]); }), backgroundColor:'#f2b441' }
             ]},
-            options: chartOpts()
+            options: chartOpts({ onClick: clickOpen(function (i) { return { cls: cls[i], day:null, level:null }; }) })
         });
 
         var byLevel = {};
@@ -654,7 +745,7 @@
                 { label:'Average gems', data:lv.map(function (l) { return Math.round(byLevel[l].reduce(function (a,b) { return a+b; }, 0) / byLevel[l].length); }), backgroundColor:'#6aa9ff' },
                 { label:'Sales', data:lv.map(function (l) { return byLevel[l].length; }), backgroundColor:'#5fe39a' }
             ]},
-            options: chartOpts()
+            options: chartOpts({ onClick: clickOpen(function (i) { return { level: lv[i], day:null, cls:null }; }) })
         });
     }
 
@@ -668,14 +759,15 @@
         var instant = state.sales.filter(function (s) { return s.type === 'instant'; }).length;
         $('st-sales-sub').textContent = (state.sales.length - instant) + ' auctions · ' + instant + ' buy now';
         $('st-vol').textContent = '💎 ' + num(vol);
-        $('st-vol-sub').textContent = '≈ ' + gemsWax(vol);
+        $('st-vol-sub').textContent = '(WAX ~' + waxNum(vol) + ')';
         var avg = state.sales.length ? Math.round(vol / state.sales.length) : 0;
         $('st-avg').textContent = '💎 ' + num(avg);
-        $('st-avg-sub').textContent = 'median ' + num(median(state.sales.map(function (s) { return s.gems; })));
+        $('st-avg-sub').textContent = '(WAX ~' + waxNum(avg) + ') · median 💎 ' + num(median(state.sales.map(function (s) { return s.gems; })));
         $('st-you-wrap').hidden = state.gems == null;
         if (state.gems != null) {
             $('st-you').textContent = '💎 ' + num(state.gems);
-            $('st-you-sub').textContent = 'enough for ' + state.listings.filter(function (l) { return l.price <= state.gems; }).length + ' listings';
+            $('st-you-sub').textContent = '(WAX ~' + waxNum(state.gems) + ')';
+            $('st-you-sub').textContent += ' · covers ' + state.listings.filter(function (l) { return l.price <= state.gems; }).length + ' listings';
         }
     }
 
