@@ -298,7 +298,7 @@
         Prices are in gems, exactly as market.ale records them. WAX values are an estimate only, converted at the large gem pack rate
         (4,999 WAX for 12,500 gems) &mdash; the game sells gems in packs, so there is no true market rate.
         Sellers receive the price minus a 15% processing fee (minimum 1 gem). Auctions run 48 hours; a bid must beat the current one by
-        2 gems or 10%, whichever is larger. Listings are read live from the chain; sale history comes from a sheet that rebuilds every sale
+        2 gems or 10%, whichever is larger &mdash; the first bid has to beat the starting price by that same step. Listings are read live from the chain; sale history comes from a sheet that rebuilds every sale
         from chain history, so nothing is missed.
     </div>
 </div>
@@ -443,12 +443,14 @@
     }
 
     // ── bid maths (mirrors the contract's config) ────────────────────────────
+    // Every bid must beat the standing one — including the first, which has to beat the
+    // starting price. The step is the flat minimum or the percentage, whichever is larger,
+    // with the percentage rounded down (checked against every bid market.ale has taken).
     function minBid(l) {
         var c = state.config;
-        if (!l.bids) return l.price;                       // no bids yet: the start price stands
-        var step = c ? Math.max(Number(c.gems_min_bid_increase || 2),
-                                Math.ceil(l.price * Number(c.gems_min_bid_increase_percent || 10) / 100)) : 2;
-        return l.price + step;
+        var flat = Number((c && c.gems_min_bid_increase) || 2);
+        var pct  = Number((c && c.gems_min_bid_increase_percent) || 10);
+        return l.price + Math.max(flat, Math.floor(l.price * pct / 100));
     }
     function timeLeft(ends) {
         var ms = Date.parse((ends || '').replace(' ', 'T') + 'Z') - Date.now();
