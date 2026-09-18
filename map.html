@@ -707,17 +707,17 @@
         #bp-diff-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; margin-bottom:3px; }
         #bp-diff-high { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; margin-bottom:3px; }
         #bp-diff-high.hidden { display:none; }
-        .bp-diff-btn { padding:6px 2px; font-size:0.6em; letter-spacing:1px; background:rgba(96,200,255,0.04); border:1px solid rgba(96,200,255,0.1); color:#446; cursor:crosshair; transition:all 0.12s; text-align:center; border-radius:5px; }
+        .bp-diff-btn { padding:6px 2px; font-size:0.6em; letter-spacing:1px; background:rgba(96,200,255,0.04); border:1px solid rgba(96,200,255,0.1); color:var(--gold); cursor:crosshair; transition:all 0.12s; text-align:center; border-radius:5px; }
         .bp-diff-btn.on { background:rgba(232,160,32,0.12); border-color:rgba(232,160,32,0.5); color:var(--gold); font-weight:bold; }
-        .bp-diff-btn.high { border-color:rgba(192,60,60,0.2); color:#604040; }
-        .bp-diff-btn.high.on { background:rgba(192,60,60,0.14); border-color:rgba(192,60,60,0.55); color:#e08080; }
+        .bp-diff-btn.high { border-color:rgba(192,60,60,0.3); color:var(--gold); }
+        .bp-diff-btn.high.on { background:rgba(192,60,60,0.14); border-color:rgba(192,60,60,0.55); color:var(--gold); }
         #bp-preset-row { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-bottom:4px; }
-        .bp-preset-btn { padding:7px 3px; font-size:0.55em; letter-spacing:1px; line-height:1.6; background:rgba(96,200,255,0.04); border:1px solid rgba(96,200,255,0.12); color:#5a7a9a; cursor:crosshair; transition:all 0.15s; text-align:center; border-radius:5px; font-family:inherit; }
-        .bp-preset-btn:hover { border-color:rgba(232,160,32,0.4); color:#b09070; background:rgba(232,160,32,0.06); }
+        .bp-preset-btn { padding:7px 3px; font-size:0.55em; letter-spacing:1px; line-height:1.6; background:rgba(96,200,255,0.04); border:1px solid rgba(96,200,255,0.12); color:var(--gold); cursor:crosshair; transition:all 0.15s; text-align:center; border-radius:5px; font-family:inherit; }
+        .bp-preset-btn:hover { border-color:rgba(232,160,32,0.7); color:var(--gold); background:rgba(232,160,32,0.06); }
         .bp-preset-btn.on { background:rgba(232,160,32,0.12); border-color:rgba(232,160,32,0.5); color:var(--gold); }
         .bp-preset-sub { display:block; font-size:0.85em; opacity:0.75; letter-spacing:0; }
-        #bp-diff-toggle { width:100%; padding:4px; font-size:0.52em; letter-spacing:2px; background:transparent; border:1px dashed rgba(80,40,40,0.35); color:#503030; cursor:crosshair; border-radius:5px; text-align:center; margin-bottom:3px; transition:all 0.15s; }
-        #bp-diff-toggle:hover { border-color:rgba(192,60,60,0.4); color:#804040; }
+        #bp-diff-toggle { width:100%; padding:4px; font-size:0.52em; letter-spacing:2px; background:transparent; border:1px dashed rgba(80,40,40,0.35); color:var(--gold); cursor:crosshair; border-radius:5px; text-align:center; margin-bottom:3px; transition:all 0.15s; }
+        #bp-diff-toggle:hover { border-color:rgba(192,60,60,0.5); color:var(--gold); }
 
         /* arena defender */
         #bp-defender { margin-bottom:4px; padding:7px 10px; background:rgba(192,60,60,0.06); border:1px solid rgba(192,60,60,0.18); border-radius:8px; }
@@ -732,9 +732,9 @@
         .bp-btn:hover { border-color:var(--gold); box-shadow:0 0 14px rgba(232,160,32,0.35); }
         .bp-btn.execute { border-color:var(--gold); background:linear-gradient(135deg,rgba(232,160,32,0.15),rgba(200,120,0,0.07)); }
         .bp-btn.execute:disabled { opacity:0.4; cursor:default; box-shadow:none; }
-        .bp-btn.cancel-bp { border-color:rgba(80,80,100,0.3); color:#446; text-shadow:none; background:transparent; box-shadow:none; }
-        .bp-btn.cancel-bp:hover { border-color:#664; color:#886; }
-        .bp-btn.lvup { border-color:#80e090; color:#60d080; text-shadow:0 1px 4px #000; }
+        .bp-btn.cancel-bp { border-color:rgba(80,80,100,0.3); color:var(--gold); text-shadow:none; background:transparent; box-shadow:none; }
+        .bp-btn.cancel-bp:hover { border-color:#664; color:var(--gold); }
+        .bp-btn.lvup { border-color:#80e090; color:var(--gold); text-shadow:0 1px 4px #000; }
         #bp-lvup-btn { display:none; }
         /* ── PICKER OVERLAY ──────────────────────────────────────── */
         #bp-picker { position:fixed; inset:0; z-index:710; display:none; align-items:center; justify-content:center; background:rgba(0,0,6,0.88); }
@@ -4385,9 +4385,9 @@
       <button id="bp-close" onclick="closeBattlePane()">&#215;</button>
     </div>
     <div id="bp-body">
-      <div class="bp-section-lbl">QUICK TEAM</div>
+      <div class="bp-section-lbl">AUTO PICK</div>
       <div id="bp-preset-row">
-        <button class="bp-preset-btn" id="bpp-standard" onclick="bpApplyPreset('standard')" title="Your best tank plus the four highest-level fighters between 6 and 9">&#128737; STANDARD<span class="bp-preset-sub">1 TANK + 4 LVL 6-9</span></button>
+        <button class="bp-preset-btn" id="bpp-standard" onclick="bpApplyPreset('standard')" title="Your best tank plus the four highest-level fighters between 6 and 9">&#128737; GRIND +<span class="bp-preset-sub">1 TANK + 4 LVL 6-9</span></button>
         <button class="bp-preset-btn" id="bpp-grind" onclick="bpApplyPreset('grind')" title="Two level 10s (tankiest, then the best Dungeon Expert / Trainer) carrying three level 1-5 fighters for XP">&#128200; GRIND<span class="bp-preset-sub">2 LVL 10 + 3 LVL 1-5</span></button>
         <button class="bp-preset-btn" id="bpp-elite" onclick="bpApplyPreset('elite')" title="The five strongest fighters by damage per cooldown and health">&#9889; ELITE<span class="bp-preset-sub">TOP 5 DPS / TANKY</span></button>
       </div>
