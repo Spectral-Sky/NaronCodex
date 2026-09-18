@@ -6,7 +6,7 @@
     <script>try{if(localStorage.getItem('naron_day')==='1')document.documentElement.classList.add('day');}catch(e){}</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fighter Market — Naron Codex</title>
+    <title>Alien Legends Fighter Market — Naron Codex</title>
     <link rel="icon" type="image/png" href="NCico.png">
     <style>
         :root {
@@ -87,7 +87,7 @@
         .dd { position:relative; }
         .dd-menu { display:none; position:absolute; right:0; top:calc(100% + 4px); min-width:120px; background:var(--menu-bg); border:1px solid var(--line-hi); border-radius:6px; padding:4px; z-index:50; }
         .dd.open .dd-menu { display:block; }
-        .dd-item { display:flex; align-items:center; gap:7px; padding:6px 9px; color:var(--text); text-decoration:none; font-size:0.74em; letter-spacing:1px; border-radius:4px; }
+        .dd-item { display:flex; align-items:center; gap:7px; white-space:nowrap; padding:6px 9px; color:var(--text); text-decoration:none; font-size:0.74em; letter-spacing:1px; border-radius:4px; }
         .dd-item:hover { background:var(--halo); color:var(--blue); }
         .dd-item.active { color:var(--gold); }
 
@@ -218,8 +218,18 @@
                 <span class="planet-wrap"><canvas id="header-planet-canvas" width="36" height="36" title="Naron"></canvas></span>
                 <a class="back" href="index.html">&larr; NARON CODEX</a>
             </div>
-            <h1>FIGHTER MARKET</h1>
+            <h1>ALIEN LEGENDS FIGHTER MARKET</h1>
             <div class="sub">Live auctions and instant buys on market.ale &middot; every sale ever settled</div>
+        </div>
+        <div class="dd" id="ale-picker">
+            <button class="wbtn" onclick="toggleMenu('ale-picker', event)" title="Other Alien Legends pages">&#9876; ALE PAGES &#9660;</button>
+            <div class="dd-menu" style="min-width:232px;">
+                <a class="dd-item" href="ale.html">&#9876; Alien Legends Stats</a>
+                <a class="dd-item" href="alewiki.html">&#128214; Alien Legends WIKI</a>
+                <a class="dd-item" href="aleleaders.html">&#127942; Alien Legends Leaderboard</a>
+                <a class="dd-item" href="fighters.html">&#9876; My Fighters</a>
+                <a class="dd-item" href="https://naroncodex.app/pools">&#9684; Pools</a>
+            </div>
         </div>
         <div class="dd" id="lang-picker">
             <button class="wbtn" onclick="toggleMenu('lang-picker', event)" title="Language">&#127760; &#9660;</button>
