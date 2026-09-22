@@ -121,6 +121,20 @@
         .module-card:hover { border-color: var(--theme-color); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.8); }
         .module-card:hover::before { left: 200%; }
         
+        .candle-card .card-title { font-size: 1.15em; margin-bottom: 1px; white-space: nowrap; }
+        .candle-text { max-width: 78%; }
+        .candle-text .card-schema { margin-bottom: 0; }
+        .candle-access { display: flex; align-items: center; gap: 8px; margin-top: 5px;
+            font-family: 'Courier New', monospace; font-size: 0.72em; color: #7a6a80;
+            letter-spacing: 1px; }
+        .candle-access .ca-lbl { text-transform: uppercase; }
+        .candle-access .ca-bar { flex: 1; min-width: 44px; max-width: 120px; height: 4px;
+            background: rgba(255,136,216,0.14); border-radius: 2px; overflow: hidden; }
+        .candle-access .ca-fill { display: block; height: 100%; width: 0;
+            background: #ff8ad8; transition: width 0.4s; }
+        .candle-access.granted { color: #ff8ad8; }
+        .candle-access.granted .ca-fill { background: #ff8ad8; box-shadow: 0 0 6px #ff8ad8; }
+        .candle-access .ca-num { white-space: nowrap; font-variant-numeric: tabular-nums; }
         .card-text-wrapper { position: relative; z-index: 10; max-width: 60%; pointer-events: none; }
         .card-title { color: #fff; font-size: 1.4em; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
         .card-schema { color: #666; font-family: 'Courier New', monospace; font-size: 0.85em; margin-bottom: 15px; display: block; }
@@ -730,16 +744,21 @@
                 <span class="card-schema">Live auctions &amp; instant buys, every sale ever settled, trader leaderboards &amp; price trends</span>
             </div>
         </a>
-        <a href="wax.html" class="module-card module-card-rgb" style="padding:12px 20px;">
+        <a href="wax.html" class="module-card module-card-rgb candle-card" style="padding:10px 20px;">
             <span class="card-wip" style="color:#ff8ad8;">New</span>
-            <div class="card-text-wrapper">
+            <div class="card-text-wrapper candle-text">
                 <div class="card-title">&#128367; Candle Calculator</div>
-                <span class="card-schema">recovery.ale profit interface &mdash; live offers, shard valuator &amp; the full history of how winnings were split. Needs 1,000 gems contributed to the candle in the last 30 days.</span>
+                <span class="card-schema">Profit interface &amp; rewards history.</span>
+                <div class="candle-access" id="candle-access">
+                    <span class="ca-lbl">Access</span>
+                    <span class="ca-bar"><span class="ca-fill" id="candle-access-fill"></span></span>
+                    <span class="ca-num" id="candle-access-num">&mdash;/1,000 Gems</span>
+                </div>
             </div>
         </a>
         <a href="https://naroncodex.app/pools" class="module-card" style="border-color:rgba(232,160,32,0.3);padding:12px 20px;">
             <div class="card-text-wrapper">
-                <div class="card-title">&#9684; Pools</div>
+                <div class="card-title">&#9684; Reward Pools</div>
                 <span class="card-schema">TLM &amp; Shard reward pool stats for Alien Legends</span>
             </div>
         </a>
@@ -995,7 +1014,7 @@
 
         </div>
         <div style="text-align:center; padding: 12px 0 4px; font-family:'Courier New',monospace; font-size:0.72em; color:#252535; letter-spacing:2px; display:flex; justify-content:center; align-items:center; gap:14px;">
-            <span>v 1.2.0</span>
+            <span>v 1.2.1</span>
             <a href="ep.html" style="color:#252535; text-decoration:none; border:1px solid #1a1a2a; padding:2px 10px; letter-spacing:2px; transition:all 0.2s;" onmouseover="this.style.color='var(--theme-color)';this.style.borderColor='var(--theme-color)'" onmouseout="this.style.color='#252535';this.style.borderColor='#1a1a2a'">ENDPOINTS</a>
         </div>
     </footer>
@@ -1616,6 +1635,60 @@ var sf=localStorage.getItem('naron_font');if(sf&&_FM[sf])document.body.style.fon
 if(localStorage.getItem('naron_day')==='1')document.documentElement.classList.add('day');
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_inj);else _inj();
 })();
+</script>
+
+<script>
+    // Candle card: the visitor's own progress toward the page's access requirement.
+    // Same rule the candle page enforces — 1,000 gems contributed in the last 30 days,
+    // summed from recovery.ale::contribute actions.
+    (function() {
+        var NEED = 1000, DAYS = 30;
+        var NODES = ['https://wax.eosphere.io','https://wax.eosusa.io','https://api.waxsweden.org'];
+        var box = document.getElementById('candle-access');
+        var fill = document.getElementById('candle-access-fill');
+        var num  = document.getElementById('candle-access-num');
+        if (!box || !num) return;
+
+        function show(text, gems) {
+            num.textContent = text;
+            if (gems != null) {
+                fill.style.width = Math.min(100, gems / NEED * 100).toFixed(1) + '%';
+                box.classList.toggle('granted', gems >= NEED);
+            }
+        }
+
+        var wallet = localStorage.getItem('naron_wallet');
+        if (!wallet) { show('connect wallet to check'); return; }
+        show('checking\u2026');
+
+        var after = new Date(Date.now() - DAYS * 86400000).toISOString();
+        var q = '/v2/history/get_actions?account=' + encodeURIComponent(wallet) +
+                '&filter=' + encodeURIComponent('recovery.ale:contribute') +
+                '&after=' + encodeURIComponent(after) + '&sort=desc&limit=500&skip=';
+
+        (async function() {
+            for (var i = 0; i < NODES.length; i++) {
+                try {
+                    var gems = 0, skip = 0;
+                    while (skip < 5000) {
+                        var r = await fetch(NODES[i] + q + skip, { cache:'no-store' });
+                        if (!r.ok) throw new Error('http ' + r.status);
+                        var d = await r.json();
+                        var acts = d.actions || [];
+                        acts.forEach(function(a) {
+                            if (a.act && a.act.data && a.act.data.wallet === wallet)
+                                gems += Number(a.act.data.gems) || 0;
+                        });
+                        if (acts.length < 500) break;
+                        skip += 500;
+                    }
+                    show(gems.toLocaleString() + '/' + NEED.toLocaleString() + ' Gems', gems);
+                    return;
+                } catch(e) { continue; }
+            }
+            show('\u2014/' + NEED.toLocaleString() + ' Gems');
+        })();
+    })();
 </script>
 </body>
 
