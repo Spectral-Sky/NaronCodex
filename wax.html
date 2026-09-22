@@ -204,6 +204,20 @@
         }
 
         /* -- WINNINGS HISTORY --------------------------------------------- */
+        .hist-scope { display:flex; gap:0; margin-bottom:14px; flex-wrap:wrap; }
+        .hist-scope button {
+            font-family:inherit; font-size:0.6em; letter-spacing:1.8px; text-transform:uppercase;
+            padding:6px 16px; cursor:pointer; background:transparent; color:var(--muted);
+            border:1px solid var(--border); border-right:none;
+            transition:background 0.15s, color 0.15s;
+        }
+        .hist-scope button:last-child { border-right:1px solid var(--border); }
+        .hist-scope button:hover { color:var(--gold); background:rgba(255,170,0,0.07); }
+        .hist-scope button.active {
+            background:rgba(255,170,0,0.16); color:var(--gold); border-color:var(--border-gold);
+        }
+        .hist-scope .scope-note { align-self:center; margin-left:12px; font-size:0.55em;
+            letter-spacing:1.4px; color:var(--muted); }
         .hist-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
             gap:10px; margin-bottom:20px; }
         .hist-stat { background:var(--panel-bg); border:1px solid var(--border);
@@ -792,6 +806,12 @@
       </div><!-- /tab-shop -->
 
       <div class="tab-panel" id="tab-history">
+        <div class="hist-scope" id="hist-scope">
+            <button id="scope-btn-beta"  class="active" onclick="setHistScope('beta')">Beta</button>
+            <button id="scope-btn-alpha"           onclick="setHistScope('alpha')">Alpha</button>
+            <button id="scope-btn-all"             onclick="setHistScope('all')">Alpha + Beta</button>
+            <span class="scope-note" id="scope-note"></span>
+        </div>
         <div id="hist-summary" class="hist-summary"></div>
         <div class="hist-cols">
             <div class="hist-box">
@@ -2175,6 +2195,41 @@
     var HYPERION = ['https://wax.eosphere.io','https://wax.eosusa.io','https://api.waxsweden.org'];
     var _histLoaded = false, _histLoading = false;
     var _histSettles = [], _histWallets = [];
+    // Beta of the candle shop opened 1 Sep 2026; payouts before that belong to alpha.
+    var BETA_START = Date.UTC(2026, 8, 1);
+    var _histScope = 'beta';   // beta | alpha | all
+
+    function histInScope(t) {
+        if (_histScope === 'all') return true;
+        var ms = new Date(t.ts + 'Z').getTime();
+        return _histScope === 'beta' ? ms >= BETA_START : ms < BETA_START;
+    }
+    function histScoped() { return _histSettles.filter(histInScope); }
+
+    // Roll a set of settlements up per wallet, ranked by estimated WAX value
+    function histWalletTotals(settles) {
+        var byWallet = {};
+        settles.forEach(function(t) {
+            t.rows.forEach(function(r) {
+                var w = byWallet[r.wallet];
+                if (!w) w = byWallet[r.wallet] = { wallet:r.wallet, TLM:0, SHARDS:0, WAX:0, wins:0, waxVal:0 };
+                w[t.sym] = (w[t.sym] || 0) + r.amt;
+                w.wins++;
+                w.waxVal += rewardToWax(r.amt, t.sym.toLowerCase());
+            });
+        });
+        return Object.keys(byWallet).map(function(k) { return byWallet[k]; })
+            .sort(function(a, b) { return b.waxVal - a.waxVal; });
+    }
+
+    window.setHistScope = function(scope) {
+        _histScope = scope;
+        ['beta','alpha','all'].forEach(function(k) {
+            var b = document.getElementById('scope-btn-' + k);
+            if (b) b.classList.toggle('active', k === scope);
+        });
+        if (_histLoaded) renderHistory();
+    };
 
     window.setWaxTab = function(name) {
         ['shop','history'].forEach(function(t) {
@@ -2243,20 +2298,6 @@
                 t.rows.sort(function(a, b) { return b.amt - a.amt; });
             });
 
-            // per-wallet totals
-            var byWallet = {};
-            _histSettles.forEach(function(t) {
-                t.rows.forEach(function(r) {
-                    var w = byWallet[r.wallet];
-                    if (!w) w = byWallet[r.wallet] = { wallet:r.wallet, TLM:0, SHARDS:0, WAX:0, wins:0, waxVal:0 };
-                    w[t.sym] = (w[t.sym] || 0) + r.amt;
-                    w.wins++;
-                    w.waxVal += rewardToWax(r.amt, t.sym.toLowerCase());
-                });
-            });
-            _histWallets = Object.keys(byWallet).map(function(k) { return byWallet[k]; })
-                .sort(function(a, b) { return b.waxVal - a.waxVal; });
-
             _histLoaded = true;
             renderHistory();
         } catch(e) {
@@ -2269,12 +2310,20 @@
 
     function renderHistory() {
         var me = localStorage.getItem('naron_wallet') || '';
+        var settles = histScoped();
+        _histWallets = histWalletTotals(settles);
+
+        var note = document.getElementById('scope-note');
+        if (note) note.innerHTML = _histScope === 'beta'  ? 'Payouts from 1 Sep 2026 onwards'
+                                 : _histScope === 'alpha' ? 'Payouts before 1 Sep 2026'
+                                 : 'Every payout on record';
+
         var totals = { TLM:0, SHARDS:0, WAX:0 }, valWax = 0;
-        _histSettles.forEach(function(t) {
+        settles.forEach(function(t) {
             totals[t.sym] = (totals[t.sym] || 0) + t.total;
             valWax += rewardToWax(t.total, t.sym.toLowerCase());
         });
-        var oldest = _histSettles.length ? _histSettles[_histSettles.length - 1].ts : null;
+        var oldest = settles.length ? settles[settles.length - 1].ts : null;
 
         var mine = null;
         for (var i = 0; i < _histWallets.length; i++) {
@@ -2282,7 +2331,7 @@
         }
 
         var sum = [
-            ['Settlements',     _histSettles.length, oldest ? 'since ' + new Date(oldest + 'Z').toISOString().slice(0, 10) : ''],
+            ['Settlements',     settles.length, oldest ? 'since ' + new Date(oldest + 'Z').toISOString().slice(0, 10) : ''],
             ['Wallets paid',    _histWallets.length, 'sharing the winnings'],
             ['TLM paid out',    histAmt(totals.TLM), ''],
             ['Shards paid out', histAmt(totals.SHARDS), ''],
@@ -2311,7 +2360,9 @@
                     '<td>' + histAmt(w.waxVal) + '</td></tr>';
             }).join('') + '</tbody></table>';
 
-        document.getElementById('hist-settlements').innerHTML = _histSettles.map(function(t, i) {
+        document.getElementById('hist-settlements').innerHTML = !settles.length
+          ? '<div class="hist-msg">No payouts in this period</div>'
+          : settles.map(function(t, i) {
             var m = poolMeta(t.pool);
             var body = t.rows.map(function(r) {
                 var pct = t.total ? r.amt / t.total * 100 : 0;
