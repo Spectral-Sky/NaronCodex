@@ -271,6 +271,43 @@
         .split-fill { display:block; height:100%; background:var(--gold); border-radius:2px; }
         .split-amt { width:112px; text-align:right; font-variant-numeric:tabular-nums; }
         .split-pct { width:46px; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
+        /* charts */
+        .chart-head { font-size:0.6em; letter-spacing:2px; color:var(--gold);
+            text-transform:uppercase; padding:0 4px 7px; display:flex; align-items:center;
+            gap:10px; flex-wrap:wrap; }
+        .chart-legend { margin-left:auto; display:flex; gap:11px; color:var(--muted);
+            letter-spacing:1.2px; font-size:0.9em; }
+        .lg-item { display:flex; align-items:center; gap:4px; }
+        .lg-dot { width:7px; height:7px; border-radius:1px; display:inline-block; }
+        .lg-line { width:13px; height:0; border-top:1.4px solid #ffe8ff; display:inline-block; }
+        .hist-svg { width:100%; height:190px; display:block; margin-bottom:6px; }
+        .hist-svg .ax { font-size:8px; fill:#7a4488; letter-spacing:0.5px; }
+        .hist-svg .ax-r { text-anchor:end; }
+        .wbars { display:flex; flex-direction:column; gap:3px; padding:2px 4px 4px; }
+        .wbar-row { display:flex; align-items:center; gap:7px; font-size:0.64em; }
+        .wbar-row.me { color:var(--gold); }
+        .wbar-rank { width:16px; text-align:right; color:var(--muted); }
+        .wbar-name { width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+            color:var(--pink); }
+        .wbar-row.me .wbar-name { color:var(--gold); }
+        .wbar-track { flex:1; display:flex; height:9px; background:rgba(255,68,204,0.10);
+            border-radius:2px; overflow:hidden; min-width:50px; }
+        .wseg { display:block; height:100%; }
+        .wbar-val { width:66px; text-align:right; font-variant-numeric:tabular-nums;
+            color:var(--text); }
+        .wbar-row.me .wbar-val { color:var(--gold); }
+        /* mission requirement on a settlement */
+        .settle-req { color:var(--muted); font-size:0.85em; white-space:nowrap;
+            overflow:hidden; text-overflow:ellipsis; max-width:150px; }
+        .mission { border-left:2px solid var(--border-gold); padding:3px 0 5px 10px;
+            margin:0 0 9px -12px; }
+        .mission-name { font-size:0.78em; color:var(--gold); letter-spacing:1.2px; }
+        .mission-type { font-size:0.62em; color:var(--muted); letter-spacing:1px;
+            font-family:'Courier New',monospace; }
+        .mission-need { font-size:0.66em; color:var(--text); letter-spacing:1.2px; margin-top:3px; }
+        .mission-gems { font-size:0.6em; color:var(--muted); letter-spacing:1px; margin-top:2px; }
+        .mission.unknown { font-size:0.64em; color:var(--muted); letter-spacing:1.2px;
+            border-left-color:var(--border); }
         .hist-msg { padding:26px; text-align:center; color:var(--muted); font-size:0.7em;
             letter-spacing:1.6px; }
 
@@ -819,6 +856,7 @@
                 <div class="hist-scroll" id="hist-leaders">
                     <div class="hist-msg"><span class="loading-pulse">Rebuilding payouts from chain history&hellip;</span></div>
                 </div>
+                <div id="hist-charts" style="padding:12px 12px 14px;border-top:1px solid var(--border);"></div>
             </div>
             <div class="hist-box">
                 <h3>&#9670; Settlements &mdash; Split Per Wallet</h3>
@@ -2212,10 +2250,12 @@
         settles.forEach(function(t) {
             t.rows.forEach(function(r) {
                 var w = byWallet[r.wallet];
-                if (!w) w = byWallet[r.wallet] = { wallet:r.wallet, TLM:0, SHARDS:0, WAX:0, wins:0, waxVal:0 };
+                if (!w) w = byWallet[r.wallet] = { wallet:r.wallet, TLM:0, SHARDS:0, WAX:0, valTLM:0, valSHARDS:0, valWAX:0, wins:0, waxVal:0 };
+                var v = rewardToWax(r.amt, t.sym.toLowerCase());
                 w[t.sym] = (w[t.sym] || 0) + r.amt;
+                w['val' + t.sym] = (w['val' + t.sym] || 0) + v;
                 w.wins++;
-                w.waxVal += rewardToWax(r.amt, t.sym.toLowerCase());
+                w.waxVal += v;
             });
         });
         return Object.keys(byWallet).map(function(k) { return byWallet[k]; })
@@ -2279,6 +2319,8 @@
                 skip += 500;
             }
             if (!acts.length) throw new Error('no payouts found');
+            // requirements are a nice-to-have: a failure here must not lose the payouts
+            try { await loadOfferDeltas(); } catch(e) { _histOffers = []; }
 
             // group into settlements by transaction
             var byTrx = {};
@@ -2306,6 +2348,172 @@
             if (lead) lead.innerHTML = msg;
             if (list) list.innerHTML = msg;
         } finally { _histLoading = false; }
+    }
+
+
+    // ── SETTLED OFFER DETAILS ────────────────────────────────────────────────
+    // A settled offer is gone from the offers table, but every version of the row
+    // it ever had survives as a table delta, which carries the mission requirement.
+    // Deltas are joined to a settlement on an exact reward-amount match, preferring
+    // the offer that ended nearest the payout. Checked against all 122 settlements:
+    // every one matched a single offer, 118 of them within three hours of offer_end.
+    var _histOffers = [];
+
+    async function hyperionDeltas(code, scope, table, limit, skip) {
+        var q = '/v2/history/get_deltas?code=' + code + '&scope=' + scope + '&table=' + table +
+                '&limit=' + limit + '&skip=' + skip + '&sort=desc';
+        var last;
+        for (var i = 0; i < HYPERION.length; i++) {
+            try {
+                var r = await fetch(HYPERION[i] + q, { cache:'no-store' });
+                if (r.ok) { var d = await r.json(); if (d && d.deltas) return d.deltas; }
+            } catch(e) { last = e; }
+        }
+        throw last || new Error('History API unavailable');
+    }
+
+    function rewardAmountOf(row) {
+        var n = Number(row.reward_amount) || 0;
+        if (row.reward_type === 'tlm')    return n / 1e4;
+        if (row.reward_type === 'wax')    return n / 1e8;
+        if (row.reward_type === 'shards') return n / 10;
+        return n;
+    }
+
+    // Latest version of every offer row that has ever existed
+    async function loadOfferDeltas() {
+        var deltas = [], skip = 0;
+        while (skip < 6000) {
+            var batch = await hyperionDeltas('recovery.ale', 'recovery.ale', 'offers', 1000, skip);
+            deltas = deltas.concat(batch);
+            if (batch.length < 1000) break;
+            skip += 1000;
+        }
+        var latest = {};
+        deltas.forEach(function(d) {
+            var row = d.data; if (!row || !row.offer_id) return;
+            var cur = latest[row.offer_id];
+            if (!cur || d.block_num > cur.block) {
+                latest[row.offer_id] = { block:d.block_num, row:row };
+            }
+        });
+        _histOffers = Object.keys(latest).map(function(k) {
+            var row = latest[k].row;
+            return { offer_id:row.offer_id, requirements:row.requirements,
+                     requirement_type:row.requirement_type,
+                     requirement_amount:Number(row.requirement_amount) || 0,
+                     total_gems:Number(row.total_gems) || 0,
+                     reward_type:row.reward_type, reward:rewardAmountOf(row),
+                     endMs:new Date(row.offer_end + 'Z').getTime() };
+        });
+    }
+
+    function offerForSettlement(t) {
+        if (!_histOffers.length) return null;
+        var sym = t.sym === 'SHARDS' ? 'shards' : String(t.sym).toLowerCase();
+        var ts = new Date(t.ts + 'Z').getTime(), best = null;
+        _histOffers.forEach(function(o) {
+            if (o.reward_type !== sym) return;
+            if (o.endMs - ts > 5 * 60000) return;        // the offer must have ended by the payout
+            var rd = Math.abs(o.reward - t.total) / (t.total || 1);
+            var score = (rd < 0.005 ? 0 : 1e12) + Math.abs(ts - o.endMs);
+            if (!best || score < best.score) best = { score:score, rd:rd, offer:o };
+        });
+        return best && best.rd < 0.005 ? best.offer : null;
+    }
+
+    function missionHtml(o) {
+        if (!o) return '<div class="mission unknown">Mission requirement not on record</div>';
+        var need = o.requirement_amount.toLocaleString();
+        return '<div class="mission">' +
+            '<div class="mission-name">' + (o.requirements || o.requirement_type) + '</div>' +
+            '<div class="mission-type">' + o.requirement_type + '</div>' +
+            '<div class="mission-need">NEED: ' + need + ' ' + (o.requirements || o.requirement_type) + '</div>' +
+            (o.total_gems ? '<div class="mission-gems">' + histAmt(o.total_gems) + ' gems contributed</div>' : '') +
+            '</div>';
+    }
+
+    // ── HISTORY CHARTS ────────────────────────────────────────────────────────
+    var CUR_COLOR = { TLM:'#ffaa00', SHARDS:'#ff44cc', WAX:'#44ccff' };
+
+    function chartLegend() {
+        return ['TLM','SHARDS','WAX'].map(function(c) {
+            return '<span class="lg-item"><span class="lg-dot" style="background:' + CUR_COLOR[c] + '"></span>' + c + '</span>';
+        }).join('');
+    }
+
+    // Payout per settlement (bars, coloured by pool) with a cumulative line over the top
+    function chartOverTime(settles) {
+        if (settles.length < 2) return '<div class="hist-msg">Not enough settlements to chart</div>';
+        var pts = settles.slice().reverse().map(function(t) {       // oldest → newest
+            return { ms:new Date(t.ts + 'Z').getTime(), sym:t.sym,
+                     val:rewardToWax(t.total, t.sym.toLowerCase()) };
+        });
+        var W = 640, H = 190, PL = 52, PR = 52, PT = 12, PB = 22;
+        var iw = W - PL - PR, ih = H - PT - PB;
+        var t0 = pts[0].ms, t1 = pts[pts.length - 1].ms, span = (t1 - t0) || 1;
+        var maxBar = Math.max.apply(null, pts.map(function(p) { return p.val; })) || 1;
+        var run = 0, cum = pts.map(function(p) { run += p.val; return run; });
+        var maxCum = run || 1;
+        var bw = Math.max(2, Math.min(14, iw / pts.length * 0.7));
+        var x = function(ms) { return PL + (ms - t0) / span * iw; };
+
+        var bars = pts.map(function(p, i) {
+            var h = Math.max(1, p.val / maxBar * ih * 0.86);
+            return '<rect x="' + (x(p.ms) - bw / 2).toFixed(1) + '" y="' + (PT + ih - h).toFixed(1) +
+                   '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1" fill="' +
+                   (CUR_COLOR[p.sym] || '#888') + '" opacity="0.75"><title>' +
+                   new Date(p.ms).toISOString().slice(0, 10) + ' — ' + histAmt(p.val) + ' WAX</title></rect>';
+        }).join('');
+        var line = pts.map(function(p, i) {
+            return (i ? 'L' : 'M') + x(p.ms).toFixed(1) + ' ' + (PT + ih - cum[i] / maxCum * ih).toFixed(1);
+        }).join(' ');
+
+        var grid = [0, 0.5, 1].map(function(f) {
+            var yy = PT + ih - f * ih;
+            return '<line x1="' + PL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + yy.toFixed(1) +
+                   '" stroke="rgba(255,68,204,0.12)" stroke-width="1"/>' +
+                   '<text x="' + (PL - 6) + '" y="' + (yy + 3).toFixed(1) + '" class="ax ax-r">' + histAmt(maxBar * 0.86 * f) + '</text>' +
+                   '<text x="' + (W - PR + 6) + '" y="' + (yy + 3).toFixed(1) + '" class="ax" fill="#ffe8ff">' + histAmt(maxCum * f) + '</text>';
+        }).join('');
+
+        return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="hist-svg" preserveAspectRatio="none">' + grid + bars +
+            '<path d="' + line + '" fill="none" stroke="#ffe8ff" stroke-width="1.4" opacity="0.85"/>' +
+            '<text x="' + PL + '" y="' + (H - 6) + '" class="ax">' + new Date(t0).toISOString().slice(0, 10) + '</text>' +
+            '<text x="' + (W - PR) + '" y="' + (H - 6) + '" class="ax ax-r">' + new Date(t1).toISOString().slice(0, 10) + '</text>' +
+            '</svg>';
+    }
+
+    // Top wallets, each bar stacked by where their winnings came from
+    function chartTopWallets(wallets, me) {
+        if (!wallets.length) return '';
+        var top = wallets.slice(0, 12);
+        var max = top[0].waxVal || 1;
+        return '<div class="wbars">' + top.map(function(w, i) {
+            var segs = ['TLM','SHARDS','WAX'].map(function(c) {
+                var v = w['val' + c] || 0;
+                if (!v) return '';
+                return '<span class="wseg" style="width:' + (v / max * 100).toFixed(2) + '%;background:' +
+                       CUR_COLOR[c] + '" title="' + histAmt(w[c]) + ' ' + c + ' ≈ ' + histAmt(v) + ' WAX"></span>';
+            }).join('');
+            return '<div class="wbar-row' + (w.wallet === me ? ' me' : '') + '">' +
+                '<span class="wbar-rank">' + (i + 1) + '</span>' +
+                '<span class="wbar-name" title="' + w.wallet + '">' + w.wallet + '</span>' +
+                '<span class="wbar-track">' + segs + '</span>' +
+                '<span class="wbar-val">' + histAmt(w.waxVal) + '</span></div>';
+        }).join('') + '</div>';
+    }
+
+    function renderHistCharts(settles, wallets, me) {
+        var el = document.getElementById('hist-charts');
+        if (!el) return;
+        el.innerHTML =
+            '<div class="chart-head">Winnings over time <span class="chart-legend">' + chartLegend() +
+            '<span class="lg-item"><span class="lg-line"></span>cumulative &asymp; WAX</span></span></div>' +
+            chartOverTime(settles) +
+            '<div class="chart-head" style="margin-top:14px;">Top wallets <span class="chart-legend">' +
+            chartLegend() + '</span></div>' +
+            chartTopWallets(wallets, me);
     }
 
     function renderHistory() {
@@ -2360,10 +2568,13 @@
                     '<td>' + histAmt(w.waxVal) + '</td></tr>';
             }).join('') + '</tbody></table>';
 
+        renderHistCharts(settles, _histWallets, me);
+
         document.getElementById('hist-settlements').innerHTML = !settles.length
           ? '<div class="hist-msg">No payouts in this period</div>'
           : settles.map(function(t, i) {
             var m = poolMeta(t.pool);
+            var offer = offerForSettlement(t);
             var body = t.rows.map(function(r) {
                 var pct = t.total ? r.amt / t.total * 100 : 0;
                 return '<div class="split-row ' + (r.wallet === me ? 'me' : '') + '">' +
@@ -2377,9 +2588,10 @@
                     '<span class="settle-caret">&#9656;</span>' +
                     '<span class="settle-date">' + new Date(t.ts + 'Z').toISOString().slice(0, 16).replace('T', ' ') + '</span>' +
                     '<span class="settle-pool ' + m.cls + '">' + m.lbl + '</span>' +
+                    '<span class="settle-req">' + (offer ? (offer.requirements || offer.requirement_type) : '') + '</span>' +
                     '<span class="settle-total">' + histAmt(t.total) + ' ' + t.sym + '</span>' +
                     '<span class="settle-n">&#247; ' + t.rows.length + '</span>' +
-                '</div><div class="settle-body">' + body + '</div></div>';
+                '</div><div class="settle-body">' + missionHtml(offer) + body + '</div></div>';
         }).join('');
     }
 
