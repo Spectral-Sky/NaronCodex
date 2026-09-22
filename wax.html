@@ -180,6 +180,86 @@
 
         .content-wrap { padding:20px 24px; }
 
+        /* -- DOSSIER TABS ------------------------------------------------- */
+        .dossier-tabs {
+            display:flex; gap:6px; padding:0 24px; margin-bottom:-1px;
+            position:relative; z-index:3; flex-wrap:wrap;
+        }
+        .dossier-tab {
+            -webkit-clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 100%, 0 100%);
+            clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 100%, 0 100%);
+            padding:9px 30px 8px; border:none; cursor:pointer;
+            font-family:inherit; font-size:0.66em; letter-spacing:2.2px;
+            text-transform:uppercase; font-weight:700;
+            background:rgba(12,0,18,0.95); color:var(--gold-dim);
+            transition:background 0.15s, color 0.15s;
+        }
+        .dossier-tab:hover { color:var(--gold); background:rgba(255,170,0,0.10); }
+        .dossier-tab.active { background:var(--gold); color:#1a0010; }
+        .dossier-tab.active:hover { background:var(--gold); color:#1a0010; }
+        .tab-panel { display:none; }
+        .tab-panel.active { display:block; }
+        .tabbed-body {
+            border-top:2px solid var(--gold); padding-top:18px;
+        }
+
+        /* -- WINNINGS HISTORY --------------------------------------------- */
+        .hist-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+            gap:10px; margin-bottom:20px; }
+        .hist-stat { background:var(--panel-bg); border:1px solid var(--border);
+            border-left:3px solid var(--gold); border-radius:3px; padding:10px 13px; }
+        .hist-stat .hs-lbl { font-size:0.55em; letter-spacing:2px; color:var(--muted);
+            text-transform:uppercase; }
+        .hist-stat .hs-val { font-size:1.15em; color:var(--gold); margin-top:3px;
+            font-variant-numeric:tabular-nums; }
+        .hist-stat .hs-sub { font-size:0.55em; color:var(--muted); margin-top:2px; }
+        .hist-cols { display:grid; grid-template-columns:minmax(300px,1fr) minmax(320px,1.15fr);
+            gap:18px; align-items:start; }
+        @media (max-width:980px) { .hist-cols { grid-template-columns:1fr; } }
+        .hist-box { background:var(--panel-bg); border:1px solid var(--border);
+            border-radius:4px; overflow:hidden; }
+        .hist-box > h3 { margin:0; padding:9px 14px; font-size:0.63em; letter-spacing:2.4px;
+            color:var(--gold); background:rgba(255,170,0,0.07);
+            border-bottom:1px solid var(--border-gold); text-transform:uppercase; }
+        .hist-scroll { max-height:560px; overflow-y:auto; }
+        table.hist-table { width:100%; border-collapse:collapse; font-size:0.66em; }
+        table.hist-table th { position:sticky; top:0; background:#160020; color:var(--muted);
+            font-size:0.85em; letter-spacing:1.6px; text-align:right; padding:6px 9px;
+            border-bottom:1px solid var(--border); text-transform:uppercase; }
+        table.hist-table th:first-child, table.hist-table td:first-child { text-align:left; }
+        table.hist-table td { padding:5px 9px; text-align:right; border-bottom:1px solid rgba(255,68,204,0.07);
+            font-variant-numeric:tabular-nums; color:var(--text); }
+        table.hist-table tr.me td { background:rgba(255,170,0,0.10); color:var(--gold); }
+        .hist-rank { color:var(--muted); width:26px; }
+        .hist-wallet { color:var(--pink); }
+        .settle { border-bottom:1px solid rgba(255,68,204,0.08); }
+        .settle-head { display:flex; align-items:center; gap:9px; padding:8px 13px;
+            cursor:pointer; font-size:0.68em; }
+        .settle-head:hover { background:rgba(255,68,204,0.05); }
+        .settle-caret { color:var(--muted); width:9px; flex-shrink:0; }
+        .settle-date { color:var(--muted); font-size:0.9em; white-space:nowrap; }
+        .settle-pool { font-size:0.8em; letter-spacing:1.4px; padding:1px 7px; border-radius:2px;
+            border:1px solid currentColor; flex-shrink:0; }
+        .pool-tlm  { color:#ffaa00; }
+        .pool-wax  { color:#44ccff; }
+        .pool-shrd { color:#ff44cc; }
+        .settle-total { color:var(--text); margin-left:auto; font-variant-numeric:tabular-nums; }
+        .settle-n { color:var(--muted); font-size:0.85em; white-space:nowrap; }
+        .settle-body { display:none; padding:2px 13px 11px 31px; }
+        .settle.open .settle-body { display:block; }
+        .split-row { display:flex; align-items:center; gap:8px; font-size:0.66em; padding:2px 0; }
+        .split-row.me { color:var(--gold); }
+        .split-name { width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+            color:var(--pink); }
+        .split-row.me .split-name { color:var(--gold); }
+        .split-bar { display:block; flex:1; height:6px; background:rgba(255,68,204,0.12);
+            border-radius:2px; overflow:hidden; min-width:40px; }
+        .split-fill { display:block; height:100%; background:var(--gold); border-radius:2px; }
+        .split-amt { width:112px; text-align:right; font-variant-numeric:tabular-nums; }
+        .split-pct { width:46px; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
+        .hist-msg { padding:26px; text-align:center; color:var(--muted); font-size:0.7em;
+            letter-spacing:1.6px; }
+
         /* ── OFFERS GRID ──────────────────────────────────────────────────── */
         .offers-row {
             display:grid;
@@ -663,7 +743,13 @@
         ⚠ VALUE IS AN ESTIMATE — USE YOUR OWN BEST JUDGEMENT! &nbsp;Shards may hold no value!
     </div>
 
-    <div class="content-wrap">
+    <div class="dossier-tabs">
+        <button class="dossier-tab active" id="tab-btn-shop"    onclick="setWaxTab('shop')">&#9670; Candle Shop</button>
+        <button class="dossier-tab"        id="tab-btn-history" onclick="setWaxTab('history')">&#9670; Winnings History</button>
+    </div>
+
+    <div class="content-wrap tabbed-body">
+      <div class="tab-panel active" id="tab-shop">
         <div class="req-section simple-section">
             <div class="req-header">
                 <h2>◆ Candle Shop</h2>
@@ -703,6 +789,25 @@
                 </table>
             </div>
         </div>
+      </div><!-- /tab-shop -->
+
+      <div class="tab-panel" id="tab-history">
+        <div id="hist-summary" class="hist-summary"></div>
+        <div class="hist-cols">
+            <div class="hist-box">
+                <h3>&#9670; Wallet Winnings</h3>
+                <div class="hist-scroll" id="hist-leaders">
+                    <div class="hist-msg"><span class="loading-pulse">Rebuilding payouts from chain history&hellip;</span></div>
+                </div>
+            </div>
+            <div class="hist-box">
+                <h3>&#9670; Settlements &mdash; Split Per Wallet</h3>
+                <div class="hist-scroll" id="hist-settlements">
+                    <div class="hist-msg"><span class="loading-pulse">Loading&hellip;</span></div>
+                </div>
+            </div>
+        </div>
+      </div><!-- /tab-history -->
     </div>
 </div>
 
@@ -1661,6 +1766,9 @@
 
     async function refreshAll() {
         setStatus('Querying chain…', '');
+        // a refresh should also re-pull the settled-payout history if it's on screen
+        _histLoaded = false;
+        if (document.getElementById('tab-history').classList.contains('active')) loadCandleHistory();
         try {
             const [offersData, reqData] = await Promise.all([
                 fetchAllRows({ code:'recovery.ale', scope:'recovery.ale', table:'offers' }),
@@ -2057,6 +2165,176 @@
             wlSetStatus('Login failed', 'err');
             wlSetBtns(false);
         }
+    };
+
+
+    // ── WINNINGS HISTORY ──────────────────────────────────────────────────────
+    // recovery.ale offers are deleted from the table once they settle, so the split
+    // of winnings only survives as rwrdlog.ale::addhistory actions in chain history.
+    // One settlement = one transaction = one pool (tlmrec / shrdrec / waxrec).
+    var HYPERION = ['https://wax.eosphere.io','https://wax.eosusa.io','https://api.waxsweden.org'];
+    var _histLoaded = false, _histLoading = false;
+    var _histSettles = [], _histWallets = [];
+
+    window.setWaxTab = function(name) {
+        ['shop','history'].forEach(function(t) {
+            var p = document.getElementById('tab-' + t);
+            var b = document.getElementById('tab-btn-' + t);
+            if (p) p.classList.toggle('active', t === name);
+            if (b) b.classList.toggle('active', t === name);
+        });
+        if (name === 'history' && !_histLoaded && !_histLoading) loadCandleHistory();
+    };
+
+    async function hyperionActions(filter, account, limit, skip) {
+        var q = '/v2/history/get_actions?filter=' + encodeURIComponent(filter) +
+                '&account=' + account + '&limit=' + limit + '&skip=' + skip + '&sort=desc';
+        var last;
+        for (var i = 0; i < HYPERION.length; i++) {
+            try {
+                var r = await fetch(HYPERION[i] + q, { cache:'no-store' });
+                if (r.ok) { var d = await r.json(); if (d && d.actions) return d.actions; }
+            } catch(e) { last = e; }
+        }
+        throw last || new Error('History API unavailable');
+    }
+
+    function poolMeta(pool) {
+        if (pool === 'tlmrec')  return { cls:'pool-tlm',  lbl:'TLM POOL' };
+        if (pool === 'waxrec')  return { cls:'pool-wax',  lbl:'WAX POOL' };
+        if (pool === 'shrdrec') return { cls:'pool-shrd', lbl:'SHARD POOL' };
+        return { cls:'', lbl:String(pool || '').toUpperCase() };
+    }
+    function histAmt(n) {
+        n = Number(n) || 0;
+        return n.toLocaleString(undefined, { maximumFractionDigits: n < 100 ? 2 : 0 });
+    }
+
+    async function loadCandleHistory() {
+        if (_histLoading) return;
+        _histLoading = true;
+        var lead = document.getElementById('hist-leaders');
+        var list = document.getElementById('hist-settlements');
+        try {
+            var acts = [], skip = 0;
+            while (skip < 5000) {
+                var batch = await hyperionActions('rwrdlog.ale:addhistory', 'recovery.ale', 500, skip);
+                acts = acts.concat(batch);
+                if (batch.length < 500) break;
+                skip += 500;
+            }
+            if (!acts.length) throw new Error('no payouts found');
+
+            // group into settlements by transaction
+            var byTrx = {};
+            acts.forEach(function(a) {
+                var d = a.act.data, parts = String(d.reward || '').split(' ');
+                var amt = Number(parts[0]) || 0, sym = parts[1] || '';
+                if (!amt) return;
+                var t = byTrx[a.trx_id];
+                if (!t) t = byTrx[a.trx_id] = { trx:a.trx_id, ts:a.timestamp, pool:d.pool,
+                                                sym:sym, total:0, rows:[] };
+                t.total += amt;
+                t.rows.push({ wallet:d.player, amt:amt });
+            });
+            _histSettles = Object.keys(byTrx).map(function(k) { return byTrx[k]; })
+                .sort(function(a, b) { return new Date(b.ts) - new Date(a.ts); });
+            _histSettles.forEach(function(t) {
+                t.rows.sort(function(a, b) { return b.amt - a.amt; });
+            });
+
+            // per-wallet totals
+            var byWallet = {};
+            _histSettles.forEach(function(t) {
+                t.rows.forEach(function(r) {
+                    var w = byWallet[r.wallet];
+                    if (!w) w = byWallet[r.wallet] = { wallet:r.wallet, TLM:0, SHARDS:0, WAX:0, wins:0, waxVal:0 };
+                    w[t.sym] = (w[t.sym] || 0) + r.amt;
+                    w.wins++;
+                    w.waxVal += rewardToWax(r.amt, t.sym.toLowerCase());
+                });
+            });
+            _histWallets = Object.keys(byWallet).map(function(k) { return byWallet[k]; })
+                .sort(function(a, b) { return b.waxVal - a.waxVal; });
+
+            _histLoaded = true;
+            renderHistory();
+        } catch(e) {
+            var msg = '<div class="hist-msg">Could not load payout history &mdash; ' +
+                      String(e.message || e) + '</div>';
+            if (lead) lead.innerHTML = msg;
+            if (list) list.innerHTML = msg;
+        } finally { _histLoading = false; }
+    }
+
+    function renderHistory() {
+        var me = localStorage.getItem('naron_wallet') || '';
+        var totals = { TLM:0, SHARDS:0, WAX:0 }, valWax = 0;
+        _histSettles.forEach(function(t) {
+            totals[t.sym] = (totals[t.sym] || 0) + t.total;
+            valWax += rewardToWax(t.total, t.sym.toLowerCase());
+        });
+        var oldest = _histSettles.length ? _histSettles[_histSettles.length - 1].ts : null;
+
+        var mine = null;
+        for (var i = 0; i < _histWallets.length; i++) {
+            if (_histWallets[i].wallet === me) { mine = _histWallets[i]; mine.rank = i + 1; break; }
+        }
+
+        var sum = [
+            ['Settlements',     _histSettles.length, oldest ? 'since ' + new Date(oldest + 'Z').toISOString().slice(0, 10) : ''],
+            ['Wallets paid',    _histWallets.length, 'sharing the winnings'],
+            ['TLM paid out',    histAmt(totals.TLM), ''],
+            ['Shards paid out', histAmt(totals.SHARDS), ''],
+            ['WAX paid out',    histAmt(totals.WAX), ''],
+            ['Total &asymp; value', histAmt(valWax) + ' WAX', 'at live rates']
+        ];
+        if (mine) sum.push(['Your take', histAmt(mine.waxVal) + ' WAX',
+                            '#' + mine.rank + ' &middot; ' + mine.wins + ' payouts']);
+        document.getElementById('hist-summary').innerHTML = sum.map(function(s) {
+            return '<div class="hist-stat"><div class="hs-lbl">' + s[0] + '</div>' +
+                   '<div class="hs-val">' + s[1] + '</div>' +
+                   (s[2] ? '<div class="hs-sub">' + s[2] + '</div>' : '') + '</div>';
+        }).join('');
+
+        document.getElementById('hist-leaders').innerHTML =
+            '<table class="hist-table"><thead><tr><th>Wallet</th><th>Payouts</th>' +
+            '<th>TLM</th><th>Shards</th><th>WAX</th><th>&asymp; WAX</th></tr></thead><tbody>' +
+            _histWallets.map(function(w, i) {
+                return '<tr class="' + (w.wallet === me ? 'me' : '') + '">' +
+                    '<td><span class="hist-rank">' + (i + 1) + '</span> ' +
+                    '<span class="hist-wallet">' + w.wallet + '</span></td>' +
+                    '<td>' + w.wins + '</td>' +
+                    '<td>' + (w.TLM ? histAmt(w.TLM) : '&mdash;') + '</td>' +
+                    '<td>' + (w.SHARDS ? histAmt(w.SHARDS) : '&mdash;') + '</td>' +
+                    '<td>' + (w.WAX ? histAmt(w.WAX) : '&mdash;') + '</td>' +
+                    '<td>' + histAmt(w.waxVal) + '</td></tr>';
+            }).join('') + '</tbody></table>';
+
+        document.getElementById('hist-settlements').innerHTML = _histSettles.map(function(t, i) {
+            var m = poolMeta(t.pool);
+            var body = t.rows.map(function(r) {
+                var pct = t.total ? r.amt / t.total * 100 : 0;
+                return '<div class="split-row ' + (r.wallet === me ? 'me' : '') + '">' +
+                    '<span class="split-name" title="' + r.wallet + '">' + r.wallet + '</span>' +
+                    '<span class="split-bar"><span class="split-fill" style="width:' + pct.toFixed(1) + '%"></span></span>' +
+                    '<span class="split-amt">' + histAmt(r.amt) + ' ' + t.sym + '</span>' +
+                    '<span class="split-pct">' + pct.toFixed(1) + '%</span></div>';
+            }).join('');
+            return '<div class="settle' + (i === 0 ? ' open' : '') + '" id="settle-' + i + '">' +
+                '<div class="settle-head" onclick="toggleSettle(' + i + ')">' +
+                    '<span class="settle-caret">&#9656;</span>' +
+                    '<span class="settle-date">' + new Date(t.ts + 'Z').toISOString().slice(0, 16).replace('T', ' ') + '</span>' +
+                    '<span class="settle-pool ' + m.cls + '">' + m.lbl + '</span>' +
+                    '<span class="settle-total">' + histAmt(t.total) + ' ' + t.sym + '</span>' +
+                    '<span class="settle-n">&#247; ' + t.rows.length + '</span>' +
+                '</div><div class="settle-body">' + body + '</div></div>';
+        }).join('');
+    }
+
+    window.toggleSettle = function(i) {
+        var el = document.getElementById('settle-' + i);
+        if (el) el.classList.toggle('open');
     };
 
     // Auto-check on page load if wallet already stored and lock screen is showing
