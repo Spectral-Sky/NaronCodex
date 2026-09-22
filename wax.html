@@ -705,6 +705,7 @@
             }
         } catch(e) { console.warn('Session restore failed:', e); }
     </script>
+    <link rel="stylesheet" href="dossier-nav.css">
 </head>
 <body>
 
@@ -730,7 +731,7 @@
     </div>
 
     <div id="wl-panel">
-        <div class="wl-req">25+ dungeons won<br>— or — gems in candle &gt; 0</div>
+        <div class="wl-req">1,000 gems contributed to the candle<br>in the last 30 days</div>
         <button class="wl-btn" id="wl-anchor-btn" onclick="wlLogin('anchor')">⚡ ANCHOR</button>
         <button class="wl-btn" id="wl-wcc-btn"    onclick="wlLogin('wcc')">☁ CLOUD WALLET</button>
         <div id="wl-status"></div>
@@ -773,6 +774,20 @@
         </div>
         <button class="refresh-btn" onclick="refreshAll()">⟳ REFRESH</button>
         <button class="lock-btn" onclick="lockScreen()">⌁ LOCK</button>
+        <div class="nav-dropdown-wrap" style="position:relative;">
+            <button class="nav-dropdown-btn" title="Other Alien Legends pages">&#9876; ALE PAGES &#9660;</button>
+            <div class="nav-dropdown-menu" style="min-width:210px;">
+                <a href="ale.html" class="nav-dropdown-item">&#9876; ALE STATS</a>
+                <a href="alewiki.html" class="nav-dropdown-item">&#9672; ALE WIKI</a>
+                <a href="alements.html" class="nav-dropdown-item">&#11041; STAT EXPLORER</a>
+                <a href="aleleaders.html" class="nav-dropdown-item">&#9670; LEADERBOARD</a>
+                <a href="fighters.html" class="nav-dropdown-item">&#9876; MY FIGHTERS</a>
+                <a href="market.html" class="nav-dropdown-item">&#128142; FIGHTER MARKET</a>
+                <a href="wax.html" class="nav-dropdown-item active">&#128367; CANDLE CALCULATOR</a>
+                <a href="pools.html" class="nav-dropdown-item">&#9684; POOLS</a>
+                <a href="index.html" class="nav-dropdown-item">&#8962; NARON CODEX</a>
+            </div>
+        </div>
         <div class="nav-dropdown-wrap" style="position:relative;">
             <button class="font-picker-btn" id="font-picker-btn">Aa ▾</button>
             <div class="nav-dropdown-menu font-opt-menu">
@@ -2147,8 +2162,40 @@
     if (sessionStorage.getItem('rcv_unlocked') === '1') { refreshAll(); checkWalletState(); initShardValuator(); }
 
     // ── WHITELIST ─────────────────────────────────────────────────────────────
-    var WL_DUNGEONS_MIN = 25;
+    // Access is earned by backing the candle: 1,000 gems contributed in the last 30
+    // days. Contributions are recovery.ale::contribute actions, summed from history
+    // rather than the players.ale lifetime stat, so the window is a real rolling one.
+    var WL_GEMS_MIN = 1000;
+    var WL_WINDOW_DAYS = 30;
     var WL_NODES = ['https://wax.eosusa.io','https://wax.eosphere.io','https://api.waxsweden.org'];
+    var WL_HISTORY = ['https://wax.eosphere.io','https://wax.eosusa.io','https://api.waxsweden.org'];
+
+    async function wlGemsContributed(wallet) {
+        var after = new Date(Date.now() - WL_WINDOW_DAYS * 86400000).toISOString();
+        var q = '/v2/history/get_actions?account=' + encodeURIComponent(wallet) +
+                '&filter=' + encodeURIComponent('recovery.ale:contribute') +
+                '&after=' + encodeURIComponent(after) + '&sort=desc&limit=500&skip=';
+        for (var i = 0; i < WL_HISTORY.length; i++) {
+            try {
+                var gems = 0, skip = 0;
+                while (skip < 5000) {
+                    var r = await fetch(WL_HISTORY[i] + q + skip, { cache:'no-store' });
+                    if (!r.ok) throw new Error('http ' + r.status);
+                    var d = await r.json();
+                    var acts = d.actions || [];
+                    acts.forEach(function(a) {
+                        // the filter matches the notified wallet too, so check the actor
+                        if (a.act && a.act.data && a.act.data.wallet === wallet)
+                            gems += Number(a.act.data.gems) || 0;
+                    });
+                    if (acts.length < 500) break;
+                    skip += 500;
+                }
+                return gems;
+            } catch(e) { continue; }
+        }
+        return null;          // every history node refused — not the same as zero
+    }
 
     function wlSetStatus(msg, cls) {
         var el = document.getElementById('wl-status');
@@ -2176,36 +2223,22 @@
 
     async function wlCheck(wallet) {
         wlSetBtns(true);
-        wlSetStatus(wallet.length > 14 ? wallet.slice(0,12) + '…' : wallet);
+        wlSetStatus('Checking candle contributions…');
 
-        // Check players.ale for dungeons_won and gems_in_candle
-        wlSetStatus('Checking player stats…');
-        for (var ni = 0; ni < WL_NODES.length; ni++) {
-            try {
-                var r = await fetch(WL_NODES[ni] + '/v1/chain/get_table_rows', {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({code:'players.ale',scope:'players.ale',table:'players',lower_bound:wallet,limit:1,json:true})
-                });
-                if (!r.ok) throw new Error('http');
-                var d = await r.json();
-                if (d.rows && d.rows[0] && d.rows[0].wallet === wallet) {
-                    var perm = {};
-                    (d.rows[0].permstats || []).forEach(function(s) { perm[s.first] = Number(s.second) || 0; });
-                    var dw  = perm['dungeons_won'] || 0;
-                    var gic = perm['gems_in_candle'] || 0;
-                    if (dw >= WL_DUNGEONS_MIN) { wlUnlock(dw + ' dungeons won'); return; }
-                    if (gic > 0)              { wlUnlock(gic + ' gems in candle'); return; }
-                    wlSetStatus('✗ NOT ELIGIBLE — ' + dw + ' / ' + WL_DUNGEONS_MIN + ' dungeons won, ' + gic + ' gems in candle', 'err');
-                } else {
-                    wlSetStatus('✗ NOT ELIGIBLE — player record not found', 'err');
-                }
-                wlSetBtns(false);
-                return;
-            } catch(e) { continue; }
+        var gems = await wlGemsContributed(wallet);
+        if (gems === null) {
+            wlSetStatus('✗ Could not reach chain — try again', 'err');
+            wlSetBtns(false);
+            return;
         }
-
-        // All nodes failed
-        wlSetStatus('✗ Could not reach chain — try again', 'err');
+        if (gems >= WL_GEMS_MIN) {
+            wlUnlock('ACCESS GRANTED: ' + gems.toLocaleString() + '/' +
+                     WL_GEMS_MIN.toLocaleString() + ' gems contributed to Candle');
+            return;
+        }
+        wlSetStatus('✗ ACCESS DENIED: ' + gems.toLocaleString() + '/' +
+                    WL_GEMS_MIN.toLocaleString() + ' gems spent in Candle over past ' +
+                    WL_WINDOW_DAYS + ' days', 'err');
         wlSetBtns(false);
     }
 

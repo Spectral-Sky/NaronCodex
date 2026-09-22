@@ -1,0 +1,101 @@
+/* ── DOSSIER DROPDOWNS ───────────────────────────────────────────────────────
+   One look for every quick-link dropdown on the site, matching the dossier tabs
+   on the candle page: a tab with 45-degree sides that fills with the page accent
+   and flips to dark text when it is open.
+
+   Colour comes from whatever the page already defines, in this order:
+     --dd-accent  (set one explicitly to override)
+     --theme-color
+     --gold
+   so this file can be dropped into a page without touching its palette.
+
+   It restyles both dropdown conventions in use:
+     .nav-dropdown-wrap / -btn / -menu / -item   (opens on hover)
+     .dd / .wbtn / .dd-menu / .dd-item           (opens on click, .open)
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+    --dd-hue:  var(--dd-accent, var(--theme-color, var(--gold, #e8a020)));
+    --dd-ink:  #0a0710;
+    --dd-bg:   rgba(6,8,14,0.97);
+}
+
+/* ── the tab ─────────────────────────────────────────────────────────────── */
+.nav-dropdown-btn,
+.font-picker-btn,
+.dd > .wbtn {
+    -webkit-clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 100%, 0 100%);
+    clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 100%, 0 100%);
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 7px 22px 6px !important;
+    background: color-mix(in srgb, var(--dd-hue) 9%, transparent);
+    color: var(--dd-hue);
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.nav-dropdown-btn:hover,
+.font-picker-btn:hover,
+.dd > .wbtn:hover,
+.nav-dropdown-wrap:hover .nav-dropdown-btn {
+    background: color-mix(in srgb, var(--dd-hue) 22%, transparent);
+    color: var(--dd-hue);
+}
+/* open, or marking the current page: solid accent, dark text */
+.nav-dropdown-btn.active,
+.dd.open > .wbtn,
+.nav-dropdown-wrap:hover .nav-dropdown-btn.active {
+    background: var(--dd-hue) !important;
+    color: var(--dd-ink) !important;
+}
+
+/* ── the folder under it ─────────────────────────────────────────────────── */
+.nav-dropdown-menu,
+.dd .dd-menu {
+    border: none !important;
+    border-top: 2px solid var(--dd-hue) !important;
+    border-radius: 0 !important;
+    background: var(--dd-bg) !important;
+    padding: 4px 0 !important;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.85) !important;
+}
+
+/* ── the files inside ────────────────────────────────────────────────────── */
+.nav-dropdown-item,
+.dd .dd-item {
+    border-radius: 0 !important;
+    padding: 7px 16px !important;
+    letter-spacing: 1.3px;
+    border-left: 2px solid transparent;
+    transition: background 0.13s, color 0.13s, border-color 0.13s;
+}
+.nav-dropdown-item:hover,
+.dd .dd-item:hover {
+    background: color-mix(in srgb, var(--dd-hue) 14%, transparent) !important;
+    color: var(--dd-hue) !important;
+    border-left-color: var(--dd-hue);
+}
+.nav-dropdown-item.active,
+.dd .dd-item.active {
+    color: var(--dd-hue) !important;
+    border-left-color: var(--dd-hue);
+    background: color-mix(in srgb, var(--dd-hue) 8%, transparent) !important;
+}
+
+/* Browsers without color-mix fall back to the accent at full strength, which
+   would drown the resting tab — keep those on a plain translucent ground. */
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+    .nav-dropdown-btn,
+    .font-picker-btn,
+    .dd > .wbtn                    { background: rgba(255,255,255,0.05); }
+    .nav-dropdown-btn:hover,
+    .dd > .wbtn:hover,
+    .nav-dropdown-wrap:hover .nav-dropdown-btn { background: rgba(255,255,255,0.12); }
+    .nav-dropdown-item:hover,
+    .dd .dd-item:hover             { background: rgba(255,255,255,0.08) !important; }
+    .nav-dropdown-item.active,
+    .dd .dd-item.active            { background: rgba(255,255,255,0.05) !important; }
+}

@@ -464,6 +464,7 @@
         .nav-dropdown-item:hover { color:var(--theme-color); background:rgba(255,255,255,0.04); }
         .nav-dropdown-item.active { color:var(--theme-color); font-weight:bold; background:rgba(255,255,255,0.03); }
     </style>
+    <link rel="stylesheet" href="dossier-nav.css">
 </head>
 <body>
     <div id="cursor-glow"></div>
@@ -515,6 +516,7 @@
                     <a href="alements.html" class="nav-dropdown-item">&#11041; STAT EXPLORER</a>
                     <a href="aleleaders.html" class="nav-dropdown-item">&#9670; LEADERBOARD</a>
                 <a href="fighters.html" class="nav-dropdown-item">&#9876; MY FIGHTERS</a>
+                <a href="wax.html" class="nav-dropdown-item">&#128367; CANDLE CALCULATOR</a>
                 </div>
             </div>
             <div class="nav-dropdown-wrap">
@@ -560,6 +562,7 @@
     <a href="alements.html" class="nav-btn">&#11041; STAT EXPLORER</a>
     <a href="aleleaders.html" class="nav-btn">&#9670; LEADERBOARD</a>
     <a href="fighters.html" class="nav-btn">&#9876; MY FIGHTERS</a>
+    <a href="wax.html" class="nav-btn">&#128367; CANDLE</a>
     <a href="stash.html" class="nav-btn">&#11041; STASH</a>
     <a href="outpost.html" class="nav-btn">OUTPOST</a>
     <a href="ep.html" class="nav-btn">&#9672; ENDPOINTS</a>
@@ -725,6 +728,13 @@
             <div class="card-text-wrapper">
                 <div class="card-title">&#128142; Fighter Market</div>
                 <span class="card-schema">Live auctions &amp; instant buys, every sale ever settled, trader leaderboards &amp; price trends</span>
+            </div>
+        </a>
+        <a href="wax.html" class="module-card module-card-rgb" style="padding:12px 20px;">
+            <span class="card-wip" style="color:#ff8ad8;">New</span>
+            <div class="card-text-wrapper">
+                <div class="card-title">&#128367; Candle Calculator</div>
+                <span class="card-schema">recovery.ale profit interface &mdash; live offers, shard valuator &amp; the full history of how winnings were split. Needs 1,000 gems contributed to the candle in the last 30 days.</span>
             </div>
         </a>
         <a href="https://naroncodex.app/pools" class="module-card" style="border-color:rgba(232,160,32,0.3);padding:12px 20px;">
@@ -985,7 +995,7 @@
 
         </div>
         <div style="text-align:center; padding: 12px 0 4px; font-family:'Courier New',monospace; font-size:0.72em; color:#252535; letter-spacing:2px; display:flex; justify-content:center; align-items:center; gap:14px;">
-            <span>v 1.1.99</span>
+            <span>v 1.2.0</span>
             <a href="ep.html" style="color:#252535; text-decoration:none; border:1px solid #1a1a2a; padding:2px 10px; letter-spacing:2px; transition:all 0.2s;" onmouseover="this.style.color='var(--theme-color)';this.style.borderColor='var(--theme-color)'" onmouseout="this.style.color='#252535';this.style.borderColor='#1a1a2a'">ENDPOINTS</a>
         </div>
     </footer>
