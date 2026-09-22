@@ -296,6 +296,8 @@
         .wbar-val { width:66px; text-align:right; font-variant-numeric:tabular-nums;
             color:var(--text); }
         .wbar-row.me .wbar-val { color:var(--gold); }
+        .est-note { margin-top:11px; padding-top:9px; border-top:1px solid var(--border);
+            font-size:0.55em; letter-spacing:1.1px; color:var(--muted); line-height:1.6; }
         /* mission requirement on a settlement */
         .settle-req { color:var(--muted); font-size:0.85em; white-space:nowrap;
             overflow:hidden; text-overflow:ellipsis; max-width:150px; }
@@ -1642,6 +1644,7 @@
             _customShardWax = null;
         }
         calcUpdate();
+        if (window._histLoaded) renderHistory();   // the WAX estimate follows the shard rate
         if (_offersCache.length) renderOffers(_offersCache);
         // renderOffers replaces the calc DOM — restore panel open state and refocus the input
         const newInp   = document.getElementById('custom-shard-input');
@@ -1667,6 +1670,7 @@
         if (panel) panel.classList.remove('open');
         if (btn) btn.classList.remove('active');
         calcUpdate();
+        if (window._histLoaded) renderHistory();   // the WAX estimate follows the shard rate
         if (_offersCache.length) renderOffers(_offersCache);
     };
 
@@ -2135,6 +2139,7 @@
         if (panel) panel.classList.add('open');
         if (btn)   btn.classList.add('active');
         calcUpdate();
+        if (window._histLoaded) renderHistory();   // the WAX estimate follows the shard rate
         if (_offersCache.length) { renderOffers(_offersCache); renderOptimizer(); }
     };
 
@@ -2300,6 +2305,18 @@
         if (pool === 'shrdrec') return { cls:'pool-shrd', lbl:'SHARD POOL' };
         return { cls:'', lbl:String(pool || '').toUpperCase() };
     }
+    // Spell out how the WAX estimate is reached — shards in particular have no
+    // fixed price, so they go through the same rate the rest of the page uses.
+    function histEstBasis() {
+        var tlm = (_liveWaxUsd && _liveTlmUsd)
+            ? 'TLM at live rate (1 WAX = ' + (_liveWaxUsd / _liveTlmUsd).toFixed(2) + ' TLM)'
+            : 'TLM at fallback rate (prices offline)';
+        var shard = (_customShardWax !== null && _customShardWax > 0)
+            ? 'shards at your pinned ' + Number(_customShardWax).toFixed(6) + ' WAX each'
+            : 'shards at ' + SHARDS_PER_TLM + ' per TLM';
+        return tlm + ' &middot; ' + shard;
+    }
+
     function histAmt(n) {
         n = Number(n) || 0;
         return n.toLocaleString(undefined, { maximumFractionDigits: n < 100 ? 2 : 0 });
@@ -2463,7 +2480,7 @@
             return '<rect x="' + (x(p.ms) - bw / 2).toFixed(1) + '" y="' + (PT + ih - h).toFixed(1) +
                    '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1" fill="' +
                    (CUR_COLOR[p.sym] || '#888') + '" opacity="0.75"><title>' +
-                   new Date(p.ms).toISOString().slice(0, 10) + ' — ' + histAmt(p.val) + ' WAX</title></rect>';
+                   new Date(p.ms).toISOString().slice(0, 10) + ' — ' + histAmt(p.val) + ' WAX est.</title></rect>';
         }).join('');
         var line = pts.map(function(p, i) {
             return (i ? 'L' : 'M') + x(p.ms).toFixed(1) + ' ' + (PT + ih - cum[i] / maxCum * ih).toFixed(1);
@@ -2494,7 +2511,7 @@
                 var v = w['val' + c] || 0;
                 if (!v) return '';
                 return '<span class="wseg" style="width:' + (v / max * 100).toFixed(2) + '%;background:' +
-                       CUR_COLOR[c] + '" title="' + histAmt(w[c]) + ' ' + c + ' ≈ ' + histAmt(v) + ' WAX"></span>';
+                       CUR_COLOR[c] + '" title="' + histAmt(w[c]) + ' ' + c + ' ≈ ' + histAmt(v) + ' WAX est."></span>';
             }).join('');
             return '<div class="wbar-row' + (w.wallet === me ? ' me' : '') + '">' +
                 '<span class="wbar-rank">' + (i + 1) + '</span>' +
@@ -2509,11 +2526,13 @@
         if (!el) return;
         el.innerHTML =
             '<div class="chart-head">Winnings over time <span class="chart-legend">' + chartLegend() +
-            '<span class="lg-item"><span class="lg-line"></span>cumulative &asymp; WAX</span></span></div>' +
+            '<span class="lg-item"><span class="lg-line"></span>cumulative WAX est.</span></span></div>' +
             chartOverTime(settles) +
-            '<div class="chart-head" style="margin-top:14px;">Top wallets <span class="chart-legend">' +
+            '<div class="chart-head" style="margin-top:14px;">Top wallets by WAX est.<span class="chart-legend">' +
             chartLegend() + '</span></div>' +
-            chartTopWallets(wallets, me);
+            chartTopWallets(wallets, me) +
+            '<div class="est-note">WAX value est. &mdash; ' + histEstBasis() +
+            '. Shards and TLM are not redeemable at these rates; treat every estimate as a guide.</div>';
     }
 
     function renderHistory() {
@@ -2544,9 +2563,9 @@
             ['TLM paid out',    histAmt(totals.TLM), ''],
             ['Shards paid out', histAmt(totals.SHARDS), ''],
             ['WAX paid out',    histAmt(totals.WAX), ''],
-            ['Total &asymp; value', histAmt(valWax) + ' WAX', 'at live rates']
+            ['WAX value est.', histAmt(valWax) + ' WAX', histEstBasis()]
         ];
-        if (mine) sum.push(['Your take', histAmt(mine.waxVal) + ' WAX',
+        if (mine) sum.push(['Your take (est.)', histAmt(mine.waxVal) + ' WAX',
                             '#' + mine.rank + ' &middot; ' + mine.wins + ' payouts']);
         document.getElementById('hist-summary').innerHTML = sum.map(function(s) {
             return '<div class="hist-stat"><div class="hs-lbl">' + s[0] + '</div>' +
@@ -2556,7 +2575,8 @@
 
         document.getElementById('hist-leaders').innerHTML =
             '<table class="hist-table"><thead><tr><th>Wallet</th><th>Payouts</th>' +
-            '<th>TLM</th><th>Shards</th><th>WAX</th><th>&asymp; WAX</th></tr></thead><tbody>' +
+            '<th>TLM</th><th>Shards</th><th>WAX</th><th title="Estimated total value in WAX">WAX est.</th>' +
+            '</tr></thead><tbody>' +
             _histWallets.map(function(w, i) {
                 return '<tr class="' + (w.wallet === me ? 'me' : '') + '">' +
                     '<td><span class="hist-rank">' + (i + 1) + '</span> ' +
