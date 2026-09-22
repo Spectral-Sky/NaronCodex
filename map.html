@@ -3577,8 +3577,7 @@
             }
             slotsEl.innerHTML=sHtml;
         }
-        var bpSub=document.getElementById('bpp-standard-sub');
-        if(bpSub) bpSub.textContent='1 TANK + 4 '+(_MK_BANDS[_mkState.band]||_MK_BANDS.high)[2];
+        _renderMarkerControls();
         ['standard','grind','elite'].forEach(function(p){
             var pb=document.getElementById('bpp-'+p);
             if(pb){ pb.classList.toggle('on', p===_bpLastPreset); pb.disabled=_bpLoading; pb.style.opacity=_bpLoading?'0.4':''; }
@@ -3824,14 +3823,62 @@
     // ── ELITE MARKER FILL ────────────────────────────────────────────────────
     // ELITE keeps its tank, then fills the other four slots from fighters carrying a chosen
     // marker in a level band (LOW 1-5, HIGH 6-9, MAX 10), topping up from a second marker.
-    var _mkState={primary:'',secondary:'',band:'high'};
-    try{ var _mkSaved=JSON.parse(localStorage.getItem('naron_mk_fill')||'null'); if(_mkSaved) _mkState=Object.assign(_mkState,_mkSaved); }catch(e){}
-    function _mkSave(){ try{ localStorage.setItem('naron_mk_fill',JSON.stringify(_mkState)); }catch(e){} }
+    var _mkState={primary:'',secondary:'',min:6,max:9};
     // level 10s can't gain XP, so they're their own band (for pushing difficulty)
     var _MK_BANDS={low:[1,5,'LVL 1-5'], high:[6,9,'LVL 6-9'], max:[10,10,'LVL 10']};
+    var MK_LV_MIN=1, MK_LV_MAX=10;
+    try{
+        var _mkSaved=JSON.parse(localStorage.getItem('naron_mk_fill')||'null');
+        if(_mkSaved){
+            // older saves held a fixed band name instead of a range
+            if(_mkSaved.min==null&&_mkSaved.band){
+                var _b=_MK_BANDS[_mkSaved.band]||_MK_BANDS.high;
+                _mkSaved.min=_b[0]; _mkSaved.max=_b[1];
+            }
+            delete _mkSaved.band;
+            _mkState=Object.assign(_mkState,_mkSaved);
+        }
+    }catch(e){}
+    function _mkClampRange(){
+        _mkState.min=Math.max(MK_LV_MIN,Math.min(MK_LV_MAX,Number(_mkState.min)||MK_LV_MIN));
+        _mkState.max=Math.max(MK_LV_MIN,Math.min(MK_LV_MAX,Number(_mkState.max)||MK_LV_MAX));
+        if(_mkState.min>_mkState.max){ var _t=_mkState.min; _mkState.min=_mkState.max; _mkState.max=_t; }
+    }
+    _mkClampRange();
+    function _mkSave(){ try{ localStorage.setItem('naron_mk_fill',JSON.stringify(_mkState)); }catch(e){} }
+    function _mkLabel(){
+        return _mkState.min===_mkState.max ? 'LVL '+_mkState.min
+                                           : 'LVL '+_mkState.min+'-'+_mkState.max;
+    }
     function _mkInBand(f){
-        var lv=Number((f.stats&&f.stats.level)||0), b=_MK_BANDS[_mkState.band]||_MK_BANDS.high;
-        return lv>=b[0]&&lv<=b[1];
+        var lv=Number((f.stats&&f.stats.level)||0);
+        return lv>=_mkState.min&&lv<=_mkState.max;
+    }
+    // how many free fighters the current range actually covers
+    function _mkRangeCount(){
+        return (_myFighters||[]).filter(function(f){
+            return !(f.in_use===1||f.in_use==='1') && _mkInBand(f);
+        }).length;
+    }
+    // drag either handle; the other gives way rather than blocking it
+    window.mkSetRange=function(which,value){
+        var v=Math.max(MK_LV_MIN,Math.min(MK_LV_MAX,Number(value)||MK_LV_MIN));
+        if(which==='min'){ _mkState.min=v; if(v>_mkState.max) _mkState.max=v; }
+        else             { _mkState.max=v; if(v<_mkState.min) _mkState.min=v; }
+        _mkSave();
+        _mkReapply();
+    };
+    window.mkSetBand=function(band){
+        var b=_MK_BANDS[band]||_MK_BANDS.high;
+        _mkState.min=b[0]; _mkState.max=b[1];
+        _mkSave();
+        _mkReapply();
+    };
+    // rebuild whichever team the player is actually looking at, keeping their preset
+    function _mkReapply(){
+        var ov=document.getElementById('battle-overlay');
+        if(ov&&ov.classList.contains('open')) bpApplyPreset(_bpLastPreset||'standard');
+        else { _renderMarkerControls(); _drunApplyPreset(_drunLastPreset||'standard'); }
     }
     function _renderMarkerControls(){
         var avail=(_myFighters||[]).filter(function(f){ return !(f.in_use===1||f.in_use==='1'); });
@@ -3849,12 +3896,29 @@
             var a=document.getElementById(p+'-mk1'), b=document.getElementById(p+'-mk2');
             if(a) a.innerHTML=opts(_mkState.primary,'ANY (by level)');
             if(b) b.innerHTML=opts(_mkState.secondary,'— none —');
+        });
+        // the level range drives GRIND + wherever it appears
+        var _steps=MK_LV_MAX-MK_LV_MIN+1;
+        var _left=(_mkState.min-MK_LV_MIN)/_steps*100;
+        var _span=(_mkState.max-_mkState.min+1)/_steps*100;
+        var _count=_mkRangeCount();
+        ['bp','drun','arun'].forEach(function(p){
+            var lo=document.getElementById(p+'-lv-min'), hi=document.getElementById(p+'-lv-max');
+            if(lo) lo.value=_mkState.min;
+            if(hi) hi.value=_mkState.max;
+            var fill=document.getElementById(p+'-lv-fill');
+            if(fill){ fill.style.left=_left.toFixed(2)+'%'; fill.style.width=_span.toFixed(2)+'%'; }
+            var lbl=document.getElementById(p+'-lv-lbl');
+            if(lbl) lbl.textContent=_mkLabel()+' · '+_count+' FIGHTER'+(_count===1?'':'S');
             ['low','high','max'].forEach(function(band){
-                var btn=document.getElementById(p+'-mk-'+band);
-                if(btn) btn.classList.toggle('active',_mkState.band===band);
+                var btn=document.getElementById(p+'-mk-'+band), bd=_MK_BANDS[band];
+                if(btn) btn.classList.toggle('active',_mkState.min===bd[0]&&_mkState.max===bd[1]);
             });
-            var sub=document.getElementById(p+'-standard-sub');
-            if(sub) sub.textContent='1 TANK + 4 '+(_MK_BANDS[_mkState.band]||_MK_BANDS.high)[2];
+        });
+        // the pane prefixes its preset buttons bpp-, the run pickers dpp-/app-
+        ['bpp','dpp','app'].forEach(function(pre){
+            var sub=document.getElementById(pre+'-standard-sub');
+            if(sub) sub.textContent='1 TANK + 4 '+_mkLabel();
         });
     }
     function mkSet(field,value){
@@ -4054,8 +4118,8 @@
         if(!avail.length) return { team:[null,null,null,null,null], note:'⚠ NO FIGHTERS AVAILABLE' };
         var lvlOf=function(f){ return Number((f.stats&&f.stats.level)||0); };
         var byLevel=function(a,b){ return lvlOf(b)-lvlOf(a); };
-        var band=_MK_BANDS[_mkState.band]||_MK_BANDS.high;
-        var inBand=function(f){ var lv=lvlOf(f); return lv>=band[0]&&lv<=band[1]; };
+        var bandLbl=_mkLabel();
+        var inBand=_mkInBand;
         var team=[null,null,null,null,null], used={}, note=null;
         var free=function(list){ return (list||avail).filter(function(f){ return !used[String(f.fighter_id)]; }); };
         var put=function(f){
@@ -4098,9 +4162,9 @@
             var afterBand=filled();
             free().sort(byLevel).forEach(put);                      // then simply the highest left
             if(_mkState.primary&&afterMarkers<5)
-                note='ONLY '+(afterMarkers-1)+' '+band[2]+' WITH '+(_mkState.secondary?'THOSE MARKERS':'THAT MARKER')+' — TOPPED UP FROM '+band[2];
+                note='ONLY '+(afterMarkers-1)+' '+bandLbl+' WITH '+(_mkState.secondary?'THOSE MARKERS':'THAT MARKER')+' — TOPPED UP FROM '+bandLbl;
             else if(afterBand<5)
-                note='ONLY '+(afterBand-1)+' '+band[2]+' FIGHTERS — TOPPED UP WITH YOUR NEXT HIGHEST';
+                note='ONLY '+(afterBand-1)+' '+bandLbl+' FIGHTERS — TOPPED UP WITH YOUR NEXT HIGHEST';
         }
         return { team:team, note:note };
     }
@@ -4414,6 +4478,7 @@
         <button class="bp-preset-btn" id="bpp-grind" onclick="bpApplyPreset('grind')" title="Two level 10s (tankiest, then the best Dungeon Expert / Trainer) carrying three level 1-5 fighters for XP">&#128200; GRIND<span class="bp-preset-sub">2 LVL 10 + 3 LVL 1-5</span></button>
         <button class="bp-preset-btn" id="bpp-elite" onclick="bpApplyPreset('elite')" title="The five strongest fighters by damage per cooldown and health">&#9889; ELITE<span class="bp-preset-sub">TOP 5 DPS / TANKY</span></button>
       </div>
+      <div class="lv-row"><span class="lv-head"><span class="lv-title">LEVELS</span><span class="lv-lbl" id="bp-lv-lbl">LVL 6-9</span></span><div class="lv-range" title="Which fighter levels GRIND + may pick from"><span class="lv-track"><span class="lv-fill" id="bp-lv-fill"></span></span><input type="range" class="lv-in lv-in-min" id="bp-lv-min" min="1" max="10" step="1" value="6" oninput="mkSetRange('min',this.value)" aria-label="Lowest level to include"><input type="range" class="lv-in lv-in-max" id="bp-lv-max" min="1" max="10" step="1" value="9" oninput="mkSetRange('max',this.value)" aria-label="Highest level to include"></div><div class="lv-bands"><button class="mk-band" id="bp-mk-low" onclick="mkSetBand('low')" title="Levels 1-5">LOW 1-5</button><button class="mk-band" id="bp-mk-high" onclick="mkSetBand('high')" title="Levels 6-9">HIGH 6-9</button><button class="mk-band" id="bp-mk-max" onclick="mkSetBand('max')" title="Level 10 only — no XP gain, for pushing difficulty">MAX 10</button></div></div>
       <div class="bp-section-lbl">FIGHTERS (SELECT 5)</div>
       <div id="bp-slots"></div>
       <div class="bp-section-lbl">NFTs</div>
@@ -4522,6 +4587,29 @@
     .mk-fill { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin:6px 0 2px; font-size:0.62em; letter-spacing:1px; }
     .mk-lbl { color:#6a7a8a; }
     .mk-fill select { background:#0a0e18; color:#c8d0e0; border:1px solid rgba(96,200,255,0.25); border-radius:3px; padding:2px 4px; font-size:1em; max-width:160px; }
+    .lv-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding:7px 10px;
+        border:1px solid rgba(96,200,255,0.18); border-radius:4px; margin:0 0 8px; }
+    .lv-head { display:flex; align-items:baseline; gap:7px; flex-shrink:0; }
+    .lv-title { font-size:0.62em; letter-spacing:2px; color:#7a8a9a; }
+    .lv-lbl { font-size:0.66em; letter-spacing:1.4px; color:#ffd060; white-space:nowrap; }
+    .lv-range { position:relative; flex:1; min-width:120px; height:20px; }
+    .lv-track { position:absolute; top:8px; left:0; right:0; height:4px; border-radius:2px;
+        background:rgba(96,200,255,0.14); display:block; overflow:hidden; }
+    .lv-fill { position:absolute; top:0; bottom:0; background:#d4a017; display:block; }
+    .lv-in { position:absolute; top:0; left:0; width:100%; height:20px; margin:0;
+        background:none; -webkit-appearance:none; appearance:none; pointer-events:none; }
+    .lv-in:focus { outline:none; }
+    .lv-in::-webkit-slider-runnable-track { background:none; border:none; height:20px; }
+    .lv-in::-moz-range-track { background:none; border:none; height:20px; }
+    .lv-in::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; pointer-events:auto;
+        width:13px; height:13px; border-radius:50%; background:#ffd060; border:2px solid #1a1408;
+        cursor:grab; margin-top:3px; }
+    .lv-in::-moz-range-thumb { pointer-events:auto; width:13px; height:13px; border-radius:50%;
+        background:#ffd060; border:2px solid #1a1408; cursor:grab; }
+    .lv-in:active::-webkit-slider-thumb { cursor:grabbing; }
+    .lv-in-max::-webkit-slider-thumb { background:#60c8ff; }
+    .lv-in-max::-moz-range-thumb { background:#60c8ff; }
+    .lv-bands { display:flex; gap:4px; flex-shrink:0; }
     .mk-band { background:transparent; border:1px solid rgba(96,200,255,0.25); color:#7a8a9a; border-radius:3px; padding:2px 6px; cursor:pointer; font-size:1em; }
     .mk-band.active { border-color:#d4a017; color:#ffd060; }
     .drun-nft-chip.suggested { border-color:rgba(212,160,23,0.7) !important; color:#ffd060 !important; }
@@ -4544,12 +4632,10 @@
             <button class="drun-preset-btn" id="dpp-grind" onclick="_drunApplyPreset('grind')" title="Two level 10s (tankiest, then the best Dungeon Expert / Trainer) carrying three level 1-5 fighters for XP">📈 GRIND<br>2 LVL 10 + 3 LVL 1-5</button>
             <button class="drun-preset-btn" id="dpp-elite" onclick="_drunApplyPreset('elite')" title="The five strongest fighters by damage per cooldown and health">⚡ ELITE<br>TOP 5 DPS / TANKY</button>
         </div>
+        <div class="lv-row"><span class="lv-head"><span class="lv-title">LEVELS</span><span class="lv-lbl" id="drun-lv-lbl">LVL 6-9</span></span><div class="lv-range" title="Which fighter levels GRIND + may pick from"><span class="lv-track"><span class="lv-fill" id="drun-lv-fill"></span></span><input type="range" class="lv-in lv-in-min" id="drun-lv-min" min="1" max="10" step="1" value="6" oninput="mkSetRange('min',this.value)" aria-label="Lowest level to include"><input type="range" class="lv-in lv-in-max" id="drun-lv-max" min="1" max="10" step="1" value="9" oninput="mkSetRange('max',this.value)" aria-label="Highest level to include"></div><div class="lv-bands"><button class="mk-band" id="drun-mk-low" onclick="mkSetBand('low')" title="Levels 1-5">LOW 1-5</button><button class="mk-band" id="drun-mk-high" onclick="mkSetBand('high')" title="Levels 6-9">HIGH 6-9</button><button class="mk-band" id="drun-mk-max" onclick="mkSetBand('max')" title="Level 10 only — no XP gain, for pushing difficulty">MAX 10</button></div></div>
         <div class="mk-fill">
             <span class="mk-lbl" title="ELITE fills its 4 non-tank slots with fighters carrying this marker">ELITE MARKER</span>
             <select id="drun-mk1" onchange="mkSet('primary',this.value)"></select>
-            <button class="mk-band" id="drun-mk-low" onclick="mkSet('band','low')" title="Marked fighters level 1-5">LOW 1-5</button>
-            <button class="mk-band" id="drun-mk-high" onclick="mkSet('band','high')" title="Marked fighters level 6-9">HIGH 6-9</button>
-            <button class="mk-band" id="drun-mk-max" onclick="mkSet('band','max')" title="Marked level 10 fighters — no XP gain, for pushing difficulty">MAX 10</button>
             <span class="mk-lbl" title="Fills any slots the first marker can't">THEN</span>
             <select id="drun-mk2" onchange="mkSet('secondary',this.value)"></select>
         </div>
@@ -4583,12 +4669,10 @@
             <button class="drun-preset-btn" id="app-grind" onclick="_drunApplyPreset('grind')" title="Two level 10s (tankiest, then the best Dungeon Expert / Trainer) carrying three level 1-5 fighters for XP">&#128200; GRIND<br>2 LVL 10 + 3 LVL 1-5</button>
             <button class="drun-preset-btn" id="app-elite" onclick="_drunApplyPreset('elite')" title="The five strongest fighters by damage per cooldown and health">&#9889; ELITE<br>TOP 5 DPS / TANKY</button>
         </div>
+        <div class="lv-row"><span class="lv-head"><span class="lv-title">LEVELS</span><span class="lv-lbl" id="arun-lv-lbl">LVL 6-9</span></span><div class="lv-range" title="Which fighter levels GRIND + may pick from"><span class="lv-track"><span class="lv-fill" id="arun-lv-fill"></span></span><input type="range" class="lv-in lv-in-min" id="arun-lv-min" min="1" max="10" step="1" value="6" oninput="mkSetRange('min',this.value)" aria-label="Lowest level to include"><input type="range" class="lv-in lv-in-max" id="arun-lv-max" min="1" max="10" step="1" value="9" oninput="mkSetRange('max',this.value)" aria-label="Highest level to include"></div><div class="lv-bands"><button class="mk-band" id="arun-mk-low" onclick="mkSetBand('low')" title="Levels 1-5">LOW 1-5</button><button class="mk-band" id="arun-mk-high" onclick="mkSetBand('high')" title="Levels 6-9">HIGH 6-9</button><button class="mk-band" id="arun-mk-max" onclick="mkSetBand('max')" title="Level 10 only — no XP gain, for pushing difficulty">MAX 10</button></div></div>
         <div class="mk-fill">
             <span class="mk-lbl" title="ELITE fills its 4 non-tank slots with fighters carrying this marker">ELITE MARKER</span>
             <select id="arun-mk1" onchange="mkSet('primary',this.value)"></select>
-            <button class="mk-band" id="arun-mk-low" onclick="mkSet('band','low')" title="Marked fighters level 1-5">LOW 1-5</button>
-            <button class="mk-band" id="arun-mk-high" onclick="mkSet('band','high')" title="Marked fighters level 6-9">HIGH 6-9</button>
-            <button class="mk-band" id="arun-mk-max" onclick="mkSet('band','max')" title="Marked level 10 fighters — no XP gain, for pushing difficulty">MAX 10</button>
             <span class="mk-lbl" title="Fills any slots the first marker can't">THEN</span>
             <select id="arun-mk2" onchange="mkSet('secondary',this.value)"></select>
         </div>
