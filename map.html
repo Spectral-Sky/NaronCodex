@@ -694,6 +694,8 @@
         .bp-slot-loading .bp-slot-empty { color:var(--gold); animation:bp-pulse 1.1s ease-in-out infinite; }
         @keyframes bp-pulse { 0%,100% { opacity:0.30; } 50% { opacity:0.85; } }
         .bp-slot-lv { font-size:0.58em; color:#607080; flex-shrink:0; }
+        .bp-slot-el, .bpp-el { font-size:0.8em; flex-shrink:0; }
+        .bp-slot-mk, .bpp-mk { font-size:0.75em; flex-shrink:0; }
         .bp-slot-xp { font-size:0.52em; color:#60d080; background:rgba(60,160,80,0.12); border:1px solid rgba(60,160,80,0.25); border-radius:3px; padding:1px 5px; flex-shrink:0; }
         .bp-slot-inuse { font-size:0.52em; color:#5090c0; background:rgba(40,80,160,0.15); border:1px solid rgba(50,100,180,0.25); border-radius:3px; padding:1px 5px; flex-shrink:0; }
         .bp-slot-clear { background:transparent; border:none; color:#334; font-size:0.85em; cursor:crosshair; padding:0 2px; flex-shrink:0; transition:color 0.15s; }
@@ -719,6 +721,9 @@
         .bp-preset-btn:hover { border-color:rgba(232,160,32,0.7); color:var(--gold); background:rgba(232,160,32,0.06); }
         .bp-preset-btn.on { background:rgba(232,160,32,0.12); border-color:rgba(232,160,32,0.5); color:var(--gold); }
         .bp-preset-sub { display:block; font-size:0.85em; opacity:0.75; letter-spacing:0; }
+        .retry-row { display:flex; align-items:center; gap:8px; margin:6px 0 4px; }
+        .retry-lbl { font-size:0.52em; letter-spacing:2px; color:var(--gold); white-space:nowrap; }
+        .retry-row input[type=range] { flex:1; accent-color:var(--gold); cursor:crosshair; height:14px; }
         #bp-diff-toggle { width:100%; padding:4px; font-size:0.52em; letter-spacing:2px; background:transparent; border:1px dashed rgba(80,40,40,0.35); color:var(--gold); cursor:crosshair; border-radius:5px; text-align:center; margin-bottom:3px; transition:all 0.15s; }
         #bp-diff-toggle:hover { border-color:rgba(192,60,60,0.5); color:var(--gold); }
 
@@ -3318,6 +3323,18 @@
     }
 
     var _drunLastPreset=null;
+    // How many times a lost dungeon is retried, each attempt one level lower. 0 = never retry.
+    var _retryLower=1;
+    try{ var _rlSaved=localStorage.getItem('naron_retry_lower'); if(_rlSaved!==null) _retryLower=Math.max(0,Math.min(5,Number(_rlSaved)||0)); }catch(e){}
+    function setRetryLower(n){
+        _retryLower=Math.max(0,Math.min(5,Number(n)||0));
+        try{ localStorage.setItem('naron_retry_lower',String(_retryLower)); }catch(e){}
+        ['bp','drun'].forEach(function(p){
+            var sl=document.getElementById(p+'-retry-slider'), lb=document.getElementById(p+'-retry-lbl');
+            if(sl&&Number(sl.value)!==_retryLower) sl.value=_retryLower;
+            if(lb) lb.textContent=_retryLower?(_retryLower+' RETRY'+(_retryLower===1?'':'S')+' · ONE LEVEL LOWER EACH'):'NO RETRY';
+        });
+    }
     var _bpNFTCache={crew:null,weapon:null};
     var _autoBattle=false;
     var _battleNFTDefaults={crewAssetId:null,weaponAssetId:null};
@@ -3539,10 +3556,13 @@
                     var s=f.stats||{};
                     var xpReady=s.level<10&&s.experience!=null&&s.required_experience!=null&&Number(s.experience)>=Number(s.required_experience);
                     var inUse=f.in_use===1||f.in_use==='1';
-                    sHtml+='<div class="bp-slot filled" onclick="openFighterPicker('+i+')">'
+                    var slotEl=FIGHTER_ELEMENTS[(f.element||'').toLowerCase()]||'', slotMk=_markerSym(f.marker||'');
+                    sHtml+='<div class="bp-slot filled" onclick="openFighterPicker('+i+')" title="'+(f.element||'')+(f.marker?' · '+f.marker:'')+'">'
                         +'<span class="bp-slot-num">'+(i+1)+'</span>'
                         +'<span class="bp-slot-cls">'+ci.e+'</span>'
                         +'<span class="bp-slot-name">'+ci.n.toUpperCase()+'</span>'
+                        +(slotEl?'<span class="bp-slot-el">'+slotEl+'</span>':'')
+                        +(slotMk?'<span class="bp-slot-mk">'+slotMk+'</span>':'')
                         +'<span class="bp-slot-lv">LV'+lvl+'</span>'
                         +(xpReady?'<span class="bp-slot-xp">XP✓</span>':'')
                         +(inUse?'<span class="bp-slot-inuse">DEPLOYED</span>':'')
@@ -3592,6 +3612,7 @@
             var s=f.stats||{};
             return s.level<10&&s.experience!=null&&s.required_experience!=null&&Number(s.experience)>=Number(s.required_experience);
         });
+        setRetryLower(_retryLower);
         var lvBtn=document.getElementById('bp-lvup-btn');
         if(lvBtn) lvBtn.style.display=anyReady?'':'none';
 
@@ -3692,9 +3713,12 @@
             var role=_fmEffective(f);
             var roleLabel=role==='tank'?'🛡':role==='dps'?'⚔':role==='util'?'✦':'';
             var sugg=(typeof _arunSuggestedIds!=='undefined'&&_arunSuggestedIds&&_arunSuggestedIds.has(fid));
+            var rowEl=FIGHTER_ELEMENTS[(f.element||'').toLowerCase()]||'', rowMk=_markerSym(f.marker||'');
             html+='<div class="bpp-row'+(usedInOtherSlot?' disabled':'')+'" onclick="selectBpFighter(\''+fid+'\')">'
                 +'<span class="bpp-cls">'+ci.e+'</span>'
                 +'<span class="bpp-name">'+ci.n.toUpperCase()+'</span>'
+                +(rowEl?'<span class="bpp-el">'+rowEl+'</span>':'')
+                +(rowMk?'<span class="bpp-mk">'+rowMk+'</span>':'')
                 +'<span class="bpp-lv">LV'+lvl+'</span>'
                 +(role?'<span class="fm-badge fm-'+role+'" onclick="event.stopPropagation();_fmCycleInPicker(\''+fid+'\',this)" title="Change role">'+roleLabel+'</span>':'')
                 +(sugg?'<span class="bpp-badge bpp-sugg" title="Out-levels this arena\'s defender">★ SUGGESTED</span>':'')
@@ -3719,7 +3743,8 @@
                 var _role=_fmEffective(_ff);
                 var _badge=_role?'<span class="fm-badge fm-'+_role+'" onclick="event.stopPropagation();_fmToggleBadge(\''+_ff.fighter_id+'\',this)" title="Click to change role">'+(_role==='tank'?'🛡 TANK':_role==='dps'?'⚔ DPS':'✦ UTIL')+'</span>':'';
                 var isActive=(_bpPickerFromDrun&&_bpPickerSlot===_fi);
-                _fh+='<button class="drun-fighter-chip'+(isActive?' slot-active':'')+'" onclick="drunSelectFighter('+_fi+')" title="Slot '+(_fi+1)+' — click to select">'+_fci.e+' LV'+((_ff.stats&&_ff.stats.level)||'?')+_badge+'</button>';
+                var _fel=FIGHTER_ELEMENTS[(_ff.element||'').toLowerCase()]||'', _fmk=_markerSym(_ff.marker||'');
+                _fh+='<button class="drun-fighter-chip'+(isActive?' slot-active':'')+'" onclick="drunSelectFighter('+_fi+')" title="Slot '+(_fi+1)+' — '+(_ff.classname||'')+(_ff.element?' · '+_ff.element:'')+(_ff.marker?' · '+_ff.marker:'')+'">'+_fci.e+(_fel?' '+_fel:'')+' LV'+((_ff.stats&&_ff.stats.level)||'?')+(_fmk?' '+_fmk:'')+_badge+'</button>';
             } else {
                 var isActive=(_bpPickerFromDrun&&_bpPickerSlot===_fi);
                 _fh+='<button class="drun-fighter-chip empty'+(isActive?' slot-active':'')+'" onclick="drunSelectFighter('+_fi+')" title="Slot '+(_fi+1)+' — click to pick">+ PICK</button>';
@@ -4228,6 +4253,25 @@
                 _bpSetStatus('⏳ RESOLVING FIGHT…','');
                 var _res=null;
                 try{ _res=await _checkFightResult(_hid); }catch(e){}
+                // dungeons only — arenas have no difficulty to drop
+                if(_bpMode==='dungeon'){
+                    var _tryDiff=_bpDifficulty;
+                    for(var _t=0;_t<_retryLower&&_res==='loss'&&_tryDiff>1;_t++){
+                        _tryDiff--;
+                        _bpSetStatus('✗ LOST AT LVL '+(_tryDiff+1)+' — RETRY '+(_t+1)+'/'+_retryLower+' AT LVL '+_tryDiff+'…','');
+                        await new Promise(function(r){ setTimeout(r,1500); });
+                        try{
+                            var _rh=genHistoryId();
+                            _replayDungeonHid=_rh;
+                            action.data.history_id=_rh;
+                            action.data.difficulty=_tryDiff;
+                            await _signTx([action]);
+                            _res=null;
+                            try{ _res=await _checkFightResult(_rh); }catch(e){}
+                        }catch(re){ break; }
+                    }
+                    if(_tryDiff!==_bpDifficulty) _lbl='DUNGEON '+_bpDungeonEntry.x+','+_bpDungeonEntry.y+' — LVL '+_tryDiff;
+                }
                 _bpSetStatus(_res==='win'?'✓ VICTORY':_res==='loss'?'✗ DEFEAT':'✓ SENT — result pending',
                              _res==='loss'?'err':'ok');
                 _bpShowResult(_lastFightRow,_lbl);
@@ -4394,6 +4438,11 @@
         <div id="bp-diff-grid"></div>
         <button id="bp-diff-toggle" onclick="toggleHighDiff()">▸ 16 – 20 (EXTREME)</button>
         <div id="bp-diff-high" class="hidden"></div>
+        <div class="retry-row">
+          <span class="retry-lbl" id="bp-retry-lbl">1 RETRY · ONE LEVEL LOWER EACH</span>
+          <input type="range" id="bp-retry-slider" min="0" max="5" step="1" value="1"
+                 oninput="setRetryLower(this.value)" title="If the fight is lost, try again one level lower — this many times">
+        </div>
       </div>
       <div id="bp-defender" style="display:none">
         <div id="bp-defender-lbl">DEFENDING FIGHTER</div>
@@ -4484,6 +4533,11 @@
         <div class="drun-ph">⚔ DUNGEON RUN</div>
         <div class="drun-sub">SELECT DIFFICULTY</div>
         <div id="drun-diff-grid"></div>
+        <div class="retry-row">
+          <span class="retry-lbl" id="drun-retry-lbl">1 RETRY · ONE LEVEL LOWER EACH</span>
+          <input type="range" id="drun-retry-slider" min="0" max="5" step="1" value="1"
+                 oninput="setRetryLower(this.value)" title="If a dungeon is lost, try again one level lower — this many times before moving on">
+        </div>
         <div id="drun-hint"></div>
         <div id="drun-presets">
             <button class="drun-preset-btn" id="dpp-standard" onclick="_drunApplyPreset('standard')" title="Your best tank plus four fighters from the level band chosen below (marked fighters first)">🛡 GRIND +<br><span id="dpp-standard-sub">1 TANK + 4 LVL 6-9</span></button>
@@ -5123,6 +5177,7 @@ async function txqAddDungeonRun() {
 }
 
 function setDrunDiff(d) {
+        setRetryLower(_retryLower);
     _drunPickerDiff = d;
     var btns = document.querySelectorAll('.drun-diff-btn');
     btns.forEach(function(b, i){ b.classList.toggle('on', i+1===d); });
@@ -5876,19 +5931,20 @@ async function runTxQueue() {
                 if (progLbl) progLbl.textContent = 'Checking battle result…';
                 try { _dResult = await _checkFightResult(step.dungeonHistoryId); } catch(e) {}
 
-                if (_dResult === 'loss' && _dDiff > 1) {
-                    var _lowDiff = _dDiff - 1;
+                var _tryDiff = _dDiff;
+                for (var _rTry = 0; _rTry < _retryLower && _dResult === 'loss' && _tryDiff > 1; _rTry++) {
+                    _tryDiff--;
                     if (itemEl) {
                         itemEl.style.background = 'rgba(255,160,40,0.08)';
                         var _rl = itemEl.querySelector('.txq-item-label');
-                        if (_rl) _rl.textContent += ' — LOSS at LVL ' + _dDiff + ' · retrying at LVL ' + _lowDiff + '…';
+                        if (_rl) _rl.textContent += ' — LOST at LVL ' + (_tryDiff + 1) + ' · retrying at LVL ' + _tryDiff + '…';
                     }
-                    if (progLbl) progLbl.textContent = '⚠ Dungeon lost at LVL ' + _dDiff + ' — retrying at LVL ' + _lowDiff + '…';
+                    if (progLbl) progLbl.textContent = '⚠ Dungeon lost at LVL ' + (_tryDiff + 1) + ' — retry ' + (_rTry + 1) + ' of ' + _retryLower + ' at LVL ' + _tryDiff + '…';
                     await new Promise(function(r){ setTimeout(r, 1500); });
                     try {
                         var _rHid = genHistoryId();
                         step.actions[0].data.history_id = _rHid;
-                        step.actions[0].data.difficulty = _lowDiff;
+                        step.actions[0].data.difficulty = _tryDiff;
                         step.dungeonHistoryId = _rHid;
                         if (window.walletSession) await window.walletSession.transact({actions: step.actions});
                         else if (wax && wax.api) await wax.api.transact({actions: step.actions},{blocksBehind:3,expireSeconds:30});
@@ -5897,6 +5953,7 @@ async function runTxQueue() {
                         try { _dResult = await _checkFightResult(_rHid); } catch(e) {}
                     } catch(re) {
                         _dResult = 'error';
+                        break;
                     }
                 }
 
