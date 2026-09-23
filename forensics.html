@@ -481,6 +481,29 @@ html, body {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+#info-panel .ms-sec { margin-top:14px; border-top:1px solid rgba(96,200,255,0.18); padding-top:10px; }
+#info-panel .ms-h { font-size:0.6em; letter-spacing:2.4px; color:#60C8FF; margin-bottom:8px; text-transform:uppercase; }
+.ms-run { background:transparent; border:1px solid rgba(96,200,255,0.4); color:#60C8FF; font-family:inherit;
+    font-size:0.62em; letter-spacing:1.6px; padding:6px 12px; cursor:pointer; width:100%; }
+.ms-run:hover { background:rgba(96,200,255,0.12); }
+.ms-load { font-size:0.62em; letter-spacing:1.4px; color:#6a7c90; padding:8px 0; }
+.ms-score { display:flex; align-items:center; gap:10px; padding:8px 0 10px; }
+.ms-num { font-size:1.9em; font-weight:bold; line-height:1; }
+.ms-score.hot  .ms-num { color:#FF3060; }
+.ms-score.warm .ms-num { color:#FFB040; }
+.ms-score.cool .ms-num { color:#40D080; }
+.ms-lbl { font-size:0.55em; letter-spacing:1.6px; color:#6a7c90; line-height:1.5; }
+.ms-lbl i { color:#4a5a6a; font-style:normal; }
+.ms-grid { display:grid; grid-template-columns:auto 1fr; gap:3px 10px; font-size:0.62em; margin-bottom:10px; }
+.ms-k { color:#6a7c90; letter-spacing:1px; }
+.ms-v { text-align:right; color:#c8d8e8; font-variant-numeric:tabular-nums; }
+.ms-v.hot { color:#FF3060; }
+.ms-hours { display:flex; align-items:flex-end; gap:1px; height:36px; }
+.ms-hr { flex:1; background:#60C8FF; border-radius:1px 1px 0 0; }
+.ms-hr.off { background:rgba(96,200,255,0.12); }
+.ms-hours-ax { display:flex; justify-content:space-between; font-size:0.5em; color:#4a5a6a; margin-top:2px; letter-spacing:1px; }
+.ms-note { font-size:0.52em; line-height:1.6; color:#5a6a7a; margin-top:9px; letter-spacing:0.6px; }
 </style>
 </head>
 <body>
@@ -1384,6 +1407,137 @@ async function goBack() {
     ov.style.pointerEvents = 'none';
 }
 
+
+/* ── MINING CADENCE SCAN ─────────────────────────────────────────────────────
+   Pulls a wallet's own mines from m.federation and measures how regular they
+   are. Two numbers carry most of the signal:
+
+     MAD of gap-over-cooldown — how much the wait after the cooldown expires
+       varies. A person's varies by minutes; a script's by seconds.
+     hours covered           — how much of the day sees any mining at all.
+
+   This measures REGULARITY, which is consistent with automation but is not
+   proof of it: a patient player on a fixed routine looks much the same. It is
+   a shortlist for a human to look at, never a verdict.                        */
+
+const MINE_WINDOW_DAYS = 30;
+let _mineCache = {};
+
+async function fetchMines(wallet, days) {
+    const cutoff = Date.now() - days * 86400000;
+    const out = [];
+    let before = '';
+    for (let page = 0; page < 40; page++) {
+        const d = await hGet('/v2/history/get_actions', Object.assign({
+            account: wallet, filter: 'm.federation:mine', limit: 1000, sort: 'desc'
+        }, before ? { before } : {}));
+        const acts = (d && d.actions) || [];
+        if (!acts.length) break;
+        for (const a of acts) {
+            const ms = Date.parse(a.timestamp + 'Z');
+            if (ms < cutoff) return out;
+            out.push({ ms, notify: (a.act.data && a.act.data.notify) || '' });
+        }
+        if (acts.length < 1000) break;
+        before = acts[acts.length - 1].timestamp;
+    }
+    return out;
+}
+
+// the cooldown the chain applied is only on the guild-notified copy, so the
+// wallet's own mine actions are measured on raw gaps instead
+function mineStats(mines) {
+    const list = mines.slice().sort((a, b) => a.ms - b.ms);
+    const gaps = [], hours = new Array(24).fill(0), notify = {};
+    for (let i = 0; i < list.length; i++) {
+        hours[new Date(list[i].ms).getUTCHours()]++;
+        notify[list[i].notify || '(none)'] = (notify[list[i].notify || '(none)'] || 0) + 1;
+        if (i) {
+            const g = (list[i].ms - list[i - 1].ms) / 1000;
+            if (g > 0 && g < 6 * 3600) gaps.push(g);
+        }
+    }
+    const med = median(gaps);
+    const mad = median(gaps.map(g => Math.abs(g - med)));
+    const covered = hours.filter(h => h > 0).length;
+    let longest = 0;
+    for (let i = 1; i < list.length; i++) longest = Math.max(longest, (list[i].ms - list[i - 1].ms) / 3600000);
+    return {
+        n: list.length, gaps: gaps.length, median: med, mad, hours, covered, longest,
+        notify, first: list.length ? list[0].ms : 0, last: list.length ? list[list.length - 1].ms : 0
+    };
+}
+
+function median(a) {
+    if (!a.length) return 0;
+    const s = a.slice().sort((x, y) => x - y);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function regularityScore(st) {
+    const tight = Math.max(0, 1 - st.mad / 1800);
+    const cover = Math.min(1, st.covered / 24);
+    const cont  = Math.max(0, 1 - st.longest / 12);
+    return Math.round(tight * 45 + cover * 30 + cont * 25);
+}
+
+function hoursBar(hours) {
+    const max = Math.max.apply(null, hours) || 1;
+    return '<div class="ms-hours">' + hours.map((v, i) =>
+        '<span class="ms-hr' + (v ? '' : ' off') + '" style="height:' +
+        Math.max(2, v / max * 34).toFixed(1) + 'px" title="' +
+        (i < 10 ? '0' : '') + i + ':00 UTC — ' + v + ' mines"></span>').join('') +
+        '</div><div class="ms-hours-ax"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>';
+}
+
+function fmtDur(s) {
+    if (!s) return '—';
+    const m = Math.floor(s / 60), r = Math.round(s % 60);
+    return m ? m + 'm ' + r + 's' : r + 's';
+}
+
+async function mineScan(wallet) {
+    const panel = document.getElementById('info-panel');
+    const box = document.getElementById('ms-box');
+    if (box) box.innerHTML = '<div class="ms-load">SCANNING ' + MINE_WINDOW_DAYS + ' DAYS OF MINING…</div>';
+    let mines = _mineCache[wallet];
+    if (!mines) {
+        try { mines = await fetchMines(wallet, MINE_WINDOW_DAYS); _mineCache[wallet] = mines; }
+        catch (e) { if (box) box.innerHTML = '<div class="ms-load">History node unavailable — try again.</div>'; return; }
+    }
+    if (!box) return;
+    if (!mines.length) {
+        box.innerHTML = '<div class="ms-load">No mines in the last ' + MINE_WINDOW_DAYS + ' days.</div>';
+        return;
+    }
+    const st = mineStats(mines);
+    const score = regularityScore(st);
+    const tag = Object.keys(st.notify).sort((a, b) => st.notify[b] - st.notify[a])[0];
+    const tagShare = Math.round(st.notify[tag] / st.n * 100);
+    const band = score >= 70 ? 'hot' : score >= 45 ? 'warm' : 'cool';
+
+    box.innerHTML =
+        '<div class="ms-score ' + band + '"><span class="ms-num">' + score + '</span>' +
+        '<span class="ms-lbl">REGULARITY<br><i>higher = more machine-like</i></span></div>' +
+        '<div class="ms-grid">' +
+          msRow('Mines', st.n.toLocaleString() + ' in ' + MINE_WINDOW_DAYS + 'd') +
+          msRow('Median gap', fmtDur(st.median)) +
+          msRow('Gap scatter (MAD)', fmtDur(st.mad), st.mad < 120 ? 'hot' : '') +
+          msRow('Hours covered', st.covered + ' / 24', st.covered >= 22 ? 'hot' : '') +
+          msRow('Longest break', st.longest.toFixed(1) + 'h', st.longest < 6 ? 'hot' : '') +
+          msRow('Notify tag', tag + ' (' + tagShare + '%)') +
+        '</div>' + hoursBar(st.hours) +
+        '<div class="ms-note">Regularity is consistent with automation, not proof of it. ' +
+        'A steady human routine scores high too — treat this as a reason to look, not a verdict.</div>';
+}
+
+function msRow(k, v, cls) {
+    return '<div class="ms-k">' + k + '</div><div class="ms-v ' + (cls || '') + '">' + v + '</div>';
+}
+
+window.runMineScan = function () { if (_sel) mineScan(_sel); };
+
 /* ── PANEL ──────────────────────────────────────────────────────────────────── */
 function renderPanel() {
     const panel = document.getElementById('info-panel');
@@ -1394,6 +1548,7 @@ function renderPanel() {
         return;
     }
 
+    const isWallet = !KNOWN[n.id];
     const net = n.inAmt - n.outAmt;
     const netCls = net >= 0 ? 'green' : 'red';
     const netLbl = net >= 0 ? '▲ NET IN' : '▼ NET OUT';
@@ -1462,6 +1617,15 @@ function renderPanel() {
             }
         }).catch(() => {});
     }
+    // mining cadence, on demand — one scan per wallet per session
+    if (isWallet) {
+        panel.insertAdjacentHTML('beforeend',
+            '<div class="ms-sec"><div class="ms-h">MINING CADENCE</div>' +
+            '<div id="ms-box"><button class="ms-run" onclick="runMineScan()">SCAN LAST ' +
+            MINE_WINDOW_DAYS + ' DAYS</button></div></div>');
+        if (_mineCache[n.id]) mineScan(n.id);
+    }
+
 }
 
 function jumpTo(id) {
