@@ -41,13 +41,17 @@
     border-radius: 0 !important;
     box-shadow: none !important;
     padding: 8px 22px 7px !important;
-    /* a 2px trim of the section colour, over frosted glass tinted the same */
+    /* a 2px trim of the section colour, over frosted glass tinted the same.
+       The last layer is an opaque band in the bar's own colour: the tab sits on
+       top of the header's rule, and without it the rule shows through the glass. */
     background:
         linear-gradient(to bottom, var(--dd-hue) 0 2px, transparent 2px),
         linear-gradient(to bottom,
             color-mix(in srgb, var(--dd-hue) 30%, transparent) 0%,
             color-mix(in srgb, var(--dd-hue) 10%, transparent) 46%,
-            color-mix(in srgb, var(--dd-hue) 17%, transparent) 100%) !important;
+            color-mix(in srgb, var(--dd-hue) 17%, transparent) 100%),
+        linear-gradient(to top, var(--dd-bar-bg, #06080e) 0 var(--dd-bar-rule, 2px),
+                                transparent var(--dd-bar-rule, 2px)) !important;
     -webkit-backdrop-filter: blur(7px) saturate(1.35);
     backdrop-filter: blur(7px) saturate(1.35);
     color: var(--dd-hue);
@@ -66,7 +70,9 @@
         linear-gradient(to bottom,
             color-mix(in srgb, var(--dd-hue) 46%, transparent) 0%,
             color-mix(in srgb, var(--dd-hue) 20%, transparent) 46%,
-            color-mix(in srgb, var(--dd-hue) 28%, transparent) 100%) !important;
+            color-mix(in srgb, var(--dd-hue) 28%, transparent) 100%),
+        linear-gradient(to top, var(--dd-bar-bg, #06080e) 0 var(--dd-bar-rule, 2px),
+                                transparent var(--dd-bar-rule, 2px)) !important;
     color: #fff;
     filter: drop-shadow(0 -2px 7px color-mix(in srgb, var(--dd-hue) 55%, transparent));
 }
