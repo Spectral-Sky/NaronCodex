@@ -133,6 +133,7 @@
 .nav-dropdown-item,
 .dd .dd-item {
     color: #b9c2cf !important;          /* was #555 on several pages — 2.7:1 */
+    white-space: nowrap;                /* two-word labels must not wrap */
     border-radius: 0 !important;
     padding: 7px 16px !important;
     letter-spacing: 1.3px;
