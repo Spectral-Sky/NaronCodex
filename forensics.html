@@ -2015,6 +2015,7 @@ async function crossExamine() {
     const miners = _cohort.rows.map(r => r.wallet);
     const box = document.getElementById('xe-body');
     const hits = [];
+    const peerMap = {}, inDeg = {};
     let done = 0, peerTotal = 0, noPeers = 0;
 
     for (let i = 0; i < miners.length; i += XE_BATCH) {
@@ -2023,6 +2024,8 @@ async function crossExamine() {
         res.forEach(({ w, p }) => {
             peerTotal += p.size;
             if (!p.size) noPeers++;
+            peerMap[w] = p.size;
+            p.forEach((e, peer) => (inDeg[peer] || (inDeg[peer] = new Set())).add(w));
             const bad = [];
             p.forEach((e, peer) => {
                 if (flagged.has(peer)) bad.push({ peer, n: e.n, kinds: [...e.kinds],
@@ -2035,7 +2038,26 @@ async function crossExamine() {
             '<br>' + hits.length + ' link' + (hits.length === 1 ? '' : 's') + ' so far</div>';
     }
 
-    hits.sort((a, b) => (a.known ? 1 : 0) - (b.known ? 1 : 0));
+    // A wallet that deals with dozens of members is a landowner or a pool, not
+    // an alt. u.4am.c.wam touches 99 wallets and pays ~60 of them in a single
+    // transaction, so its link to a flagged wallet is coincidence.
+    //
+    // The threshold is measured, not guessed: miners average about 10 peers and
+    // an ordinary one reaches 30-45, so a cut at 20 marked every link weak
+    // including the dev's own confirmed pair. At 60 only the payer qualifies.
+    const HUB_OUT = 60, HUB_IN = 5;
+    hits.forEach(h => {
+        const out = peerMap[h.wallet] || 0;
+        h.senderPeers = out;
+        h.bad.forEach(b => {
+            b.peerFeeds = inDeg[b.peer] ? inDeg[b.peer].size : 0;
+            b.weak = !b.known && (out >= HUB_OUT || b.peerFeeds >= HUB_IN);
+            b.why = out >= HUB_OUT ? 'sender deals with ' + out + ' wallets'
+                  : b.peerFeeds >= HUB_IN ? 'peer deals with ' + b.peerFeeds + ' miners' : '';
+        });
+        h.weak = h.bad.every(b => b.weak);
+    });
+    hits.sort((a, b) => ((a.known ? 2 : 0) + (a.weak ? 1 : 0)) - ((b.known ? 2 : 0) + (b.weak ? 1 : 0)));
     _xe = { hits, scanned: miners.length, flagged: flagged.size,
             avgPeers: miners.length ? peerTotal / miners.length : 0, noPeers };
     renderXe();
@@ -2047,7 +2069,8 @@ function renderXe() {
     const h = _xe.hits;
     box.innerHTML =
         '<div class="co-bar">' +
-          '<span class="co-stat"><b>' + h.filter(x => !x.known).length + '</b> to look at</span>' +
+          '<span class="co-stat"><b>' + h.filter(x => !x.known && !x.weak).length + '</b> to look at</span>' +
+          '<span class="co-stat"><b>' + h.filter(x => x.weak && !x.known).length + '</b> via a payer</span>' +
           '<span class="co-stat"><b>' + h.filter(x => x.known).length + '</b> known</span>' +
           '<span class="co-stat"><b>' + _xe.scanned + '</b> miners checked</span>' +
           '<span class="co-stat"><b>' + _xe.flagged.toLocaleString() + '</b> flagged wallets</span>' +
