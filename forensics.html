@@ -507,6 +507,30 @@ html, body {
 </style>
 </head>
 <body>
+<script>
+/* ── ACCESS GATE ──────────────────────────────────────────────────────────────
+   This page is not linked from anywhere and is limited to one wallet. The gate
+   reads the wallet stored by the rest of the site, so it keeps the page out of
+   sight rather than securing it — anyone who knows to set that key locally can
+   still get in. Nothing here is secret in the chain sense: every figure the
+   page shows is public history. Treat it as "unlisted", not "protected".
+
+   Anyone else gets a plain not-found, with no hint the tool exists.           */
+(function () {
+    var FORENSICS_ALLOWED = ['1x1ci.wam'];
+    var who = '';
+    try { who = localStorage.getItem('naron_wallet') || ''; } catch (e) {}
+    if (FORENSICS_ALLOWED.indexOf(who) >= 0) return;
+    document.documentElement.innerHTML =
+        '<head><title>Not Found</title><meta name="robots" content="noindex"></head>' +
+        '<body style="margin:0;background:#06080f;color:#3a4654;' +
+        'font:14px/1.7 monospace;display:flex;align-items:center;' +
+        'justify-content:center;height:100vh">404 &middot; Not Found</body>';
+    // stop the rest of the page from running
+    window.stop && window.stop();
+})();
+</script>
+
 
 <div id="header">
     <a href="index.html">NARON CODEX</a>
@@ -1421,6 +1445,7 @@ async function goBack() {
    a shortlist for a human to look at, never a verdict.                        */
 
 const MINE_WINDOW_DAYS = 30;
+const MINE_TAG = 'notify.mc';     // only mining done through the MC button counts
 let _mineCache = {};
 
 async function fetchMines(wallet, days) {
@@ -1436,7 +1461,8 @@ async function fetchMines(wallet, days) {
         for (const a of acts) {
             const ms = Date.parse(a.timestamp + 'Z');
             if (ms < cutoff) return out;
-            out.push({ ms, notify: (a.act.data && a.act.data.notify) || '' });
+            const tag = (a.act.data && a.act.data.notify) || '';
+            out.push({ ms, notify: tag, mc: tag === MINE_TAG });
         }
         if (acts.length < 1000) break;
         before = acts[acts.length - 1].timestamp;
@@ -1447,7 +1473,7 @@ async function fetchMines(wallet, days) {
 // the cooldown the chain applied is only on the guild-notified copy, so the
 // wallet's own mine actions are measured on raw gaps instead
 function mineStats(mines) {
-    const list = mines.slice().sort((a, b) => a.ms - b.ms);
+    const list = mines.filter(m => m.mc).sort((a, b) => a.ms - b.ms);
     const gaps = [], hours = new Array(24).fill(0), notify = {};
     for (let i = 0; i < list.length; i++) {
         hours[new Date(list[i].ms).getUTCHours()]++;
@@ -1462,9 +1488,11 @@ function mineStats(mines) {
     const covered = hours.filter(h => h > 0).length;
     let longest = 0;
     for (let i = 1; i < list.length; i++) longest = Math.max(longest, (list[i].ms - list[i - 1].ms) / 3600000);
+    const all = mines.length;
     return {
-        n: list.length, gaps: gaps.length, median: med, mad, hours, covered, longest,
-        notify, first: list.length ? list[0].ms : 0, last: list.length ? list[list.length - 1].ms : 0
+        n: list.length, all: all, gaps: gaps.length, median: med, mad, hours, covered, longest,
+        notify, mcShare: all ? list.length / all : 0,
+        first: list.length ? list[0].ms : 0, last: list.length ? list[list.length - 1].ms : 0
     };
 }
 
@@ -1507,28 +1535,30 @@ async function mineScan(wallet) {
         catch (e) { if (box) box.innerHTML = '<div class="ms-load">History node unavailable — try again.</div>'; return; }
     }
     if (!box) return;
-    if (!mines.length) {
-        box.innerHTML = '<div class="ms-load">No mines in the last ' + MINE_WINDOW_DAYS + ' days.</div>';
+    const st = mineStats(mines);
+    if (!st.n) {
+        box.innerHTML = '<div class="ms-load">No ' + MINE_TAG + ' mining in the last ' +
+            MINE_WINDOW_DAYS + ' days' + (mines.length ? ' (' + mines.length.toLocaleString() +
+            ' mines under another tag).' : '.') + '</div>';
         return;
     }
-    const st = mineStats(mines);
     const score = regularityScore(st);
-    const tag = Object.keys(st.notify).sort((a, b) => st.notify[b] - st.notify[a])[0];
-    const tagShare = Math.round(st.notify[tag] / st.n * 100);
     const band = score >= 70 ? 'hot' : score >= 45 ? 'warm' : 'cool';
 
     box.innerHTML =
         '<div class="ms-score ' + band + '"><span class="ms-num">' + score + '</span>' +
         '<span class="ms-lbl">REGULARITY<br><i>higher = more machine-like</i></span></div>' +
         '<div class="ms-grid">' +
-          msRow('Mines', st.n.toLocaleString() + ' in ' + MINE_WINDOW_DAYS + 'd') +
+          msRow('MC mines', st.n.toLocaleString() + ' in ' + MINE_WINDOW_DAYS + 'd') +
           msRow('Median gap', fmtDur(st.median)) +
           msRow('Gap scatter (MAD)', fmtDur(st.mad), st.mad < 120 ? 'hot' : '') +
           msRow('Hours covered', st.covered + ' / 24', st.covered >= 22 ? 'hot' : '') +
           msRow('Longest break', st.longest.toFixed(1) + 'h', st.longest < 6 ? 'hot' : '') +
-          msRow('Notify tag', tag + ' (' + tagShare + '%)') +
+          msRow('Mined via MC', Math.round(st.mcShare * 100) + '% of ' + st.all.toLocaleString(),
+                st.mcShare < 0.5 ? 'hot' : '') +
         '</div>' + hoursBar(st.hours) +
-        '<div class="ms-note">Regularity is consistent with automation, not proof of it. ' +
+        '<div class="ms-note">Cadence is measured on ' + MINE_TAG + ' mining only. ' +
+        'Regularity is consistent with automation, not proof of it. ' +
         'A steady human routine scores high too — treat this as a reason to look, not a verdict.</div>';
 }
 
