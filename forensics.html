@@ -504,6 +504,35 @@ html, body {
 .ms-hr.off { background:rgba(96,200,255,0.12); }
 .ms-hours-ax { display:flex; justify-content:space-between; font-size:0.5em; color:#4a5a6a; margin-top:2px; letter-spacing:1px; }
 .ms-note { font-size:0.52em; line-height:1.6; color:#5a6a7a; margin-top:9px; letter-spacing:0.6px; }
+
+#cohort-overlay { display:none; position:fixed; inset:0; z-index:9000; background:rgba(4,7,14,0.97);
+    padding:18px 22px; overflow:hidden; }
+#cohort-overlay.open { display:flex; flex-direction:column; }
+#cohort-body { display:flex; flex-direction:column; min-height:0; flex:1; }
+.co-load { color:#60C8FF; font-size:0.72em; letter-spacing:2px; padding:40px; text-align:center; line-height:2; }
+.co-bar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding-bottom:10px;
+    border-bottom:1px solid rgba(96,200,255,0.2); margin-bottom:8px; }
+.co-stat { font-size:0.62em; letter-spacing:1.4px; color:#6a7c90; }
+.co-stat b { color:#60C8FF; font-size:1.3em; }
+.co-chk { font-size:0.6em; letter-spacing:1.4px; color:#c8d8e8; display:flex; align-items:center; gap:5px; cursor:pointer; }
+.co-note { font-size:0.56em; letter-spacing:1px; color:#6a7c90; flex:1; }
+.co-scroll { overflow:auto; flex:1; min-height:0; }
+table.co-table { width:100%; border-collapse:collapse; font-size:0.62em; }
+table.co-table th { position:sticky; top:0; background:#0a1018; color:#6a7c90; text-align:right;
+    padding:6px 9px; letter-spacing:1.4px; border-bottom:1px solid rgba(96,200,255,0.2); white-space:nowrap; }
+table.co-table th:nth-child(2) { text-align:left; }
+table.co-table td { padding:4px 9px; text-align:right; border-bottom:1px solid rgba(96,200,255,0.06);
+    color:#c8d8e8; font-variant-numeric:tabular-nums; white-space:nowrap; }
+table.co-table tbody tr { cursor:pointer; }
+table.co-table tbody tr:hover td { background:rgba(96,200,255,0.08); }
+table.co-table tr.flagged td { opacity:0.55; }
+.co-rank { color:#4a5a6a; }
+.co-w { text-align:left !important; color:#60C8FF; }
+.co-flag { color:#FF3060; font-size:0.85em; letter-spacing:1px; }
+.co-score { font-weight:bold; }
+.co-score.hot, table.co-table td.hot { color:#FF3060; }
+.co-score.warm { color:#FFB040; }
+.co-foot { font-size:0.54em; color:#5a6a7a; letter-spacing:0.6px; padding-top:8px; line-height:1.7; }
 </style>
 </head>
 <body>
@@ -554,6 +583,7 @@ html, body {
         <div class="chip"><div class="dot" style="background:#60C8FF"></div>RECEIVED</div>
         <div class="chip"><div class="dot" style="background:#C080FF"></div>BOTH</div>
     </div>
+    <button class="bar-btn" onclick="openCohort()" title="Rank every MC member who mines by how regular their mining is">MC COHORT</button>
     <button class="bar-btn" id="clear-btn" onclick="clearGraph()" style="display:none">CLEAR</button>
 </div>
 
@@ -578,6 +608,8 @@ html, body {
     <div class="fp-sep"></div>
     <button class="fp-reset" onclick="resetFilter()">RESET</button>
 </div>
+
+<div id="cohort-overlay"><div id="cohort-body"></div></div>
 
 <div id="main">
     <div id="graph-wrap">
@@ -1431,6 +1463,241 @@ async function goBack() {
     ov.style.pointerEvents = 'none';
 }
 
+
+
+/* ── MC COHORT SCAN ──────────────────────────────────────────────────────────
+   Ranks every Mango Creek member who mines, by how regular their mining is.
+
+   Both halves load at once: the mcmembers table from the chain, and 30 days of
+   notify.mc::logmine from history. That stream carries every member's mine, so
+   one filtered feed covers the whole roster — a per-wallet query is impossible
+   anyway, as the miner is not a notified party on that action.
+
+   History paging is by timestamp, not `skip`, which caps out near 10k. The
+   window is cut into slices fetched in parallel; a slice that comes back empty
+   is a genuine quiet period, not a fetch failure — MC mining stopped entirely
+   between 6 Mar and 3 Sep 2026.
+
+   The measure is the median absolute deviation of (gap - the cooldown the chain
+   applied). Removing the cooldown is what makes it sharp: it strips out the
+   variation that comes from different tools and lands, leaving only how
+   consistently the wallet comes back once it is allowed to. It says REGULAR,
+   which is consistent with automation but is not proof of it.                 */
+
+const MC_MEMBERS_CODE = 'members.mc';
+const MC_NOTIFY = 'notify.mc';
+const COHORT_DAYS = 30;
+const COHORT_SLICES = 6;
+const COHORT_MIN_MINES = 25;
+let _cohort = null, _cohortFlagged = false, _cohortSort = 'regularity';
+
+async function chainRows(table, limit) {
+    const out = [];
+    let lb = '';
+    for (let i = 0; i < 60; i++) {
+        let d = null;
+        for (const ep of ['https://wax.greymass.com', 'https://wax.eosusa.io', 'https://api.waxsweden.org']) {
+            try {
+                const r = await fetch(ep + '/v1/chain/get_table_rows', {
+                    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        json: true, code: MC_MEMBERS_CODE, scope: MC_MEMBERS_CODE,
+                        table, limit: limit || 1000, lower_bound: lb || undefined
+                    })
+                });
+                if (r.ok) { d = await r.json(); break; }
+            } catch (_) { /* next endpoint */ }
+        }
+        if (!d || !d.rows || !d.rows.length) break;
+        out.push(...d.rows);
+        if (!d.more) break;
+        lb = d.next_key;
+    }
+    return out;
+}
+
+// one slice of the window, paged backwards by timestamp
+async function mineSlice(loIso, hiIso, onPage) {
+    const q = '/v2/history/get_actions?account=' + MC_NOTIFY + '&filter=' +
+        encodeURIComponent(MC_NOTIFY + ':logmine') + '&limit=1000&sort=desc&after=' +
+        encodeURIComponent(loIso);
+    let before = hiIso, out = [];
+    for (let page = 0; page < 40; page++) {
+        const d = await hGet(q + '&before=' + encodeURIComponent(before), {});
+        const acts = (d && d.actions) || [];
+        if (!acts.length) break;
+        for (const a of acts) {
+            const p = (a.act.data && a.act.data.params) || {};
+            out.push({
+                ms: Date.parse(a.timestamp + 'Z'),
+                miner: a.act.data.miner,
+                bounty: parseFloat(a.act.data.bounty) || 0,
+                owner: String(a.act.data.landowner || ''),
+                land: String(a.act.data.land_id || ''),
+                delay: Number(p.delay) || 0
+            });
+        }
+        if (onPage) onPage(acts.length);
+        if (acts.length < 1000) break;
+        before = acts[acts.length - 1].timestamp;
+    }
+    return out;
+}
+
+function cohortMedian(a) {
+    if (!a.length) return 0;
+    const s = a.slice().sort((x, y) => x - y);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function buildCohort(mines, members) {
+    const memberBy = {};
+    members.forEach(m => memberBy[m.wallet] = m);
+
+    // who recruited an account that was later flagged
+    const recruits = {};
+    members.forEach(m => {
+        if (!m.recruited_by) return;
+        const r = recruits[m.recruited_by] || (recruits[m.recruited_by] = { total: 0, flagged: 0 });
+        r.total++;
+        if (Number(m.flagged) === 1) r.flagged++;
+    });
+
+    const per = {};
+    mines.forEach(x => (per[x.miner] || (per[x.miner] = [])).push(x));
+
+    const rows = Object.keys(per).map(w => {
+        const list = per[w].sort((a, b) => a.ms - b.ms);
+        const excess = [], hours = new Array(24).fill(0), owners = {}, lands = {};
+        let tlm = 0, longest = 0;
+        for (let i = 0; i < list.length; i++) {
+            const x = list[i];
+            tlm += x.bounty;
+            hours[new Date(x.ms).getUTCHours()]++;
+            owners[x.owner] = (owners[x.owner] || 0) + 1;
+            lands[x.land] = (lands[x.land] || 0) + 1;
+            if (i) {
+                const gap = (x.ms - list[i - 1].ms) / 1000;
+                longest = Math.max(longest, gap / 3600);
+                if (gap > 0 && gap < 6 * 3600 && list[i - 1].delay) excess.push(gap - list[i - 1].delay);
+            }
+        }
+        const med = cohortMedian(excess);
+        const mad = cohortMedian(excess.map(v => Math.abs(v - med)));
+        const covered = hours.filter(h => h > 0).length;
+        const m = memberBy[w] || {};
+        const rec = recruits[w] || { total: 0, flagged: 0 };
+        const scored = list.length >= COHORT_MIN_MINES;
+        return {
+            wallet: w, mines: list.length, tlm, hours, covered, longest,
+            median: med, mad, lands: Object.keys(lands).length,
+            mcLand: list.length ? (owners['land.mc'] || 0) / list.length : 0,
+            scored,
+            regularity: scored ? cohortScore(mad, covered, longest) : -1,
+            flagged: Number(m.flagged) === 1,
+            flagReason: m.flag_reason || '',
+            level: m.level || 0,
+            member: Number(m.member) === 1,
+            trial: Number(m.trial) === 1,
+            known: !!memberBy[w],
+            recruitedFlagged: rec.flagged, recruitedTotal: rec.total
+        };
+    });
+    return rows;
+}
+
+function cohortScore(mad, covered, longest) {
+    const tight = Math.max(0, 1 - mad / 1800);
+    const cover = Math.min(1, covered / 24);
+    const cont = Math.max(0, 1 - longest / 12);
+    return Math.round(tight * 45 + cover * 30 + cont * 25);
+}
+
+async function runCohort() {
+    const ov = document.getElementById('cohort-overlay');
+    ov.classList.add('open');
+    const body = document.getElementById('cohort-body');
+    let pages = 0, acts = 0;
+    const tick = n => { pages++; acts += n; body.innerHTML =
+        '<div class="co-load">LOADING ROSTER AND ' + COHORT_DAYS + ' DAYS OF MINING…<br>' +
+        acts.toLocaleString() + ' mines over ' + pages + ' pages</div>'; };
+    body.innerHTML = '<div class="co-load">LOADING…</div>';
+
+    const now = Date.now(), sliceMs = COHORT_DAYS * 86400000 / COHORT_SLICES;
+    const slices = [];
+    for (let i = 0; i < COHORT_SLICES; i++) {
+        slices.push(mineSlice(new Date(now - (i + 1) * sliceMs).toISOString(),
+                              new Date(now - i * sliceMs).toISOString(), tick));
+    }
+    try {
+        // roster and mining come down together
+        const [members, ...parts] = await Promise.all([chainRows('mcmembers'), ...slices]);
+        const mines = [].concat(...parts);
+        _cohort = { rows: buildCohort(mines, members), members: members.length, mines: mines.length };
+        renderCohort();
+    } catch (e) {
+        body.innerHTML = '<div class="co-load">Could not load — ' + (e.message || e) + '</div>';
+    }
+}
+
+function renderCohort() {
+    if (!_cohort) return;
+    const body = document.getElementById('cohort-body');
+    let rows = _cohort.rows.slice();
+    const flaggedMiners = rows.filter(r => r.flagged).length;
+    if (!_cohortFlagged) rows = rows.filter(r => !r.flagged);
+
+    rows.sort((a, b) => _cohortSort === 'mines' ? b.mines - a.mines
+                      : _cohortSort === 'tlm' ? b.tlm - a.tlm
+                      : b.regularity - a.regularity);
+
+    const head = ['#', 'WALLET', 'SCORE', 'MINES', 'MAD', 'HOURS', 'LONGEST', 'LAND.MC', 'TLM', 'RECRUITS'];
+    const trs = rows.map((r, i) => {
+        const band = r.regularity >= 70 ? 'hot' : r.regularity >= 45 ? 'warm' : '';
+        return '<tr class="' + (r.flagged ? 'flagged' : '') + '" onclick="cohortPick(\'' + r.wallet + '\')">' +
+            '<td class="co-rank">' + (i + 1) + '</td>' +
+            '<td class="co-w">' + r.wallet + (r.flagged ? ' <span class="co-flag">FLAGGED</span>' : '') +
+                (r.known ? '' : ' <span class="co-flag">NOT A MEMBER</span>') + '</td>' +
+            '<td class="co-score ' + band + '">' + (r.scored ? r.regularity : '—') + '</td>' +
+            '<td>' + r.mines.toLocaleString() + '</td>' +
+            '<td class="' + (r.scored && r.mad < 60 ? 'hot' : '') + '">' + (r.scored ? Math.round(r.mad) + 's' : '—') + '</td>' +
+            '<td class="' + (r.covered >= 22 ? 'hot' : '') + '">' + r.covered + '/24</td>' +
+            '<td>' + r.longest.toFixed(1) + 'h</td>' +
+            '<td>' + Math.round(r.mcLand * 100) + '%</td>' +
+            '<td>' + Math.round(r.tlm).toLocaleString() + '</td>' +
+            '<td class="' + (r.recruitedFlagged ? 'hot' : '') + '">' +
+                (r.recruitedTotal ? r.recruitedFlagged + '/' + r.recruitedTotal : '—') + '</td></tr>';
+    }).join('');
+
+    body.innerHTML =
+        '<div class="co-bar">' +
+          '<span class="co-stat"><b>' + rows.length + '</b> miners</span>' +
+          '<span class="co-stat"><b>' + _cohort.mines.toLocaleString() + '</b> mines / ' + COHORT_DAYS + 'd</span>' +
+          '<span class="co-stat"><b>' + _cohort.members.toLocaleString() + '</b> members</span>' +
+          '<label class="co-chk"><input type="checkbox" ' + (_cohortFlagged ? 'checked' : '') +
+            ' onchange="cohortToggleFlagged(this.checked)"> include flagged</label>' +
+          '<span class="co-note">' + (flaggedMiners === 0
+            ? 'No flagged member has mined in this window — the toggle changes nothing here.'
+            : flaggedMiners + ' flagged member(s) mining') + '</span>' +
+          '<button class="bar-btn" onclick="closeCohort()">CLOSE</button>' +
+        '</div>' +
+        '<div class="co-scroll"><table class="co-table"><thead><tr>' +
+        head.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' + trs +
+        '</tbody></table></div>' +
+        '<div class="co-foot">RECRUITS counts accounts this wallet brought in that were later flagged. ' +
+        'Regularity is consistent with automation, not proof of it — a steady human routine scores high too.</div>';
+}
+
+window.cohortToggleFlagged = function (on) { _cohortFlagged = on; renderCohort(); };
+window.closeCohort = function () { document.getElementById('cohort-overlay').classList.remove('open'); };
+window.cohortPick = function (w) {
+    closeCohort();
+    const inp = document.getElementById('wallet-input');
+    if (inp) inp.value = w;
+    if (typeof analyse === 'function') analyseWallet();
+};
+window.openCohort = function () { if (_cohort) { document.getElementById('cohort-overlay').classList.add('open'); renderCohort(); } else runCohort(); };
 
 /* ── MINING CADENCE SCAN ─────────────────────────────────────────────────────
    Pulls a wallet's own mines from m.federation and measures how regular they
