@@ -551,6 +551,13 @@ table.co-table tr.flagged td { opacity:0.55; }
 .xe-peer:hover { text-decoration:underline; }
 .xe-n { color:#8a9aae; }
 .xe-reason { color:#6a7c90; font-style:italic; }
+
+#nf-overlay { display:none; position:fixed; inset:0; z-index:9100; background:rgba(4,7,14,0.98);
+    padding:18px 22px; overflow:hidden; }
+#nf-overlay.open { display:flex; flex-direction:column; }
+#nf-body { display:flex; flex-direction:column; min-height:0; flex:1; }
+#nf-overlay .xe-head { color:#FFB040; border-bottom-color:rgba(255,176,64,0.25); }
+#nf-overlay table.co-table td.xe-arrow { color:#FFB040; text-align:center; }
 </style>
 </head>
 <body>
@@ -628,6 +635,7 @@ table.co-table tr.flagged td { opacity:0.55; }
 </div>
 
 <div id="cohort-overlay"><div id="cohort-body"></div></div>
+<div id="nf-overlay"><div class="xe-head">BULK NFT FLOW<button class="bar-btn" onclick="closeNf()">CLOSE</button></div><div id="nf-body"></div></div>
 <div id="xe-overlay"><div class="xe-head">FLAGGED-WALLET CROSS-EXAMINATION<button class="bar-btn" onclick="closeXe()">CLOSE</button></div><div id="xe-body"></div></div>
 
 <div id="main">
@@ -1700,6 +1708,7 @@ function renderCohort() {
             ? 'No flagged member has mined in this window — the toggle changes nothing here.'
             : flaggedMiners + ' flagged member(s) mining') + '</span>' +
           '<button class="bar-btn" onclick="openXe()" title="Look for direct transfers between these miners and flagged wallets">CROSS-EXAMINE</button>' +
+          '<button class="bar-btn" onclick="openNf()" title="Find miners shovelling NFTs into a private wallet">NFT FLOW</button>' +
           '<button class="bar-btn" onclick="closeCohort()">CLOSE</button>' +
         '</div>' +
         '<div class="co-scroll"><table class="co-table"><thead><tr>' +
@@ -1719,6 +1728,150 @@ window.cohortPick = function (w) {
 };
 window.openCohort = function () { if (_cohort) { document.getElementById('cohort-overlay').classList.add('open'); renderCohort(); } else runCohort(); };
 
+
+
+/* ── BULK NFT FLOW ───────────────────────────────────────────────────────────
+   Finds the pattern behind most "multiple tool transfers" flags: a wallet
+   shovelling NFTs into another account, often hundreds at a time and several
+   actions inside a single block.
+
+   The hard part is not spotting volume, it is not accusing a service. Miners
+   push NFTs to game.mc, adventure.mc, tools.mc, blend.nefty and a dozen other
+   contracts all day long. Two filters separate those out, and neither is a
+   hardcoded list that goes stale:
+
+     in-degree  — how many different miners in this cohort send to that peer.
+                  A service collects from dozens; an alt collects from one.
+     has code   — whether the receiver is a contract at all. Decisive: it is
+                  read straight off the account.
+
+   What survives both is a personal wallet fed by exactly one miner.           */
+
+const NF_BATCH = 10;
+const NF_MIN_ASSETS = 50;      // below this the traffic is ordinary play
+let _nf = null;
+
+async function nftFlowOf(w) {
+    const d = await hGet('/v2/history/get_actions', {
+        account: w, filter: 'atomicassets:transfer', limit: 1000, sort: 'desc'
+    });
+    const acts = (d && d.actions) || [];
+    const byBlock = {}, out = {};
+    let moved = 0, maxAct = 0;
+    acts.forEach(a => {
+        const dd = a.act.data || {}, n = (dd.asset_ids || []).length;
+        if (n > maxAct) maxAct = n;
+        byBlock[a.block_num] = (byBlock[a.block_num] || 0) + 1;
+        if (dd.from === w && dd.to && dd.to !== w) {
+            out[dd.to] = (out[dd.to] || 0) + n;
+            moved += n;
+        }
+    });
+    const bursts = Object.keys(byBlock).map(k => byBlock[k]);
+    return { actions: acts.length, moved, maxAct,
+             burst: bursts.length ? Math.max.apply(null, bursts) : 0, out };
+}
+
+// a receiver with code is a service, whoever sends to it
+async function hasCode(account) {
+    for (const ep of ['https://wax.greymass.com', 'https://wax.eosusa.io']) {
+        try {
+            const r = await fetch(ep + '/v1/chain/get_account', {
+                method: 'POST', headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ account_name: account })
+            });
+            if (!r.ok) continue;
+            const d = await r.json();
+            return !!(d.last_code_update && d.last_code_update !== '1970-01-01T00:00:00.000');
+        } catch (_) { /* next */ }
+    }
+    return true;   // unknown: treat as a service rather than accuse it
+}
+
+async function nftFlow() {
+    if (!_cohort) return;
+    const box = document.getElementById('nf-body');
+    const miners = _cohort.rows.map(r => r.wallet);
+    const minerSet = new Set(miners);
+    const rows = [];
+
+    for (let i = 0; i < miners.length; i += NF_BATCH) {
+        const chunk = miners.slice(i, i + NF_BATCH);
+        const res = await Promise.all(chunk.map(async w => ({ w, f: await nftFlowOf(w) })));
+        res.forEach(({ w, f }) => { if (f) rows.push(Object.assign({ wallet: w }, f)); });
+        box.innerHTML = '<div class="co-load">READING NFT TRANSFERS… ' +
+            Math.min(i + NF_BATCH, miners.length) + ' / ' + miners.length + '</div>';
+    }
+
+    // how many distinct miners feed each receiver
+    const senders = {};
+    rows.forEach(r => Object.keys(r.out).forEach(peer =>
+        (senders[peer] || (senders[peer] = new Set())).add(r.wallet)));
+
+    // only peers fed by a single miner, above the volume floor, are worth checking
+    const candidates = [];
+    rows.forEach(r => Object.keys(r.out).forEach(peer => {
+        const n = r.out[peer];
+        if (n >= NF_MIN_ASSETS && senders[peer].size === 1) {
+            candidates.push({ from: r.wallet, to: peer, n, maxAct: r.maxAct, burst: r.burst });
+        }
+    }));
+    box.innerHTML = '<div class="co-load">CHECKING ' + candidates.length + ' RECEIVERS FOR CONTRACT CODE…</div>';
+
+    const uniq = [...new Set(candidates.map(c => c.to))];
+    const code = {};
+    for (let i = 0; i < uniq.length; i += NF_BATCH) {
+        const chunk = uniq.slice(i, i + NF_BATCH);
+        const res = await Promise.all(chunk.map(async a => ({ a, c: await hasCode(a) })));
+        res.forEach(({ a, c }) => code[a] = c);
+    }
+
+    const hits = candidates.filter(c => !code[c.to]).sort((a, b) => b.n - a.n);
+    const services = Object.keys(senders).filter(p => senders[p].size >= 10)
+        .sort((a, b) => senders[b].size - senders[a].size);
+
+    _nf = { rows, hits, services, senders, minerSet, scanned: miners.length };
+    renderNf();
+}
+
+function renderNf() {
+    if (!_nf) return;
+    const box = document.getElementById('nf-body');
+    const bulk = _nf.rows.slice().sort((a, b) => b.maxAct - a.maxAct).slice(0, 5);
+    box.innerHTML =
+        '<div class="co-bar">' +
+          '<span class="co-stat"><b>' + _nf.hits.length + '</b> one-to-one flows</span>' +
+          '<span class="co-stat"><b>' + _nf.scanned + '</b> miners read</span>' +
+          '<span class="co-stat"><b>' + _nf.services.length + '</b> services filtered out</span>' +
+          '<span class="co-note">Receivers fed by only this miner, holding no contract code, ' +
+            'given ' + NF_MIN_ASSETS + '+ NFTs.</span>' +
+        '</div>' +
+        (_nf.hits.length ? '<div class="co-scroll"><table class="co-table"><thead><tr>' +
+          ['SENDER', '', 'RECEIVER', 'NFTs SENT', 'BIGGEST ACTION', 'ACTIONS / BLOCK'].map(h => '<th>' + h + '</th>').join('') +
+          '</tr></thead><tbody>' + _nf.hits.map(h =>
+            '<tr><td class="co-w" onclick="cohortPick(\'' + h.from + '\')">' + h.from + '</td>' +
+            '<td class="xe-arrow">&rarr;</td>' +
+            '<td class="co-w" onclick="cohortPick(\'' + h.to + '\')">' + h.to + '</td>' +
+            '<td class="' + (h.n >= 500 ? 'hot' : '') + '">' + h.n.toLocaleString() + '</td>' +
+            '<td class="' + (h.maxAct >= 100 ? 'hot' : '') + '">' + h.maxAct + '</td>' +
+            '<td class="' + (h.burst >= 10 ? 'hot' : '') + '">' + h.burst + '</td></tr>').join('') +
+          '</tbody></table></div>'
+          : '<div class="co-load">No miner is feeding NFTs to a private wallet above the floor.</div>') +
+        '<div class="co-foot">Biggest action is the most NFTs moved in one transfer; actions per block ' +
+        'is the most transfers packed into a single block, which no one does by hand. ' +
+        'Heaviest single transfers seen: ' + bulk.map(b => b.wallet + ' (' + b.maxAct + ')').join(', ') + '. ' +
+        'Services were identified by receiving from ten or more miners, or by holding contract code — ' +
+        'a receiver that could not be read is treated as a service rather than accused.</div>';
+}
+
+window.openNf = function () {
+    document.getElementById('nf-overlay').classList.add('open');
+    if (_nf) renderNf();
+    else if (_cohort) nftFlow();
+    else document.getElementById('nf-body').innerHTML =
+        '<div class="co-load">Run the MC COHORT scan first.</div>';
+};
+window.closeNf = function () { document.getElementById('nf-overlay').classList.remove('open'); };
 
 /* ── CROSS-EXAMINATION AGAINST FLAGGED WALLETS ───────────────────────────────
    Looks for a direct transfer between a current miner and any wallet the guild
