@@ -161,6 +161,9 @@
 
     // ── rendering ────────────────────────────────────────────────────────────
     var CSS = ''
+        + '.ain-heat-scale{display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin-top:8px;}'
+        + '.ain-heat-key{font-size:0.58em;letter-spacing:0.5px;padding:2px 6px;border-radius:2px;font-variant-numeric:tabular-nums;}'
+        + '.ain-heat-cap{font-size:0.58em;letter-spacing:1.4px;color:#7a8a9a;margin-left:8px;text-transform:uppercase;}'
         + '.ain-sec{margin-bottom:34px;}'
         + '.ain-h{font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);}'
         + '.ain-note{font-size:0.58em;color:#505060;letter-spacing:1px;margin-bottom:10px;line-height:1.6;}'
@@ -351,23 +354,70 @@
         }};
     }
 
+    // Thermal ramp in the style of FLIR's Rainbow HC: cold dark blue through
+    // cyan, green and yellow to orange, red and finally pink at the hot end.
+    var RAINBOW_HC = [
+        [ 10,  12,  60],   // coldest - deep navy
+        [ 32,  32, 190],   // blue
+        [  0, 144, 255],   // azure
+        [  0, 208, 208],   // cyan
+        [  0, 192,  64],   // green
+        [176, 224,   0],   // yellow-green
+        [255, 224,   0],   // yellow
+        [255, 144,   0],   // orange
+        [255,  48,   0],   // red
+        [255,  30, 142]    // hottest - pink
+    ];
+    function rainbowHC(t) {
+        t = Math.max(0, Math.min(1, t));
+        var x = t * (RAINBOW_HC.length - 1), i = Math.floor(x), f = x - i;
+        var c0 = RAINBOW_HC[i], c1 = RAINBOW_HC[Math.min(RAINBOW_HC.length - 1, i + 1)];
+        return [0, 1, 2].map(function (k) { return Math.round(c0[k] + (c1[k] - c0[k]) * f); });
+    }
+    function rgbStr(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
+    // text that stays readable on whichever band it lands on
+    function inkOn(c) {
+        var l = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+        return l > 0.55 ? '#0a0c12' : '#ffffff';
+    }
+
+    var HEAT_STEP = 100;   // one colour per 100 fights
+
     function sectionHours(a) {
         var max = 0;
         a.hours.forEach(function (r) { r.forEach(function (v) { if (v > max) max = v; }); });
+        var topBand = Math.max(1, Math.floor(max / HEAT_STEP));
+        var bandOf = function (v) { return Math.min(topBand, Math.floor(v / HEAT_STEP)); };
+        var colorOf = function (v) { return rainbowHC(bandOf(v) / topBand); };
+
         var rows = a.hours.map(function (r, d) {
             return '<tr><th class="rowh">' + WEEKDAYS[d] + '</th>' + r.map(function (v, hr) {
-                if (!v) return '<td class="empty" title="' + WEEKDAYS[d] + ' ' + hr + ':00 UTC · 0 fights">·</td>';
-                var t = v / max;
-                return '<td style="background-color:rgba(96,184,255,' + (0.12 + t * 0.88).toFixed(2) + ')!important;color:' + (t > 0.45 ? '#0a0c12' : '#c8d4e4') + '!important" title="'
-                    + WEEKDAYS[d] + ' ' + hr + ':00–' + (hr + 1) + ':00 UTC · ' + v.toLocaleString() + ' fights">' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) + '</td>';
+                if (!v) return '<td class="empty" title="' + WEEKDAYS[d] + ' ' + hr + ':00 UTC \u00b7 0 fights">\u00b7</td>';
+                var c = colorOf(v), b = bandOf(v);
+                return '<td style="background-color:' + rgbStr(c) + '!important;color:' + inkOn(c) + '!important" title="'
+                    + WEEKDAYS[d] + ' ' + hr + ':00\u2013' + (hr + 1) + ':00 UTC \u00b7 ' + v.toLocaleString() + ' fights \u00b7 band '
+                    + (b * HEAT_STEP).toLocaleString() + '\u2013' + ((b + 1) * HEAT_STEP - 1).toLocaleString()
+                    + '">' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) + '</td>';
             }).join('') + '</tr>';
         }).join('');
-        var h = '<div class="ain-sec"><div class="ain-h">◈ BUSIEST HOURS</div>'
-            + '<div class="ain-note">Total fights by weekday and hour (UTC) across the whole sheet · darker is busier · your local time is UTC'
+
+        // one swatch per 100, so the banding reads as a scale
+        var legend = '';
+        for (var b = 0; b <= topBand; b++) {
+            var c = rainbowHC(b / topBand);
+            legend += '<span class="ain-heat-key" style="background:' + rgbStr(c) + ';color:' + inkOn(c) + '" title="'
+                   + (b * HEAT_STEP).toLocaleString() + '\u2013' + ((b + 1) * HEAT_STEP - 1).toLocaleString() + ' fights">'
+                   + (b * HEAT_STEP).toLocaleString() + '</span>';
+        }
+
+        var h = '<div class="ain-sec"><div class="ain-h">\u25c8 BUSIEST HOURS</div>'
+            + '<div class="ain-note">Total fights by weekday and hour (UTC) across the whole sheet \u00b7 one colour per '
+            + HEAT_STEP + ' fights, cold blue to hot pink \u00b7 your local time is UTC'
             + (function () { var o = -new Date().getTimezoneOffset() / 60; return (o >= 0 ? '+' : '') + o; })() + '</div>'
             + '<div class="ain-wrap"><table class="ain-heat system-ready"><thead><tr><th></th>'
             + Array.apply(null, Array(24)).map(function (_, i) { return '<th>' + (i < 10 ? '0' : '') + i + '</th>'; }).join('')
-            + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+            + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+            + '<div class="ain-heat-scale">' + legend + '<span class="ain-heat-cap">fights per hour</span></div></div>';
         return { html: h };
     }
 
