@@ -152,6 +152,7 @@ function rollup_(mines, members) {
     // median absolute deviation: robust scatter, unmoved by the odd long break
     var mad = median_(excess.map(function (v) { return Math.abs(v - med); }));
     var mcShare = list.length ? (owners['land.mc'] || 0) / list.length : 0;
+    var pd = perDay_(list);
     var m = memberBy[w] || {};
 
     out.push({
@@ -161,13 +162,16 @@ function rollup_(mines, members) {
       first: new Date(list[0].ms).toISOString(),
       last: new Date(list[list.length - 1].ms).toISOString(),
       hours_covered: Object.keys(hours).length,
+      hours_per_day: pd.hoursPerDay,
+      daily_rest_h: Math.round(pd.dailyRest * 100) / 100,
+      active_days: pd.days,
       longest_gap_h: gapsH.length ? Math.max.apply(null, gapsH) : 0,
       median_excess_s: Math.round(med),
       mad_excess_s: Math.round(mad),
       distinct_lands: Object.keys(lands).length,
       land_mc_share: Math.round(mcShare * 1000) / 1000,
       scored: list.length >= MIN_MINES ? 1 : 0,
-      regularity: list.length >= MIN_MINES ? regularity_(mad, Object.keys(hours).length, gapsH) : '',
+      regularity: list.length >= MIN_MINES ? regularity_(mad, pd.hoursPerDay, pd.dailyRest) : '',
       member_id: m.member_id || '',
       level: m.level || '',
       flagged: m.flagged || 0,
@@ -184,19 +188,39 @@ function rollup_(mines, members) {
 }
 
 /**
- * 0-100, higher = more regular. Three parts, each capped so no single one can
- * carry the score on its own:
- *   tightness  — how little the gap-over-cooldown varies (MAD)
- *   coverage   — how many hours of the day see mining
- *   continuity — how short the longest break is
+ * 0-100, higher = more machine-like. Measured PER DAY, not across the window:
+ * hours touched over a month reaches 23 of 24 for ordinary play and separates
+ * nobody. What a script cannot hide is the shape of a single day.
+ *   tightness — how little the gap-over-cooldown varies (MAD)
+ *   day cover — hours of a typical day with mining in them
+ *   rest      — whether a typical day contains a real break
  * This says "regular", not "automated". A human on a strict routine scores high.
  */
-function regularity_(mad, hoursCovered, gapsH) {
-  var tight = Math.max(0, 1 - mad / 1800);                 // 30 min scatter → 0
-  var cover = Math.min(1, hoursCovered / 24);
-  var longest = gapsH.length ? Math.max.apply(null, gapsH) : 24;
-  var cont = Math.max(0, 1 - longest / 12);                // a 12h break → 0
-  return Math.round((tight * 45 + cover * 30 + cont * 25));
+function regularity_(mad, hoursPerDay, dailyRest) {
+  var tight = Math.max(0, 1 - mad / 1800);      // 30 min scatter → 0
+  var cover = Math.min(1, hoursPerDay / 20);    // 20h a day is round-the-clock
+  var cont  = Math.max(0, 1 - dailyRest / 6);   // 6h of daily rest → 0
+  return Math.round(tight * 40 + cover * 35 + cont * 25);
+}
+
+// median of each day's hour count, and of each day's longest gap
+function perDay_(list) {
+  var days = {};
+  list.forEach(function (x) {
+    var d = new Date(x.ms).toISOString().slice(0, 10);
+    (days[d] || (days[d] = [])).push(x);
+  });
+  var hrs = [], rest = [];
+  Object.keys(days).forEach(function (d) {
+    var dl = days[d].sort(function (a, b) { return a.ms - b.ms; });
+    var seen = {};
+    dl.forEach(function (x) { seen[new Date(x.ms).getUTCHours()] = 1; });
+    hrs.push(Object.keys(seen).length);
+    var g = 0;
+    for (var i = 1; i < dl.length; i++) g = Math.max(g, (dl[i].ms - dl[i - 1].ms) / 3600000);
+    rest.push(g);
+  });
+  return { days: Object.keys(days).length, hoursPerDay: median_(hrs), dailyRest: median_(rest) };
 }
 
 /* ── sheets ──────────────────────────────────────────────────────────────── */
@@ -227,7 +251,8 @@ function writeMembers_(members) {
 }
 
 function writeMining_(rows) {
-  var header = ['wallet', 'regularity', 'mines', 'tlm', 'hours_covered', 'longest_gap_h',
+  var header = ['wallet', 'regularity', 'mines', 'tlm', 'hours_per_day', 'daily_rest_h',
+                'active_days', 'hours_covered', 'longest_gap_h',
                 'median_excess_s', 'mad_excess_s', 'distinct_lands', 'land_mc_share',
                 'first', 'last', 'scored', 'member_id', 'level', 'flagged', 'member',
                 'trial', 'joined', 'recruited_by', 'in_members_table'];

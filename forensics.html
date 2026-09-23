@@ -1613,6 +1613,7 @@ function buildCohort(mines, members) {
         const med = cohortMedian(excess);
         const mad = cohortMedian(excess.map(v => Math.abs(v - med)));
         const covered = hours.filter(h => h > 0).length;
+        const pd = perDayActivity(list);
         const m = memberBy[w] || {};
         const rec = recruits[w] || { total: 0, flagged: 0 };
         const scored = list.length >= COHORT_MIN_MINES;
@@ -1621,7 +1622,8 @@ function buildCohort(mines, members) {
             median: med, mad, lands: Object.keys(lands).length,
             mcLand: list.length ? (owners['land.mc'] || 0) / list.length : 0,
             scored,
-            regularity: scored ? cohortScore(mad, covered, longest) : -1,
+            hoursPerDay: pd.hoursPerDay, dailyRest: pd.dailyRest, activeDays: pd.days,
+            regularity: scored ? activityScore(mad, pd.hoursPerDay, pd.dailyRest) : -1,
             flagged: Number(m.flagged) === 1,
             flagReason: m.flag_reason || '',
             level: m.level || 0,
@@ -1634,11 +1636,42 @@ function buildCohort(mines, members) {
     return rows;
 }
 
-function cohortScore(mad, covered, longest) {
+/* Hours touched across a whole month says almost nothing — play at varying
+   times and you will hit 23 of 24 without ever being automated. What separates
+   a script is the shape of a SINGLE DAY: how much of it is covered, and whether
+   there is a rest gap in it at all. Measured per day and taken as a median, so
+   one late night or one day off does not move it. */
+function perDayActivity(list) {
+    const days = {};
+    list.forEach(x => {
+        const d = new Date(x.ms).toISOString().slice(0, 10);
+        (days[d] || (days[d] = [])).push(x);
+    });
+    const hoursPerDay = [], restPerDay = [];
+    Object.keys(days).forEach(d => {
+        const dl = days[d].sort((a, b) => a.ms - b.ms);
+        hoursPerDay.push(new Set(dl.map(x => new Date(x.ms).getUTCHours())).size);
+        let g = 0;
+        for (let i = 1; i < dl.length; i++) g = Math.max(g, (dl[i].ms - dl[i - 1].ms) / 3600000);
+        restPerDay.push(g);
+    });
+    return {
+        days: Object.keys(days).length,
+        hoursPerDay: cohortMedian(hoursPerDay),
+        dailyRest: cohortMedian(restPerDay)
+    };
+}
+
+/* 0-100, higher = more machine-like. Weighted so no single part carries it:
+     tightness — how little the wait after the cooldown varies
+     day cover — hours of a typical day with mining in them
+     rest      — whether a typical day contains a real break
+   A person on a strict routine still scores high; this is a shortlist. */
+function activityScore(mad, hoursPerDay, dailyRest) {
     const tight = Math.max(0, 1 - mad / 1800);
-    const cover = Math.min(1, covered / 24);
-    const cont = Math.max(0, 1 - longest / 12);
-    return Math.round(tight * 45 + cover * 30 + cont * 25);
+    const cover = Math.min(1, hoursPerDay / 20);   // 20h a day is round-the-clock
+    const cont  = Math.max(0, 1 - dailyRest / 6);  // 6h of daily rest scores nothing
+    return Math.round(tight * 40 + cover * 35 + cont * 25);
 }
 
 async function runCohort() {
@@ -1679,7 +1712,7 @@ function renderCohort() {
                       : _cohortSort === 'tlm' ? b.tlm - a.tlm
                       : b.regularity - a.regularity);
 
-    const head = ['#', 'WALLET', 'SCORE', 'MINES', 'MAD', 'HOURS', 'LONGEST', 'LAND.MC', 'TLM', 'RECRUITS'];
+    const head = ['#', 'WALLET', 'SCORE', 'MINES', 'MAD', 'HRS/DAY', 'DAILY REST', 'LAND.MC', 'TLM', 'RECRUITS'];
     const trs = rows.map((r, i) => {
         const band = r.regularity >= 70 ? 'hot' : r.regularity >= 45 ? 'warm' : '';
         return '<tr class="' + (r.flagged ? 'flagged' : '') + '" onclick="cohortPick(\'' + r.wallet + '\')">' +
@@ -1689,8 +1722,8 @@ function renderCohort() {
             '<td class="co-score ' + band + '">' + (r.scored ? r.regularity : '—') + '</td>' +
             '<td>' + r.mines.toLocaleString() + '</td>' +
             '<td class="' + (r.scored && r.mad < 60 ? 'hot' : '') + '">' + (r.scored ? Math.round(r.mad) + 's' : '—') + '</td>' +
-            '<td class="' + (r.covered >= 22 ? 'hot' : '') + '">' + r.covered + '/24</td>' +
-            '<td>' + r.longest.toFixed(1) + 'h</td>' +
+            '<td class="' + (r.hoursPerDay >= 15 ? 'hot' : '') + '">' + r.hoursPerDay + '/24</td>' +
+            '<td class="' + (r.dailyRest < 3 ? 'hot' : '') + '">' + r.dailyRest.toFixed(1) + 'h</td>' +
             '<td>' + Math.round(r.mcLand * 100) + '%</td>' +
             '<td>' + Math.round(r.tlm).toLocaleString() + '</td>' +
             '<td class="' + (r.recruitedFlagged ? 'hot' : '') + '">' +
@@ -1714,7 +1747,9 @@ function renderCohort() {
         '<div class="co-scroll"><table class="co-table"><thead><tr>' +
         head.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' + trs +
         '</tbody></table></div>' +
-        '<div class="co-foot">RECRUITS counts accounts this wallet brought in that were later flagged. ' +
+        '<div class="co-foot">HRS/DAY and DAILY REST are medians of a single day, not totals for the ' +
+        'window — hours touched across a month reaches 23 of 24 for ordinary play and means nothing. ' +
+        'RECRUITS counts accounts this wallet brought in that were later flagged. ' +
         'Regularity is consistent with automation, not proof of it — a steady human routine scores high too.</div>';
 }
 
@@ -2037,8 +2072,10 @@ function mineStats(mines) {
     let longest = 0;
     for (let i = 1; i < list.length; i++) longest = Math.max(longest, (list[i].ms - list[i - 1].ms) / 3600000);
     const all = mines.length;
+    const pd = perDayActivity(list);
     return {
         n: list.length, all: all, gaps: gaps.length, median: med, mad, hours, covered, longest,
+        hoursPerDay: pd.hoursPerDay, dailyRest: pd.dailyRest, activeDays: pd.days,
         notify, mcShare: all ? list.length / all : 0,
         first: list.length ? list[0].ms : 0, last: list.length ? list[list.length - 1].ms : 0
     };
@@ -2052,10 +2089,7 @@ function median(a) {
 }
 
 function regularityScore(st) {
-    const tight = Math.max(0, 1 - st.mad / 1800);
-    const cover = Math.min(1, st.covered / 24);
-    const cont  = Math.max(0, 1 - st.longest / 12);
-    return Math.round(tight * 45 + cover * 30 + cont * 25);
+    return activityScore(st.mad, st.hoursPerDay, st.dailyRest);
 }
 
 function hoursBar(hours) {
@@ -2100,12 +2134,14 @@ async function mineScan(wallet) {
           msRow('MC mines', st.n.toLocaleString() + ' in ' + MINE_WINDOW_DAYS + 'd') +
           msRow('Median gap', fmtDur(st.median)) +
           msRow('Gap scatter (MAD)', fmtDur(st.mad), st.mad < 120 ? 'hot' : '') +
-          msRow('Hours covered', st.covered + ' / 24', st.covered >= 22 ? 'hot' : '') +
-          msRow('Longest break', st.longest.toFixed(1) + 'h', st.longest < 6 ? 'hot' : '') +
+          msRow('Hours on a typical day', st.hoursPerDay + ' / 24', st.hoursPerDay >= 15 ? 'hot' : '') +
+          msRow('Rest on a typical day', st.dailyRest.toFixed(1) + 'h', st.dailyRest < 3 ? 'hot' : '') +
+          msRow('Days mined', st.activeDays + ' of ' + MINE_WINDOW_DAYS) +
           msRow('Mined via MC', Math.round(st.mcShare * 100) + '% of ' + st.all.toLocaleString(),
                 st.mcShare < 0.5 ? 'hot' : '') +
         '</div>' + hoursBar(st.hours) +
-        '<div class="ms-note">Cadence is measured on ' + MINE_TAG + ' mining only. ' +
+        '<div class="ms-note">Per-day medians, not totals: hours touched across the whole window ' +
+        'reaches 23 of 24 for ordinary play. Cadence is measured on ' + MINE_TAG + ' mining only. ' +
         'Regularity is consistent with automation, not proof of it. ' +
         'A steady human routine scores high too — treat this as a reason to look, not a verdict.</div>';
 }
