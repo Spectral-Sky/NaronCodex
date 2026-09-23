@@ -59,6 +59,7 @@
     letter-spacing: 1.8px;
     text-transform: uppercase;
     cursor: pointer;
+    position: relative;
     transition: background 0.15s, color 0.15s, filter 0.15s;
 }
 .nav-dropdown-btn:hover,
@@ -115,6 +116,22 @@
 .global-header .nav-links img { flex-shrink: 0; margin-right: 0 !important; }
 .global-header .nav-links > .nav-btn { border-radius: 4px 4px 0 0; }
 #lang-picker .nav-dropdown-btn { letter-spacing: 0; }
+
+/* The trim on the angled sides. clip-path cuts a border off, so this is an
+   even-odd ring — the tab's outline minus a copy inset by 2px — painted behind
+   the label but in front of the tab's own background. */
+.nav-dropdown-btn::before,
+.font-picker-btn::before,
+.dd > .wbtn::before {
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background: var(--dd-hue);
+    -webkit-clip-path: polygon(evenodd,
+        11px 0, calc(100% - 11px) 0, 100% 100%, 0 100%,
+        2px 100%, calc(100% - 2px) 100%, calc(100% - 13px) 2px, 13px 2px);
+    clip-path: polygon(evenodd,
+        11px 0, calc(100% - 11px) 0, 100% 100%, 0 100%,
+        2px 100%, calc(100% - 2px) 100%, calc(100% - 13px) 2px, 13px 2px);
+}
 
 /* ── the folder under it ─────────────────────────────────────────────────── */
 .nav-dropdown-menu,

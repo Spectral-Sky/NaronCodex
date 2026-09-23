@@ -119,7 +119,10 @@
 
         /* --- TABS --- */
         .tab-bar { display: flex; gap: 0; padding: 0 30px; background: rgba(5,5,16,0.97); border-bottom: 1px solid rgba(232,160,32,0.2); position: sticky; top: 138px; z-index: 4000; }
-        .tab-btn { background: transparent; color: #6a80a0; border: none; border-bottom: 2px solid transparent; padding: 12px 24px; font-family: 'Segoe UI', system-ui, Arial, sans-serif; font-size: 1em; font-weight:bold; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+        .tab-btn { background: transparent; color: #6a80a0; border: none; border-bottom: 2px solid transparent; padding: 12px 24px; font-family: 'Segoe UI', system-ui, Arial, sans-serif; font-size: 1em; font-weight:bold; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; white-space: nowrap; }
+        .tab-sep { align-self:center; color:rgba(232,160,32,0.28); font-family:'Segoe UI',system-ui,Arial,sans-serif;
+            font-weight:bold; font-size:0.95em; letter-spacing:-1px; user-select:none; pointer-events:none;
+            transform:skewX(-18deg); padding:0 2px; }
         .tab-btn:hover { color: var(--theme-color); }
         .tab-btn.active { color: #fff; border-bottom-color: var(--theme-color); box-shadow: 0 5px 15px -5px var(--theme-color); }
         .tab-content { display: none; }
@@ -361,6 +364,7 @@
         html.day .nav-dropdown-item:hover { color:var(--theme-color); background:rgba(0,80,200,0.05); }
         html.day .top-bar { background:#dce8ff; border-bottom-color:#9a6800; box-shadow:0 10px 20px rgba(0,60,140,0.1); }
         html.day .tab-bar { background:rgba(232,240,255,0.97); border-bottom-color:rgba(0,60,140,0.2); }
+        html.day .tab-sep { color:rgba(0,60,140,0.3); }
         html.day .tab-btn { color:#5070a0; }
         html.day .tab-btn.active { color:#182038; border-bottom-color:#9a6800; }
         html.day .waffle { background:var(--theme-dark); }
@@ -543,15 +547,20 @@
     </div>
 
     <div class="tab-bar">
-        <button class="tab-btn active" id="tab-btn-crew" onclick="showTab('crew')">CREW</button>
+        <button class="tab-btn active" id="tab-btn-stats" onclick="showTab('stats'); loadStatsIfNeeded()">LIVE STATS</button>
+        <span class="tab-sep">//</span>
+        <button class="tab-btn" id="tab-btn-crew" onclick="showTab('crew')">CREW</button>
+        <span class="tab-sep">//</span>
         <button class="tab-btn" onclick="showTab('arms')">ARMS</button>
+        <span class="tab-sep">//</span>
         <button class="tab-btn" onclick="showTab('tools')">TOOLS</button>
-        <button class="tab-btn" id="tab-btn-stats" onclick="showTab('stats'); loadStatsIfNeeded()">LIVE STATS</button>
+        <span class="tab-sep">//</span>
         <button class="tab-btn" onclick="showTab('farming')">FARMING</button>
+        <span class="tab-sep">//</span>
         <button class="tab-btn" onclick="showTab('settings')">SETTINGS</button>
     </div>
 
-    <div id="tab-crew" class="tab-content active">
+    <div id="tab-crew" class="tab-content">
         <div class="grid-container">
             <table class="waffle" id="crew-table">
                 <thead>
@@ -672,7 +681,7 @@
         </div>
     </div>
 
-    <div id="tab-stats" class="tab-content">
+    <div id="tab-stats" class="tab-content active">
         <div style="padding:30px 40px;">
             <div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.5);margin-bottom:20px;">◈ USAGE STATISTICS</div>
             <div id="stats-loading" style="color:#666;font-size:0.7em;letter-spacing:2px;display:none;">LOADING DATA…</div>
@@ -3027,7 +3036,8 @@ function applyNftStatsToTables() {
     applyToTbody('arms-tbody', _nftStatsByTemplate.weapon);
 }
 
-// Stats tab is public — auto-load on page open
+// Stats tab is public, opens first, and auto-loads on page open
+showTab('stats');
 loadStatsIfNeeded();
 </script>
 
