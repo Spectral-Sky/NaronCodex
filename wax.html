@@ -2497,14 +2497,14 @@
         if (settles.length < 2) return '<div class="hist-msg">Not enough settlements to chart</div>';
         var pts = settles.slice().reverse().map(function(t) {       // oldest → newest
             return { ms:new Date(t.ts + 'Z').getTime(), sym:t.sym,
-                     val:rewardToWax(t.total, t.sym.toLowerCase()) };
+                     val:rewardToWax(t.total, t.sym.toLowerCase()),
+                     n:t.rows.length };     // wallets that took a share of this mission
         });
         var W = 640, H = 190, PL = 52, PR = 52, PT = 12, PB = 22;
         var iw = W - PL - PR, ih = H - PT - PB;
         var t0 = pts[0].ms, t1 = pts[pts.length - 1].ms, span = (t1 - t0) || 1;
         var maxBar = Math.max.apply(null, pts.map(function(p) { return p.val; })) || 1;
-        var run = 0, cum = pts.map(function(p) { run += p.val; return run; });
-        var maxCum = run || 1;
+        var maxN = Math.max.apply(null, pts.map(function(p) { return p.n; })) || 1;
         var bw = Math.max(2, Math.min(14, iw / pts.length * 0.7));
         var x = function(ms) { return PL + (ms - t0) / span * iw; };
 
@@ -2513,22 +2513,31 @@
             return '<rect x="' + (x(p.ms) - bw / 2).toFixed(1) + '" y="' + (PT + ih - h).toFixed(1) +
                    '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1" fill="' +
                    (CUR_COLOR[p.sym] || '#888') + '" opacity="0.75"><title>' +
-                   new Date(p.ms).toISOString().slice(0, 10) + ' — ' + histAmt(p.val) + ' WAX est.</title></rect>';
+                   new Date(p.ms).toISOString().slice(0, 10) + ' — ' + histAmt(p.val) + ' WAX est. · ' +
+                   p.n + ' player' + (p.n === 1 ? '' : 's') + '</title></rect>';
         }).join('');
+        // players who took a share of each mission, on its own right-hand scale
         var line = pts.map(function(p, i) {
-            return (i ? 'L' : 'M') + x(p.ms).toFixed(1) + ' ' + (PT + ih - cum[i] / maxCum * ih).toFixed(1);
+            return (i ? 'L' : 'M') + x(p.ms).toFixed(1) + ' ' + (PT + ih - p.n / maxN * ih * 0.86).toFixed(1);
         }).join(' ');
+        var dots = pts.map(function(p) {
+            return '<circle cx="' + x(p.ms).toFixed(1) + '" cy="' +
+                   (PT + ih - p.n / maxN * ih * 0.86).toFixed(1) + '" r="1.8" fill="#ffe8ff"><title>' +
+                   new Date(p.ms).toISOString().slice(0, 10) + ' — ' + p.n +
+                   ' player' + (p.n === 1 ? '' : 's') + '</title></circle>';
+        }).join('');
 
         var grid = [0, 0.5, 1].map(function(f) {
             var yy = PT + ih - f * ih;
             return '<line x1="' + PL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + yy.toFixed(1) +
                    '" stroke="rgba(255,68,204,0.12)" stroke-width="1"/>' +
                    '<text x="' + (PL - 6) + '" y="' + (yy + 3).toFixed(1) + '" class="ax ax-r">' + histAmt(maxBar * 0.86 * f) + '</text>' +
-                   '<text x="' + (W - PR + 6) + '" y="' + (yy + 3).toFixed(1) + '" class="ax" fill="#ffe8ff">' + histAmt(maxCum * f) + '</text>';
+                   '<text x="' + (W - PR + 6) + '" y="' + (yy + 3).toFixed(1) + '" class="ax" fill="#ffe8ff">' +
+                   Math.round(maxN * f) + '</text>';
         }).join('');
 
         return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="hist-svg" preserveAspectRatio="none">' + grid + bars +
-            '<path d="' + line + '" fill="none" stroke="#ffe8ff" stroke-width="1.4" opacity="0.85"/>' +
+            '<path d="' + line + '" fill="none" stroke="#ffe8ff" stroke-width="1.4" opacity="0.9"/>' + dots +
             '<text x="' + PL + '" y="' + (H - 6) + '" class="ax">' + new Date(t0).toISOString().slice(0, 10) + '</text>' +
             '<text x="' + (W - PR) + '" y="' + (H - 6) + '" class="ax ax-r">' + new Date(t1).toISOString().slice(0, 10) + '</text>' +
             '</svg>';
@@ -2559,7 +2568,7 @@
         if (!el) return;
         el.innerHTML =
             '<div class="chart-head">Winnings over time <span class="chart-legend">' + chartLegend() +
-            '<span class="lg-item"><span class="lg-line"></span>cumulative WAX est.</span></span></div>' +
+            '<span class="lg-item"><span class="lg-line"></span>players paid</span></span></div>' +
             chartOverTime(settles) +
             '<div class="chart-head" style="margin-top:14px;">Top wallets by WAX est.<span class="chart-legend">' +
             chartLegend() + '</span></div>' +

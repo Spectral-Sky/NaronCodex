@@ -86,9 +86,13 @@
 .global-header .logo-section { align-items: center; }
 .global-header .nav-links {
     align-items: flex-end;
-    margin-bottom: -15px;          /* cancel the header's bottom padding */
+    /* clear the header's bottom padding AND its 2px rule, so the tabs sit over
+       the line rather than having it run across their widest edge */
+    margin-bottom: calc(-1 * (var(--dd-bar-pad, 15px) + var(--dd-bar-rule, 2px)));
     padding-bottom: 0;
     gap: 6px;
+    position: relative;
+    z-index: 1;
 }
 .global-header .nav-links > * { align-self: flex-end; }
 .global-header .nav-dropdown-wrap { display: flex; align-items: flex-end; }
@@ -97,7 +101,9 @@
 .global-header .nav-links > .nav-btn {
     display: inline-flex; align-items: center; justify-content: center;
     gap: 4px; white-space: nowrap;          /* keep the caret on the label's line */
-    min-height: 34px; box-sizing: border-box; margin: 0;
+    min-height: 38px; box-sizing: border-box; margin: 0;
+    /* the last 2px sit on the rule, so the tab covers it instead of being cut */
+    padding-bottom: calc(7px + var(--dd-bar-rule, 2px)) !important;
 }
 .global-header .nav-links > .nav-btn { padding: 8px 16px 7px; }
 .global-header .nav-links img { flex-shrink: 0; margin-right: 0 !important; }
