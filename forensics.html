@@ -533,6 +533,24 @@ table.co-table tr.flagged td { opacity:0.55; }
 .co-score.hot, table.co-table td.hot { color:#FF3060; }
 .co-score.warm { color:#FFB040; }
 .co-foot { font-size:0.54em; color:#5a6a7a; letter-spacing:0.6px; padding-top:8px; line-height:1.7; }
+
+#xe-overlay { display:none; position:fixed; inset:0; z-index:9100; background:rgba(4,7,14,0.98);
+    padding:18px 22px; overflow:hidden; }
+#xe-overlay.open { display:flex; flex-direction:column; }
+.xe-head { display:flex; align-items:center; gap:14px; font-size:0.66em; letter-spacing:2.4px;
+    color:#FF3060; padding-bottom:10px; border-bottom:1px solid rgba(255,48,96,0.25); margin-bottom:10px; }
+.xe-head .bar-btn { margin-left:auto; }
+#xe-body { display:flex; flex-direction:column; min-height:0; flex:1; }
+.xe-hit { border:1px solid rgba(255,48,96,0.25); background:rgba(255,48,96,0.05);
+    padding:9px 12px; margin-bottom:8px; }
+.xe-w { font-size:0.7em; color:#60C8FF; letter-spacing:1.4px; cursor:pointer; margin-bottom:5px; }
+.xe-w:hover { text-decoration:underline; }
+.xe-link { display:flex; align-items:baseline; gap:8px; font-size:0.6em; padding:2px 0 2px 12px; flex-wrap:wrap; }
+.xe-arrow { color:#FF3060; }
+.xe-peer { color:#FF6090; cursor:pointer; letter-spacing:1px; }
+.xe-peer:hover { text-decoration:underline; }
+.xe-n { color:#8a9aae; }
+.xe-reason { color:#6a7c90; font-style:italic; }
 </style>
 </head>
 <body>
@@ -610,6 +628,7 @@ table.co-table tr.flagged td { opacity:0.55; }
 </div>
 
 <div id="cohort-overlay"><div id="cohort-body"></div></div>
+<div id="xe-overlay"><div class="xe-head">FLAGGED-WALLET CROSS-EXAMINATION<button class="bar-btn" onclick="closeXe()">CLOSE</button></div><div id="xe-body"></div></div>
 
 <div id="main">
     <div id="graph-wrap">
@@ -1634,7 +1653,7 @@ async function runCohort() {
         // roster and mining come down together
         const [members, ...parts] = await Promise.all([chainRows('mcmembers'), ...slices]);
         const mines = [].concat(...parts);
-        _cohort = { rows: buildCohort(mines, members), members: members.length, mines: mines.length };
+        _cohort = { rows: buildCohort(mines, members), members: members, mines: mines.length };
         renderCohort();
     } catch (e) {
         body.innerHTML = '<div class="co-load">Could not load — ' + (e.message || e) + '</div>';
@@ -1674,12 +1693,13 @@ function renderCohort() {
         '<div class="co-bar">' +
           '<span class="co-stat"><b>' + rows.length + '</b> miners</span>' +
           '<span class="co-stat"><b>' + _cohort.mines.toLocaleString() + '</b> mines / ' + COHORT_DAYS + 'd</span>' +
-          '<span class="co-stat"><b>' + _cohort.members.toLocaleString() + '</b> members</span>' +
+          '<span class="co-stat"><b>' + _cohort.members.length.toLocaleString() + '</b> members</span>' +
           '<label class="co-chk"><input type="checkbox" ' + (_cohortFlagged ? 'checked' : '') +
             ' onchange="cohortToggleFlagged(this.checked)"> include flagged</label>' +
           '<span class="co-note">' + (flaggedMiners === 0
             ? 'No flagged member has mined in this window — the toggle changes nothing here.'
             : flaggedMiners + ' flagged member(s) mining') + '</span>' +
+          '<button class="bar-btn" onclick="openXe()" title="Look for direct transfers between these miners and flagged wallets">CROSS-EXAMINE</button>' +
           '<button class="bar-btn" onclick="closeCohort()">CLOSE</button>' +
         '</div>' +
         '<div class="co-scroll"><table class="co-table"><thead><tr>' +
@@ -1698,6 +1718,114 @@ window.cohortPick = function (w) {
     if (typeof analyse === 'function') analyseWallet();
 };
 window.openCohort = function () { if (_cohort) { document.getElementById('cohort-overlay').classList.add('open'); renderCohort(); } else runCohort(); };
+
+
+/* ── CROSS-EXAMINATION AGAINST FLAGGED WALLETS ───────────────────────────────
+   Looks for a direct transfer between a current miner and any wallet the guild
+   has flagged — TLM, WAX or NFT, in either direction.
+
+   Why transfers and not mining: no flagged wallet appears anywhere in seven
+   months of notify.mc mining, and roughly seven in ten have no on-chain action
+   of any kind, so there is no behaviour to compare against. A transfer is the
+   one thing that survives.
+
+   Contract accounts are dropped — every miner touches eosio, the .mc services
+   and m.federation, and those say nothing about who is behind a wallet. On the
+   current roster the average miner has 1.6 wallet-to-wallet peers and 221 of
+   271 have none at all, so a single link here is worth reading.                */
+
+const XE_FILTERS = ['eosio.token:transfer', 'alien.worlds:transfer', 'atomicassets:transfer'];
+const XE_CONTRACT = /^(eosio(\.[a-z0-9.]+)?|.*\.mc|m\.federation|.*\.worlds|atomicassets|theminergame|.*\.ale|.*\.gm)$/;
+const XE_BATCH = 10;
+let _xe = null;
+
+async function walletPeers(w) {
+    const out = new Map();
+    await Promise.all(XE_FILTERS.map(async f => {
+        const d = await hGet('/v2/history/get_actions', {
+            account: w, filter: f, limit: 1000, sort: 'desc'
+        });
+        ((d && d.actions) || []).forEach(a => {
+            const dd = a.act.data || {};
+            [dd.from, dd.to].forEach(peer => {
+                if (!peer || peer === w || XE_CONTRACT.test(peer)) return;
+                const e = out.get(peer) || { n: 0, kinds: new Set() };
+                e.n++; e.kinds.add(f.split(':')[0]);
+                out.set(peer, e);
+            });
+        });
+    }));
+    return out;
+}
+
+async function crossExamine() {
+    if (!_cohort) return;
+    const flagged = new Map();
+    _cohort.members.forEach(m => {
+        if (Number(m.flagged) === 1) flagged.set(m.wallet, m.flag_reason || '(no reason given)');
+    });
+    const miners = _cohort.rows.map(r => r.wallet);
+    const box = document.getElementById('xe-body');
+    const hits = [];
+    let done = 0, peerTotal = 0, noPeers = 0;
+
+    for (let i = 0; i < miners.length; i += XE_BATCH) {
+        const chunk = miners.slice(i, i + XE_BATCH);
+        const res = await Promise.all(chunk.map(async w => ({ w, p: await walletPeers(w) })));
+        res.forEach(({ w, p }) => {
+            peerTotal += p.size;
+            if (!p.size) noPeers++;
+            const bad = [];
+            p.forEach((e, peer) => {
+                if (flagged.has(peer)) bad.push({ peer, n: e.n, kinds: [...e.kinds], reason: flagged.get(peer) });
+            });
+            if (bad.length) hits.push({ wallet: w, bad });
+        });
+        done += chunk.length;
+        box.innerHTML = '<div class="co-load">CHECKING TRANSFERS… ' + done + ' / ' + miners.length +
+            '<br>' + hits.length + ' link' + (hits.length === 1 ? '' : 's') + ' so far</div>';
+    }
+
+    _xe = { hits, scanned: miners.length, flagged: flagged.size,
+            avgPeers: miners.length ? peerTotal / miners.length : 0, noPeers };
+    renderXe();
+}
+
+function renderXe() {
+    const box = document.getElementById('xe-body');
+    if (!_xe) return;
+    const h = _xe.hits;
+    box.innerHTML =
+        '<div class="co-bar">' +
+          '<span class="co-stat"><b>' + h.length + '</b> linked</span>' +
+          '<span class="co-stat"><b>' + _xe.scanned + '</b> miners checked</span>' +
+          '<span class="co-stat"><b>' + _xe.flagged.toLocaleString() + '</b> flagged wallets</span>' +
+          '<span class="co-note">' + _xe.noPeers + ' of ' + _xe.scanned +
+            ' miners transfer with no other wallet at all (avg ' + _xe.avgPeers.toFixed(1) +
+            ' peers), so a link here is unusual.</span>' +
+        '</div>' +
+        (h.length ? '<div class="co-scroll">' + h.map(x =>
+            '<div class="xe-hit"><div class="xe-w" onclick="cohortPick(\'' + x.wallet + '\')">' +
+            x.wallet + '</div>' + x.bad.map(b =>
+                '<div class="xe-link"><span class="xe-arrow">&rarr;</span>' +
+                '<span class="xe-peer" onclick="cohortPick(\'' + b.peer + '\')">' + b.peer + '</span>' +
+                '<span class="xe-n">' + b.n + ' transfer' + (b.n === 1 ? '' : 's') +
+                ' [' + b.kinds.join(', ') + ']</span>' +
+                '<span class="xe-reason">' + b.reason + '</span></div>').join('') +
+            '</div>').join('') + '</div>'
+          : '<div class="co-load">No current miner has transferred with a flagged wallet.</div>') +
+        '<div class="co-foot">A shared transfer is a lead, not a finding — people do trade with ' +
+        'accounts that are later flagged. Click either wallet to open it in the graph.</div>';
+}
+
+window.openXe = function () {
+    document.getElementById('xe-overlay').classList.add('open');
+    if (_xe) renderXe();
+    else if (_cohort) crossExamine();
+    else document.getElementById('xe-body').innerHTML =
+        '<div class="co-load">Run the MC COHORT scan first.</div>';
+};
+window.closeXe = function () { document.getElementById('xe-overlay').classList.remove('open'); };
 
 /* ── MINING CADENCE SCAN ─────────────────────────────────────────────────────
    Pulls a wallet's own mines from m.federation and measures how regular they
