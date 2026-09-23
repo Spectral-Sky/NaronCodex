@@ -101,9 +101,19 @@
         var comps = { dungeon: {}, arena: {} };
         var hours = WEEKDAYS.map(function () { return new Array(24).fill(0); });
 
+        // per weekday+hour cell: who fought in it, and on which dates
+        var hourDetail = WEEKDAYS.map(function () {
+            return Array.apply(null, Array(24)).map(function () { return { wallets: {}, dates: {} }; });
+        });
+
         fights.forEach(function (f) {
             var b = bucketOf(f.ms), dt = new Date(f.ms);
-            hours[(dt.getUTCDay() + 6) % 7][dt.getUTCHours()]++;
+            var wd = (dt.getUTCDay() + 6) % 7, hh = dt.getUTCHours();
+            hours[wd][hh]++;
+            var cell = hourDetail[wd][hh];
+            if (f.wallet) cell.wallets[f.wallet] = (cell.wallets[f.wallet] || 0) + 1;
+            var dkey = utcDay(f.ms);
+            cell.dates[dkey] = (cell.dates[dkey] || 0) + 1;
 
             if (f.type === 'dungeon' && f.diff > 0) {
                 bump(diffGrid[f.diff] || (diffGrid[f.diff] = {}), b, f.won);
@@ -155,12 +165,35 @@
             difficulty: { grid: diffGrid, totals: diffTotals },
             meta: { byKind: meta, teams: metaTeams, totals: metaTotals },
             comps: { dungeon: rankComps(comps.dungeon, true), arena: rankComps(comps.arena, false) },
-            hours: hours
+            hours: hours, hourDetail: hourDetail
         };
     }
 
     // ── rendering ────────────────────────────────────────────────────────────
     var CSS = ''
+        + 'td.ain-hot{cursor:pointer;}'
+        + 'td.ain-hot:hover{outline:2px solid #fff;outline-offset:-2px;}'
+        + 'td.sel{outline:2px solid #fff;outline-offset:-2px;}'
+        + '.ain-drill{display:none;margin-top:12px;border:1px solid rgba(232,160,32,0.25);background:rgba(8,10,20,0.85);}'
+        + '.ain-drill.open{display:block;}'
+        + '.ain-drill-head{display:flex;align-items:baseline;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(232,160,32,0.18);flex-wrap:wrap;}'
+        + '.ain-drill-title{font-size:0.68em;letter-spacing:2px;color:#e8a020;}'
+        + '.ain-drill-sub{font-size:0.58em;letter-spacing:1px;color:#8b94a3;}'
+        + '.ain-drill-x{margin-left:auto;background:transparent;border:none;color:#8b94a3;font-size:1.1em;cursor:pointer;line-height:1;}'
+        + '.ain-drill-x:hover{color:#e8a020;}'
+        + '.ain-drill-flag{font-size:0.6em;letter-spacing:1px;color:#ff1e8e;padding:6px 12px;border-bottom:1px solid rgba(255,30,142,0.2);background:rgba(255,30,142,0.06);}'
+        + '.ain-drill-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;padding:10px 12px 12px;}'
+        + '.ain-drill-h{font-size:0.56em;letter-spacing:2px;color:#8b94a3;text-transform:uppercase;margin-bottom:5px;}'
+        + '.ain-drill-row{display:flex;align-items:center;gap:7px;font-size:0.62em;padding:2px 0;color:#c8d4e4;}'
+        + '.ain-drill-row.me{color:#e8a020;}'
+        + '.ain-drill-rank{width:16px;text-align:right;color:#5d6875;}'
+        + '.ain-drill-name{width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+        + '.ain-drill-bar{flex:1;min-width:30px;height:5px;background:rgba(232,160,32,0.1);border-radius:2px;overflow:hidden;}'
+        + '.ain-drill-bar>span{display:block;height:100%;background:#e8a020;}'
+        + '.ain-drill-row.me .ain-drill-bar>span{background:#ffc248;}'
+        + '.ain-drill-n{width:52px;text-align:right;font-variant-numeric:tabular-nums;}'
+        + '.ain-drill-pct{width:44px;text-align:right;color:#8b94a3;font-variant-numeric:tabular-nums;}'
+        + '.ain-drill-rest{font-size:0.56em;letter-spacing:1px;color:#5d6875;padding-top:4px;}'
         + '.ain-heat-scale{display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin-top:8px;}'
         + '.ain-heat-key{font-size:0.58em;letter-spacing:0.5px;padding:2px 6px;border-radius:2px;font-variant-numeric:tabular-nums;}'
         + '.ain-heat-cap{font-size:0.58em;letter-spacing:1.4px;color:#7a8a9a;margin-left:8px;text-transform:uppercase;}'
@@ -354,25 +387,38 @@
         }};
     }
 
-    // Thermal ramp in the style of FLIR's Rainbow HC: cold dark blue through
-    // cyan, green and yellow to orange, red and finally pink at the hot end.
-    var RAINBOW_HC = [
-        [ 10,  12,  60],   // coldest - deep navy
-        [ 32,  32, 190],   // blue
-        [  0, 144, 255],   // azure
-        [  0, 208, 208],   // cyan
-        [  0, 192,  64],   // green
-        [176, 224,   0],   // yellow-green
-        [255, 224,   0],   // yellow
-        [255, 144,   0],   // orange
-        [255,  48,   0],   // red
-        [255,  30, 142]    // hottest - pink
+    // Thermal ramp keyed to absolute fight counts, not to the spread of the data:
+    // near-black below 200, the rainbow through the middle, pink from 750 to 1,000,
+    // then light pink fading to white by 1,500.
+    var HEAT_STOPS = [
+        [   0, [  4,   4,  12]],   // black
+        [ 200, [ 10,  26, 110]],   // dark blue
+        [ 320, [ 30,  95, 208]],   // blue
+        [ 430, [  0, 168, 216]],   // azure
+        [ 520, [  0, 200, 150]],   // teal
+        [ 580, [140, 210,   0]],   // yellow-green
+        [ 630, [255, 200,   0]],   // yellow
+        [ 690, [255, 120,   0]],   // orange
+        [ 748, [255,  40,  40]],   // red
+        [ 750, [255,  30, 142]],   // pink starts
+        [1000, [255,  30, 142]],   // held pink to 1,000
+        [1150, [255, 140, 205]],   // light pink
+        [1500, [255, 255, 255]]    // white
     ];
-    function rainbowHC(t) {
-        t = Math.max(0, Math.min(1, t));
-        var x = t * (RAINBOW_HC.length - 1), i = Math.floor(x), f = x - i;
-        var c0 = RAINBOW_HC[i], c1 = RAINBOW_HC[Math.min(RAINBOW_HC.length - 1, i + 1)];
-        return [0, 1, 2].map(function (k) { return Math.round(c0[k] + (c1[k] - c0[k]) * f); });
+    function heatColor(v) {
+        if (v <= HEAT_STOPS[0][0]) return HEAT_STOPS[0][1].slice();
+        var last = HEAT_STOPS[HEAT_STOPS.length - 1];
+        if (v >= last[0]) return last[1].slice();
+        for (var i = 1; i < HEAT_STOPS.length; i++) {
+            if (v <= HEAT_STOPS[i][0]) {
+                var lo = HEAT_STOPS[i - 1], hi = HEAT_STOPS[i];
+                var f = (hi[0] - lo[0]) ? (v - lo[0]) / (hi[0] - lo[0]) : 0;
+                return [0, 1, 2].map(function (k) {
+                    return Math.round(lo[1][k] + (hi[1][k] - lo[1][k]) * f);
+                });
+            }
+        }
+        return last[1].slice();
     }
     function rgbStr(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
     // text that stays readable on whichever band it lands on
@@ -381,71 +427,133 @@
         return l > 0.55 ? '#0a0c12' : '#ffffff';
     }
 
-    // Bands follow the data rather than round numbers. Fixed 100-wide steps put
-    // 78 of 98 populated hours into the same handful of colours, because the
-    // quietest hour is already 211; percentile bands give each colour a roughly
-    // equal share of hours, so the whole ramp is used where the data actually is.
-    var HEAT_BANDS = 10;
+    // one colour per 150 fights; a band is painted with the colour at its midpoint
+    var HEAT_STEP = 150;
+    function heatBand(v) { return Math.floor(v / HEAT_STEP); }
+    function bandColor(b) { return heatColor(b * HEAT_STEP + HEAT_STEP / 2); }
 
-    function heatScale(values) {
-        var sorted = values.filter(function (v) { return v > 0; }).sort(function (a, b) { return a - b; });
-        if (!sorted.length) return { edges: [], band: function () { return 0; }, bands: 1 };
-        var bands = Math.max(1, Math.min(HEAT_BANDS, sorted.length));
-        // lower edge of each band, by rank
-        var edges = [];
-        for (var i = 0; i < bands; i++) edges.push(sorted[Math.floor(i * sorted.length / bands)]);
-        // equal values must not straddle two bands, so collapse duplicate edges
-        edges = edges.filter(function (v, i) { return i === 0 || v !== edges[i - 1]; });
-        bands = edges.length;
-        return {
-            edges: edges,
-            bands: bands,
-            max: sorted[sorted.length - 1],
-            band: function (v) {
-                var b = 0;
-                for (var i = 0; i < edges.length; i++) if (v >= edges[i]) b = i;
-                return b;
-            }
-        };
+    // Per-cell wallet breakdown. Limited to one wallet while it is being trialled;
+    // for everyone else the cells are inert and nothing hints the feature exists.
+    var HOUR_DRILL_WALLETS = ['1x1ci.wam'];
+    function hourDrillAllowed() {
+        try { return HOUR_DRILL_WALLETS.indexOf(localStorage.getItem('naron_wallet') || '') >= 0; }
+        catch (e) { return false; }
+    }
+
+    function drillRows(obj, total, me, limit) {
+        var list = Object.keys(obj).map(function (k) { return { k: k, n: obj[k] }; })
+            .sort(function (x, y) { return y.n - x.n; });
+        var shown = list.slice(0, limit);
+        var rest = list.slice(limit).reduce(function (t, x) { return t + x.n; }, 0);
+        var top = shown.length ? shown[0].n : 1;
+        var html = shown.map(function (x, i) {
+            var pct = total ? x.n / total * 100 : 0;
+            return '<div class="ain-drill-row' + (x.k === me ? ' me' : '') + '">'
+                + '<span class="ain-drill-rank">' + (i + 1) + '</span>'
+                + '<span class="ain-drill-name" title="' + x.k + '">' + x.k + '</span>'
+                + '<span class="ain-drill-bar"><span style="width:' + (x.n / top * 100).toFixed(1) + '%"></span></span>'
+                + '<span class="ain-drill-n">' + x.n.toLocaleString() + '</span>'
+                + '<span class="ain-drill-pct">' + pct.toFixed(1) + '%</span></div>';
+        }).join('');
+        if (rest) html += '<div class="ain-drill-rest">+ ' + list.slice(limit).length
+            + ' more, ' + rest.toLocaleString() + ' fights</div>';
+        return html;
+    }
+
+    function hourDrillHtml(a, d, hr) {
+        var cell = a.hourDetail[d][hr];
+        var total = a.hours[d][hr];
+        var me = '';
+        try { me = localStorage.getItem('naron_wallet') || ''; } catch (e) {}
+
+        var wallets = Object.keys(cell.wallets).length;
+        var dates = Object.keys(cell.dates);
+        var perDate = dates.map(function (k) { return cell.dates[k]; });
+        var busiest = dates.slice().sort(function (x, y) { return cell.dates[y] - cell.dates[x]; })[0];
+        var avg = dates.length ? total / dates.length : 0;
+        // a single date carrying far more than the rest is what an anomaly looks like
+        var spike = busiest && avg ? cell.dates[busiest] / avg : 0;
+
+        return '<div class="ain-drill-head">'
+            + '<span class="ain-drill-title">' + WEEKDAYS[d] + ' ' + (hr < 10 ? '0' : '') + hr + ':00\u2013'
+            + ((hr + 1) < 10 ? '0' : '') + (hr + 1) + ':00 UTC</span>'
+            + '<span class="ain-drill-sub">' + total.toLocaleString() + ' fights \u00b7 '
+            + wallets.toLocaleString() + ' wallet' + (wallets === 1 ? '' : 's') + ' \u00b7 '
+            + dates.length + ' date' + (dates.length === 1 ? '' : 's') + ' \u00b7 '
+            + Math.round(avg).toLocaleString() + ' avg per date</span>'
+            + '<button class="ain-drill-x" data-drill-close="1">\u00d7</button></div>'
+            + (spike >= 2 ? '<div class="ain-drill-flag">\u26a0 ' + busiest + ' carried '
+                + cell.dates[busiest].toLocaleString() + ' fights \u2014 ' + spike.toFixed(1)
+                + '\u00d7 the average for this hour</div>' : '')
+            + '<div class="ain-drill-cols">'
+            + '<div><div class="ain-drill-h">Wallets in this hour</div>' + drillRows(cell.wallets, total, me, 15) + '</div>'
+            + '<div><div class="ain-drill-h">By date</div>' + drillRows(cell.dates, total, null, 15) + '</div>'
+            + '</div>';
     }
 
     function sectionHours(a) {
-        var flat = [];
-        a.hours.forEach(function (r) { r.forEach(function (v) { flat.push(v); }); });
-        var sc = heatScale(flat);
-        var tOf = function (b) { return sc.bands > 1 ? b / (sc.bands - 1) : 1; };
-        var upper = function (b) {
-            return b === sc.bands - 1 ? sc.max : sc.edges[b + 1] - 1;
-        };
+        var drill = hourDrillAllowed();
+        var max = 0;
+        a.hours.forEach(function (r) { r.forEach(function (v) { if (v > max) max = v; }); });
+        var topBand = Math.max(1, heatBand(max));
 
         var rows = a.hours.map(function (r, d) {
             return '<tr><th class="rowh">' + WEEKDAYS[d] + '</th>' + r.map(function (v, hr) {
                 if (!v) return '<td class="empty" title="' + WEEKDAYS[d] + ' ' + hr + ':00 UTC \u00b7 0 fights">\u00b7</td>';
-                var b = sc.band(v), c = rainbowHC(tOf(b));
-                return '<td style="background-color:' + rgbStr(c) + '!important;color:' + inkOn(c) + '!important" title="'
+                var b = heatBand(v), c = bandColor(b);
+                return '<td' + (drill ? ' class="ain-hot" data-d="' + d + '" data-h="' + hr + '"' : '')
+                    + ' style="background-color:' + rgbStr(c) + '!important;color:' + inkOn(c) + '!important" title="'
                     + WEEKDAYS[d] + ' ' + hr + ':00\u2013' + (hr + 1) + ':00 UTC \u00b7 ' + v.toLocaleString() + ' fights \u00b7 band '
-                    + sc.edges[b].toLocaleString() + '\u2013' + upper(b).toLocaleString()
+                    + (b * HEAT_STEP).toLocaleString() + '\u2013' + ((b + 1) * HEAT_STEP - 1).toLocaleString()
                     + '">' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) + '</td>';
             }).join('') + '</tr>';
         }).join('');
 
         var legend = '';
-        for (var b = 0; b < sc.bands; b++) {
-            var c = rainbowHC(tOf(b));
+        for (var b = 0; b <= topBand; b++) {
+            var c = bandColor(b);
             legend += '<span class="ain-heat-key" style="background:' + rgbStr(c) + ';color:' + inkOn(c) + '" title="'
-                   + sc.edges[b].toLocaleString() + '\u2013' + upper(b).toLocaleString() + ' fights per hour">'
-                   + sc.edges[b].toLocaleString() + '</span>';
+                   + (b * HEAT_STEP).toLocaleString() + '\u2013' + ((b + 1) * HEAT_STEP - 1).toLocaleString() + ' fights per hour">'
+                   + (b * HEAT_STEP).toLocaleString() + '</span>';
         }
 
         var h = '<div class="ain-sec"><div class="ain-h">\u25c8 BUSIEST HOURS</div>'
-            + '<div class="ain-note">Total fights by weekday and hour (UTC) across the whole sheet \u00b7 '
-            + sc.bands + ' equal-sized bands, cold blue to hot pink \u00b7 your local time is UTC'
+            + '<div class="ain-note">Total fights by weekday and hour (UTC) across the whole sheet \u00b7 one colour per '
+            + HEAT_STEP + ' fights \u00b7 your local time is UTC'
             + (function () { var o = -new Date().getTimezoneOffset() / 60; return (o >= 0 ? '+' : '') + o; })() + '</div>'
             + '<div class="ain-wrap"><table class="ain-heat system-ready"><thead><tr><th></th>'
             + Array.apply(null, Array(24)).map(function (_, i) { return '<th>' + (i < 10 ? '0' : '') + i + '</th>'; }).join('')
             + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
-            + '<div class="ain-heat-scale">' + legend + '<span class="ain-heat-cap">fights per hour</span></div></div>';
-        return { html: h };
+            + '<div class="ain-heat-scale">' + legend + '<span class="ain-heat-cap">fights per hour</span></div>'
+            + (drill ? '<div class="ain-drill" id="ain-drill"></div>' : '')
+            + '</div>';
+
+        if (!drill) return { html: h };
+        return {
+            html: h,
+            mount: function () {
+                var panel = document.getElementById('ain-drill');
+                if (!panel) return;
+                var table = panel.parentNode.querySelector('table.ain-heat');
+                if (!table) return;
+                table.addEventListener('click', function (ev) {
+                    var td = ev.target.closest ? ev.target.closest('td.ain-hot') : null;
+                    if (!td) return;
+                    var d = Number(td.getAttribute('data-d')), hr = Number(td.getAttribute('data-h'));
+                    table.querySelectorAll('td.sel').forEach(function (x) { x.classList.remove('sel'); });
+                    td.classList.add('sel');
+                    panel.innerHTML = hourDrillHtml(a, d, hr);
+                    panel.classList.add('open');
+                });
+                panel.addEventListener('click', function (ev) {
+                    if (ev.target.getAttribute('data-drill-close')) {
+                        panel.classList.remove('open');
+                        panel.innerHTML = '';
+                        table.querySelectorAll('td.sel').forEach(function (x) { x.classList.remove('sel'); });
+                    }
+                });
+            }
+        };
     }
 
     function render(csv, el) {
