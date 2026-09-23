@@ -15,10 +15,21 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
-    --dd-hue:  var(--dd-accent, var(--theme-color, var(--gold, #e8a020)));
     --dd-ink:  #0a0710;
     --dd-bg:   rgba(6,8,14,0.97);
 }
+/* resolved per dropdown, not once at the root, so a single wrapper can set its
+   own --dd-accent and have the tab, its trim and its menu all follow */
+.nav-dropdown-wrap, .dd, .font-picker-btn, .nav-dropdown-btn {
+    --dd-hue: var(--dd-accent, var(--theme-color, var(--gold, #e8a020)));
+}
+
+/* ── section colours ─────────────────────────────────────────────────────── */
+.nav-dropdown-wrap.dd-aw   { --dd-accent: #ffd23f; }   /* Alien Worlds  */
+.nav-dropdown-wrap.dd-pd   { --dd-accent: #4ea8ff; }   /* Planet Defenders */
+.nav-dropdown-wrap.dd-ale  { --dd-accent: #46d98a; }   /* Alien Legends */
+.nav-dropdown-wrap.dd-util { --dd-accent: #b07dff; }   /* Utility       */
+#lang-picker               { --dd-accent: #e8ecf5; }   /* Language      */
 
 /* ── the tab ─────────────────────────────────────────────────────────────── */
 .nav-dropdown-btn,
@@ -29,32 +40,75 @@
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    padding: 7px 22px 6px !important;
-    background: color-mix(in srgb, var(--dd-hue) 9%, transparent);
+    padding: 8px 22px 7px !important;
+    /* a 2px trim of the section colour, over frosted glass tinted the same */
+    background:
+        linear-gradient(to bottom, var(--dd-hue) 0 2px, transparent 2px),
+        linear-gradient(to bottom,
+            color-mix(in srgb, var(--dd-hue) 30%, transparent) 0%,
+            color-mix(in srgb, var(--dd-hue) 10%, transparent) 46%,
+            color-mix(in srgb, var(--dd-hue) 17%, transparent) 100%) !important;
+    -webkit-backdrop-filter: blur(7px) saturate(1.35);
+    backdrop-filter: blur(7px) saturate(1.35);
     color: var(--dd-hue);
+    line-height: 1.2;
     letter-spacing: 1.8px;
     text-transform: uppercase;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, filter 0.15s;
 }
 .nav-dropdown-btn:hover,
 .font-picker-btn:hover,
 .dd > .wbtn:hover,
 .nav-dropdown-wrap:hover .nav-dropdown-btn {
-    background: color-mix(in srgb, var(--dd-hue) 22%, transparent);
-    color: var(--dd-hue);
+    background:
+        linear-gradient(to bottom, var(--dd-hue) 0 2px, transparent 2px),
+        linear-gradient(to bottom,
+            color-mix(in srgb, var(--dd-hue) 46%, transparent) 0%,
+            color-mix(in srgb, var(--dd-hue) 20%, transparent) 46%,
+            color-mix(in srgb, var(--dd-hue) 28%, transparent) 100%) !important;
+    color: #fff;
+    filter: drop-shadow(0 -2px 7px color-mix(in srgb, var(--dd-hue) 55%, transparent));
 }
 /* open, or marking the current page: solid accent, dark text */
 .nav-dropdown-btn.active,
 .dd.open > .wbtn,
 .nav-dropdown-wrap:hover .nav-dropdown-btn.active {
-    background: var(--dd-hue) !important;
+    background: linear-gradient(to bottom,
+        color-mix(in srgb, var(--dd-hue) 100%, white 18%),
+        var(--dd-hue)) !important;
     color: var(--dd-ink) !important;
+    filter: drop-shadow(0 -2px 8px color-mix(in srgb, var(--dd-hue) 45%, transparent));
 }
+
+/* ── sit the tabs flush on the bar so they read as tabs out of a folder ─── */
+.global-header { align-items: stretch !important; }
+.global-header .logo-section { align-items: center; }
+.global-header .nav-links {
+    align-items: flex-end;
+    margin-bottom: -15px;          /* cancel the header's bottom padding */
+    padding-bottom: 0;
+    gap: 6px;
+}
+.global-header .nav-links > * { align-self: flex-end; }
+.global-header .nav-dropdown-wrap { display: flex; align-items: flex-end; }
+/* every tab ends on the same baseline, whatever is inside it */
+.global-header .nav-dropdown-btn,
+.global-header .nav-links > .nav-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 4px; white-space: nowrap;          /* keep the caret on the label's line */
+    min-height: 34px; box-sizing: border-box; margin: 0;
+}
+.global-header .nav-links > .nav-btn { padding: 8px 16px 7px; }
+.global-header .nav-links img { flex-shrink: 0; margin-right: 0 !important; }
+.global-header .nav-links > .nav-btn { border-radius: 4px 4px 0 0; }
+#lang-picker .nav-dropdown-btn { letter-spacing: 0; }
 
 /* ── the folder under it ─────────────────────────────────────────────────── */
 .nav-dropdown-menu,
 .dd .dd-menu {
+    -webkit-backdrop-filter: blur(9px);
+    backdrop-filter: blur(9px);
     border: none !important;
     border-top: 2px solid var(--dd-hue) !important;
     border-radius: 0 !important;
@@ -66,6 +120,7 @@
 /* ── the files inside ────────────────────────────────────────────────────── */
 .nav-dropdown-item,
 .dd .dd-item {
+    color: #b9c2cf !important;          /* was #555 on several pages — 2.7:1 */
     border-radius: 0 !important;
     padding: 7px 16px !important;
     letter-spacing: 1.3px;
@@ -90,7 +145,9 @@
 @supports not (background: color-mix(in srgb, red 10%, transparent)) {
     .nav-dropdown-btn,
     .font-picker-btn,
-    .dd > .wbtn                    { background: rgba(255,255,255,0.05); }
+    .dd > .wbtn                    { background:
+        linear-gradient(to bottom, var(--dd-hue) 0 2px, transparent 2px),
+        rgba(255,255,255,0.07) !important; }
     .nav-dropdown-btn:hover,
     .dd > .wbtn:hover,
     .nav-dropdown-wrap:hover .nav-dropdown-btn { background: rgba(255,255,255,0.12); }

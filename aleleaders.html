@@ -85,11 +85,36 @@
     .dl-btn:disabled { opacity:0.35; cursor:not-allowed; }
 
     /* COLUMN TOGGLES */
-    .col-toggles { padding:8px 28px; border-bottom:1px solid rgba(232,160,32,0.06); background:rgba(3,6,15,0.4); display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-    .col-toggle-label { font-size:0.58em; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-right:4px; }
-    .col-toggle { background:transparent; border:1px solid rgba(232,160,32,0.18); color:#445; font-family:'Courier New',monospace; font-size:0.65em; letter-spacing:1px; padding:3px 9px; cursor:pointer; border-radius:2px; transition:all 0.15s; }
-    .col-toggle:hover { border-color:rgba(232,160,32,0.4); color:#778; }
-    .col-toggle.on { border-color:var(--gold); color:var(--gold); background:rgba(232,160,32,0.06); }
+    .col-toggles { padding:0; border-bottom:1px solid rgba(232,160,32,0.10); background:rgba(3,6,15,0.4); display:block; }
+    .col-toggle-label { font-size:0.58em; color:#8b94a3; letter-spacing:2px; text-transform:uppercase; margin-right:4px; }
+    /* off state was #445 on #03060f — 2.2:1, unreadable. This is 5.1:1. */
+    .col-toggle { background:rgba(255,255,255,0.03); border:1px solid rgba(232,160,32,0.16); color:#8b94a3; font-family:'Courier New',monospace; font-size:0.65em; letter-spacing:1px; padding:3px 9px; cursor:pointer; border-radius:2px; transition:all 0.15s; }
+    .col-toggle:hover { border-color:rgba(232,160,32,0.5); color:#d7dde6; background:rgba(232,160,32,0.08); }
+    .col-toggle.on { border-color:var(--gold); color:#1a1206; background:var(--gold); font-weight:bold; }
+    .col-toggle.on:hover { background:#ffb733; color:#1a1206; }
+
+    /* ── columns panel ──────────────────────────────────────────────────── */
+    .cols-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 28px; }
+    .cols-title { font-size:0.62em; letter-spacing:2.4px; text-transform:uppercase; color:var(--gold); font-weight:bold; }
+    .cols-count { font-size:0.58em; letter-spacing:1.4px; color:#8b94a3; font-variant-numeric:tabular-nums; }
+    .cols-group { display:flex; gap:5px; align-items:center; }
+    .cols-spacer { flex:1 1 12px; }
+    .cols-seg { display:flex; }
+    .cols-seg .col-toggle { border-radius:0; border-right-width:0; }
+    .cols-seg .col-toggle:first-child { border-radius:2px 0 0 2px; }
+    .cols-seg .col-toggle:last-child { border-radius:0 2px 2px 0; border-right-width:1px; }
+    .cols-edit { background:transparent; border:1px solid rgba(232,160,32,0.4); color:var(--gold); font-family:'Courier New',monospace; font-size:0.62em; letter-spacing:1.6px; padding:4px 12px; cursor:pointer; border-radius:2px; text-transform:uppercase; }
+    .cols-edit:hover { background:rgba(232,160,32,0.12); }
+    .cols-body { display:none; padding:2px 28px 12px; border-top:1px solid rgba(232,160,32,0.10); }
+    .cols-body.open { display:block; }
+    .cols-sec { display:flex; align-items:flex-start; gap:9px; padding:6px 0; border-bottom:1px solid rgba(232,160,32,0.05); }
+    .cols-sec:last-child { border-bottom:none; }
+    .cols-sec-name { flex:0 0 118px; font-size:0.57em; letter-spacing:1.8px; text-transform:uppercase; color:#8b94a3; padding-top:5px; cursor:pointer; user-select:none; }
+    .cols-sec-name:hover { color:var(--gold); }
+    .cols-sec-name .cols-sec-n { color:#5d6875; }
+    .cols-sec-chips { flex:1; display:flex; gap:5px; flex-wrap:wrap; }
+    html.day .col-toggle { color:#3a5080; background:rgba(0,0,0,0.03); }
+    html.day .cols-count, html.day .cols-sec-name, html.day .col-toggle-label { color:#3a5080; }
     .col-toggle-blue   { border-color:rgba(60,120,255,0.45); color:#5090ff; }
     .col-toggle-blue:hover   { background:rgba(60,120,255,0.1); border-color:#5090ff; color:#80b0ff; }
     .col-toggle-pink   { border-color:rgba(220,60,120,0.45); color:#f06090; }
@@ -304,7 +329,7 @@
     </div>
     <nav class="nav-links">
         <a href="index.html" class="nav-btn">HUB</a>
-        <div class="nav-dropdown-wrap">
+        <div class="nav-dropdown-wrap dd-aw">
             <button class="nav-btn nav-dropdown-btn"><img src="https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://alienworlds.io&size=128" style="height:13px;vertical-align:middle;margin-right:3px;border-radius:2px;">AW &#9660;</button>
             <div class="nav-dropdown-menu">
                 <a href="crew.worlds.html" class="nav-dropdown-item">CREW</a>
@@ -314,7 +339,7 @@
                 <a href="land.worlds.html" class="nav-dropdown-item">LAND</a>
             </div>
         </div>
-        <div class="nav-dropdown-wrap">
+        <div class="nav-dropdown-wrap dd-pd">
             <button class="nav-btn nav-dropdown-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.onerror=null;this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD &#9660;</button>
             <div class="nav-dropdown-menu">
                 <a href="pd.units.html" class="nav-dropdown-item">PD UNITS</a>
@@ -322,7 +347,7 @@
                 <a href="army.html" class="nav-dropdown-item">ARMY BUILDER</a>
             </div>
         </div>
-        <div class="nav-dropdown-wrap">
+        <div class="nav-dropdown-wrap dd-ale">
             <button class="nav-btn nav-dropdown-btn active"><img src="Ale%20images/tavern.svg" style="height:13px;vertical-align:middle;margin-right:4px;opacity:0.85;">ALE &#9660;</button>
             <div class="nav-dropdown-menu">
                 <a href="ale.html" class="nav-dropdown-item">&#9876; ALE STATS</a>
@@ -332,7 +357,7 @@
                 <a href="wax.html" class="nav-dropdown-item">&#128367; CANDLE CALCULATOR</a>
             </div>
         </div>
-        <div class="nav-dropdown-wrap">
+        <div class="nav-dropdown-wrap dd-util">
             <button class="nav-btn nav-dropdown-btn">UTILITY &#9660;</button>
             <div class="nav-dropdown-menu">
                 <a href="stash.html" class="nav-dropdown-item">&#11041; STASH</a>
@@ -438,7 +463,8 @@
 </div>
 
 <div class="col-toggles" id="col-toggles">
-    <span class="col-toggle-label">Columns:</span>
+    <div class="cols-bar" id="cols-bar"></div>
+    <div class="cols-body" id="cols-body"></div>
 </div>
 
 <div class="progress-wrap" id="progress-wrap">
@@ -932,83 +958,154 @@
         }));
     }
 
-    function toggleAll() {
-        var cols = allColsList();
-        var anyOn = cols.some(function(c) { return _visibleCols[c.key]; });
-        cols.forEach(function(c) { _visibleCols[c.key] = !anyOn; });
-        saveVisibility();
-        buildColToggles();
-        renderTable();
-    }
+    // Columns are shown in named sections rather than one long wrapping row.
+    // Anything not listed here (including discovered extra stats) falls into OTHER.
+    var COL_SECTIONS = [
+        { name:'Dungeons',   keys:['dungeon_rating','dungeons_won','dungeons_played','dungeon_win_rate','dungeon_leaderboard_claims','total_dungeon_difficulty'] },
+        { name:'Arenas',     keys:['arenas_won','arenas_played','arena_win_rate','arenas_held'] },
+        { name:'Combat',     keys:['damage_dealt','damage_taken','damage_blocked','damage_blocked_by_enemy','knockouts'] },
+        { name:'Progress',   keys:['recruits','energy_saved_recruiting','fighters_sold','level_ups','ascensions_completed','nfts_staked','premium_account_months'] },
+        { name:'Travel',     keys:['portals_used','total_travel_distance'] },
+        { name:'Quests',     keys:['quests_completed','quests_rerolled'] },
+        { name:'Building',   keys:['buildings_constructed','arenas_constructed','dungeons_constructed','taverns_constructed','boosting_applied'] },
+        { name:'Currencies', keys:COL_GROUPS.currencies }
+    ];
 
+    function setAllCols(on) {
+        allColsList().forEach(function(c) { _visibleCols[c.key] = on; });
+        saveVisibility(); buildColToggles(); renderTable();
+    }
+    function resetColsToDefault() {
+        allColsList().forEach(function(c) { _visibleCols[c.key] = !!c.def; });
+        saveVisibility(); buildColToggles(); renderTable();
+    }
+    function toggleAll() {
+        setAllCols(!allColsList().some(function(c) { return _visibleCols[c.key]; }));
+    }
     function toggleGroup(group) {
         var keys = COL_GROUPS[group] || [];
         var anyOn = keys.some(function(k) { return _visibleCols[k]; });
         keys.forEach(function(k) { _visibleCols[k] = !anyOn; });
-        saveVisibility();
-        buildColToggles();
-        renderTable();
+        saveVisibility(); buildColToggles(); renderTable();
+    }
+    function toggleSection(keys) {
+        var anyOn = keys.some(function(k) { return _visibleCols[k]; });
+        keys.forEach(function(k) { _visibleCols[k] = !anyOn; });
+        saveVisibility(); buildColToggles(); renderTable();
+    }
+    window.toggleColsEditor = function() {
+        var body = document.getElementById('cols-body');
+        var open = body.classList.toggle('open');
+        try { localStorage.setItem('naron_lb_cols_open', open ? '1' : '0'); } catch(e) {}
+        var b = document.getElementById('cols-edit-btn');
+        if (b) b.textContent = (open ? '\u25b4 ' : '\u25be ') + 'Choose columns';
+    };
+
+    function mkBtn(text, cls, fn, title, on) {
+        var b = document.createElement('button');
+        b.className = 'col-toggle' + (cls ? ' ' + cls : '') + (on ? ' on' : '');
+        b.textContent = text;
+        if (title) b.title = title;
+        if (fn) b.onclick = fn; else { b.style.opacity = '0.4'; b.style.cursor = 'not-allowed'; }
+        return b;
+    }
+    function mkSpan(cls, text) {
+        var e = document.createElement('span'); e.className = cls; e.textContent = text; return e;
     }
 
     function buildColToggles() {
-        var wrap = document.getElementById('col-toggles');
-        var label = wrap.querySelector('.col-toggle-label');
-        wrap.innerHTML = '';
-        wrap.appendChild(label);
+        var bar = document.getElementById('cols-bar');
+        var body = document.getElementById('cols-body');
+        if (!bar || !body) return;
+        bar.innerHTML = ''; body.innerHTML = '';
 
-        function makeGroupBtn(text, colorClass, fn, titleText) {
-            var btn = document.createElement('button');
-            btn.className = 'col-toggle ' + colorClass;
-            btn.textContent = text;
-            btn.title = titleText;
-            btn.onclick = fn;
-            return btn;
-        }
+        var cols = allColsList();
+        var shown = cols.filter(function(c) { return _visibleCols[c.key]; }).length;
 
-        wrap.appendChild(makeGroupBtn('ALL', 'col-toggle-blue', toggleAll, 'Toggle all columns on/off'));
-        wrap.appendChild(makeGroupBtn('GAME ACTIONS', 'col-toggle-pink', function() { toggleGroup('actions'); }, COL_GROUPS.actions.join(', ')));
-        wrap.appendChild(makeGroupBtn('CURRENCIES', 'col-toggle-orange', function() { toggleGroup('currencies'); }, COL_GROUPS.currencies.join(', ')));
+        bar.appendChild(mkSpan('cols-title', 'Columns'));
+        bar.appendChild(mkSpan('cols-count', shown + ' of ' + cols.length + ' shown'));
 
-        // Compare section
-        var cmpSep = document.createElement('span'); cmpSep.className = 'col-toggles-sep'; wrap.appendChild(cmpSep);
-        var cmpLabel = document.createElement('span'); cmpLabel.className = 'col-toggle-label'; cmpLabel.style.marginLeft='2px'; cmpLabel.textContent = 'Compare:'; wrap.appendChild(cmpLabel);
-        var snapMap = { daily: _snapDaily, weekly: _snapWeekly, monthly: _snapMonthly };
+        var quick = document.createElement('div'); quick.className = 'cols-group cols-seg';
+        quick.appendChild(mkBtn('All', '', function() { setAllCols(true); }, 'Show every column'));
+        quick.appendChild(mkBtn('None', '', function() { setAllCols(false); }, 'Hide every column'));
+        quick.appendChild(mkBtn('Defaults', '', resetColsToDefault, 'Back to the default selection'));
+        bar.appendChild(quick);
+
+        var groups = document.createElement('div'); groups.className = 'cols-group';
+        groups.appendChild(mkBtn('Game actions', 'col-toggle-pink', function() { toggleGroup('actions'); }, COL_GROUPS.actions.join(', ')));
+        groups.appendChild(mkBtn('Currencies', 'col-toggle-orange', function() { toggleGroup('currencies'); }, COL_GROUPS.currencies.join(', ')));
+        bar.appendChild(groups);
+
+        bar.appendChild(mkSpan('cols-spacer', ''));
+
+        // compare against an earlier snapshot
+        bar.appendChild(mkSpan('col-toggle-label', 'Compare:'));
+        var seg = document.createElement('div'); seg.className = 'cols-group cols-seg';
+        seg.appendChild(mkBtn('Off', 'col-toggle-teal', function() { if (_snapMode) window.setSnapMode(_snapMode); },
+                              'Show raw totals', !_snapMode));
+        var snapMap = { daily:_snapDaily, weekly:_snapWeekly, monthly:_snapMonthly };
         ['daily','weekly','monthly'].forEach(function(mode) {
             var snap = snapMap[mode];
-            var btn = document.createElement('button');
-            btn.className = 'col-toggle col-toggle-teal' + (_snapMode === mode ? ' on' : '');
-            btn.textContent = mode.toUpperCase();
-            btn.title = snap ? ('Snapshot taken ' + new Date(snap.ts).toLocaleString() + ' — ' + snapAge(snap)) : 'No snapshot yet — load data first';
-            if (!snap) { btn.style.opacity = '0.35'; btn.style.cursor = 'not-allowed'; }
-            else { btn.onclick = function() { window.setSnapMode(mode); }; }
-            wrap.appendChild(btn);
+            seg.appendChild(mkBtn(mode.charAt(0).toUpperCase() + mode.slice(1), 'col-toggle-teal',
+                snap ? function() { window.setSnapMode(mode); } : null,
+                snap ? ('Snapshot taken ' + new Date(snap.ts).toLocaleString() + ' \u2014 ' + snapAge(snap))
+                     : 'No snapshot yet \u2014 load data first',
+                _snapMode === mode));
         });
+        bar.appendChild(seg);
         var activeSnap = getActiveSnap();
-        if (_snapMode && activeSnap) {
-            var ageEl = document.createElement('span'); ageEl.className = 'snap-age'; ageEl.textContent = 'vs ' + snapAge(activeSnap); wrap.appendChild(ageEl);
-        }
+        if (_snapMode && activeSnap) bar.appendChild(mkSpan('snap-age', 'vs ' + snapAge(activeSnap)));
 
-        var sep = document.createElement('span');
-        sep.className = 'col-toggles-sep';
-        wrap.appendChild(sep);
+        var editBtn = document.createElement('button');
+        editBtn.className = 'cols-edit'; editBtn.id = 'cols-edit-btn';
+        editBtn.onclick = window.toggleColsEditor;
+        bar.appendChild(editBtn);
 
-        allColsList().forEach(function(col) {
-            var on = _visibleCols[col.key];
-            var btn = document.createElement('button');
-            btn.className = 'col-toggle' + (on ? ' on' : '');
-            btn.textContent = col.label.toUpperCase();
-            btn.title = col.title || col.key;
-            btn.dataset.key = col.key;
-            if (col.key === 'comp_live_score') btn.classList.add('col-toggle-rgb');
-            if (col.key === 'dungeon_rating')  btn.classList.add('col-toggle-dg');
-            btn.onclick = function() {
-                _visibleCols[col.key] = !_visibleCols[col.key];
-                btn.classList.toggle('on', _visibleCols[col.key]);
-                saveVisibility();
-                renderTable();
-            };
-            wrap.appendChild(btn);
+        // ── the chips, in sections ──────────────────────────────────────────
+        var byKey = {}; cols.forEach(function(c) { byKey[c.key] = c; });
+        var placed = {};
+        var sections = COL_SECTIONS.map(function(sec) {
+            var list = sec.keys.filter(function(k) { return byKey[k]; });
+            list.forEach(function(k) { placed[k] = true; });
+            return { name: sec.name, cols: list.map(function(k) { return byKey[k]; }) };
         });
+        var rest = cols.filter(function(c) { return !placed[c.key]; });
+        if (rest.length) sections.push({ name:'Other', cols:rest });
+
+        sections.forEach(function(sec) {
+            if (!sec.cols.length) return;
+            var keys = sec.cols.map(function(c) { return c.key; });
+            var on = keys.filter(function(k) { return _visibleCols[k]; }).length;
+
+            var row = document.createElement('div'); row.className = 'cols-sec';
+            var nameEl = document.createElement('div'); nameEl.className = 'cols-sec-name';
+            nameEl.title = 'Toggle this whole section';
+            nameEl.onclick = function() { toggleSection(keys); };
+            nameEl.appendChild(document.createTextNode(sec.name + ' '));
+            nameEl.appendChild(mkSpan('cols-sec-n', on + '/' + keys.length));
+            row.appendChild(nameEl);
+
+            var chips = document.createElement('div'); chips.className = 'cols-sec-chips';
+            sec.cols.forEach(function(col) {
+                var btn = mkBtn(col.label.toUpperCase(), '', null, col.title || col.key, _visibleCols[col.key]);
+                btn.style.opacity = ''; btn.style.cursor = 'pointer';
+                btn.dataset.key = col.key;
+                if (col.key === 'comp_live_score') btn.classList.add('col-toggle-rgb');
+                if (col.key === 'dungeon_rating')  btn.classList.add('col-toggle-dg');
+                btn.onclick = function() {
+                    _visibleCols[col.key] = !_visibleCols[col.key];
+                    saveVisibility(); buildColToggles(); renderTable();
+                };
+                chips.appendChild(btn);
+            });
+            row.appendChild(chips);
+            body.appendChild(row);
+        });
+
+        var wasOpen = '0';
+        try { wasOpen = localStorage.getItem('naron_lb_cols_open') || '0'; } catch(e) {}
+        body.classList.toggle('open', wasOpen === '1');
+        editBtn.textContent = (wasOpen === '1' ? '\u25b4 ' : '\u25be ') + 'Choose columns';
     }
 
     // ── SORT ─────────────────────────────────────────────────────────────────
