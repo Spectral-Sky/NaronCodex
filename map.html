@@ -988,11 +988,21 @@
         return localStorage.getItem('naron_wallet')||null;
     }
 
-    async function signTravel(wallet,x,y) {
-        var actions=[{account:'players.ale',name:'travel',authorization:[{actor:wallet,permission:'active'}],data:{wallet:wallet,x:x,y:y}}];
-        if (window.walletSession) return await window.walletSession.transact({actions});
-        if (wax && wax.api) return await wax.api.transact({actions},{blocksBehind:3,expireSeconds:30});
+    // Every signature goes through here. Anchor (WharfKit) sets window.walletSession;
+    // Cloud Wallet (waxjs) does not and signs through wax.api instead. Sites that
+    // reached for walletSession directly silently did nothing on Cloud Wallet, so
+    // they all call this now and a new one cannot quietly become Anchor-only.
+    async function signActions(actions) {
+        if (window.walletSession) return await window.walletSession.transact({ actions: actions });
+        if (wax && wax.api)       return await wax.api.transact({ actions: actions }, { blocksBehind: 3, expireSeconds: 30 });
         throw new Error('No wallet session — please log in.');
+    }
+    window.signActions = signActions;
+
+    async function signTravel(wallet,x,y) {
+        return await signActions([{ account:'players.ale', name:'travel',
+            authorization:[{actor:wallet,permission:'active'}],
+            data:{wallet:wallet,x:x,y:y} }]);
     }
 
     // ── LOGIN GATE ────────────────────────────────────────────────────────────
@@ -1034,6 +1044,7 @@
         var w = getWallet();
         if (w) {
             window.walletSession = null;
+            if (wax) wax.userAccount = '';   // Cloud Wallet keeps its own copy
             localStorage.removeItem('naron_wallet');
             updateWalletBtn();
         } else {
@@ -6214,11 +6225,11 @@ async function runTxQueue() {
                 try {
                     var _travelAct = step.actions.find(function(a){ return a.name === 'travel'; });
                     var _hireAct   = step.actions.find(function(a){ return a.name === 'hire'; });
-                    if (_travelAct && _hireAct && window.walletSession) {
-                        await window.walletSession.transact({actions:[_travelAct]});
+                    if (_travelAct && _hireAct) {
+                        await signActions([_travelAct]);
                         _playerPos = {planet:_activePlanet, x:_travelAct.data.x, y:_travelAct.data.y};
                         await new Promise(function(r){ setTimeout(r, 1800); });
-                        await window.walletSession.transact({actions:[_hireAct]});
+                        await signActions([_hireAct]);
                         // Recovered — undo the failure tracking
                         _failedPlan.pop();
                         failed--;
@@ -6545,16 +6556,15 @@ async function startAutoReroll(scope) {
         }
 
         try {
-            var sess = window.walletSession;
-            if (!sess) { updateArStatus(scope, '✗ Not logged in'); break; }
-            await sess.transact({ actions: [{
+            if (!getWallet()) { updateArStatus(scope, '✗ Not logged in'); break; }
+            await signActions([{
                 account: 'quests.ale', name: 'reroll',
                 authorization: [{actor: wallet, permission: 'active'}],
                 data: { wallet: wallet, scope: (q.scope || q.quest_scope || scope),
                         quest_name: q.quest_name,
                         reward_amount: q.reward_amount,
                         task_end_value: q.task_end_value }
-            }]});
+            }]);
             updateArStatus(scope, 'Rerolled…');
         } catch(e) {
             updateArStatus(scope, '✗ ' + ((e && e.message) || 'TX fail'));
@@ -6680,7 +6690,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </div>
 <script>
 function toggleTipPop(btn){var p=document.getElementById('tip-pop');if(!p)return;if(p.style.display==='flex'){p.style.display='none';return;}if(btn){var r=btn.getBoundingClientRect();p.style.top=(r.bottom+6)+'px';p.style.right=(window.innerWidth-r.right)+'px';p.style.left='';}p.style.display='flex';}
-async function sendWaxTip(selId,fbId){var w=window.walletSession?String(window.walletSession.actor):null;if(!w){alert('Please connect your wallet first.');return;}var amt=Number(document.getElementById(selId).value);var qty=amt.toFixed(8)+' WAX';var fb=document.getElementById(fbId);if(fb){fb.textContent='Sending…';fb.style.color='#a09060';}try{await window.walletSession.transact({actions:[{account:'eosio.token',name:'transfer',authorization:[{actor:w,permission:'active'}],data:{from:w,to:'1x1ci.wam',quantity:qty,memo:'Naron Codex Tip'}}]});if(fb){fb.textContent='♥ Sent! Thank you!';fb.style.color='#60e090';}setTimeout(function(){var e=document.getElementById(fbId);if(e)e.textContent='';},4000);}catch(e){if(fb){fb.textContent='✗ '+(e&&e.message?e.message.slice(0,50):'Error');fb.style.color='#e06060';}}}
+async function sendWaxTip(selId,fbId){var w=getWallet();if(!w){alert('Please connect your wallet first.');return;}var amt=Number(document.getElementById(selId).value);var qty=amt.toFixed(8)+' WAX';var fb=document.getElementById(fbId);if(fb){fb.textContent='Sending…';fb.style.color='#a09060';}try{await signActions([{account:'eosio.token',name:'transfer',authorization:[{actor:w,permission:'active'}],data:{from:w,to:'1x1ci.wam',quantity:qty,memo:'Naron Codex Tip'}}]);if(fb){fb.textContent='♥ Sent! Thank you!';fb.style.color='#60e090';}setTimeout(function(){var e=document.getElementById(fbId);if(e)e.textContent='';},4000);}catch(e){if(fb){fb.textContent='✗ '+(e&&e.message?e.message.slice(0,50):'Error');fb.style.color='#e06060';}}}
 </script>
 </body>
 </html>
