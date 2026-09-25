@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Naron Codex: Outpost Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="waxjs.js"></script>
+    <link rel="stylesheet" href="dossier-nav.css">
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4',
+                       url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor()],
+        });
+        window.walletKit = kit;
+        try {
+            const bail = new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 4000));
+            const session = await Promise.race([kit.restore(), bail]);
+            if (session) {
+                window.walletSession = session;
+                localStorage.setItem('naron_wallet', String(session.actor));
+            }
+        } catch (e) { /* fall through to whatever localStorage holds */ }
+        if (typeof window.onWalletResolved === 'function') window.onWalletResolved();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@300;400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #04060d;
+            --primary-glow: #64ffda;
+            --accent-gold: #d4af37;
+            --panel-bg: rgba(10, 15, 24, 0.9);
+            --text-main: #e2e8f0;
+        }
+        
+        body {
+            margin: 0; overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            user-select: none; -webkit-user-select: none;
+        }
+
+        .font-codex { font-family: 'Cinzel', serif; }
+        .font-tech { font-family: 'JetBrains Mono', monospace; }
+
+        #gameCanvas {
+            position: absolute; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 1; cursor: grab;
+        }
+        #gameCanvas:active { cursor: grabbing; }
+
+        .ui-layer { position: absolute; z-index: 10; pointer-events: none; }
+        .interactive { pointer-events: auto; }
+
+        .codex-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(100, 255, 218, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(100, 255, 218, 0.05);
+        }
+
+        .glow-text { text-shadow: 0 0 8px rgba(100, 255, 218, 0.6); }
+        .glow-text-gold { text-shadow: 0 0 8px rgba(212, 175, 55, 0.6); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+        ::-webkit-scrollbar-thumb { background: rgba(100, 255, 218, 0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(100, 255, 218, 0.6); }
+
+        #inspector-panel {
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #inspector-panel.open {
+            transform: translateX(0);
+        }
+
+        .btn-upgrade {
+            background: linear-gradient(90deg, rgba(100, 255, 218, 0.1), rgba(100, 255, 218, 0.2));
+            border: 1px solid var(--primary-glow);
+            transition: all 0.2s;
+        }
+        .btn-upgrade:hover:not(:disabled) {
+            background: var(--primary-glow); color: #000;
+            box-shadow: 0 0 15px rgba(100, 255, 218, 0.4);
+        }
+        .btn-upgrade:disabled {
+            border-color: #334155; color: #64748b;
+            background: rgba(15, 23, 42, 0.5); cursor: not-allowed;
+        }
+
+        #loading-screen { transition: opacity 0.5s; }
+        
+        .tier-badge {
+            display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 1px;
+        }
+        .tier-1 { background: rgba(156, 163, 175, 0.2); color: #9ca3af; border: 1px solid #4b5563; }
+        .tier-2 { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid #059669; }
+        .tier-3 { background: rgba(96, 165, 250, 0.2); color: #60a5fa; border: 1px solid #2563eb; }
+        .tier-4 { background: rgba(251, 191, 36, 0.2); color: #fcd34d; border: 1px solid #d97706; text-shadow: 0 0 5px #fbbf24; }
+    
+    /* ── SITE HEADER ─────────────────────────────────────────────────────────
+       The canvas is positioned under a real header now, so every pointer
+       coordinate has to be taken from getBoundingClientRect rather than the
+       viewport — clientY alone would be off by the header's height. */
+    :root { --dd-bar-pad: 0px; --dd-bar-bg: #04060d; --gold: #e8a020; --nc-header-h: 58px; }
+    .global-header {
+        display:flex; justify-content:space-between; align-items:stretch;
+        background:#04060d; border-bottom:2px solid var(--gold);
+        padding:0 22px; height:var(--nc-header-h);
+        position:fixed; top:0; left:0; right:0; z-index:60;
+        font-family:'Rajdhani','Segoe UI',sans-serif;
+    }
+    .global-header .logo-section { display:flex; align-items:center; }
+    .global-header .logo-section a { text-decoration:none; }
+    .global-header .logo-section h1 {
+        color:var(--gold); font-size:1.05rem; letter-spacing:4px; margin:0;
+        text-transform:uppercase; font-weight:700;
+    }
+    .global-header .nav-links { display:flex; gap:6px; align-items:stretch; }
+    .global-header .nav-btn {
+        background:transparent; color:#8fa1b5; border:none; padding:8px 16px;
+        font-family:inherit; font-weight:700; font-size:0.72rem; text-decoration:none;
+        cursor:pointer; text-transform:uppercase; letter-spacing:1.4px;
+        display:inline-flex; align-items:center;
+    }
+    .global-header .nav-btn:hover { color:var(--gold); }
+    #gameCanvas { top:var(--nc-header-h) !important; height:calc(100% - var(--nc-header-h)) !important; }
+    .ui-layer { top:var(--nc-header-h) !important; }
+    #inspector-panel { top:var(--nc-header-h) !important; height:calc(100% - var(--nc-header-h)) !important; }
+
+    /* ── LEADERBOARD DRAWER ───────────────────────────────────────────────── */
+    #lb-drawer {
+        position:fixed; top:var(--nc-header-h); left:0; bottom:0; width:330px; z-index:55;
+        background:rgba(6,10,20,0.97); border-right:1px solid rgba(100,255,218,0.25);
+        transform:translateX(-100%); transition:transform 0.22s ease; display:flex; flex-direction:column;
+        font-family:'Rajdhani','Segoe UI',sans-serif;
+    }
+    #lb-drawer.open { transform:translateX(0); }
+    .lb-head { display:flex; align-items:center; padding:12px 14px;
+        border-bottom:1px solid rgba(100,255,218,0.18); }
+    .lb-title { color:#64ffda; letter-spacing:2.4px; text-transform:uppercase;
+        font-size:0.86rem; font-weight:700; }
+    .lb-x { margin-left:auto; background:none; border:none; color:#64748b;
+        font-size:1.3rem; cursor:pointer; line-height:1; }
+    .lb-x:hover { color:#fff; }
+    .lb-sorts { display:flex; gap:4px; padding:10px 12px;
+        border-bottom:1px solid rgba(100,255,218,0.12); }
+    .lb-sort { flex:1; background:transparent; border:1px solid rgba(100,255,218,0.22);
+        color:#8fa1b5; font-family:inherit; font-size:0.66rem; letter-spacing:1px;
+        text-transform:uppercase; padding:6px 4px; cursor:pointer; border-radius:2px; }
+    .lb-sort:hover { color:#fff; border-color:rgba(100,255,218,0.5); }
+    .lb-sort.active { background:#64ffda; color:#04060d; border-color:#64ffda; font-weight:700; }
+    #lb-list { flex:1; overflow-y:auto; }
+    .lb-row { display:flex; align-items:baseline; gap:9px; padding:8px 14px; cursor:pointer;
+        border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.78rem; }
+    .lb-row:hover { background:rgba(100,255,218,0.08); }
+    .lb-row.me { background:rgba(232,160,32,0.12); }
+    .lb-rank { width:28px; text-align:right; color:#4a5a6a; font-size:0.72rem; }
+    .lb-name { flex:1; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .lb-row.me .lb-name { color:var(--gold); font-weight:700; }
+    .lb-val { color:#64ffda; font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loading-screen" class="fixed inset-0 bg-[#04060d] z-50 flex flex-col items-center justify-center interactive">
+        <div class="font-codex text-4xl text-[var(--primary-glow)] glow-text mb-4 tracking-widest">NARON CODEX</div>
+        <div class="font-tech text-sm text-gray-400 mb-8">INITIALIZING MULTIVERSE GRID</div>
+        <div class="w-64 h-1 bg-gray-800 rounded-full overflow-hidden">
+            <div id="loading-bar" class="h-full bg-[var(--primary-glow)] shadow-[0_0_10px_#64ffda] w-0 transition-all duration-300"></div>
+        </div>
+        <div id="loading-text" class="font-tech text-xs text-gray-500 mt-4">Connecting to WAX RPC...</div>
+    </div>
+
+    <!-- NC_HEADER: the site bar, matching every other Naron Codex page -->
+    <header class="global-header">
+        <div class="logo-section">
+            <a href="index.html"><h1>NARON CODEX</h1></a>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html" class="nav-btn">HUB</a>
+            <div class="nav-dropdown-wrap dd-ale">
+                <button class="nav-btn nav-dropdown-btn">&#9876; ALE &#9660;</button>
+                <div class="nav-dropdown-menu">
+                    <a href="ale.html" class="nav-dropdown-item">&#9876; ALE STATS</a>
+                    <a href="alewiki.html" class="nav-dropdown-item">&#9672; ALE WIKI</a>
+                    <a href="aleleaders.html" class="nav-dropdown-item">&#9670; LEADERBOARD</a>
+                    <a href="fighters.html" class="nav-dropdown-item">&#9876; MY FIGHTERS</a>
+                    <a href="market.html" class="nav-dropdown-item">&#128142; FIGHTER MARKET</a>
+                    <a href="wax.html" class="nav-dropdown-item">&#128367; CANDLE CALCULATOR</a>
+                    <a href="pools.html" class="nav-dropdown-item">&#9684; REWARD POOLS</a>
+                </div>
+            </div>
+            <button class="nav-btn" id="lb-toggle" onclick="toggleLeaderboard()">&#9776; LEADERBOARD</button>
+            <button class="nav-btn" id="nc-wallet-btn" onclick="ncWalletClick()">CONNECT</button>
+        </nav>
+    </header>
+
+    <!-- Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Global leaderboard drawer -->
+    <div id="lb-drawer">
+        <div class="lb-head">
+            <span class="lb-title">Outpost Rankings</span>
+            <button class="lb-x" onclick="toggleLeaderboard()">&times;</button>
+        </div>
+        <div class="lb-sorts">
+            <button class="lb-sort active" data-sort="score_building" onclick="setLbSort('score_building')">Building</button>
+            <button class="lb-sort" data-sort="gamecurrency_per_minute" onclick="setLbSort('gamecurrency_per_minute')">&#1071;/min</button>
+            <button class="lb-sort" data-sort="score_mcp" onclick="setLbSort('score_mcp')">MCP</button>
+        </div>
+        <div id="lb-list"></div>
+    </div>
+
+    <!-- Header UI -->
+    <div class="ui-layer top-0 left-0 w-full p-4 flex justify-between items-start pointer-events-none">
+        <div class="codex-panel p-4 interactive rounded shadow-lg border-l-4 border-l-[var(--accent-gold)] max-w-sm">
+            <h1 class="font-codex text-xl text-white tracking-widest uppercase">Sector Alpha</h1>
+            <div class="mt-2 text-xs font-tech text-gray-400">
+                <p>Commander: <span id="ui-wallet" class="text-[var(--primary-glow)] font-bold">...</span></p>
+                <p>Grid Scope: <span id="ui-base-count" class="text-white">0</span> Players</p>
+            </div>
+            <div class="mt-3 p-2 bg-gray-900/50 rounded border border-gray-700">
+                <p class="text-[10px] text-gray-500 mb-1">LIVE Я (ACCRUING)</p>
+                <p class="text-lg text-[var(--primary-glow)] glow-text" id="ui-balance">0 Я</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar UI -->
+    <div id="inspector-panel" class="ui-layer top-0 right-0 h-full w-full md:w-[400px] p-4 flex flex-col items-end pointer-events-none">
+        <div class="codex-panel h-full w-full rounded-lg flex flex-col overflow-hidden interactive shadow-2xl border-r-0 border-y-0 border-l border-[var(--primary-glow)]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-900/80">
+                <div>
+                    <h2 id="insp-wallet" class="font-codex text-2xl text-[var(--accent-gold)] glow-text-gold">Commander</h2>
+                    <p id="insp-gamertag" class="font-tech text-xs text-[var(--primary-glow)]">Outpost Telemetry</p>
+                </div>
+                <button id="close-inspector" class="text-gray-500 hover:text-white p-2 transition-colors">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            
+            <div id="buildings-list" class="flex-1 overflow-y-auto p-4 space-y-4 font-tech">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ── WALLET ──────────────────────────────────────────────────────────
+           Same two paths as the rest of the site: Anchor sets window.walletSession,
+           Cloud Wallet does not and signs through wax.api. Everything goes through
+           signActions so a new call site cannot quietly become Anchor-only. */
+        var wax = new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com',
+                                    userAccount: localStorage.getItem('naron_wallet') || '',
+                                    tryAutoLogin: false });
+
+        function getWallet() {
+            if (window.walletSession) return String(window.walletSession.actor);
+            if (wax && wax.userAccount) return wax.userAccount;
+            return localStorage.getItem('naron_wallet') || null;
+        }
+
+        window.signActions = async function (actions) {
+            if (window.walletSession) return await window.walletSession.transact({ actions: actions });
+            if (wax && wax.api) return await wax.api.transact({ actions: actions },
+                                        { blocksBehind: 3, expireSeconds: 60 });
+            throw new Error('No wallet session — please log in.');
+        };
+
+        window.ncWalletClick = async function () {
+            if (getWallet()) {
+                window.walletSession = null;
+                if (wax) wax.userAccount = '';
+                localStorage.removeItem('naron_wallet');
+                syncWalletUi();
+                return;
+            }
+            try {
+                const r = await window.walletKit.login();
+                window.walletSession = r.session;
+                localStorage.setItem('naron_wallet', String(r.session.actor));
+            } catch (e) {
+                try {
+                    const acc = await wax.login();
+                    localStorage.setItem('naron_wallet', acc);
+                } catch (e2) { return; }
+            }
+            syncWalletUi();
+            centerCameraOnUser();
+            renderLeaderboard();
+        };
+
+        function syncWalletUi() {
+            const w = getWallet();
+            const btn = document.getElementById('nc-wallet-btn');
+            if (btn) btn.textContent = w || 'CONNECT';
+            const ui = document.getElementById('ui-wallet');
+            if (ui) ui.textContent = w || 'not connected';
+            window.loggedInWallet = w;
+        }
+        // the module-side restore fires this once it knows the answer
+        window.onWalletResolved = function () {
+            syncWalletUi();
+            if (worldData.length) { centerCameraOnUser(); renderLeaderboard(); }
+        };
+
+        /* Public nodes rate-limit and occasionally drop, so every read walks a
+           list rather than trusting one host. */
+        const RPC_NODES = ['https://wax.greymass.com', 'https://wax.eosusa.io',
+                           'https://api.waxsweden.org', 'https://api.wax.alohaeos.com'];
+
+        async function rpc(path, body) {
+            for (const node of RPC_NODES) {
+                try {
+                    const r = await fetch(node + path, {
+                        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify(body), signal: AbortSignal.timeout(12000)
+                    });
+                    if (r.ok) return await r.json();
+                } catch (e) { /* next node */ }
+            }
+            return null;
+        }
+        const TILE_W = 120, TILE_H = 60, BASE_GRID = 9, SECTOR_SIZE = 12;
+
+        const B_MAP = {
+            'market':    { name: 'Spaceport', color: '#9333ea', x:1, y:1 },
+            'prodone':   { name: 'Lumber Mill', color: '#b45309', x:4, y:1 },
+            'prodtwo':   { name: 'Foundry', color: '#dc2626', x:7, y:1 },
+            'prodthree': { name: 'Laboratory', color: '#2563eb', x:1, y:4 },
+            'faucet':    { name: 'Exploder', color: '#f59e0b', x:4, y:4 },
+            'prodfour':  { name: 'Refinery', color: '#ea580c', x:7, y:4 },
+            'prodfive':  { name: 'Upcycling Center', color: '#16a34a', x:1, y:7 },
+            'prodsix':   { name: 'Hunting Cabin', color: '#0d9488', x:4, y:7 },
+            'storage':   { name: 'Storage', color: '#475569', x:7, y:7 }
+        };
+
+        const RARITY_COLORS = ['#a0aec0', '#4ade80', '#3b82f6', '#a855f7', '#fbbf24']; // Common, Unc, Rare, Epic, Leg
+
+        let worldData = [];
+        let camera = { x: 0, y: 0, zoom: 0.6 };
+        let isDragging = false, dragStart = {x:0, y:0}, camStart = {x:0, y:0};
+        let hoveredBase = null;
+        
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        async function fetchAllPlayers() {
+            const loadingText = document.getElementById('loading-text');
+            const loadingBar = document.getElementById('loading-bar');
+            let allRows = [], lower = '';
+
+            /* Walk the whole table. It is 333 outposts today and fits a single
+               page, but the loop is what keeps the map whole as the game grows. */
+            for (let page = 0; page < 40; page++) {
+                loadingText.textContent = 'Reading outpost registry… ' + allRows.length + ' bases';
+                loadingBar.style.width = Math.min(90, 12 + page * 22) + '%';
+                const d = await rpc('/v1/chain/get_table_rows', {
+                    json: true, code: 'game.mc', scope: 'game.mc', table: 'players',
+                    limit: 500, lower_bound: lower || undefined
+                });
+                if (!d || !d.rows || !d.rows.length) break;
+                allRows = allRows.concat(d.rows);
+                if (!d.more) break;
+                lower = d.next_key;
+            }
+
+            if (!allRows.length) {
+                loadingText.textContent = 'Registry unreachable — showing a sample base';
+                allRows = [getFallbackData()];
+            }
+
+            /* The spiral is index-based, so a base would land on a different plot
+               whenever the RPC returned rows in another order. Sorting by wallet
+               pins every outpost to the same coordinates permanently. */
+            allRows.sort((a, b) => String(a.wallet).localeCompare(String(b.wallet)));
+
+            loadingBar.style.width = '100%';
+            loadingText.textContent = 'Mapping ' + allRows.length + ' outposts…';
+
+            processWorldData(allRows);
+            syncWalletUi();
+            centerCameraOnUser();
+            renderLeaderboard();
+            updateLiveResources();   // the 1s tick would otherwise leave the balance at 0
+            enrichStakedNfts();
+
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500);
+            }, 500);
+        }
+
+        function getFallbackData() {
+            return {
+                wallet: "ilb.g.c.wam", gamertag: "Jimothy",
+                gamecurrency: 6028374088, max_gamecurrency: 13740539904,
+                last_claim: "2026-09-24T22:46:04", gamecurrency_per_minute: 4055301,
+                buildings: [
+                    { buildingid: "faucet", building_level: 28, unlocked_slots: 3, gamecurrency_per_minute_boosted: 0, staked_template_ids: [48174,48172,48172], staked_asset_ids: ["1099514574803","1099961953537","1099514559834"] },
+                    { buildingid: "market", building_level: 3, unlocked_slots: 0, gamecurrency_per_minute_boosted: 0, staked_template_ids: [], staked_asset_ids: [] },
+                    { buildingid: "prodfive", building_level: 14, unlocked_slots: 1, gamecurrency_per_minute_boosted: 1444800, staked_template_ids: [28424], staked_asset_ids: ["1099513043166"] },
+                    { buildingid: "prodfour", building_level: 28, unlocked_slots: 3, gamecurrency_per_minute_boosted: 1652000, staked_template_ids: [516022,516022,516022], staked_asset_ids: ["1099947892557","1099920251562","1099912313579"] },
+                    { buildingid: "prodone", building_level: 31, unlocked_slots: 3, gamecurrency_per_minute_boosted: 8401, staked_template_ids: [141462,56042,19618], staked_asset_ids: ["1099872808323","1099517779756","1099894008943"] },
+                    { buildingid: "prodsix", building_level: 4, unlocked_slots: 0, gamecurrency_per_minute_boosted: 600000, staked_template_ids: [], staked_asset_ids: [] },
+                    { buildingid: "prodthree", building_level: 24, unlocked_slots: 2, gamecurrency_per_minute_boosted: 261600, staked_template_ids: [44933,44933], staked_asset_ids: ["1099514076509","1099514074710"] },
+                    { buildingid: "prodtwo", building_level: 30, unlocked_slots: 3, gamecurrency_per_minute_boosted: 88500, staked_template_ids: [516022,516022,516022], staked_asset_ids: ["1099958517168","1099953828691","1099948851624"] },
+                    { buildingid: "storage", building_level: 25, unlocked_slots: 3, gamecurrency_per_minute_boosted: 0, staked_template_ids: [19630,44933,44933], staked_asset_ids: ["1099976615131","1099514083042","1099514060721"] }
+                ]
+            };
+        }
+
+        // Ulam Spiral math for deterministic layout
+        function getSpiralCoords(n) {
+            if (n === 0) return { x: 0, y: 0 };
+            let k = Math.ceil((Math.sqrt(n + 1) - 1) / 2);
+            let t = 2 * k, m = (t + 1) * (t + 1);
+            if (n >= m - t) return { x: k - (m - n), y: -k }; m -= t;
+            if (n >= m - t) return { x: -k, y: -k + (m - n) }; m -= t;
+            if (n >= m - t) return { x: -k + (m - n), y: k };
+            return { x: k, y: k - (m - n - t) };
+        }
+
+        function processWorldData(players) {
+            players.sort((a, b) => a.wallet.localeCompare(b.wallet));
+            worldData = players.map((p, index) => {
+                const spiral = getSpiralCoords(index);
+                return { ...p, live_currency: p.gamecurrency || 0, globalX: spiral.x * SECTOR_SIZE, globalY: spiral.y * SECTOR_SIZE };
+            });
+
+            document.getElementById('ui-wallet').textContent = window.loggedInWallet;
+            document.getElementById('ui-base-count').textContent = worldData.length;
+            centerCameraOnUser();
+        }
+
+        function updateLiveResources() {
+            const now = new Date();
+            let me = null;
+            
+            worldData.forEach(player => {
+                if(player.last_claim && player.gamecurrency_per_minute) {
+                    // Contract times are usually UTC, force 'Z' parsing safely
+                    const claimStr = player.last_claim.endsWith('Z') ? player.last_claim : player.last_claim + 'Z';
+                    const lastClaimTime = new Date(claimStr).getTime();
+                    
+                    if(!isNaN(lastClaimTime)) {
+                        const minsElapsed = (now.getTime() - lastClaimTime) / 60000;
+                        const generated = minsElapsed * player.gamecurrency_per_minute;
+                        let rawTotal = player.gamecurrency + generated;
+                        player.live_currency = Math.min(player.max_gamecurrency, Math.max(0, rawTotal));
+                    }
+                }
+                if (player.wallet === window.loggedInWallet) me = player;
+            });
+
+            if (me) {
+                document.getElementById('ui-balance').textContent = Math.floor(me.live_currency).toLocaleString() + ' Я';
+            }
+        }
+        setInterval(updateLiveResources, 1000);
+
+        function resize() {
+            const r = canvas.getBoundingClientRect();
+            width = Math.round(r.width); height = Math.round(r.height);
+            canvas.width = width; canvas.height = height;
+        }
+
+        /* The canvas no longer starts at the top of the viewport — the site
+           header sits above it. Every pointer position is taken relative to the
+           canvas box, so hit-testing stays correct whatever the header's height. */
+        function localPos(e) {
+            const r = canvas.getBoundingClientRect();
+            return { x: e.clientX - r.left, y: e.clientY - r.top };
+        }
+        window.addEventListener('resize', resize);
+
+        function centerCameraOnUser() {
+            const me = worldData.find(p => p.wallet === window.loggedInWallet);
+            if (me) {
+                const baseIso = toIso(me.globalX + (BASE_GRID/2), me.globalY + (BASE_GRID/2));
+                camera.x = (width / 2) - (baseIso.x * camera.zoom);
+                camera.y = (height / 2) - (baseIso.y * camera.zoom);
+            } else {
+                camera.x = width / 2; camera.y = height / 2;
+            }
+        }
+
+        function toIso(gx, gy, z = 0) {
+            return { x: (gx - gy) * (TILE_W / 2), y: (gx + gy) * (TILE_H / 2) - z };
+        }
+        function toScreen(gx, gy, z = 0) {
+            const iso = toIso(gx, gy, z);
+            return { x: iso.x * camera.zoom + camera.x, y: iso.y * camera.zoom + camera.y };
+        }
+        function toGrid(sx, sy) {
+            const ax = (sx - camera.x) / camera.zoom, ay = (sy - camera.y) / camera.zoom;
+            return { x: (ax / (TILE_W / 2) + ay / (TILE_H / 2)) / 2, y: (ay / (TILE_H / 2) - ax / (TILE_W / 2)) / 2 };
+        }
+        function adjustColor(col, amt) {
+            return '#' + col.replace(/^#/, '').replace(/../g, c => ('0'+Math.min(255, Math.max(0, parseInt(c, 16) + amt)).toString(16)).substr(-2));
+        }
+
+        // Base structural drawing primitive
+        function drawPrism(gx, gy, gz, w, l, hZ, baseCol) {
+            const h = hZ * (TILE_H / 2);
+            const zOff = gz * (TILE_H / 2);
+            
+            const pBot = [ toScreen(gx, gy, zOff), toScreen(gx+w, gy, zOff), toScreen(gx+w, gy+l, zOff), toScreen(gx, gy+l, zOff) ];
+            const pTop = [ toScreen(gx, gy, zOff+h), toScreen(gx+w, gy, zOff+h), toScreen(gx+w, gy+l, zOff+h), toScreen(gx, gy+l, zOff+h) ];
+
+            const light = adjustColor(baseCol, 20), dark = adjustColor(baseCol, -30);
+
+            // Left Face
+            ctx.fillStyle = dark; ctx.beginPath();
+            ctx.moveTo(pBot[3].x, pBot[3].y); ctx.lineTo(pBot[0].x, pBot[0].y);
+            ctx.lineTo(pTop[0].x, pTop[0].y); ctx.lineTo(pTop[3].x, pTop[3].y); ctx.fill(); 
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke();
+
+            // Right Face
+            ctx.fillStyle = baseCol; ctx.beginPath();
+            ctx.moveTo(pBot[0].x, pBot[0].y); ctx.lineTo(pBot[1].x, pBot[1].y);
+            ctx.lineTo(pTop[1].x, pTop[1].y); ctx.lineTo(pTop[0].x, pTop[0].y); ctx.fill(); ctx.stroke();
+
+            // Top Face
+            ctx.fillStyle = light; ctx.beginPath();
+            ctx.moveTo(pTop[0].x, pTop[0].y); ctx.lineTo(pTop[1].x, pTop[1].y);
+            ctx.lineTo(pTop[2].x, pTop[2].y); ctx.lineTo(pTop[3].x, pTop[3].y); ctx.fill(); ctx.stroke();
+        }
+
+        function drawGlow(gx, gy, colorHex) {
+            const center = toScreen(gx + 1, gy + 1); // center of 2x2
+            const radius = 60 * camera.zoom;
+            const grad = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, radius);
+            
+            // Convert hex to rgb for rgba gradient
+            const hex = colorHex.replace('#','');
+            const r = parseInt(hex.substring(0,2), 16), g = parseInt(hex.substring(2,4), 16), b = parseInt(hex.substring(4,6), 16);
+            
+            grad.addColorStop(0, `rgba(${r},${g},${b}, 0.6)`);
+            grad.addColorStop(1, `rgba(${r},${g},${b}, 0)`);
+            
+            ctx.save();
+            // Isometric perspective scaling for the glow circle
+            ctx.translate(center.x, center.y);
+            ctx.scale(2, 1); // Stretch horizontally
+            
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function getTier(lvl) {
+            if (lvl >= 25) return 4;
+            if (lvl >= 15) return 3;
+            if (lvl >= 5) return 2;
+            return 1;
+        }
+
+        function drawTieredStructure(b) {
+            const t = getTier(b.level);
+            
+            // NFT rarity glow — the real rarity once AtomicAssets has answered,
+            // otherwise the deterministic template-id fallback
+            if (b.staked_template_ids && b.staked_template_ids.length > 0) {
+                drawGlow(b.gx, b.gy, rarityColor(b.staked_template_ids[0]));
+            }
+
+            // Draw geometry based on tier
+            if (t === 1) { // Low
+                drawPrism(b.gx, b.gy, 0, 2, 2, 0.5, b.color);
+            } else if (t === 2) { // Medium
+                drawPrism(b.gx, b.gy, 0, 2, 2, 0.8, b.color);
+                drawPrism(b.gx+0.5, b.gy+0.5, 0.8, 1, 1, 0.5, adjustColor(b.color, 20));
+            } else if (t === 3) { // High
+                drawPrism(b.gx, b.gy, 0, 2, 2, 1.2, b.color);
+                drawPrism(b.gx+0.25, b.gy+0.25, 1.2, 1.5, 1.5, 0.6, adjustColor(b.color, 15));
+                drawPrism(b.gx+0.5, b.gy+0.5, 1.8, 1, 1, 0.6, adjustColor(b.color, 30));
+            } else { // Top
+                drawPrism(b.gx, b.gy, 0, 2, 2, 1.5, b.color);
+                drawPrism(b.gx, b.gy, 1.5, 2, 2, 0.3, adjustColor(b.color, -20)); // Trim
+                drawPrism(b.gx+0.25, b.gy+0.25, 1.8, 1.5, 1.5, 1.0, adjustColor(b.color, 40)); // Core
+            }
+            
+            // Level Label floating
+            const lblPos = toScreen(b.gx + 1, b.gy + 1, (t*0.5 + 1) * (TILE_H/2) + 10);
+            ctx.font = 'bold 9px "Inter"'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+            ctx.fillText(`Lv.${b.level}`, lblPos.x, lblPos.y);
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Base bounds culling
+            const pad = 10;
+            const tl = toGrid(0, 0), br = toGrid(width, height);
+            const viewMinX = Math.min(tl.x, br.x) - pad, viewMaxX = Math.max(tl.x, br.x) + pad;
+            const viewMinY = Math.min(tl.y, br.y) - pad, viewMaxY = Math.max(tl.y, br.y) + pad;
+            
+            worldData.forEach(base => {
+                if (base.globalX + SECTOR_SIZE < viewMinX || base.globalX > viewMaxX ||
+                    base.globalY + SECTOR_SIZE < viewMinY || base.globalY > viewMaxY) return;
+
+                // Ground Tile
+                const p1 = toScreen(base.globalX, base.globalY), p2 = toScreen(base.globalX + BASE_GRID, base.globalY);
+                const p3 = toScreen(base.globalX + BASE_GRID, base.globalY + BASE_GRID), p4 = toScreen(base.globalX, base.globalY + BASE_GRID);
+                
+                const isMine = base.wallet === window.loggedInWallet;
+                const isHov = hoveredBase && hoveredBase.wallet === base.wallet;
+                
+                ctx.strokeStyle = isMine ? 'rgba(100, 255, 218, 0.4)' : (isHov ? 'rgba(255,255,255,0.4)' : 'rgba(212, 175, 55, 0.2)');
+                ctx.fillStyle = isMine ? 'rgba(100, 255, 218, 0.03)' : (isHov ? 'rgba(255,255,255,0.03)' : 'rgba(212, 175, 55, 0.01)');
+                ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.closePath();
+                ctx.fill(); ctx.stroke();
+                
+                ctx.font = '12px "JetBrains Mono"'; ctx.fillStyle = isMine ? '#64ffda' : '#888';
+                ctx.fillText(`@${base.wallet}`, p4.x - 20, p4.y + 15);
+
+                // Structures setup
+                let renderQ = [];
+                if(base.buildings) {
+                    base.buildings.forEach(b => {
+                        const m = B_MAP[b.buildingid];
+                        if(m) renderQ.push({ ...b, gx: base.globalX + m.x, gy: base.globalY + m.y, color: m.color, level: b.building_level });
+                    });
+                }
+                
+                renderQ.sort((a,b) => (a.gx+a.gy) - (b.gx+b.gy));
+                renderQ.forEach(b => drawTieredStructure(b));
+            });
+
+            requestAnimationFrame(render);
+        }
+
+        function getBaseAtGrid(gp) {
+            return worldData.find(b => gp.x >= b.globalX && gp.x <= b.globalX + BASE_GRID && gp.y >= b.globalY && gp.y <= b.globalY + BASE_GRID);
+        }
+
+        canvas.addEventListener('mousedown', e => {
+            const p = localPos(e);
+            isDragging = true; dragStart = p; camStart = { x: camera.x, y: camera.y };
+        });
+
+        window.addEventListener('mousemove', e => {
+            const p = localPos(e);
+            if (isDragging) {
+                camera.x = camStart.x + (p.x - dragStart.x); camera.y = camStart.y + (p.y - dragStart.y);
+            } else {
+                hoveredBase = getBaseAtGrid(toGrid(p.x, p.y));
+                canvas.style.cursor = hoveredBase ? 'pointer' : 'grab';
+            }
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (!isDragging) return;
+            isDragging = false;
+            const p = localPos(e);
+            if (Math.abs(p.x - dragStart.x) < 5 && Math.abs(p.y - dragStart.y) < 5) {
+                const clickedBase = getBaseAtGrid(toGrid(p.x, p.y));
+                if (clickedBase) openInspector(clickedBase);
+                else closeInspector();
+            }
+        });
+
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const z = camera.zoom * (e.deltaY > 0 ? 0.9 : 1.1);
+            if (z > 0.2 && z < 2.5) camera.zoom = z;
+        }, {passive: false});
+
+        const panel = document.getElementById('inspector-panel');
+        const listDiv = document.getElementById('buildings-list');
+        
+        function openInspector(baseData) {
+            document.getElementById('insp-wallet').textContent = baseData.wallet;
+            document.getElementById('insp-gamertag').textContent = baseData.gamertag || 'Unknown Comm';
+            listDiv.innerHTML = ''; 
+            
+            if(!baseData.buildings) return panel.classList.add('open');
+
+            const isMine = baseData.wallet === window.loggedInWallet;
+            
+            // Map buildings, ensure missing ones are shown as unbuilt if needed, but here we iterate existing
+            const mappedBlds = baseData.buildings.map(b => ({
+                ...b, ...B_MAP[b.buildingid], trueId: b.buildingid
+            })).filter(b => b.name);
+
+            // Sort by level desc
+            mappedBlds.sort((a,b) => b.level - a.level);
+
+            mappedBlds.forEach(b => {
+                const t = getTier(b.level);
+                const tNames = ["LOW", "MED", "HIGH", "TOP"];
+                
+                // NFT Slots
+                let slotsHTML = '';
+                for(let i=0; i<3; i++) {
+                    const isUnlocked = i < (b.unlocked_slots || 0);
+                    const tId = b.staked_template_ids ? b.staked_template_ids[i] : null;
+                    const aId = b.staked_asset_ids ? b.staked_asset_ids[i] : null;
+                    
+                    if (!isUnlocked) {
+                        slotsHTML += `<div class="h-10 border border-gray-800 bg-gray-900 text-gray-700 rounded flex flex-col items-center justify-center text-[9px] uppercase">Locked</div>`;
+                    } else if (!aId) {
+                        slotsHTML += `<div class="h-10 border border-gray-600 border-dashed text-gray-500 rounded flex flex-col items-center justify-center text-[9px] uppercase">Empty Slot</div>`;
+                    } else {
+                        // real rarity where AtomicAssets has answered, fallback otherwise
+                        const rc = rarityColor(tId);
+                        slotsHTML += `
+                            <div class="h-10 border rounded flex flex-col items-center justify-center text-[9px] text-white overflow-hidden relative" 
+                                 style="border-color: ${rc}; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, ${rc}40 100%); box-shadow: inset 0 0 10px ${rc}30;">
+                                <span style="color:${rc}" class="font-bold">#${tId}</span>
+                                <span class="text-[8px] text-gray-400">...${aId.slice(-5)}</span>
+                            </div>
+                        `;
+                    }
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-[#0b101e] border border-gray-800 rounded p-4 relative overflow-hidden";
+                card.innerHTML = `
+                    <div class="absolute top-0 left-0 w-1 h-full" style="background-color: ${b.color}"></div>
+                    <div class="flex justify-between items-start mb-3 pl-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-white font-codex font-bold text-[15px] uppercase">${b.name}</h3>
+                                <span class="tier-badge tier-${t}">${tNames[t-1]}</span>
+                            </div>
+                            <p class="text-gray-400 text-xs mt-1">Level <span class="text-white font-bold">${b.level}</span> | ID: <span class="text-[var(--accent-gold)]">${b.trueId}</span></p>
+                            <p class="text-[var(--primary-glow)] text-xs mt-1 font-bold tracking-wider">⚡ ${(b.gamecurrency_per_minute_boosted || 0).toLocaleString()} Я/min</p>
+                        </div>
+                        <button class="btn-upgrade text-xs px-3 py-2 rounded font-bold uppercase tracking-wider" 
+                            ${!isMine ? 'disabled' : ''} data-id="${b.trueId}">
+                            ${isMine ? 'Upgrade' : 'Locked'}
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 mt-3 pl-2">
+                        ${slotsHTML}
+                    </div>
+                `;
+                listDiv.appendChild(card);
+            });
+
+            // Action Binding
+            document.querySelectorAll('.btn-upgrade').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const b_id = e.target.getAttribute('data-id');
+                    const origText = e.target.textContent;
+                    const wallet = getWallet();
+                    if (!wallet) { alert('Connect a wallet first.'); return; }
+                    e.target.textContent = "SIGNING..."; e.target.disabled = true;
+
+                    try {
+                        await window.signActions([{
+                            account: 'game.mc', name: 'upgbuilding',
+                            authorization: [{ actor: wallet, permission: 'active' }],
+                            data: { wallet: wallet, buildingid: b_id }
+                        }]);
+
+                        /* Show the result immediately rather than waiting on the
+                           next poll — the chain has accepted it by this point. */
+                        const me = worldData.find(p => p.wallet === wallet);
+                        const bld = me && me.buildings.find(x => x.buildingid === b_id);
+                        if (bld) {
+                            me.live_currency = Math.max(0,
+                                (me.live_currency || 0) - (Number(bld.gamecurrency_upgrade_cost) || 0));
+                            me.gamecurrency = me.live_currency;
+                            bld.building_level = (Number(bld.building_level) || 0) + 1;
+                            openInspector(me);
+                        }
+
+                        e.target.textContent = "SUCCESS";
+                        e.target.style.background = '#4ade80'; e.target.style.color = '#000';
+                        setTimeout(() => {
+                            e.target.textContent = origText; e.target.disabled = false; e.target.style.background = ''; e.target.style.color = '';
+                        }, 3000);
+                    } catch (err) {
+                        /* Contract assertions arrive as one long string; show the
+                           part a player can act on rather than the whole trace. */
+                        const raw = (err && err.message) || String(err);
+                        const m = raw.match(/assertion failure with message: ([^\n"]+)/i);
+                        const msg = m ? m[1]
+                            : /insufficient|balance/i.test(raw) ? 'Not enough Я for this upgrade'
+                            : raw.slice(0, 90);
+                        e.target.title = msg;
+                        console.warn('[outpost] upgrade failed:', raw);
+                        e.target.textContent = "FAILED";
+                        e.target.style.background = '#ef4444'; e.target.style.color = '#fff';
+                        setTimeout(() => {
+                            e.target.textContent = origText; e.target.disabled = false; e.target.style.background = ''; e.target.style.color = '';
+                        }, 2000);
+                    }
+                });
+            });
+
+            panel.classList.add('open');
+        }
+
+        function closeInspector() { panel.classList.remove('open'); }
+        document.getElementById('close-inspector').addEventListener('click', closeInspector);
+
+        /* ── LEADERBOARD ─────────────────────────────────────────────────────
+           Every outpost on the map, ranked. Clicking one flies the camera to it
+           rather than teleporting, so you keep your bearings on the grid. */
+        let _lbSort = 'score_building';
+
+        window.toggleLeaderboard = function () {
+            document.getElementById('lb-drawer').classList.toggle('open');
+        };
+
+        window.setLbSort = function (key) {
+            _lbSort = key;
+            document.querySelectorAll('.lb-sort').forEach(b =>
+                b.classList.toggle('active', b.getAttribute('data-sort') === key));
+            renderLeaderboard();
+        };
+
+        function renderLeaderboard() {
+            const list = document.getElementById('lb-list');
+            if (!list) return;
+            const me = getWallet();
+            const rows = worldData.slice().sort((a, b) =>
+                (Number(b[_lbSort]) || 0) - (Number(a[_lbSort]) || 0));
+            list.innerHTML = rows.map((p, i) => {
+                const v = Number(p[_lbSort]) || 0;
+                return '<div class="lb-row' + (p.wallet === me ? ' me' : '') +
+                    '" onclick="flyTo(\'' + p.wallet + '\')">' +
+                    '<span class="lb-rank">' + (i + 1) + '</span>' +
+                    '<span class="lb-name" title="' + p.wallet + '">' +
+                        (p.gamertag && p.gamertag.trim() ? p.gamertag : p.wallet) + '</span>' +
+                    '<span class="lb-val">' + v.toLocaleString() + '</span></div>';
+            }).join('');
+        }
+
+        let _pan = null;
+        window.flyTo = function (wallet) {
+            const p = worldData.find(x => x.wallet === wallet);
+            if (!p) return;
+            const iso = toIso(p.globalX + (BASE_GRID / 2), p.globalY + (BASE_GRID / 2));
+            _pan = {
+                fromX: camera.x, fromY: camera.y,
+                toX: (width / 2) - (iso.x * camera.zoom),
+                toY: (height / 2) - (iso.y * camera.zoom),
+                t0: performance.now(), ms: 650
+            };
+            openInspector(p);
+        };
+
+        // eased camera interpolation, stepped from the existing render loop
+        function stepPan() {
+            if (!_pan) return;
+            const k = Math.min(1, (performance.now() - _pan.t0) / _pan.ms);
+            const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;   // easeInOutCubic
+            camera.x = _pan.fromX + (_pan.toX - _pan.fromX) * e;
+            camera.y = _pan.fromY + (_pan.toY - _pan.fromY) * e;
+            if (k >= 1) _pan = null;
+        }
+        setInterval(stepPan, 16);
+
+        /* ── NFT RARITY ──────────────────────────────────────────────────────
+           The glow colour was a modulo of the template id, which is a stable
+           colour but a meaningless one. These are the real rarities, read once
+           per template and kept in sessionStorage so a reload does not hammer
+           AtomicAssets. Anything unresolved keeps the old fallback. */
+        const RARITY_HEX = {
+            'Common': '#94a3b8', 'Uncommon': '#4ade80', 'Rare': '#38bdf8',
+            'Epic': '#c084fc', 'Legendary': '#f59e0b', 'Mythical': '#fb7185',
+            'Abundant': '#94a3b8'
+        };
+        const TEMPLATE_CACHE_KEY = 'nc_outpost_templates_v1';
+        let templateRarity = {};
+        try { templateRarity = JSON.parse(sessionStorage.getItem(TEMPLATE_CACHE_KEY) || '{}'); } catch (e) {}
+
+        function rarityColor(templateId) {
+            const r = templateRarity[String(templateId)];
+            if (r && RARITY_HEX[r]) return RARITY_HEX[r];
+            return RARITY_COLORS[Math.abs(Number(templateId) || 0) % RARITY_COLORS.length];
+        }
+
+        async function enrichStakedNfts() {
+            const me = getWallet();
+            const mine = worldData.find(p => p.wallet === me);
+            const ids = new Set();
+            // only the viewer's own bases — enriching all 333 would be thousands of lookups
+            (mine ? mine.buildings : []).forEach(b =>
+                (b.staked_template_ids || []).forEach(t => { if (t) ids.add(String(t)); }));
+            const missing = [...ids].filter(t => !templateRarity[t]);
+            if (!missing.length) return;
+
+            for (let i = 0; i < missing.length; i += 40) {
+                const batch = missing.slice(i, i + 40);
+                try {
+                    const r = await fetch('https://wax.api.atomicassets.io/atomicassets/v1/templates?ids=' +
+                        batch.join(',') + '&limit=100', { signal: AbortSignal.timeout(12000) });
+                    if (!r.ok) continue;
+                    const d = await r.json();
+                    (d.data || []).forEach(t => {
+                        const rar = (t.immutable_data && (t.immutable_data.rarity || t.immutable_data.Rarity)) || '';
+                        if (rar) templateRarity[String(t.template_id)] = rar;
+                    });
+                } catch (e) { /* leave those on the fallback colour */ }
+            }
+            try { sessionStorage.setItem(TEMPLATE_CACHE_KEY, JSON.stringify(templateRarity)); } catch (e) {}
+        }
+
+        // Init
+        resize(); render(); updateLiveResources(); fetchAllPlayers();
+
+    </script>
+</body>
+</html>
