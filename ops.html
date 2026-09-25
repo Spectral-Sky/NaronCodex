@@ -221,6 +221,7 @@ async function trackedTotal(account) {
 }
 
 const amt = q => parseFloat(q) || 0;
+const sum = rows => rows.reduce((t, r) => t + amt(r.quantity), 0);
 const fmt = n => Math.round(n).toLocaleString();
 const fmt1 = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
@@ -246,68 +247,56 @@ function bindTip(el, html) {
 /* ── FLOW DIAGRAM ────────────────────────────────────────────────────────────
    A Sankey is the right form here: the question is where a single pot of money
    travels, and the ribbon width carries the amount at every stage. */
-function drawFlow(stages, total) {
-    const W = 1000, colW = 168, rowGap = 9, H = 360, padY = 20;
+function drawFlow(cols, links, total) {
+    const W = 1000, colW = 168, rowGap = 9, H = 380, padY = 20;
     const colX = [0, 300, 640];
     const usable = H - padY * 2;
-    const scale = v => Math.max(3, v / total * (usable - rowGap * 4));
+    const scale = v => Math.max(3, v / total * (usable - rowGap * 5));
 
-    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Flow of gem revenue">';
     const place = (items, x) => {
-        let y = padY, out = [];
-        items.forEach(it => {
+        let y = padY;
+        const out = items.map(it => {
             const h = scale(it.wax);
-            out.push(Object.assign({ x: x, y: y, h: h }, it));
+            const node = Object.assign({ x: x, y: y, h: h, inY: y, outY: y }, it);
             y += h + rowGap;
+            return node;
         });
-        // centre the column vertically
         const shift = (H - (y - rowGap)) / 2;
-        out.forEach(o => o.y += shift);
+        out.forEach(o => { o.y += shift; o.inY += shift; o.outY += shift; });
         return out;
     };
-    const A = place(stages[0], colX[0]);
-    const B = place(stages[1], colX[1]);
-    const C = place(stages[2], colX[2]);
+    const placed = cols.map((c, i) => place(c, colX[i]));
+    const byId = {};
+    placed.forEach(col => col.forEach(n => byId[n.id] = n));
 
-    // ribbons: source column -> collect -> destinations
-    const ribbon = (from, to, h, y0, y1, color, label) => {
-        const x0 = from + colW, x1 = to;
-        const mid = (x0 + x1) / 2;
-        return '<path class="flow" d="M' + x0 + ' ' + y0 + ' C' + mid + ' ' + y0 + ',' + mid + ' ' + y1 +
+    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Flow of gem revenue">';
+
+    // ribbons, stacked at both ends so no two overlap on the same node
+    links.forEach(l => {
+        const from = byId[l.from], to = byId[l.to];
+        if (!from || !to || !l.wax) return;
+        const h = scale(l.wax);
+        const x0 = from.x + colW, x1 = to.x, mid = (x0 + x1) / 2;
+        const y0 = from.outY, y1 = to.inY;
+        from.outY += h;
+        to.inY += h;
+        svg += '<path class="flow" d="M' + x0 + ' ' + y0 + ' C' + mid + ' ' + y0 + ',' + mid + ' ' + y1 +
             ',' + x1 + ' ' + y1 + ' L' + x1 + ' ' + (y1 + h) + ' C' + mid + ' ' + (y1 + h) + ',' +
-            mid + ' ' + (y0 + h) + ',' + x0 + ' ' + (y0 + h) + ' Z" fill="' + color +
-            '" opacity="0.32" data-tip="' + label + '"></path>';
-    };
-
-    let cursorIn = B[0].y;
-    A.forEach(a => {
-        svg += ribbon(a.x, B[0].x, a.h, a.y, cursorIn, a.color,
-            a.name + ' &rarr; ' + B[0].name + '<br><b>' + fmt(a.wax) + ' WAX</b>');
-        cursorIn += a.h;
-    });
-    let cursorOut = B[0].y;
-    C.forEach(c => {
-        svg += ribbon(B[0].x, c.x, c.h, cursorOut, c.y, c.color,
-            B[0].name + ' &rarr; ' + c.name + '<br><b>' + fmt(c.wax) + ' WAX</b> &middot; ' +
-            fmt1(c.wax / total * 100) + '% of revenue');
-        cursorOut += c.h;
+            mid + ' ' + (y0 + h) + ',' + x0 + ' ' + (y0 + h) + ' Z" fill="' + (l.color || to.color) +
+            '" opacity="0.32" data-tip="' + from.name + ' &rarr; ' + to.name + '<br><b>' +
+            fmt(l.wax) + ' WAX</b>"></path>';
     });
 
-    // nodes. Small destinations (cpu, ram) are only a few px tall, so their two
-    // label lines would overlap the neighbour's — labels are laid out with a
-    // minimum spacing of their own and a leader line back to the node.
-    [A, B, C].forEach((col, ci) => {
+    placed.forEach((col, ci) => {
         let lastLabelY = -1e9;
         col.forEach(n => {
             svg += '<rect class="flow" x="' + n.x + '" y="' + n.y + '" width="' + colW + '" height="' + n.h +
                 '" fill="' + n.color + '" rx="2" data-tip="<b>' + n.name + '</b><br>' + fmt(n.wax) +
                 ' WAX' + (n.sub ? '<br>' + n.sub : '') + '"></rect>';
-
             const centre = n.y + n.h / 2;
-            let ty = Math.max(centre, lastLabelY + 30);      // two lines need ~30px
+            const ty = Math.max(centre, lastLabelY + 30);
             lastLabelY = ty;
             const tx = ci === 2 ? n.x + colW + 10 : n.x + 8;
-            // a leader only when the label had to move off its node
             if (ci === 2 && Math.abs(ty - centre) > 2) {
                 svg += '<path d="M' + (n.x + colW) + ' ' + centre + ' L' + (tx - 4) + ' ' + ty +
                     '" stroke="' + n.color + '" stroke-width="1" fill="none" opacity="0.5"/>';
@@ -317,7 +306,7 @@ function drawFlow(stages, total) {
             svg += '<text class="node-label" x="' + tx + '" y="' + (ty - 3) + '" fill="' + ink + '">' +
                 n.name + '</text>';
             svg += '<text class="node-sub" x="' + tx + '" y="' + (ty + 12) + '" fill="' + inkSub + '">' +
-                fmt(n.wax) + ' WAX' + (ci === 2 ? ' · ' + fmt1(n.wax / total * 100) + '%' : '') + '</text>';
+                fmt(n.wax) + ' WAX' + (n.pct != null ? ' · ' + fmt1(n.pct) + '%' : '') + '</text>';
         });
     });
     svg += '</svg>';
@@ -496,15 +485,49 @@ function draw() {
         const totalOut = outRows.reduce((s, r) => s + r[1], 0);
 
         const SER = ['var(--series-2)','var(--series-5)','var(--series-3)','var(--series-4)','var(--series-1)'];
-        const dests = outRows.slice(0, 5).map((r, i) => ({ name: r[0], wax: r[1], color: SER[i] }));
+        const dests = outRows.slice(0, 5).map((r, i) =>
+            ({ id: r[0], name: r[0], wax: r[1], color: SER[i] }));
 
-        const stages = [
-            [{ name: 'Gem buyers', wax: totalIn, color: 'var(--series-1)',
-               sub: buyers.size + ' wallets · ' + buys.length + ' purchases' }],
-            [{ name: COLLECT, wax: totalOut, color: 'var(--gold)', lightFill: true,
-               sub: 'splits the revenue' }],
-            dests
+        /* The first column was taller than collect.ale and nothing explained the
+           gap. It is real: WAX sits in both accounts. shop.ale forwards what it
+           takes but keeps a float, and collect.ale has not paid out everything
+           it holds. Both are drawn now, so the diagram conserves — the widths
+           either side of a node add up. Balances checked against the chain:
+           shop.ale 1,240.63 and collect.ale 28,712.77 WAX at the time of writing. */
+        const forwarded = sum(shop.filter(t => t.from === SHOP && t.to === COLLECT));
+        const fees      = sum(shop.filter(t => t.from === SHOP && t.to !== COLLECT));
+        const heldShop  = Math.max(0, totalIn - forwarded - fees);
+        const collectIn = sum(collect.filter(t => t.to === COLLECT));
+        const heldColl  = Math.max(0, collectIn - totalOut);
+
+        /* Over a window, collect.ale can pay out more than it received — the
+           balance was carried in from before it. Shown as its own source so a
+           tab still conserves instead of ribbons exceeding the node they leave. */
+        const carriedIn = Math.max(0, totalOut - collectIn);
+        const scaleTotal = Math.max(totalIn + carriedIn, collectIn + carriedIn);
+
+        const cols = [
+            [{ id: 'sales', name: 'Gem sales, ' + SHOP, wax: totalIn, color: 'var(--series-1)',
+               sub: buyers.size + ' wallets · ' + buys.length + ' purchases' }].concat(
+              carriedIn > 0 ? [{ id: 'carried', name: 'Carried in from earlier', wax: carriedIn,
+                                 color: 'var(--muted)', sub: 'collected before this period' }] : []),
+            [{ id: 'collect', name: COLLECT, wax: collectIn + carriedIn, color: 'var(--gold)',
+               lightFill: true, sub: 'receives and splits' }],
+            dests.concat(
+                heldColl > 0 ? [{ id: 'heldColl', name: 'Held in ' + COLLECT, wax: heldColl,
+                                  color: 'var(--muted)', sub: 'not yet paid out' }] : [],
+                heldShop > 0 ? [{ id: 'heldShop', name: 'Held in ' + SHOP, wax: heldShop,
+                                  color: 'var(--muted)', sub: 'never forwarded' }] : [])
         ];
+        cols[2].forEach(n => { n.pct = totalOut ? n.wax / totalOut * 100 : 0; });
+
+        const links = [{ from: 'sales', to: 'collect', wax: forwarded, color: 'var(--series-1)' }]
+            .concat(carriedIn > 0
+                ? [{ from: 'carried', to: 'collect', wax: carriedIn, color: 'var(--muted)' }] : [])
+            .concat(dests.map(d => ({ from: 'collect', to: d.id, wax: d.wax })));
+        if (heldColl > 0) links.push({ from: 'collect', to: 'heldColl', wax: heldColl });
+        if (heldShop > 0) links.push({ from: 'sales', to: 'heldShop', wax: heldShop,
+                                       color: 'var(--muted)' });
 
         // payments out, bucketed by ISO week and grouped the way the split reads
         const weeks = {};
@@ -549,11 +572,12 @@ function draw() {
 
             '<section><h2>Where the money goes</h2>' +
             '<p class="note">Players send WAX to <b>shop.ale</b> with a <code>purchase,&lt;pack&gt;</code> memo. ' +
-            'shop.ale forwards the whole amount to <b>collect.ale</b>, which splits it onward. ' +
+            'shop.ale forwards it to <b>collect.ale</b>, which splits it onward. Anything still sitting ' +
+            'in either account is drawn too, so the widths either side of a node add up. ' +
             'Ribbon width is the amount; hover any band for the exact figure.</p>' +
-            '<div class="legend">' + dests.map(d =>
+            '<div class="legend">' + cols[2].map(d =>
                 '<span><i class="swatch" style="background:' + d.color + '"></i>' + d.name + '</span>').join('') +
-            '</div>' + drawFlow(stages, totalOut) + '</section>' +
+            '</div>' + drawFlow(cols, links, scaleTotal) + '</section>' +
 
             '<section><h2>Revenue split</h2>' +
             '<p class="note">Every destination collect.ale paid during ' + scopeLabel() +
