@@ -83,6 +83,19 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
 .loading { padding:60px 0; text-align:center; color:var(--muted); letter-spacing:2px; }
 .err { border:1px solid #d95926; background:rgba(217,89,38,0.08); padding:14px 16px;
     color:#ffb090; font-size:0.85em; line-height:1.6; }
+
+.ops-tabs { display:flex; gap:6px; align-items:center; margin:0 0 22px; flex-wrap:wrap; }
+.ops-tab {
+    -webkit-clip-path: polygon(13px 0, calc(100% - 13px) 0, 100% 100%, 0 100%);
+    clip-path: polygon(13px 0, calc(100% - 13px) 0, 100% 100%, 0 100%);
+    border:none; padding:9px 30px 8px; cursor:pointer; font-family:inherit;
+    font-size:0.72em; letter-spacing:2.2px; text-transform:uppercase; font-weight:700;
+    background:rgba(232,160,32,0.10); color:var(--gold);
+    transition:background 0.15s, color 0.15s;
+}
+.ops-tab:hover { background:rgba(232,160,32,0.2); }
+.ops-tab.active { background:var(--gold); color:#1a1206; }
+.ops-tab-note { font-size:0.78em; color:var(--muted); margin-left:6px; letter-spacing:0.6px; }
 </style>
 </head>
 <body>
@@ -407,6 +420,28 @@ function bindAll(root) {
     root.querySelectorAll('[data-tip]').forEach(el => bindTip(el, el.getAttribute('data-tip')));
 }
 
+/* Beta opened 1 Sep 2026; everything before it is alpha. Each era is drawn on
+   its own, so note that a period's payouts are not its own revenue settled:
+   collect.ale is an escrow and a development draw in September can be money
+   taken in weeks earlier. Totals in and out of one tab need not agree. */
+const BETA_START = Date.UTC(2026, 8, 1);
+let _scope = 'beta';
+let _data = null;
+
+window.setOpsScope = function (scope) {
+    if (_scope === scope) return;
+    _scope = scope;
+    ['beta', 'alpha'].forEach(k => {
+        const b = document.getElementById('tab-' + k);
+        if (b) b.classList.toggle('active', k === scope);
+    });
+    draw();
+};
+
+function inScope(t) {
+    return _scope === 'beta' ? t.ms >= BETA_START : t.ms < BETA_START;
+}
+
 async function run() {
     const body = document.getElementById('body');
     try {
@@ -415,10 +450,29 @@ async function run() {
 
         // a node that silently truncates would understate everything, so say so
         const [tShop, tCollect] = await Promise.all([trackedTotal(SHOP), trackedTotal(COLLECT)]);
-        const short = shop.truncated || collect.truncated ||
-                      (shop.length < tShop - 2) || (collect.length < tCollect - 2);
+        _data = { shop: shop, collect: collect, tShop: tShop, tCollect: tCollect };
+        draw();
+    } catch (e) {
+        body.innerHTML = '<div class="err">Could not read chain history — ' +
+            ((e && e.message) || e) + '</div>';
+    }
+}
 
+function draw() {
+    const body = document.getElementById('body');
+    const shopAll = _data.shop, collectAll = _data.collect;
+    const tShop = _data.tShop, tCollect = _data.tCollect;
+    try {
+        const short = shopAll.truncated || collectAll.truncated ||
+                      (shopAll.length < tShop - 2) || (collectAll.length < tCollect - 2);
+
+        const shop = shopAll.filter(inScope);
+        const collect = collectAll.filter(inScope);
         const buys = shop.filter(t => t.to === SHOP && /^purchase,/.test(t.memo || ''));
+        if (!buys.length) {
+            body.innerHTML = tabBar() + '<div class="err">No gem purchases in this period.</div>';
+            return;
+        }
         const totalIn = buys.reduce((s, t) => s + amt(t.quantity), 0);
         const buyers = new Set(buys.map(t => t.from));
 
@@ -474,7 +528,7 @@ async function run() {
         const first = new Date(Math.min.apply(null, buys.map(b => b.ms)));
         const last = new Date(Math.max.apply(null, buys.map(b => b.ms)));
 
-        body.innerHTML =
+        body.innerHTML = tabBar() +
             (short ? '<div class="err">Incomplete read: this node returned ' + shop.length + ' of ' +
                 tShop + ' shop.ale and ' + collect.length + ' of ' + tCollect + ' collect.ale transfers, ' +
                 'so the figures below understate the real totals. Reload to try again.</div>' : '') +
@@ -498,7 +552,9 @@ async function run() {
             '</div>' + drawFlow(stages, totalOut) + '</section>' +
 
             '<section><h2>Revenue split</h2>' +
-            '<p class="note">Every destination collect.ale has ever paid, over the full history.</p>' +
+            '<p class="note">Every destination collect.ale paid during ' + scopeLabel() +
+            '. Payments out of an escrow are not that period\'s revenue settled &mdash; a draw ' +
+            'made now can be money taken in weeks earlier, so in and out need not agree.</p>' +
             '<table><thead><tr><th class="txt">Destination</th><th class="num">WAX</th>' +
             '<th class="num">Share</th><th class="txt">What the memo says</th></tr></thead><tbody>' +
             outRows.map(r => {
@@ -520,7 +576,8 @@ async function run() {
             '</div>' + drawWeekly(wRows, maxWeek) + '</section>' +
 
             '<section><h2>Revenue by month</h2>' +
-            '<p class="note">WAX spent on gems per calendar month, across ' + mRows.length + ' months of history.</p>' +
+            '<p class="note">WAX spent on gems per calendar month during ' + scopeLabel() +
+            ', across ' + mRows.length + ' month' + (mRows.length === 1 ? '' : 's') + '.</p>' +
             drawMonthly(mRows, maxM) + '</section>' +
 
             '<section><h2>Pack breakdown</h2>' +
@@ -543,9 +600,23 @@ async function run() {
 
         bindAll(body);
     } catch (e) {
-        body.innerHTML = '<div class="err">Could not read chain history — ' +
+        body.innerHTML = tabBar() + '<div class="err">Could not draw — ' +
             ((e && e.message) || e) + '</div>';
     }
+}
+
+function scopeLabel() {
+    return _scope === 'beta' ? 'beta, from 1 Sep 2026' : 'alpha, before 1 Sep 2026';
+}
+
+function tabBar() {
+    return '<div class="ops-tabs">' +
+        '<button class="ops-tab' + (_scope === 'beta' ? ' active' : '') +
+            '" id="tab-beta" onclick="setOpsScope(\'beta\')">Beta</button>' +
+        '<button class="ops-tab' + (_scope === 'alpha' ? ' active' : '') +
+            '" id="tab-alpha" onclick="setOpsScope(\'alpha\')">Alpha</button>' +
+        '<span class="ops-tab-note">' + (_scope === 'beta'
+            ? 'from 1 Sep 2026' : 'before 1 Sep 2026') + '</span></div>';
 }
 
 function tile(k, v, s) {
