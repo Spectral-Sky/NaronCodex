@@ -322,7 +322,7 @@ const WEEK_CATS = [
 
 function drawWeekly(weeks, maxV) {
     if (!weeks.length) return '<p class="note">No payments on record.</p>';
-    const W = 1000, H = 260, PL = 74, PR = 16, PT = 16, PB = 46;
+    const W = 1000, H = 275, PL = 74, PR = 16, PT = 22, PB = 58;
     const iw = W - PL - PR, ih = H - PT - PB;
     const step = iw / weeks.length;
     const bw = Math.max(3, Math.min(30, step * 0.66));
@@ -353,15 +353,26 @@ function drawWeekly(weeks, maxV) {
         });
     });
 
-    // label only the ends and the biggest week, never every bar
+    // every bar carries its week. At 17 weeks there is room for all of them
+    // upright; past ~26 the labels are tilted rather than dropped, so no bar
+    // is ever left unidentified.
     const peak = weeks.reduce((p, w, i) => w.total > weeks[p].total ? i : p, 0);
-    [0, peak, weeks.length - 1].filter((v, i, a) => a.indexOf(v) === i).forEach(i => {
+    const tilt = step < 42;
+    weeks.forEach((w, i) => {
         const x = PL + (i + 0.5) * step;
-        svg += '<text class="axis" x="' + x + '" y="' + (H - 24) + '" text-anchor="middle">' +
-            weeks[i].key.slice(5) + '</text>';
-        if (i === peak) svg += '<text class="axis" x="' + x + '" y="' + (H - 10) +
-            '" text-anchor="middle" fill="var(--series-2)">peak ' + fmt(weeks[i].total) + '</text>';
+        const label = w.key.slice(5);                  // MM-DD
+        svg += tilt
+            ? '<text class="axis" transform="translate(' + x.toFixed(1) + ',' + (H - 26) +
+              ') rotate(-45)" text-anchor="end">' + label + '</text>'
+            : '<text class="axis" x="' + x.toFixed(1) + '" y="' + (H - 24) +
+              '" text-anchor="middle">' + label + '</text>';
+        if (i === peak) {
+            const py = PT + ih - (w.total / maxV * ih) - 7;
+            svg += '<text class="axis" x="' + x.toFixed(1) + '" y="' + py.toFixed(1) +
+                '" text-anchor="middle" fill="var(--series-2)">' + fmt(w.total) + '</text>';
+        }
     });
+    svg += '<text class="axis" x="' + PL + '" y="' + (H - 6) + '">week beginning</text>';
     svg += '</svg>';
     return svg;
 }
@@ -500,7 +511,7 @@ async function run() {
             '</td><td class="num">100%</td><td class="txt"></td></tr>' +
             '</tbody></table></section>' +
 
-            '<section><h2>When the money moved</h2>' +
+            '<section><h2>Weekly collect.ale escrow</h2>' +
             '<p class="note">Each payment out of collect.ale, by week. Reward pools take a cut of ' +
             'every purchase, so that band is continuous; development is drawn in occasional lumps, ' +
             'which is why the shares in the table above are a running total rather than a fixed rule.</p>' +
