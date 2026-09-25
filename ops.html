@@ -13,11 +13,17 @@
 
     /* Validated categorical slots (dark surface #1a1a19): all six checks pass.
        Worst adjacent CVD ΔE 8.4 protan, normal-vision floor 19.3. */
-    --series-1:#3987e5;  /* blue    */
-    --series-2:#d95926;  /* orange  */
-    --series-3:#199e70;  /* aqua    */
-    --series-4:#c98500;  /* yellow  */
-    --series-5:#d55181;  /* magenta */
+    /* Declared in the order the validator passed them in: worst adjacent CVD
+       dE 8.4 protan, normal-vision floor 19.3, all six checks pass on the dark
+       surface. Reordering these will break the separation. */
+    --series-1:#3987e5;  /* blue    — shop.ale      */
+    --series-2:#d95926;  /* orange  — 5thba.wam     */
+    --series-3:#199e70;  /* aqua    — pools.ale     */
+    --series-4:#c98500;  /* yellow  — collect.ale   */
+    --series-5:#d55181;  /* magenta — 42lra.wam     */
+    --series-6:#008300;  /* green   — cpu.ale       */
+    --series-7:#9085e9;  /* violet  — ram.ale       */
+    --ends:#6d7c8c;      /* grey    — sinks and balances held */
 }
 * { box-sizing:border-box; }
 html, body { margin:0; background:var(--bg); color:var(--text);
@@ -167,6 +173,8 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
    pull is checked against the node's own tracked total before it is drawn. */
 const HISTORY = ['https://history.waxsweden.org', 'https://wax.eosusa.io', 'https://api.waxsweden.org'];
 const SHOP = 'shop.ale', COLLECT = 'collect.ale';
+const POOLS = 'pools.ale', CPU = 'cpu.ale', RAM = 'ram.ale';
+const LEGS = [SHOP, COLLECT, POOLS, CPU, RAM];
 
 let _ep = null;
 
@@ -248,10 +256,18 @@ function bindTip(el, html) {
    A Sankey is the right form here: the question is where a single pot of money
    travels, and the ribbon width carries the amount at every stage. */
 function drawFlow(cols, links, total) {
-    const W = 1000, colW = 168, rowGap = 9, H = 380, padY = 20;
-    const colX = [0, 300, 640];
+    // the last column labels sit outside their node, so the columns are laid out
+    // in a narrower band and the remainder is left for that text
+    const W = 1160, colW = 122, rowGap = 8, padY = 20, labelSpace = 205;
+    const nCols = cols.length;
+    const gap = (W - labelSpace - colW * nCols) / (nCols - 1);
+    const colX = cols.map((_, i) => i * (colW + gap));
+    const tallest = Math.max.apply(null, cols.map(c =>
+        c.reduce((t, n) => t + n.wax, 0) + rowGap * Math.max(0, c.length - 1)));
+    const H = 420;
     const usable = H - padY * 2;
-    const scale = v => Math.max(3, v / total * (usable - rowGap * 5));
+    const maxRows = Math.max.apply(null, cols.map(c => c.length));
+    const scale = v => Math.max(2.5, v / total * (usable - rowGap * (maxRows - 1)));
 
     const place = (items, x) => {
         let y = padY;
@@ -269,9 +285,8 @@ function drawFlow(cols, links, total) {
     const byId = {};
     placed.forEach(col => col.forEach(n => byId[n.id] = n));
 
-    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Flow of gem revenue">';
+    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Full cycle of gem revenue">';
 
-    // ribbons, stacked at both ends so no two overlap on the same node
     links.forEach(l => {
         const from = byId[l.from], to = byId[l.to];
         if (!from || !to || !l.wax) return;
@@ -283,22 +298,25 @@ function drawFlow(cols, links, total) {
         svg += '<path class="flow" d="M' + x0 + ' ' + y0 + ' C' + mid + ' ' + y0 + ',' + mid + ' ' + y1 +
             ',' + x1 + ' ' + y1 + ' L' + x1 + ' ' + (y1 + h) + ' C' + mid + ' ' + (y1 + h) + ',' +
             mid + ' ' + (y0 + h) + ',' + x0 + ' ' + (y0 + h) + ' Z" fill="' + (l.color || to.color) +
-            '" opacity="0.32" data-tip="' + from.name + ' &rarr; ' + to.name + '<br><b>' +
+            '" opacity="0.3" data-tip="' + from.name + ' &rarr; ' + to.name + '<br><b>' +
             fmt(l.wax) + ' WAX</b>"></path>';
     });
 
     placed.forEach((col, ci) => {
         let lastLabelY = -1e9;
+        const last = ci === nCols - 1;
         col.forEach(n => {
             svg += '<rect class="flow" x="' + n.x + '" y="' + n.y + '" width="' + colW + '" height="' + n.h +
                 '" fill="' + n.color + '" rx="2" data-tip="<b>' + n.name + '</b><br>' + fmt(n.wax) +
                 ' WAX' + (n.sub ? '<br>' + n.sub : '') + '"></rect>';
             const centre = n.y + n.h / 2;
-            const ty = Math.max(centre, lastLabelY + 30);
+            const ty = Math.max(centre, lastLabelY + 39);   // two lines plus air
             lastLabelY = ty;
-            const tx = ci === 2 ? n.x + colW + 10 : n.x + 8;
-            if (ci === 2 && Math.abs(ty - centre) > 2) {
-                svg += '<path d="M' + (n.x + colW) + ' ' + centre + ' L' + (tx - 4) + ' ' + ty +
+            const tx = (last || n.h < 26) ? n.x + colW + 9 : n.x + 6;
+            if (Math.abs(ty - centre) > 3) {
+                const outside = last || n.h < 26;
+                const lx = outside ? n.x + colW : n.x;
+                svg += '<path d="M' + lx + ' ' + centre + ' L' + (outside ? tx - 4 : tx) + ' ' + ty +
                     '" stroke="' + n.color + '" stroke-width="1" fill="none" opacity="0.5"/>';
             }
             const ink = n.lightFill ? '#1a1206' : '#fff';
@@ -438,12 +456,14 @@ function inScope(t) {
 async function run() {
     const body = document.getElementById('body');
     try {
-        const [shop, collect] = await Promise.all([transfersOf(SHOP), transfersOf(COLLECT)]);
-        if (!shop.length || !collect.length) throw new Error('no history returned');
+        const legs = await Promise.all(LEGS.map(transfersOf));
+        if (!legs[0].length || !legs[1].length) throw new Error('no history returned');
 
         // a node that silently truncates would understate everything, so say so
-        const [tShop, tCollect] = await Promise.all([trackedTotal(SHOP), trackedTotal(COLLECT)]);
-        _data = { shop: shop, collect: collect, tShop: tShop, tCollect: tCollect };
+        const tracked = await Promise.all(LEGS.map(trackedTotal));
+        _data = {};
+        LEGS.forEach((a, i) => _data[a] = legs[i]);
+        _data.tracked = tracked;
         draw();
     } catch (e) {
         body.innerHTML = '<div class="err">Could not read chain history — ' +
@@ -453,14 +473,21 @@ async function run() {
 
 function draw() {
     const body = document.getElementById('body');
-    const shopAll = _data.shop, collectAll = _data.collect;
-    const tShop = _data.tShop, tCollect = _data.tCollect;
+    const shopAll = _data[SHOP], collectAll = _data[COLLECT];
+    const tShop = _data.tracked[0], tCollect = _data.tracked[1];
     try {
-        const short = shopAll.truncated || collectAll.truncated ||
-                      (shopAll.length < tShop - 2) || (collectAll.length < tCollect - 2);
+        const short = LEGS.some((a, i) =>
+            _data[a].truncated || _data[a].length < _data.tracked[i] - 2);
 
         const shop = shopAll.filter(inScope);
         const collect = collectAll.filter(inScope);
+        const leg = a => _data[a].filter(inScope);
+        // money moving between two accounts we already draw would be counted twice
+        const paid = (from, to) => sum(leg(from).filter(t => t.from === from && t.to === to));
+        const inflow = (acct, exclude) => sum(leg(acct).filter(t =>
+            t.to === acct && t.from !== acct && t.from !== exclude));
+        const outflow = (acct, exclude) => sum(leg(acct).filter(t =>
+            t.from === acct && t.to !== acct && t.to !== exclude));
         const buys = shop.filter(t => t.to === SHOP && /^purchase,/.test(t.memo || ''));
         if (!buys.length) {
             body.innerHTML = tabBar() + '<div class="err">No gem purchases in this period.</div>';
@@ -484,57 +511,97 @@ function draw() {
         const outRows = Object.entries(out).sort((a, b) => b[1] - a[1]);
         const totalOut = outRows.reduce((s, r) => s + r[1], 0);
 
-        const SER = ['var(--series-2)','var(--series-5)','var(--series-3)','var(--series-4)','var(--series-1)'];
-        const dests = outRows.slice(0, 5).map((r, i) =>
-            ({ id: r[0], name: r[0], wax: r[1], color: SER[i] }));
+        /* The whole cycle, not just the gem leg. Money enters at shop.ale,
+           passes through collect.ale, is allocated, and then leaves the system:
+           pools.ale funds the candle at recovery.ale, ram.ale buys RAM, cpu.ale
+           pays powerup fees. Anything an account is still holding is drawn too,
+           so every column balances against the one before it. */
+        const held = (acct, skip) => Math.max(0, inflow(acct, skip) - outflow(acct, skip));
 
-        /* The first column was taller than collect.ale and nothing explained the
-           gap. It is real: WAX sits in both accounts. shop.ale forwards what it
-           takes but keeps a float, and collect.ale has not paid out everything
-           it holds. Both are drawn now, so the diagram conserves — the widths
-           either side of a node add up. Balances checked against the chain:
-           shop.ale 1,240.63 and collect.ale 28,712.77 WAX at the time of writing. */
-        const forwarded = sum(shop.filter(t => t.from === SHOP && t.to === COLLECT));
-        const fees      = sum(shop.filter(t => t.from === SHOP && t.to !== COLLECT));
-        const heldShop  = Math.max(0, totalIn - forwarded - fees);
+        const forwarded = paid(SHOP, COLLECT);
+        const heldShop  = Math.max(0, totalIn - forwarded - sum(shop.filter(t =>
+                            t.from === SHOP && t.to !== COLLECT)));
         const collectIn = sum(collect.filter(t => t.to === COLLECT));
-        const heldColl  = Math.max(0, collectIn - totalOut);
-
-        /* Over a window, collect.ale can pay out more than it received — the
-           balance was carried in from before it. Shown as its own source so a
-           tab still conserves instead of ribbons exceeding the node they leave. */
         const carriedIn = Math.max(0, totalOut - collectIn);
-        const scaleTotal = Math.max(totalIn + carriedIn, collectIn + carriedIn);
+        const otherIn   = Math.max(0, collectIn - forwarded);
+
+        const toDev1  = paid(COLLECT, '5thba.wam');
+        const toDev2  = paid(COLLECT, '42lra.wam');
+        const toPools = paid(COLLECT, POOLS);
+        const toRam   = paid(COLLECT, RAM);
+        const toCpu   = paid(COLLECT, CPU);
+        const heldColl = Math.max(0, collectIn + carriedIn - totalOut);
+
+        const poolsOther = inflow(POOLS, COLLECT);
+        const ramOther   = inflow(RAM, COLLECT);
+        const cpuOther   = inflow(CPU, COLLECT);
+        const toCandle   = paid(POOLS, 'recovery.ale');
+        const ramSpent   = outflow(RAM, null);
+        const cpuSpent   = outflow(CPU, null);
+        const heldPools  = Math.max(0, toPools + poolsOther - toCandle);
+        const heldRam    = Math.max(0, toRam + ramOther - ramSpent);
+        const heldCpu    = Math.max(0, toCpu + cpuOther - cpuSpent);
+
+        const G = 'var(--ends)';
+        const node = (id, name, wax, color, sub, light) =>
+            ({ id: id, name: name, wax: wax, color: color, sub: sub, lightFill: light });
 
         const cols = [
-            [{ id: 'sales', name: 'Gem sales, ' + SHOP, wax: totalIn, color: 'var(--series-1)',
-               sub: buyers.size + ' wallets · ' + buys.length + ' purchases' }].concat(
-              carriedIn > 0 ? [{ id: 'carried', name: 'Carried in from earlier', wax: carriedIn,
-                                 color: 'var(--muted)', sub: 'collected before this period' }] : []),
-            [{ id: 'collect', name: COLLECT, wax: collectIn + carriedIn, color: 'var(--gold)',
-               lightFill: true, sub: 'receives and splits' }],
-            dests.concat(
-                heldColl > 0 ? [{ id: 'heldColl', name: 'Held in ' + COLLECT, wax: heldColl,
-                                  color: 'var(--muted)', sub: 'not yet paid out' }] : [],
-                heldShop > 0 ? [{ id: 'heldShop', name: 'Held in ' + SHOP, wax: heldShop,
-                                  color: 'var(--muted)', sub: 'never forwarded' }] : [])
-        ];
-        cols[2].forEach(n => { n.pct = totalOut ? n.wax / totalOut * 100 : 0; });
+            [node('shop', SHOP, totalIn, 'var(--series-1)',
+                  buys.length + ' purchases · ' + buyers.size + ' wallets')].concat(
+              carriedIn > 0 ? [node('carried', 'Carried in from earlier', carriedIn, G,
+                                    'collected before this period')] : [],
+              otherIn > 0   ? [node('otherIn', 'Other funding', otherIn, G,
+                                    'top-ups, not gem sales')] : []),
 
-        const links = [{ from: 'sales', to: 'collect', wax: forwarded, color: 'var(--series-1)' }]
-            .concat(carriedIn > 0
-                ? [{ from: 'carried', to: 'collect', wax: carriedIn, color: 'var(--muted)' }] : [])
-            .concat(dests.map(d => ({ from: 'collect', to: d.id, wax: d.wax })));
-        if (heldColl > 0) links.push({ from: 'collect', to: 'heldColl', wax: heldColl });
-        if (heldShop > 0) links.push({ from: 'sales', to: 'heldShop', wax: heldShop,
-                                       color: 'var(--muted)' });
+            [node('collect', COLLECT, collectIn + carriedIn, 'var(--series-4)',
+                  'receives and allocates', true)],
+
+            [node('dev1', '5thba.wam', toDev1, 'var(--series-2)', 'developer'),
+             node('dev2', '42lra.wam', toDev2, 'var(--series-5)', 'developer'),
+             node('pools', POOLS, toPools + poolsOther, 'var(--series-3)', 'reward pools'),
+             node('ram', RAM, toRam + ramOther, 'var(--series-7)', 'player RAM'),
+             node('cpu', CPU, toCpu + cpuOther, 'var(--series-6)', 'player CPU')].concat(
+              heldColl > 0 ? [node('heldColl', 'Held in ' + COLLECT, heldColl, G, 'not yet allocated')] : []),
+
+            [node('devOut', 'Developer withdrawals', toDev1 + toDev2, 'var(--series-2)',
+                  'leaves the system'),
+             node('candle', 'recovery.ale', toCandle, 'var(--series-3)',
+                  'the candle — pays players back'),
+             node('ramBuy', 'eosio.ram', ramSpent, 'var(--series-7)', 'RAM bought for players'),
+             node('cpuBuy', 'eosio.fees', cpuSpent, 'var(--series-6)', 'powerup fees for players')]
+             .concat(
+              (heldPools + heldRam + heldCpu) > 0
+                ? [node('heldLeg', 'Held in those accounts', heldPools + heldRam + heldCpu, G,
+                        'pools ' + fmt(heldPools) + ' · ram ' + fmt(heldRam) + ' · cpu ' + fmt(heldCpu))]
+                : [])
+        ].map(c => c.filter(n => n.wax > 0));
+
+        const links = [{ from: 'shop', to: 'collect', wax: forwarded, color: 'var(--series-1)' }];
+        if (carriedIn > 0) links.push({ from: 'carried', to: 'collect', wax: carriedIn, color: G });
+        if (otherIn > 0)   links.push({ from: 'otherIn', to: 'collect', wax: otherIn, color: G });
+        if (heldShop > 0)  cols[0][0].sub += ' · ' + fmt(heldShop) + ' WAX still in ' + SHOP;
+        [['dev1', toDev1], ['dev2', toDev2], ['pools', toPools], ['ram', toRam], ['cpu', toCpu]]
+            .forEach(([id, v]) => links.push({ from: 'collect', to: id, wax: v }));
+        if (heldColl > 0) links.push({ from: 'collect', to: 'heldColl', wax: heldColl, color: G });
+        links.push({ from: 'dev1', to: 'devOut', wax: toDev1 });
+        links.push({ from: 'dev2', to: 'devOut', wax: toDev2, color: 'var(--series-5)' });
+        links.push({ from: 'pools', to: 'candle', wax: toCandle });
+        links.push({ from: 'ram', to: 'ramBuy', wax: ramSpent });
+        links.push({ from: 'cpu', to: 'cpuBuy', wax: cpuSpent });
+        if (heldPools > 0) links.push({ from: 'pools', to: 'heldLeg', wax: heldPools, color: G });
+        if (heldRam > 0)   links.push({ from: 'ram', to: 'heldLeg', wax: heldRam, color: G });
+        if (heldCpu > 0)   links.push({ from: 'cpu', to: 'heldLeg', wax: heldCpu, color: G });
+
+        const scaleTotal = Math.max(totalIn + carriedIn, collectIn + carriedIn);
+        cols[2].forEach(n => { n.pct = totalOut ? n.wax / totalOut * 100 : 0; });
 
         // payments out, bucketed by ISO week and grouped the way the split reads
         const weeks = {};
         collect.filter(t => t.from === COLLECT).forEach(t => {
-            const d = new Date(t.ms);
-            const day = (d.getUTCDay() + 6) % 7;                   // Monday = 0
-            const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
+            const d0 = new Date(t.ms);
+            const day = (d0.getUTCDay() + 6) % 7;                  // Monday = 0
+            const mon = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate() - day));
             const key = mon.toISOString().slice(0, 10);
             const w = weeks[key] || (weeks[key] = { key: key, ms: mon.getTime(), total: 0 });
             const cat = WEEK_CATS.find(c => c.match(t.to)) || WEEK_CATS[WEEK_CATS.length - 1];
@@ -571,12 +638,15 @@ function draw() {
             '</div>' +
 
             '<section><h2>Where the money goes</h2>' +
-            '<p class="note">Players send WAX to <b>shop.ale</b> with a <code>purchase,&lt;pack&gt;</code> memo. ' +
-            'shop.ale forwards it to <b>collect.ale</b>, which splits it onward. Anything still sitting ' +
-            'in either account is drawn too, so the widths either side of a node add up. ' +
-            'Ribbon width is the amount; hover any band for the exact figure.</p>' +
-            '<div class="legend">' + cols[2].map(d =>
-                '<span><i class="swatch" style="background:' + d.color + '"></i>' + d.name + '</span>').join('') +
+            '<p class="note">The full cycle. Players buy gems from <b>shop.ale</b>; the WAX passes to ' +
+            '<b>collect.ale</b>, which allocates it. Two shares are withdrawn by the developers and ' +
+            'leave the system; the rest comes back to players &mdash; <b>pools.ale</b> funds the candle ' +
+            'at recovery.ale, <b>ram.ale</b> buys RAM and <b>cpu.ale</b> pays powerup fees. Balances ' +
+            'an account still holds are drawn too, so each column adds up against the one before it. ' +
+            'Hover any band for the exact figure.</p>' +
+            '<div class="legend">' + cols[2].concat(cols[3].filter(n => n.id === 'candle'))
+                .map(d => '<span><i class="swatch" style="background:' + d.color + '"></i>' +
+                     d.name + '</span>').join('') +
             '</div>' + drawFlow(cols, links, scaleTotal) + '</section>' +
 
             '<section><h2>Revenue split</h2>' +
