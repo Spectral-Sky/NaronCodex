@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gem Revenue Flow</title>
+<link rel="stylesheet" href="dossier-nav.css">
+<style>
+:root {
+    --dd-bar-pad: 0px; --dd-bar-bg: rgb(3,6,15);
+    --bg:#03060f; --gold:#e8a020; --border:rgba(232,160,32,0.18);
+    --text:#d7e2ee; --muted:#8fa1b5; --panel:rgba(6,11,22,0.85);
+
+    /* Validated categorical slots (dark surface #1a1a19): all six checks pass.
+       Worst adjacent CVD ΔE 8.4 protan, normal-vision floor 19.3. */
+    --series-1:#3987e5;  /* blue    */
+    --series-2:#d95926;  /* orange  */
+    --series-3:#199e70;  /* aqua    */
+    --series-4:#c98500;  /* yellow  */
+    --series-5:#d55181;  /* magenta */
+}
+* { box-sizing:border-box; }
+html, body { margin:0; background:var(--bg); color:var(--text);
+    font-family:'Segoe UI','Inter',system-ui,-apple-system,Arial,sans-serif; }
+a { color:inherit; }
+
+.global-header { display:flex; justify-content:space-between; align-items:center;
+    background:rgba(3,6,15,0.97); border-bottom:2px solid var(--gold);
+    padding:0 28px; height:62px; position:sticky; top:0; z-index:2000; }
+.logo-section { display:flex; align-items:center; }
+.logo-section h1 { font-size:1.05em; letter-spacing:4px; color:var(--gold); margin:0;
+    text-transform:uppercase; }
+.nav-links { display:flex; gap:10px; }
+.nav-btn { background:transparent; color:#8fa1b5; border:1px solid transparent; padding:8px 16px;
+    font-family:inherit; font-weight:bold; font-size:0.78em; text-decoration:none;
+    cursor:pointer; text-transform:uppercase; letter-spacing:1px; }
+
+.wrap { max-width:1180px; margin:0 auto; padding:26px 24px 60px; }
+.page-title { font-size:1.5em; letter-spacing:1px; margin:0 0 4px; }
+.page-sub { color:var(--muted); font-size:0.9em; margin:0 0 26px; line-height:1.6; }
+
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); gap:12px;
+    margin-bottom:30px; }
+.tile { background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--gold);
+    padding:13px 16px; }
+.tile .k { font-size:0.68em; letter-spacing:1.6px; color:var(--muted); text-transform:uppercase; }
+.tile .v { font-size:1.6em; margin-top:5px; font-variant-numeric:tabular-nums; color:#fff; }
+.tile .s { font-size:0.7em; color:var(--muted); margin-top:3px; }
+
+section { margin-bottom:38px; }
+h2 { font-size:0.82em; letter-spacing:2.4px; text-transform:uppercase; color:var(--gold);
+    border-bottom:1px solid var(--border); padding-bottom:7px; margin:0 0 6px; }
+.note { font-size:0.8em; color:var(--muted); line-height:1.65; margin:0 0 16px; }
+
+.legend { display:flex; gap:16px; flex-wrap:wrap; margin:0 0 12px; font-size:0.78em; }
+.legend span { display:flex; align-items:center; gap:6px; color:var(--muted); }
+.swatch { width:11px; height:11px; border-radius:2px; display:inline-block; }
+
+svg { width:100%; display:block; overflow:visible; }
+.axis { font-size:11px; fill:var(--muted); }
+.gridline { stroke:rgba(255,255,255,0.07); stroke-width:1; }
+.node-label { font-size:12.5px; fill:#fff; }
+.node-sub { font-size:11px; fill:var(--muted); }
+.flow { transition:opacity 0.15s; cursor:pointer; }
+.flow:hover { opacity:1 !important; }
+
+table { width:100%; border-collapse:collapse; font-size:0.85em; }
+th { text-align:right; color:var(--muted); font-size:0.82em; letter-spacing:1.2px;
+    text-transform:uppercase; padding:8px 10px; border-bottom:1px solid var(--border); font-weight:600; }
+th:first-child, td:first-child { text-align:left; }
+td { padding:7px 10px; border-bottom:1px solid rgba(255,255,255,0.05);
+    font-variant-numeric:tabular-nums; }
+tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; }
+
+#tip { position:fixed; pointer-events:none; opacity:0; transition:opacity 0.12s;
+    background:rgba(4,8,16,0.97); border:1px solid var(--gold); padding:8px 11px;
+    font-size:0.8em; line-height:1.55; z-index:9999; max-width:280px; }
+#tip b { color:var(--gold); }
+.loading { padding:60px 0; text-align:center; color:var(--muted); letter-spacing:2px; }
+.err { border:1px solid #d95926; background:rgba(217,89,38,0.08); padding:14px 16px;
+    color:#ffb090; font-size:0.85em; line-height:1.6; }
+</style>
+</head>
+<body>
+
+<header class="global-header">
+    <div class="logo-section"><h1>Naron Codex</h1></div>
+    <nav class="nav-links">
+        <div class="nav-dropdown-wrap dd-ale">
+            <button class="nav-btn nav-dropdown-btn">&#9876; ALE &#9660;</button>
+            <div class="nav-dropdown-menu">
+                <a href="ale.html" class="nav-dropdown-item">&#9876; ALE STATS</a>
+                <a href="alewiki.html" class="nav-dropdown-item">&#9672; ALE WIKI</a>
+                <a href="aleleaders.html" class="nav-dropdown-item">&#9670; LEADERBOARD</a>
+                <a href="fighters.html" class="nav-dropdown-item">&#9876; MY FIGHTERS</a>
+                <a href="market.html" class="nav-dropdown-item">&#128142; FIGHTER MARKET</a>
+                <a href="wax.html" class="nav-dropdown-item">&#128367; CANDLE CALCULATOR</a>
+                <a href="gemflow.html" class="nav-dropdown-item active">&#128176; GEM REVENUE</a>
+                <a href="pools.html" class="nav-dropdown-item">&#9684; REWARD POOLS</a>
+                <a href="index.html" class="nav-dropdown-item">&#8962; NARON CODEX</a>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<div class="wrap">
+    <h1 class="page-title">Gem Revenue Flow</h1>
+    <p class="page-sub">Every WAX spent on gems, and where it goes afterwards. Read live from
+       chain history &mdash; nothing here is stored or estimated.</p>
+    <div id="body"><div class="loading">READING CHAIN HISTORY&hellip;</div></div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+'use strict';
+
+/* ── DATA ────────────────────────────────────────────────────────────────────
+   Players buy gems by sending WAX to shop.ale with a "purchase,<pack>" memo.
+   shop.ale forwards the lot to collect.ale, which splits it onward.
+
+   IMPORTANT — endpoint choice. Most WAX Hyperion nodes only backfill a few
+   weeks and answer happily with a partial result, which silently understates
+   every total here: wax.eosusa.io returns collect.ale only from 3 Sep 2026 and
+   api.waxsweden.org only from 26 Aug, against a true first transfer in Mar 2026.
+   history.waxsweden.org carries the full range, so it is tried first and every
+   pull is checked against the node's own tracked total before it is drawn. */
+const HISTORY = ['https://history.waxsweden.org', 'https://wax.eosusa.io', 'https://api.waxsweden.org'];
+const SHOP = 'shop.ale', COLLECT = 'collect.ale';
+
+let _ep = null;
+
+// A page that times out must not end the walk — dropping one page silently
+// truncates the history and understates every total, so each page is retried
+// on the same node before the next one is tried at all.
+async function hGet(path) {
+    const eps = _ep ? [_ep].concat(HISTORY.filter(e => e !== _ep)) : HISTORY;
+    for (const ep of eps) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const r = await fetch(ep + path, { signal: AbortSignal.timeout(25000) });
+                if (r.ok) { _ep = ep; return await r.json(); }
+            } catch (_) { /* retry */ }
+            await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+        }
+    }
+    return null;
+}
+
+const Q = encodeURIComponent('eosio.token:transfer');
+
+async function transfersOf(account) {
+    const out = [];
+    let before = '', truncated = false;
+    for (let page = 0; page < 40; page++) {
+        const d = await hGet('/v2/history/get_actions?account=' + account + '&filter=' + Q +
+            '&limit=1000&sort=desc' + (before ? '&before=' + encodeURIComponent(before) : ''));
+        if (!d) { truncated = true; break; }           // a lost page, not the end of history
+        const acts = d.actions || [];
+        if (!acts.length) break;
+        for (const a of acts) out.push(Object.assign({ ms: Date.parse(a.timestamp + 'Z') }, a.act.data));
+        if (acts.length < 1000) break;
+        before = acts[acts.length - 1].timestamp;   // inclusive, so pages overlap by one
+    }
+    // that overlap means the last row of a page repeats as the first of the next
+    const seen = new Set();
+    const rows = out.filter(t => {
+        const k = t.ms + '|' + t.from + '|' + t.to + '|' + t.quantity + '|' + t.memo;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+    });
+    rows.truncated = truncated;
+    return rows;
+}
+
+async function trackedTotal(account) {
+    const d = await hGet('/v2/history/get_actions?account=' + account + '&filter=' + Q +
+        '&limit=1&track=true');
+    return (d && d.total && d.total.value) || 0;
+}
+
+const amt = q => parseFloat(q) || 0;
+const fmt = n => Math.round(n).toLocaleString();
+const fmt1 = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+
+/* ── TOOLTIP ─────────────────────────────────────────────────────────────── */
+const tip = document.getElementById('tip');
+function showTip(e, html) {
+    tip.innerHTML = html;
+    tip.style.opacity = '1';
+    const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + w > innerWidth - 8) x = e.clientX - w - pad;
+    if (y + h > innerHeight - 8) y = e.clientY - h - pad;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+}
+function hideTip() { tip.style.opacity = '0'; }
+
+function bindTip(el, html) {
+    el.addEventListener('mousemove', e => showTip(e, html));
+    el.addEventListener('mouseleave', hideTip);
+}
+
+/* ── FLOW DIAGRAM ────────────────────────────────────────────────────────────
+   A Sankey is the right form here: the question is where a single pot of money
+   travels, and the ribbon width carries the amount at every stage. */
+function drawFlow(stages, total) {
+    const W = 1000, colW = 168, rowGap = 9, H = 360, padY = 20;
+    const colX = [0, 300, 640];
+    const usable = H - padY * 2;
+    const scale = v => Math.max(3, v / total * (usable - rowGap * 4));
+
+    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Flow of gem revenue">';
+    const place = (items, x) => {
+        let y = padY, out = [];
+        items.forEach(it => {
+            const h = scale(it.wax);
+            out.push(Object.assign({ x: x, y: y, h: h }, it));
+            y += h + rowGap;
+        });
+        // centre the column vertically
+        const shift = (H - (y - rowGap)) / 2;
+        out.forEach(o => o.y += shift);
+        return out;
+    };
+    const A = place(stages[0], colX[0]);
+    const B = place(stages[1], colX[1]);
+    const C = place(stages[2], colX[2]);
+
+    // ribbons: source column -> collect -> destinations
+    const ribbon = (from, to, h, y0, y1, color, label) => {
+        const x0 = from + colW, x1 = to;
+        const mid = (x0 + x1) / 2;
+        return '<path class="flow" d="M' + x0 + ' ' + y0 + ' C' + mid + ' ' + y0 + ',' + mid + ' ' + y1 +
+            ',' + x1 + ' ' + y1 + ' L' + x1 + ' ' + (y1 + h) + ' C' + mid + ' ' + (y1 + h) + ',' +
+            mid + ' ' + (y0 + h) + ',' + x0 + ' ' + (y0 + h) + ' Z" fill="' + color +
+            '" opacity="0.32" data-tip="' + label + '"></path>';
+    };
+
+    let cursorIn = B[0].y;
+    A.forEach(a => {
+        svg += ribbon(a.x, B[0].x, a.h, a.y, cursorIn, a.color,
+            a.name + ' &rarr; ' + B[0].name + '<br><b>' + fmt(a.wax) + ' WAX</b>');
+        cursorIn += a.h;
+    });
+    let cursorOut = B[0].y;
+    C.forEach(c => {
+        svg += ribbon(B[0].x, c.x, c.h, cursorOut, c.y, c.color,
+            B[0].name + ' &rarr; ' + c.name + '<br><b>' + fmt(c.wax) + ' WAX</b> &middot; ' +
+            fmt1(c.wax / total * 100) + '% of revenue');
+        cursorOut += c.h;
+    });
+
+    // nodes. Small destinations (cpu, ram) are only a few px tall, so their two
+    // label lines would overlap the neighbour's — labels are laid out with a
+    // minimum spacing of their own and a leader line back to the node.
+    [A, B, C].forEach((col, ci) => {
+        let lastLabelY = -1e9;
+        col.forEach(n => {
+            svg += '<rect class="flow" x="' + n.x + '" y="' + n.y + '" width="' + colW + '" height="' + n.h +
+                '" fill="' + n.color + '" rx="2" data-tip="<b>' + n.name + '</b><br>' + fmt(n.wax) +
+                ' WAX' + (n.sub ? '<br>' + n.sub : '') + '"></rect>';
+
+            const centre = n.y + n.h / 2;
+            let ty = Math.max(centre, lastLabelY + 30);      // two lines need ~30px
+            lastLabelY = ty;
+            const tx = ci === 2 ? n.x + colW + 10 : n.x + 8;
+            // a leader only when the label had to move off its node
+            if (ci === 2 && Math.abs(ty - centre) > 2) {
+                svg += '<path d="M' + (n.x + colW) + ' ' + centre + ' L' + (tx - 4) + ' ' + ty +
+                    '" stroke="' + n.color + '" stroke-width="1" fill="none" opacity="0.5"/>';
+            }
+            const ink = n.lightFill ? '#1a1206' : '#fff';
+            const inkSub = n.lightFill ? 'rgba(26,18,6,0.88)' : 'var(--muted)';
+            svg += '<text class="node-label" x="' + tx + '" y="' + (ty - 3) + '" fill="' + ink + '">' +
+                n.name + '</text>';
+            svg += '<text class="node-sub" x="' + tx + '" y="' + (ty + 12) + '" fill="' + inkSub + '">' +
+                fmt(n.wax) + ' WAX' + (ci === 2 ? ' · ' + fmt1(n.wax / total * 100) + '%' : '') + '</text>';
+        });
+    });
+    svg += '</svg>';
+    return svg;
+}
+
+/* ── BAR CHART ───────────────────────────────────────────────────────────── */
+function drawMonthly(months, maxV) {
+    const W = 1000, H = 230, PL = 64, PR = 14, PT = 14, PB = 40;
+    const iw = W - PL - PR, ih = H - PT - PB;
+    const bw = Math.min(46, iw / months.length * 0.68);
+    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gem revenue by month">';
+    [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+        const y = PT + ih - f * ih;
+        svg += '<line class="gridline" x1="' + PL + '" y1="' + y + '" x2="' + (W - PR) + '" y2="' + y + '"/>' +
+               '<text class="axis" x="' + (PL - 8) + '" y="' + (y + 4) + '" text-anchor="end">' +
+               fmt(maxV * f) + '</text>';
+    });
+    months.forEach((m, i) => {
+        const x = PL + (i + 0.5) * (iw / months.length);
+        const h = Math.max(1, m.wax / maxV * ih);
+        svg += '<rect class="flow" x="' + (x - bw / 2) + '" y="' + (PT + ih - h) + '" width="' + bw +
+            '" height="' + h + '" rx="4" fill="var(--series-1)" opacity="0.85" data-tip="<b>' + m.key +
+            '</b><br>' + fmt(m.wax) + ' WAX<br>' + m.n + ' purchase' + (m.n === 1 ? '' : 's') + '"></rect>';
+        svg += '<text class="axis" x="' + x + '" y="' + (H - 16) + '" text-anchor="middle">' +
+            m.key.slice(2) + '</text>';
+    });
+    svg += '</svg>';
+    return svg;
+}
+
+/* ── RENDER ──────────────────────────────────────────────────────────────── */
+function bindAll(root) {
+    root.querySelectorAll('[data-tip]').forEach(el => bindTip(el, el.getAttribute('data-tip')));
+}
+
+async function run() {
+    const body = document.getElementById('body');
+    try {
+        const [shop, collect] = await Promise.all([transfersOf(SHOP), transfersOf(COLLECT)]);
+        if (!shop.length || !collect.length) throw new Error('no history returned');
+
+        // a node that silently truncates would understate everything, so say so
+        const [tShop, tCollect] = await Promise.all([trackedTotal(SHOP), trackedTotal(COLLECT)]);
+        const short = shop.truncated || collect.truncated ||
+                      (shop.length < tShop - 2) || (collect.length < tCollect - 2);
+
+        const buys = shop.filter(t => t.to === SHOP && /^purchase,/.test(t.memo || ''));
+        const totalIn = buys.reduce((s, t) => s + amt(t.quantity), 0);
+        const buyers = new Set(buys.map(t => t.from));
+
+        const packs = {};
+        buys.forEach(t => {
+            const p = (t.memo || '').split(',')[1] || '(unknown)';
+            const e = packs[p] || (packs[p] = { n: 0, wax: 0, buyers: new Set() });
+            e.n++; e.wax += amt(t.quantity); e.buyers.add(t.from);
+        });
+        const packRows = Object.entries(packs).sort((a, b) => b[1].wax - a[1].wax);
+
+        const out = {};
+        collect.filter(t => t.from === COLLECT).forEach(t => {
+            out[t.to] = (out[t.to] || 0) + amt(t.quantity);
+        });
+        const outRows = Object.entries(out).sort((a, b) => b[1] - a[1]);
+        const totalOut = outRows.reduce((s, r) => s + r[1], 0);
+
+        const SER = ['var(--series-2)','var(--series-5)','var(--series-3)','var(--series-4)','var(--series-1)'];
+        const dests = outRows.slice(0, 5).map((r, i) => ({ name: r[0], wax: r[1], color: SER[i] }));
+
+        const stages = [
+            [{ name: 'Gem buyers', wax: totalIn, color: 'var(--series-1)',
+               sub: buyers.size + ' wallets · ' + buys.length + ' purchases' }],
+            [{ name: COLLECT, wax: totalOut, color: 'var(--gold)', lightFill: true,
+               sub: 'splits the revenue' }],
+            dests
+        ];
+
+        const months = {};
+        buys.forEach(t => {
+            const k = new Date(t.ms).toISOString().slice(0, 7);
+            const e = months[k] || (months[k] = { key: k, wax: 0, n: 0 });
+            e.wax += amt(t.quantity); e.n++;
+        });
+        const mRows = Object.values(months).sort((a, b) => a.key.localeCompare(b.key));
+        const maxM = Math.max.apply(null, mRows.map(m => m.wax));
+        const first = new Date(Math.min.apply(null, buys.map(b => b.ms)));
+        const last = new Date(Math.max.apply(null, buys.map(b => b.ms)));
+
+        body.innerHTML =
+            (short ? '<div class="err">Incomplete read: this node returned ' + shop.length + ' of ' +
+                tShop + ' shop.ale and ' + collect.length + ' of ' + tCollect + ' collect.ale transfers, ' +
+                'so the figures below understate the real totals. Reload to try again.</div>' : '') +
+            '<div class="tiles">' +
+              tile('Spent on gems', fmt(totalIn) + ' WAX', 'since ' + first.toISOString().slice(0, 10)) +
+              tile('Purchases', fmt(buys.length), buyers.size + ' distinct buyers') +
+              tile('To reward pools', fmt(out['pools.ale'] || 0) + ' WAX',
+                   fmt1((out['pools.ale'] || 0) / totalOut * 100) + '% of what was split') +
+              tile('To player CPU', fmt(out['cpu.ale'] || 0) + ' WAX',
+                   fmt1((out['cpu.ale'] || 0) / totalOut * 100) + '% of what was split') +
+              tile('Average purchase', fmt(totalIn / buys.length) + ' WAX',
+                   'largest pack ' + packRows[0][0]) +
+            '</div>' +
+
+            '<section><h2>Where the money goes</h2>' +
+            '<p class="note">Players send WAX to <b>shop.ale</b> with a <code>purchase,&lt;pack&gt;</code> memo. ' +
+            'shop.ale forwards the whole amount to <b>collect.ale</b>, which splits it onward. ' +
+            'Ribbon width is the amount; hover any band for the exact figure.</p>' +
+            '<div class="legend">' + dests.map(d =>
+                '<span><i class="swatch" style="background:' + d.color + '"></i>' + d.name + '</span>').join('') +
+            '</div>' + drawFlow(stages, totalOut) + '</section>' +
+
+            '<section><h2>The split, exactly</h2>' +
+            '<p class="note">Every destination collect.ale has ever paid, over the full history.</p>' +
+            '<table><thead><tr><th>Destination</th><th>WAX</th><th>Share</th><th>What the memo says</th></tr></thead><tbody>' +
+            outRows.map(r => {
+                const memo = collect.find(t => t.from === COLLECT && t.to === r[0] && t.memo);
+                return '<tr><td>' + r[0] + '</td><td>' + fmt(r[1]) + '</td><td>' +
+                    fmt1(r[1] / totalOut * 100) + '%</td><td style="color:var(--muted)">' +
+                    ((memo && memo.memo) || '—') + '</td></tr>';
+            }).join('') +
+            '<tr class="total"><td>Total split</td><td>' + fmt(totalOut) + '</td><td>100%</td><td></td></tr>' +
+            '</tbody></table></section>' +
+
+            '<section><h2>Revenue by month</h2>' +
+            '<p class="note">WAX spent on gems per calendar month, across ' + mRows.length + ' months of history.</p>' +
+            drawMonthly(mRows, maxM) + '</section>' +
+
+            '<section><h2>Pack breakdown</h2>' +
+            '<table><thead><tr><th>Pack</th><th>Purchases</th><th>WAX</th><th>Buyers</th><th>Unit price</th><th>Share of revenue</th></tr></thead><tbody>' +
+            packRows.map(([k, v]) =>
+                '<tr><td>' + k + '</td><td>' + fmt(v.n) + '</td><td>' + fmt(v.wax) + '</td><td>' +
+                v.buyers.size + '</td><td>' + fmt(v.wax / v.n) + '</td><td>' +
+                fmt1(v.wax / totalIn * 100) + '%</td></tr>').join('') +
+            '<tr class="total"><td>Total</td><td>' + fmt(buys.length) + '</td><td>' + fmt(totalIn) +
+            '</td><td>' + buyers.size + '</td><td></td><td>100%</td></tr>' +
+            '</tbody></table></section>' +
+
+            '<p class="note">Read from ' + _ep + ' &middot; ' + shop.length + ' shop.ale and ' +
+            collect.length + ' collect.ale transfers &middot; last purchase ' +
+            last.toISOString().slice(0, 16).replace('T', ' ') + ' UTC.</p>';
+
+        bindAll(body);
+    } catch (e) {
+        body.innerHTML = '<div class="err">Could not read chain history — ' +
+            ((e && e.message) || e) + '</div>';
+    }
+}
+
+function tile(k, v, s) {
+    return '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div>' +
+        (s ? '<div class="s">' + s + '</div>' : '') + '</div>';
+}
+
+run();
+</script>
+</body>
+</html>
