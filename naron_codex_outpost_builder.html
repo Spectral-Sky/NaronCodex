@@ -235,6 +235,7 @@
             <div class="mt-3 p-2 bg-gray-900/50 rounded border border-gray-700">
                 <p class="text-[10px] text-gray-500 mb-1">LIVE Я (ACCRUING)</p>
                 <p class="text-lg text-[var(--primary-glow)] glow-text" id="ui-balance">0 Я</p>
+                <p class="text-[10px] text-gray-400 mt-1" id="ui-fill">&nbsp;</p>
             </div>
         </div>
     </div>
@@ -447,6 +448,44 @@
             centerCameraOnUser();
         }
 
+        /* Я runs from a few hundred to several billion, so the raw number is
+           unreadable at a glance. Abbreviate, and keep one decimal so a bar that
+           is filling still visibly moves. */
+        function fmtR(n) {
+            n = Number(n) || 0;
+            if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+            if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+            if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+            return Math.floor(n).toString();
+        }
+
+        // minutes -> XhXm, the way the game itself counts down
+        function fmtEta(mins) {
+            if (!isFinite(mins) || mins <= 0) return '0m';
+            const h = Math.floor(mins / 60), m = Math.max(0, Math.round(mins % 60));
+            return h ? h + 'h' + m + 'm' : m + 'm';
+        }
+
+        /* Time-to-upgrade is only meaningful against the base you are looking at,
+           so the cards carry the cost and this reads it back each tick. */
+        function updateUpgradeEtas(base) {
+            if (!base) return;
+            const rate = Number(base.gamecurrency_per_minute) || 0;
+            const have = Number(base.live_currency) || 0;
+            const cap  = Number(base.max_gamecurrency) || 0;
+            document.querySelectorAll('[data-eta]').forEach(el => {
+                const cost = Number(el.getAttribute('data-cost')) || 0;
+                let txt, col;
+                if (!cost)            { txt = 'Max level'; col = '#64748b'; }
+                else if (cost > cap)  { txt = '⚠ Upgrade storage — needs ' + fmtR(cost) + ' Я, cap is ' + fmtR(cap); col = '#f0a62a'; }
+                else if (have >= cost){ txt = '✓ Ready — ' + fmtR(cost) + ' Я'; col = '#4ade80'; }
+                else if (rate <= 0)   { txt = fmtR(cost) + ' Я needed — no production'; col = '#94a3b8'; }
+                else                  { txt = fmtEta((cost - have) / rate) + ' until ' + fmtR(cost) + ' Я'; col = '#94a3b8'; }
+                el.textContent = txt;
+                el.style.color = col;
+            });
+        }
+
         function updateLiveResources() {
             const now = new Date();
             let me = null;
@@ -468,8 +507,26 @@
             });
 
             if (me) {
-                document.getElementById('ui-balance').textContent = Math.floor(me.live_currency).toLocaleString() + ' Я';
+                const have = Number(me.live_currency) || 0;
+                const cap  = Number(me.max_gamecurrency) || 0;
+                const rate = Number(me.gamecurrency_per_minute) || 0;
+                document.getElementById('ui-balance').textContent =
+                    fmtR(have) + ' / ' + fmtR(cap) + ' Я';
+
+                const fill = document.getElementById('ui-fill');
+                if (cap && have >= cap) {
+                    fill.textContent = 'Storage full — production is being wasted';
+                    fill.style.color = '#f0a62a';
+                } else if (cap && rate > 0) {
+                    fill.textContent = fmtEta((cap - have) / rate) + ' until storage is full';
+                    fill.style.color = '';
+                } else {
+                    fill.innerHTML = '&nbsp;';
+                    fill.style.color = '';
+                }
             }
+            // keep an open inspector's countdowns ticking with the balance
+            if (window._inspBase) updateUpgradeEtas(window._inspBase);
         }
         setInterval(updateLiveResources, 1000);
 
@@ -687,6 +744,7 @@
         const listDiv = document.getElementById('buildings-list');
         
         function openInspector(baseData) {
+            window._inspBase = baseData;
             document.getElementById('insp-wallet').textContent = baseData.wallet;
             document.getElementById('insp-gamertag').textContent = baseData.gamertag || 'Unknown Comm';
             listDiv.innerHTML = ''; 
@@ -742,7 +800,8 @@
                                 <span class="tier-badge tier-${t}">${tNames[t-1]}</span>
                             </div>
                             <p class="text-gray-400 text-xs mt-1">Level <span class="text-white font-bold">${b.level}</span> | ID: <span class="text-[var(--accent-gold)]">${b.trueId}</span></p>
-                            <p class="text-[var(--primary-glow)] text-xs mt-1 font-bold tracking-wider">⚡ ${(b.gamecurrency_per_minute_boosted || 0).toLocaleString()} Я/min</p>
+                            <p class="text-[var(--primary-glow)] text-xs mt-1 font-bold tracking-wider">⚡ ${fmtR(b.gamecurrency_per_minute_boosted || 0)} Я/min</p>
+                            <p class="text-[11px] mt-1" data-eta="${b.trueId}" data-cost="${Number(b.gamecurrency_upgrade_cost) || 0}"></p>
                         </div>
                         <button class="btn-upgrade text-xs px-3 py-2 rounded font-bold uppercase tracking-wider" 
                             ${!isMine ? 'disabled' : ''} data-id="${b.trueId}">
@@ -755,6 +814,8 @@
                 `;
                 listDiv.appendChild(card);
             });
+
+            updateUpgradeEtas(baseData);
 
             // Action Binding
             document.querySelectorAll('.btn-upgrade').forEach(btn => {
@@ -811,7 +872,8 @@
             panel.classList.add('open');
         }
 
-        function closeInspector() { panel.classList.remove('open'); }
+        function closeInspector() {
+            window._inspBase = null; panel.classList.remove('open'); }
         document.getElementById('close-inspector').addEventListener('click', closeInspector);
 
         /* ── LEADERBOARD ─────────────────────────────────────────────────────
