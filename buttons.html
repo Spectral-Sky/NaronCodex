@@ -233,6 +233,23 @@
     </div>
 
     <div class="game-section">
+        <div class="game-section-label">Alien Legends &mdash; Shop</div>
+        <div class="action-card">
+            <div class="card-title">Buy Energy Pack L</div>
+            <div class="card-meta">
+                <span>contract</span> shop.ale &rsaquo; buyshopitem &middot; item <b>nrg.large</b><br>
+                <span>each</span> 10,000 energy for 49,999 credits<br>
+                <span>note</span> the action takes no quantity, so a multi-buy is that many
+                actions in one transaction &mdash; all or nothing
+            </div>
+            <div class="card-btns">
+                <button class="claim-btn" onclick="buyEnergyLarge(this,3)">BUY 3&times;</button>
+                <button class="claim-btn" onclick="buyEnergyLarge(this,5)">BUY 5&times;</button>
+                <button class="claim-btn" onclick="buyEnergyLarge(this,10)">BUY 10&times;</button>
+            </div>
+            <div class="card-status" id="status-nrglarge"></div>
+        </div>
+
         <div class="game-section-label">Alien Legends &mdash; Pool Claims</div>
         <div class="action-grid">
 
@@ -342,6 +359,75 @@ async function doTransact(actions) {
     if (window.walletSession) return await window.walletSession.transact({ actions: actions });
     if (wax && wax.api) return await wax.api.transact({ actions: actions }, { blocksBehind: 3, expireSeconds: 1200 });
     throw new Error('No wallet session — please log in.');
+}
+
+/* Energy Pack L. buyshopitem carries no quantity field, so buying n packs is
+   the same action n times in one transaction: it either all lands or none of
+   it does, which is what you want — a partial buy would be worse than none.
+   Cost and reward are read from shop.ale rather than hardcoded, so a change to
+   the shop is reflected here instead of quietly misreporting. */
+var NRG_ITEM = 'nrg.large';
+var NRG_RPC = ['https://wax.greymass.com', 'https://wax.eosusa.io', 'https://api.waxsweden.org'];
+var _nrgItem = null;
+
+async function nrgItemInfo() {
+    if (_nrgItem) return _nrgItem;
+    for (var i = 0; i < NRG_RPC.length; i++) {
+        try {
+            var r = await fetch(NRG_RPC[i] + '/v1/chain/get_table_rows', {
+                method: 'POST', headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ json: true, code: 'shop.ale', scope: 'shop.ale',
+                    table: 'shopitems', lower_bound: NRG_ITEM, upper_bound: NRG_ITEM, limit: 1 })
+            });
+            if (!r.ok) continue;
+            var d = await r.json();
+            if (d.rows && d.rows[0]) { _nrgItem = d.rows[0]; return _nrgItem; }
+        } catch (e) { /* next endpoint */ }
+    }
+    return null;
+}
+
+async function buyEnergyLarge(btn, count) {
+    var st = document.getElementById('status-nrglarge');
+    var wallet = getWallet();
+    if (!wallet) { alert('Please log in first.'); return; }
+
+    var siblings = btn.parentNode.querySelectorAll('button');
+    siblings.forEach(function (b) { b.disabled = true; });
+    st.className = 'card-status';
+    st.textContent = 'Checking the shop\u2026';
+
+    try {
+        var info = await nrgItemInfo();
+        var cost = info ? Number(info.cost_dust) * count : 0;
+        var gain = info ? Number(info.gain_action_points) * count : 0;
+        st.textContent = 'Signing ' + count + ' \u00d7 ' + NRG_ITEM +
+            (info ? ' \u2014 ' + cost.toLocaleString() + ' credits for ' +
+                    gain.toLocaleString() + ' energy' : '') + '\u2026';
+
+        var actions = [];
+        for (var i = 0; i < count; i++) {
+            actions.push({
+                account: 'shop.ale', name: 'buyshopitem',
+                authorization: [{ actor: wallet, permission: 'active' }],
+                data: { wallet: wallet, item: NRG_ITEM }
+            });
+        }
+        await doTransact(actions);
+
+        st.className = 'card-status ok';
+        st.textContent = '\u2713 Bought ' + count + ' \u00d7 Energy Pack L' +
+            (info ? ' \u2014 ' + gain.toLocaleString() + ' energy for ' +
+                    cost.toLocaleString() + ' credits' : '');
+    } catch (e) {
+        var msg = (e && e.message) || String(e);
+        st.className = 'card-status err';
+        st.textContent = /credit|dust|balance|insufficient/i.test(msg)
+            ? '\u2717 Not enough credits for ' + count + ' packs \u2014 ' + msg.slice(0, 90)
+            : '\u2717 ' + msg.slice(0, 120);
+    } finally {
+        siblings.forEach(function (b) { b.disabled = false; });
+    }
 }
 
 async function claimAllLandRewards(btn) {
