@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gem Revenue Flow</title>
+<title>Ops &middot; Gem Revenue</title>
 <link rel="stylesheet" href="dossier-nav.css">
 <style>
 :root {
@@ -82,6 +82,26 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
 </style>
 </head>
 <body>
+<script>
+/* ── ACCESS GATE ──────────────────────────────────────────────────────────────
+   Internal figures. Unlisted rather than secured: the gate reads the wallet the
+   rest of the site stores, so anyone who sets that key locally can still open
+   it — and every number here is public chain history anyone could recompute.
+   It keeps revenue out of casual view, nothing stronger. */
+(function () {
+    var OPS_ALLOWED = ['1x1ci.wam', '5t14m.c.wam', '5thba.wam', '42lra.wam'];
+    var who = '';
+    try { who = localStorage.getItem('naron_wallet') || ''; } catch (e) {}
+    if (OPS_ALLOWED.indexOf(who) >= 0) return;
+    document.documentElement.innerHTML =
+        '<head><title>Not Found</title><meta name="robots" content="noindex"></head>' +
+        '<body style="margin:0;background:#06080f;color:#3a4654;' +
+        'font:14px/1.7 monospace;display:flex;align-items:center;' +
+        'justify-content:center;height:100vh">404 &middot; Not Found</body>';
+    window.stop && window.stop();
+})();
+</script>
+
 
 <header class="global-header">
     <div class="logo-section"><h1>Naron Codex</h1></div>
@@ -95,7 +115,6 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
                 <a href="fighters.html" class="nav-dropdown-item">&#9876; MY FIGHTERS</a>
                 <a href="market.html" class="nav-dropdown-item">&#128142; FIGHTER MARKET</a>
                 <a href="wax.html" class="nav-dropdown-item">&#128367; CANDLE CALCULATOR</a>
-                <a href="gemflow.html" class="nav-dropdown-item active">&#128176; GEM REVENUE</a>
                 <a href="pools.html" class="nav-dropdown-item">&#9684; REWARD POOLS</a>
                 <a href="index.html" class="nav-dropdown-item">&#8962; NARON CODEX</a>
             </div>
@@ -105,8 +124,9 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
 
 <div class="wrap">
     <h1 class="page-title">Gem Revenue Flow</h1>
-    <p class="page-sub">Every WAX spent on gems, and where it goes afterwards. Read live from
-       chain history &mdash; nothing here is stored or estimated.</p>
+    <p class="page-sub">Internal. Every WAX spent on gems and where it goes afterwards, read live
+       from chain history. The split below is what has happened to date, not a fixed rule &mdash;
+       developer draws are lump withdrawals, so the shares move as they are taken.</p>
     <div id="body"><div class="loading">READING CHAIN HISTORY&hellip;</div></div>
 </div>
 

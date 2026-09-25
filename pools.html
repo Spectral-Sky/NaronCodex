@@ -81,7 +81,23 @@
     /* LOADING */
     #loading-overlay { display:none; position:fixed; inset:0; background:rgba(3,6,15,0.7); z-index:500; align-items:center; justify-content:center; font-size:0.8em; letter-spacing:3px; color:var(--gold); }
     #loading-overlay.show { display:flex; }
-    </style>
+    
+    .gemsplit-note { font-size:0.62em; color:#8fa1b5; line-height:1.7; letter-spacing:0.4px;
+        padding:0 4px 12px; max-width:760px; }
+    .gemsplit-load { color:#8fa1b5; font-size:0.7em; letter-spacing:2px; padding:26px 4px; }
+    .gs-bar { display:flex; height:42px; border-radius:3px; overflow:hidden; gap:2px; margin:4px 0 14px; }
+    .gs-seg { display:flex; align-items:center; justify-content:center; font-size:0.72em;
+        font-weight:bold; color:#0b0b0b; letter-spacing:0.5px; min-width:2px; }
+    .gs-rows { display:flex; flex-direction:column; gap:9px; }
+    .gs-row { display:flex; align-items:center; gap:11px; font-size:0.72em; }
+    .gs-dot { width:12px; height:12px; border-radius:2px; flex-shrink:0; }
+    .gs-name { width:150px; color:#d7e2ee; }
+    .gs-pct { width:54px; text-align:right; color:#fff; font-weight:bold;
+        font-variant-numeric:tabular-nums; }
+    .gs-what { color:#8fa1b5; flex:1; line-height:1.5; }
+    .gs-foot { font-size:0.58em; color:#5d6875; letter-spacing:0.6px; line-height:1.7;
+        margin-top:14px; padding-top:10px; border-top:1px solid rgba(232,160,32,0.12); }
+</style>
     <link rel="stylesheet" href="dossier-nav.css">
 </head>
 <body>
@@ -198,6 +214,17 @@
         <div class="chart-card-title">TLM Pools: Reserve (Max Capacity)</div>
         <div class="chart-wrap"><canvas id="chart-reserve"></canvas></div>
     </div>
+</div>
+
+<div class="chart-card" id="gemsplit-card" style="margin-top:18px;">
+    <div class="chart-card-title">Where Gem Revenue Goes</div>
+    <div id="gemsplit-note" class="gemsplit-note">
+        Players buy gems with WAX. That WAX passes through the shop to a collection
+        wallet, which routes it onward. Shares below are of everything taken in to
+        date &mdash; they are not a fixed split, and they move as development draws
+        are made.
+    </div>
+    <div id="gemsplit-body" class="gemsplit-load">Reading chain history&hellip;</div>
 </div>
 
 <script>
@@ -566,6 +593,120 @@ function rollupReserve(rows, activeSet) {
     });
     return result;
 }
+
+/* ── GEM REVENUE SPLIT ───────────────────────────────────────────────────────
+   Public view: shares only, no WAX amounts. It is computed live rather than
+   hardcoded so it cannot quietly go stale, but it is deliberately framed as
+   "to date" — the split is NOT a fixed rule. Developer draws are occasional
+   lump withdrawals, so the shares move whenever one is taken: the monthly
+   development share has ranged from 0% to 81% across the history.
+
+   history.waxsweden.org is first because most Hyperion nodes backfill only a
+   few weeks and return a partial result without complaint, which would skew
+   every share here. */
+(function () {
+    var NODES = ['https://history.waxsweden.org', 'https://wax.eosusa.io', 'https://api.waxsweden.org'];
+    var DEV = { '5thba.wam': 1, '42lra.wam': 1 };
+    var RESOURCE = { 'cpu.ale': 1, 'ram.ale': 1 };
+
+    function get(path) {
+        var i = 0;
+        function attempt() {
+            if (i >= NODES.length) return Promise.resolve(null);
+            var ep = NODES[i++];
+            return fetch(ep + path).then(function (r) {
+                return r.ok ? r.json() : attempt();
+            }).catch(attempt);
+        }
+        return attempt();
+    }
+
+    function allTransfers(account) {
+        var out = [], before = '';
+        function page(n) {
+            if (n > 40) return Promise.resolve(out);
+            return get('/v2/history/get_actions?account=' + account + '&filter=' +
+                encodeURIComponent('eosio.token:transfer') + '&limit=1000&sort=desc' +
+                (before ? '&before=' + encodeURIComponent(before) : '')
+            ).then(function (d) {
+                var acts = (d && d.actions) || [];
+                if (!acts.length) return out;
+                acts.forEach(function (a) {
+                    out.push({ ms: Date.parse(a.timestamp + 'Z'), to: a.act.data.to,
+                               from: a.act.data.from, quantity: a.act.data.quantity });
+                });
+                if (acts.length < 1000) return out;
+                before = acts[acts.length - 1].timestamp;
+                return page(n + 1);
+            });
+        }
+        return page(0);
+    }
+
+    function render(rows) {
+        var body = document.getElementById('gemsplit-body');
+        var seen = {}, out = {};
+        rows.forEach(function (t) {
+            if (t.from !== 'collect.ale') return;
+            var k = t.ms + t.to + t.quantity;
+            if (seen[k]) return;           // pages overlap by one row
+            seen[k] = 1;
+            out[t.to] = (out[t.to] || 0) + (parseFloat(t.quantity) || 0);
+        });
+        var total = 0;
+        Object.keys(out).forEach(function (k) { total += out[k]; });
+        if (!total) { body.innerHTML = '<div class="gemsplit-load">Chain history unavailable.</div>'; return; }
+
+        var dev = 0, res = 0, pools = 0, other = 0;
+        Object.keys(out).forEach(function (k) {
+            if (DEV[k]) dev += out[k];
+            else if (RESOURCE[k]) res += out[k];
+            else if (k === 'pools.ale') pools += out[k];
+            else other += out[k];
+        });
+
+        var parts = [
+            { name: 'Development', v: dev, c: '#d95926',
+              what: 'Drawn by the two developer wallets' },
+            { name: 'Reward pools', v: pools, c: '#199e70',
+              what: 'Back into the pools players earn from' },
+            { name: 'Player resources', v: res, c: '#3987e5',
+              what: 'CPU and RAM so players can transact' }
+        ];
+        if (other > 0) parts.push({ name: 'Other', v: other, c: '#8fa1b5', what: 'Everything else' });
+        parts = parts.filter(function (p) { return p.v > 0; });
+
+        var pct = function (v) { return v / total * 100; };
+        var bar = parts.map(function (p) {
+            var w = pct(p.v);
+            return '<span class="gs-seg" style="width:' + w.toFixed(2) + '%;background:' + p.c + '">' +
+                (w > 7 ? Math.round(w) + '%' : '') + '</span>';
+        }).join('');
+
+        var rowsHtml = parts.map(function (p) {
+            return '<div class="gs-row"><span class="gs-dot" style="background:' + p.c + '"></span>' +
+                '<span class="gs-name">' + p.name + '</span>' +
+                '<span class="gs-pct">' + pct(p.v).toFixed(1) + '%</span>' +
+                '<span class="gs-what">' + p.what + '</span></div>';
+        }).join('');
+
+        body.innerHTML = '<div class="gs-bar">' + bar + '</div><div class="gs-rows">' + rowsHtml +
+            '</div><div class="gs-foot">Share of all WAX taken in for gems and paid out again, ' +
+            'across the full history to ' + new Date().toISOString().slice(0, 10) +
+            '. Read live from the chain each time this page loads.</div>';
+    }
+
+    function start() {
+        var card = document.getElementById('gemsplit-card');
+        if (!card) return;
+        allTransfers('collect.ale').then(render).catch(function () {
+            var b = document.getElementById('gemsplit-body');
+            if (b) b.innerHTML = '<div class="gemsplit-load">Chain history unavailable.</div>';
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+    else start();
+})();
 </script>
 </body>
 </html>
