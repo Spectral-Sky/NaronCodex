@@ -96,6 +96,12 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
 .ops-tab:hover { background:rgba(232,160,32,0.2); }
 .ops-tab.active { background:var(--gold); color:#1a1206; }
 .ops-tab-note { font-size:0.78em; color:var(--muted); margin-left:6px; letter-spacing:0.6px; }
+
+.ops-csv { margin-left:auto; background:transparent; border:1px solid var(--border);
+    color:var(--muted); font-family:inherit; font-size:0.72em; letter-spacing:1.6px;
+    text-transform:uppercase; padding:7px 14px; cursor:pointer; border-radius:2px;
+    transition:color 0.15s, border-color 0.15s; }
+.ops-csv:hover { color:var(--gold); border-color:var(--gold); }
 </style>
 </head>
 <body>
@@ -141,9 +147,6 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
 
 <div class="wrap">
     <h1 class="page-title">Gem Revenue Flow</h1>
-    <p class="page-sub">Internal. Every WAX spent on gems and where it goes afterwards, read live
-       from chain history. The split below is what has happened to date, not a fixed rule &mdash;
-       developer draws are lump withdrawals, so the shares move as they are taken.</p>
     <div id="body"><div class="loading">READING CHAIN HISTORY&hellip;</div></div>
 </div>
 
@@ -431,7 +434,7 @@ let _data = null;
 window.setOpsScope = function (scope) {
     if (_scope === scope) return;
     _scope = scope;
-    ['beta', 'alpha'].forEach(k => {
+    ['beta', 'alpha', 'all'].forEach(k => {
         const b = document.getElementById('tab-' + k);
         if (b) b.classList.toggle('active', k === scope);
     });
@@ -439,6 +442,7 @@ window.setOpsScope = function (scope) {
 };
 
 function inScope(t) {
+    if (_scope === 'all') return true;
     return _scope === 'beta' ? t.ms >= BETA_START : t.ms < BETA_START;
 }
 
@@ -606,18 +610,54 @@ function draw() {
 }
 
 function scopeLabel() {
-    return _scope === 'beta' ? 'beta, from 1 Sep 2026' : 'alpha, before 1 Sep 2026';
+    return _scope === 'beta'  ? 'beta, from 1 Sep 2026'
+         : _scope === 'alpha' ? 'alpha, before 1 Sep 2026'
+         : 'the full history';
 }
 
 function tabBar() {
-    return '<div class="ops-tabs">' +
-        '<button class="ops-tab' + (_scope === 'beta' ? ' active' : '') +
-            '" id="tab-beta" onclick="setOpsScope(\'beta\')">Beta</button>' +
-        '<button class="ops-tab' + (_scope === 'alpha' ? ' active' : '') +
-            '" id="tab-alpha" onclick="setOpsScope(\'alpha\')">Alpha</button>' +
-        '<span class="ops-tab-note">' + (_scope === 'beta'
-            ? 'from 1 Sep 2026' : 'before 1 Sep 2026') + '</span></div>';
+    const tab = (k, label) => '<button class="ops-tab' + (_scope === k ? ' active' : '') +
+        '" id="tab-' + k + '" onclick="setOpsScope(\'' + k + '\')">' + label + '</button>';
+    const note = _scope === 'beta'  ? 'from 1 Sep 2026'
+               : _scope === 'alpha' ? 'before 1 Sep 2026'
+               : 'alpha and beta together';
+    return '<div class="ops-tabs">' + tab('beta', 'Beta') + tab('alpha', 'Alpha') + tab('all', 'All') +
+        '<span class="ops-tab-note">' + note + '</span>' +
+        '<button class="ops-csv" onclick="downloadCsv()" title="Every purchase and payout in this ' +
+        'period, one row per transfer">&#8681; CSV</button></div>';
 }
+
+/* One row per transfer rather than the rolled-up tables: the aggregates here
+   can all be rebuilt from it, the reverse is not true. Amounts stay unrounded
+   so a spreadsheet total matches the chain exactly. */
+window.downloadCsv = function () {
+    if (!_data) return;
+    const rows = [['timestamp_utc', 'kind', 'from', 'to', 'wax', 'memo', 'pack']];
+    _data.shop.filter(inScope)
+        .filter(t => t.to === SHOP && /^purchase,/.test(t.memo || ''))
+        .sort((a, b) => a.ms - b.ms)
+        .forEach(t => rows.push([new Date(t.ms).toISOString(), 'purchase', t.from, t.to,
+            amt(t.quantity), t.memo || '', (t.memo || '').split(',')[1] || '']));
+    _data.collect.filter(inScope)
+        .filter(t => t.from === COLLECT)
+        .sort((a, b) => a.ms - b.ms)
+        .forEach(t => rows.push([new Date(t.ms).toISOString(), 'payout', t.from, t.to,
+            amt(t.quantity), t.memo || '', '']));
+
+    const esc = v => {
+        const str = String(v == null ? '' : v);
+        return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+    };
+    const csv = rows.map(r => r.map(esc).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gem-revenue-' + _scope + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 function tile(k, v, s) {
     return '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div>' +
