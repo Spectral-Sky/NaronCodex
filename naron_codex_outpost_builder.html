@@ -251,6 +251,7 @@
                 <p class="text-lg text-[var(--primary-glow)] glow-text" id="ui-balance">0 Я</p>
                 <p class="text-[10px] text-gray-400 mt-1" id="ui-fill">&nbsp;</p>
             </div>
+            <p class="text-[10px] mt-2" id="ui-art" style="color:#7b8798">Art: checking…</p>
             <p class="nc-disclaimer">
                 Unofficial. Naron Codex is a fan-made way to view and play
                 <b>Mission Control</b> &mdash; it reads the same chain data and sends the same
@@ -645,6 +646,289 @@
             ctx.restore();
         }
 
+        /* ── BUILDING ART ────────────────────────────────────────────────────
+           Sprites live in the repo folder below. Nothing here is required: a
+           building with no PNG falls back to the hand-drawn placeholder, so the
+           map is never blank while the art is still being made. Drop a file in
+           and it appears on the next reload — no code change.
+
+           Names tried per building, in order: the display name, a dashed
+           lowercase form, and the contract's own building id. 404s in the
+           console during that probe are expected and harmless. */
+        const ART_DIR = 'NC OB/';
+        const ART = {};          // buildingid -> HTMLImageElement, once loaded
+        const ART_FOUND = {};    // buildingid -> the filename that answered
+
+        function artCandidates(id, name) {
+            const lower = name.toLowerCase();
+            const out = [];
+            [name, lower.replace(/[^a-z0-9]+/g, '-'), lower.replace(/[^a-z0-9]+/g, '_'),
+             lower.replace(/[^a-z0-9]+/g, ''), id].forEach(n => {
+                ['png', 'webp'].forEach(x => {
+                    const f = n + '.' + x;
+                    if (out.indexOf(f) === -1) out.push(f);
+                });
+            });
+            return out;
+        }
+
+        function tryLoad(file) {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = ART_DIR.split('/').map(encodeURIComponent).join('/') + encodeURIComponent(file);
+            });
+        }
+
+        async function loadBuildingArt() {
+            for (const id of Object.keys(B_MAP)) {
+                for (const file of artCandidates(id, B_MAP[id].name)) {
+                    const img = await tryLoad(file);
+                    if (img) { ART[id] = img; ART_FOUND[id] = file; break; }
+                }
+            }
+            reportArt();
+        }
+
+        /* Says plainly which sprites landed and which are still placeholders,
+           so a misnamed file is obvious rather than silently ignored. */
+        function reportArt() {
+            const ids = Object.keys(B_MAP);
+            const got = ids.filter(id => ART[id]);
+            const missing = ids.filter(id => !ART[id]);
+            const el = document.getElementById('ui-art');
+            if (el) {
+                el.textContent = got.length
+                    ? 'Art: ' + got.length + '/' + ids.length + ' sprites loaded'
+                    : 'Art: placeholders — no sprites in “' + ART_DIR + '” yet';
+                el.style.color = got.length === ids.length ? '#4ade80'
+                               : got.length ? '#f0a62a' : '#7b8798';
+                el.title = missing.length
+                    ? 'Still drawn as placeholders: ' +
+                      missing.map(id => B_MAP[id].name + ' (' + ART_DIR + B_MAP[id].name + '.png)').join(', ')
+                    : 'All nine buildings are using your art.';
+            }
+            console.log('[outpost art]', got.length + '/' + ids.length, 'loaded', ART_FOUND,
+                        missing.length ? '| missing: ' + missing.join(', ') : '');
+        }
+
+        /* A sprite is planted on the tile: bottom edge just past the footprint's
+           centre, so it overlaps the ground the way the prisms did. Tier nudges
+           the size a little, which is all the tiering the art needs for now. */
+        const SPRITE_TILES = 2.35;
+        function drawSprite(b, img, t) {
+            const c = toScreen(b.gx + 1, b.gy + 1, 0);
+            const w = SPRITE_TILES * (0.86 + t * 0.07) * TILE_W * camera.zoom;
+            const h = w * (img.height / img.width);
+            ctx.drawImage(img, c.x - w / 2, c.y - h + (TILE_H / 2) * camera.zoom, w, h);
+        }
+
+        /* ── PLACEHOLDER STRUCTURES ──────────────────────────────────────────
+           Stand-ins until the real sprites land in NC OB/. Each building gets a
+           silhouette you can name from across the map rather than nine identical
+           boxes, and keeps its B_MAP hue so the colour coding still holds. Tier
+           only scales them — the art tiers properly once the PNGs exist.
+
+           All of these work in grid units: z is in the same half-tile steps
+           drawPrism uses, so they stack against it without conversion. */
+
+        function pDisc(gx, gy, gz, r, fill, stroke) {
+            const c = toScreen(gx, gy, gz * (TILE_H / 2));
+            const rx = r * (TILE_W / 2) * camera.zoom, ry = r * (TILE_H / 2) * camera.zoom;
+            ctx.beginPath();
+            ctx.ellipse(c.x, c.y, rx, ry, 0, 0, Math.PI * 2);
+            if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+            if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+            return { c: c, rx: rx, ry: ry };
+        }
+
+        function pCyl(gx, gy, gz, r, hZ, col) {
+            const bot = toScreen(gx, gy, gz * (TILE_H / 2));
+            const top = toScreen(gx, gy, (gz + hZ) * (TILE_H / 2));
+            const rx = r * (TILE_W / 2) * camera.zoom, ry = r * (TILE_H / 2) * camera.zoom;
+            const g = ctx.createLinearGradient(bot.x - rx, 0, bot.x + rx, 0);
+            g.addColorStop(0, adjustColor(col, -40));
+            g.addColorStop(0.5, col);
+            g.addColorStop(1, adjustColor(col, -18));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(top.x - rx, top.y);
+            ctx.lineTo(bot.x - rx, bot.y);
+            ctx.ellipse(bot.x, bot.y, rx, ry, 0, Math.PI, 0, true);
+            ctx.lineTo(top.x + rx, top.y);
+            ctx.ellipse(top.x, top.y, rx, ry, 0, 0, Math.PI, false);
+            ctx.closePath();
+            ctx.fill();
+            pDisc(gx, gy, gz + hZ, r, adjustColor(col, 28), 'rgba(0,0,0,0.35)');
+        }
+
+        function pDome(gx, gy, gz, r, hZ, col) {
+            const c = toScreen(gx, gy, gz * (TILE_H / 2));
+            const rx = r * (TILE_W / 2) * camera.zoom;
+            const hh = hZ * (TILE_H / 2) * camera.zoom;
+            const g = ctx.createLinearGradient(c.x - rx, c.y - hh, c.x + rx, c.y);
+            g.addColorStop(0, adjustColor(col, 35));
+            g.addColorStop(1, adjustColor(col, -30));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.ellipse(c.x, c.y, rx, hh, 0, Math.PI, 0);
+            ctx.closePath();
+            ctx.fill();
+            pDisc(gx, gy, gz, r, 'rgba(0,0,0,0.25)', null);
+        }
+
+        /* Pitched roof, ridge running along the x axis. */
+        function pRoof(gx, gy, gz, w, l, hZ, col) {
+            const z = gz * (TILE_H / 2), zr = (gz + hZ) * (TILE_H / 2);
+            const a = toScreen(gx, gy, z), b = toScreen(gx + w, gy, z);
+            const c = toScreen(gx + w, gy + l, z), d = toScreen(gx, gy + l, z);
+            const r1 = toScreen(gx, gy + l / 2, zr), r2 = toScreen(gx + w, gy + l / 2, zr);
+            const quad = (p1, p2, p3, p4, fill) => {
+                ctx.fillStyle = fill;
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+                ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+                ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.stroke();
+            };
+            quad(d, c, r2, r1, adjustColor(col, 18));   // front slope, lit
+            quad(a, b, r2, r1, adjustColor(col, -32));  // back slope
+        }
+
+        function pGlow(gx, gy, gz, r, col, alpha) {
+            const c = toScreen(gx, gy, gz * (TILE_H / 2));
+            const rad = r * (TILE_W / 2) * camera.zoom;
+            const hex = col.replace('#', '');
+            const cr = parseInt(hex.substring(0, 2), 16),
+                  cg = parseInt(hex.substring(2, 4), 16),
+                  cb = parseInt(hex.substring(4, 6), 16);
+            const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, rad);
+            g.addColorStop(0, 'rgba(' + cr + ',' + cg + ',' + cb + ',' + alpha + ')');
+            g.addColorStop(1, 'rgba(' + cr + ',' + cg + ',' + cb + ',0)');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(c.x, c.y, rad, 0, Math.PI * 2); ctx.fill();
+        }
+
+        /* A flat disc standing upright — saw blades, dish antennae. */
+        function pWheel(gx, gy, gz, r, col) {
+            const c = toScreen(gx, gy, gz * (TILE_H / 2));
+            const rad = r * (TILE_W / 2) * camera.zoom;
+            ctx.fillStyle = col;
+            ctx.beginPath(); ctx.arc(c.x, c.y, rad, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+            // teeth, so it reads as a blade and not a porthole
+            ctx.strokeStyle = adjustColor(col, 45);
+            ctx.beginPath();
+            for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+                ctx.moveTo(c.x + Math.cos(a) * rad * 0.72, c.y + Math.sin(a) * rad * 0.72);
+                ctx.lineTo(c.x + Math.cos(a) * rad, c.y + Math.sin(a) * rad);
+            }
+            ctx.stroke();
+            ctx.fillStyle = adjustColor(col, -35);
+            ctx.beginPath(); ctx.arc(c.x, c.y, rad * 0.24, 0, Math.PI * 2); ctx.fill();
+        }
+
+        const PLACEHOLDER = {
+            // Spaceport — landing pad, low hangar, beacon mast
+            market: function (b, t) {
+                const h = 0.95 + t * 0.28;
+                pDisc(b.gx + 1, b.gy + 1.15, 0, 1.55, 'rgba(147,51,234,0.16)', 'rgba(167,110,250,0.55)');
+                pDisc(b.gx + 1, b.gy + 1.15, 0, 0.75, null, 'rgba(167,110,250,0.35)');
+                drawPrism(b.gx + 0.25, b.gy + 0.2, 0, 0.95, 0.85, h, b.color);
+                pCyl(b.gx + 1.55, b.gy + 0.55, 0, 0.16, h * 2.3, adjustColor(b.color, -10));
+                pGlow(b.gx + 1.55, b.gy + 0.55, h * 2.3 + 0.2, 0.55, '#c084fc', 0.85);
+            },
+
+            // Lumber Mill — mill shed, saw blade, log pile
+            prodone: function (b, t) {
+                const h = 0.8 + t * 0.22;
+                drawPrism(b.gx + 0.1, b.gy + 0.15, 0, 1.4, 1.2, h, b.color);
+                pRoof(b.gx + 0.1, b.gy + 0.15, h, 1.4, 1.2, 0.55, adjustColor(b.color, -20));
+                pWheel(b.gx + 1.68, b.gy + 0.8, 0.62, 0.2, '#7c8a99');
+                [[0, 0], [0.26, 0], [0.13, 0.3]].forEach(o =>
+                    pCyl(b.gx + 0.5 + o[0], b.gy + 1.8, o[1], 0.13, 0.22, '#7d5228'));
+            },
+
+            // Foundry — furnace block, twin stacks, ember light
+            prodtwo: function (b, t) {
+                const h = 0.95 + t * 0.3;
+                drawPrism(b.gx + 0.1, b.gy + 0.1, 0, 1.6, 1.5, h, b.color);
+                pCyl(b.gx + 0.55, b.gy + 0.55, h, 0.22, 0.9 + t * 0.3, adjustColor(b.color, -35));
+                pCyl(b.gx + 1.25, b.gy + 0.9, h, 0.18, 0.7 + t * 0.25, adjustColor(b.color, -35));
+                pGlow(b.gx + 0.55, b.gy + 0.55, h + 1.0 + t * 0.3, 0.7, '#ff8c42', 0.8);
+                pGlow(b.gx + 1.0, b.gy + 1.7, 0.1, 0.9, '#ff6b2c', 0.45);
+            },
+
+            // Laboratory — observation dome on a plinth, antenna
+            prodthree: function (b, t) {
+                const h = 0.72 + t * 0.2;
+                drawPrism(b.gx + 0.15, b.gy + 0.15, 0, 1.6, 1.6, h, adjustColor(b.color, -28));
+                pDome(b.gx + 0.95, b.gy + 0.95, h, 0.78, 1.1 + t * 0.2, b.color);
+                pCyl(b.gx + 1.75, b.gy + 0.35, 0, 0.1, h + 1.3, '#94a3b8');
+                pGlow(b.gx + 0.95, b.gy + 0.95, h + 0.6, 0.85, '#60a5fa', 0.4);
+            },
+
+            // Exploder — blast crater, squat reactor, spark
+            faucet: function (b, t) {
+                const h = 0.6 + t * 0.22;
+                pDisc(b.gx + 1, b.gy + 1.1, 0, 1.6, 'rgba(120,53,15,0.4)', 'rgba(245,158,11,0.4)');
+                pDisc(b.gx + 1, b.gy + 1.1, 0, 0.95, 'rgba(60,26,6,0.55)', null);
+                pCyl(b.gx + 1, b.gy + 1.1, 0, 0.62, h + 0.5, b.color);
+                pGlow(b.gx + 1, b.gy + 1.1, h + 0.8, 1.2, '#fbbf24', 0.75);
+            },
+
+            // Refinery — tank pair, catwalk, flare stack
+            prodfour: function (b, t) {
+                const h = 0.8 + t * 0.3;
+                pCyl(b.gx + 0.6, b.gy + 0.6, 0, 0.48, h, b.color);
+                pCyl(b.gx + 1.45, b.gy + 1.2, 0, 0.42, h * 0.78, adjustColor(b.color, -18));
+                drawPrism(b.gx + 0.35, b.gy + 1.55, 0, 1.1, 0.3, 0.25, adjustColor(b.color, -35));
+                pCyl(b.gx + 1.7, b.gy + 0.35, 0, 0.12, h + 0.7, '#7a8494');
+                pGlow(b.gx + 1.7, b.gy + 0.35, h + 0.95, 0.6, '#ff9f45', 0.9);
+            },
+
+            // Upcycling Center — long shed, intake hopper, conveyor
+            prodfive: function (b, t) {
+                const h = 0.78 + t * 0.22;
+                drawPrism(b.gx + 0.1, b.gy + 0.55, 0, 1.75, 1.2, h, b.color);
+                pRoof(b.gx + 0.1, b.gy + 0.55, h, 1.75, 1.2, 0.32, adjustColor(b.color, -22));
+                drawPrism(b.gx + 0.35, b.gy + 0.05, 0, 0.55, 0.45, h * 1.7, adjustColor(b.color, 22));
+                drawPrism(b.gx + 1.25, b.gy + 0.1, 0.15, 0.45, 0.4, h * 1.2, adjustColor(b.color, -35));
+                pGlow(b.gx + 0.62, b.gy + 0.28, h * 1.7 + 0.2, 0.5, '#4ade80', 0.6);
+            },
+
+            // Hunting Cabin — timber lodge, chimney, smoke
+            prodsix: function (b, t) {
+                const h = 0.62 + t * 0.18;
+                drawPrism(b.gx + 0.35, b.gy + 0.4, 0, 1.2, 1.1, h, adjustColor(b.color, -12));
+                pRoof(b.gx + 0.3, b.gy + 0.35, h, 1.3, 1.2, 0.62, adjustColor(b.color, 25));
+                pCyl(b.gx + 1.42, b.gy + 0.6, h, 0.15, 0.55, '#5b4636');
+                pGlow(b.gx + 1.42, b.gy + 0.6, h + 0.85, 0.55, '#94a3b8', 0.3);
+                pDisc(b.gx + 0.55, b.gy + 1.75, 0, 0.3, 'rgba(13,148,136,0.3)', null);
+            },
+
+            // Storage — silo bank, and the tank fills as the base does
+            storage: function (b, t) {
+                const h = 0.9 + t * 0.35;
+                pCyl(b.gx + 0.5, b.gy + 0.55, 0, 0.36, h, b.color);
+                pCyl(b.gx + 1.2, b.gy + 0.45, 0, 0.32, h * 0.82, adjustColor(b.color, 18));
+                pCyl(b.gx + 0.85, b.gy + 1.35, 0, 0.34, h * 0.68, adjustColor(b.color, -15));
+                drawPrism(b.gx + 1.45, b.gy + 1.25, 0, 0.5, 0.5, 0.35, adjustColor(b.color, 30));
+
+                /* The base this building belongs to is the one being drawn, so the
+                   fill band is real: how full that outpost's storage is right now. */
+                const owner = b._owner;
+                if (owner && owner.max_gamecurrency) {
+                    const pct = Math.max(0, Math.min(1,
+                        (owner.live_currency || 0) / owner.max_gamecurrency));
+                    if (pct > 0.02)
+                        pCyl(b.gx + 0.5, b.gy + 0.55, 0, 0.37, h * pct,
+                             pct > 0.95 ? '#f0a62a' : '#64ffda');
+                }
+            }
+        };
+
         function getTier(lvl) {
             if (lvl >= 25) return 4;
             if (lvl >= 15) return 3;
@@ -660,6 +944,12 @@
             if (b.staked_template_ids && b.staked_template_ids.length > 0) {
                 drawGlow(b.gx, b.gy, rarityColor(b.staked_template_ids[0]));
             }
+
+            const art = ART[b.buildingid];
+            if (art) { drawSprite(b, art, t); drawLevelTag(b, t); return; }
+
+            const ph = PLACEHOLDER[b.buildingid];
+            if (ph) { ph(b, t); drawLevelTag(b, t); return; }
 
             // Draw geometry based on tier
             if (t === 1) { // Low
@@ -677,10 +967,16 @@
                 drawPrism(b.gx+0.25, b.gy+0.25, 1.8, 1.5, 1.5, 1.0, adjustColor(b.color, 40)); // Core
             }
             
-            // Level Label floating
-            const lblPos = toScreen(b.gx + 1, b.gy + 1, (t*0.5 + 1) * (TILE_H/2) + 10);
-            ctx.font = 'bold 9px "Inter"'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-            ctx.fillText(`Lv.${b.level}`, lblPos.x, lblPos.y);
+            drawLevelTag(b, t);
+        }
+
+        function drawLevelTag(b, t) {
+            const lblPos = toScreen(b.gx + 1, b.gy + 1, (t * 0.5 + 1) * (TILE_H / 2) + 10);
+            ctx.font = 'bold 9px "Inter"';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.fillText('Lv.' + b.level, lblPos.x, lblPos.y);
+            ctx.textAlign = 'left';
         }
 
         function render() {
@@ -716,7 +1012,8 @@
                 if(base.buildings) {
                     base.buildings.forEach(b => {
                         const m = B_MAP[b.buildingid];
-                        if(m) renderQ.push({ ...b, gx: base.globalX + m.x, gy: base.globalY + m.y, color: m.color, level: b.building_level });
+                        if(m) renderQ.push({ ...b, gx: base.globalX + m.x, gy: base.globalY + m.y,
+                                             color: m.color, level: b.building_level, _owner: base });
                     });
                 }
                 
@@ -1004,7 +1301,7 @@
         }
 
         // Init
-        resize(); render(); updateLiveResources(); fetchAllPlayers();
+        resize(); render(); updateLiveResources(); loadBuildingArt(); fetchAllPlayers();
 
     </script>
 </body>
