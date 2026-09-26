@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Naron Codex: Outpost Builder</title>
+    <title>Mission Control Outpost Builder</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="waxjs.js"></script>
     <link rel="stylesheet" href="dossier-nav.css">
@@ -169,6 +169,18 @@
     .lb-name { flex:1; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .lb-row.me .lb-name { color:var(--gold); font-weight:700; }
     .lb-val { color:#64ffda; font-variant-numeric:tabular-nums; }
+
+    /* ── DISCLAIMER ──────────────────────────────────────────────────────── */
+    #nc-official { color:#8fa1b5; text-decoration:none; }
+    #nc-official:hover { color:var(--gold); }
+    .nc-disclaimer {
+        margin-top:10px; font-size:10px; line-height:1.5; color:#7b8798;
+        font-family:'Rajdhani','Segoe UI',sans-serif;
+        border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;
+    }
+    .nc-disclaimer b { color:#9fb0c4; }
+    .nc-disclaimer a { color:var(--gold); text-decoration:none; }
+    .nc-disclaimer a:hover { text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -203,6 +215,8 @@
                 </div>
             </div>
             <button class="nav-btn" id="lb-toggle" onclick="toggleLeaderboard()">&#9776; LEADERBOARD</button>
+            <a href="https://waxmissioncontrol.io/" target="_blank" rel="noopener"
+               class="nav-btn" id="nc-official">&#8599; PLAY OFFICIAL</a>
             <button class="nav-btn" id="nc-wallet-btn" onclick="ncWalletClick()">CONNECT</button>
         </nav>
     </header>
@@ -237,6 +251,13 @@
                 <p class="text-lg text-[var(--primary-glow)] glow-text" id="ui-balance">0 Я</p>
                 <p class="text-[10px] text-gray-400 mt-1" id="ui-fill">&nbsp;</p>
             </div>
+            <p class="nc-disclaimer">
+                Unofficial. Naron Codex is a fan-made way to view and play
+                <b>Mission Control</b> &mdash; it reads the same chain data and sends the same
+                actions, and is not affiliated with or endorsed by the developers.
+                The official game lives at
+                <a href="https://waxmissioncontrol.io/" target="_blank" rel="noopener">waxmissioncontrol.io</a>.
+            </p>
         </div>
     </div>
 
@@ -453,8 +474,10 @@
            is filling still visibly moves. */
         function fmtR(n) {
             n = Number(n) || 0;
-            if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
-            if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+            if (n >= 1e6) {
+                const m = n / 1e6;
+                return m.toFixed(m >= 1000 ? 0 : m >= 100 ? 1 : 2) + 'M';
+            }
             if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
             return Math.floor(n).toString();
         }
