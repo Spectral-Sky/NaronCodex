@@ -267,6 +267,23 @@
         padding:5px 9px; margin-left:4px; border-radius:2px; cursor:pointer;
     }
     #fit-btn:hover { color:#64ffda; border-color:#64ffda; }
+
+    /* ── BUILDING RENDER PREVIEW ─────────────────────────────────────────── */
+    .art-wrap { margin-top:10px; }
+    .art-toggle {
+        background:none; border:1px solid rgba(100,255,218,0.3); color:#64ffda;
+        font-family:'Rajdhani','Segoe UI',sans-serif; font-size:0.62rem; font-weight:700;
+        letter-spacing:1.6px; padding:5px 10px; border-radius:2px; cursor:pointer;
+    }
+    .art-toggle:hover { background:rgba(100,255,218,0.1); }
+    .art-view:empty { display:none; }
+    .art-view { margin-top:8px; }
+    .art-img {
+        width:100%; border-radius:3px; display:block;
+        background:radial-gradient(ellipse at 50% 80%, rgba(100,255,218,0.09), transparent 62%);
+    }
+    .art-img.raw { background:#fff; }   /* un-keyed fallback needs its own ground */
+    [data-bid].picked { border-color:rgba(100,255,218,0.55) !important; }
 </style>
 </head>
 <body>
@@ -578,6 +595,79 @@
         }
 
         // Ulam Spiral math for deterministic layout
+        /* The three highest producers are lifted out of the spiral and stood at
+           the back of the sector on podiums — first centre and highest, second
+           to its left, third to its right, the way a podium reads. Back in this
+           projection is the smallest gx+gy, which is the top of the screen; the
+           spiral only reaches -9 sectors, so -11 clears it. */
+        const PODIUM = {
+            /* A base is nine grid units across, so the block has to be tall in
+               the same units or it reads as a plate under the outpost. */
+            1: { h: 14, col: '#e8a020', ink: '#2a1c04', label: '1' },
+            2: { h: 9.5, col: '#b9c2cf', ink: '#1d2229', label: '2' },
+            3: { h: 6,  col: '#c07f43', ink: '#2a1a08', label: '3' }
+        };
+        /* Same depth, one base-width apart: iso separation is
+           (dx - dy) * SECTOR_SIZE * TILE_W/2, so 1.7 sectors puts them shoulder
+           to shoulder rather than a screen apart. */
+        const PODIUM_AT = [[-11, -11], [-11.85, -10.15], [-10.15, -11.85]];   // 1st, 2nd, 3rd
+
+        function assignPodiums() {
+            worldData.forEach(p => { p._podium = 0; });
+            worldData.slice()
+                .sort((a, b) => (Number(b.gamecurrency_per_minute) || 0) -
+                                (Number(a.gamecurrency_per_minute) || 0))
+                .slice(0, 3)
+                .forEach((p, i) => {
+                    p._podium = i + 1;
+                    p.globalX = PODIUM_AT[i][0] * SECTOR_SIZE;
+                    p.globalY = PODIUM_AT[i][1] * SECTOR_SIZE;
+                });
+        }
+
+        function podiumLift(base) {
+            return base && base._podium
+                ? PODIUM[base._podium].h * (TILE_H / 2) * camera.zoom : 0;
+        }
+
+        /* The block the outpost stands on, drawn before the base is lifted onto
+           it, with the place cut into its face. */
+        function drawPodium(base) {
+            const d = PODIUM[base._podium];
+            const g = BASE_GRID, x = base.globalX, y = base.globalY;
+            drawPrism(x - 0.6, y - 0.6, 0, g + 1.2, g + 1.2, d.h, adjustColor(d.col, -42));
+            drawPrism(x - 0.9, y - 0.9, d.h - 0.9, g + 1.8, g + 1.8, 0.9, d.col);   // cap lip
+
+            // the place, cut into both faces you can see
+            ctx.save();
+            ctx.font = 'bold ' + Math.max(12, Math.round(120 * camera.zoom)) + 'px "Inter"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = d.ink;
+            const rf = toScreen(x + g + 0.6, y + g / 2, (d.h * 0.45) * (TILE_H / 2));
+            const lf = toScreen(x + g / 2, y + g + 0.6, (d.h * 0.45) * (TILE_H / 2));
+            ctx.fillText(d.label, rf.x, rf.y);
+            ctx.fillText(d.label, lf.x, lf.y);
+            ctx.restore();
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+
+            if (base._podium === 1) {
+                const top = toScreen(x + g / 2, y + g / 2, (d.h + 24) * (TILE_H / 2));
+                const grd = ctx.createLinearGradient(top.x, top.y, top.x, top.y + 320 * camera.zoom);
+                grd.addColorStop(0, 'rgba(232,160,32,0.16)');
+                grd.addColorStop(1, 'rgba(232,160,32,0)');
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.moveTo(top.x - 26 * camera.zoom, top.y);
+                ctx.lineTo(top.x + 26 * camera.zoom, top.y);
+                ctx.lineTo(top.x + 190 * camera.zoom, top.y + 320 * camera.zoom);
+                ctx.lineTo(top.x - 190 * camera.zoom, top.y + 320 * camera.zoom);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
         function getSpiralCoords(n) {
             if (n === 0) return { x: 0, y: 0 };
             let k = Math.ceil((Math.sqrt(n + 1) - 1) / 2);
@@ -597,6 +687,8 @@
 
             _maxRate = worldData.reduce((m, p) =>
                 Math.max(m, Number(p.gamecurrency_per_minute) || 0), 0);
+
+            assignPodiums();
 
             document.getElementById('ui-wallet').textContent = window.loggedInWallet;
             document.getElementById('ui-base-count').textContent = worldData.length;
@@ -985,6 +1077,7 @@
         /* A sprite is planted on the tile: bottom edge just past the footprint's
            centre, so it overlaps the ground the way the prisms did. Tier nudges
            the size a little, which is all the tiering the art needs for now. */
+        const SHOW_ART_ON_MAP = false;
         const SPRITE_TILES = 1.95;
         function drawSprite(b, img, t) {
             const c = toScreen(b.gx + 1, b.gy + 1, 0);
@@ -1098,101 +1191,218 @@
             ctx.beginPath(); ctx.arc(c.x, c.y, rad * 0.24, 0, Math.PI * 2); ctx.fill();
         }
 
+        /* Extra primitives the detailed placeholders need. A footprint is two
+           grid units — 240px across at zoom 1 — so anything under about one
+           full tile of height reads as a slab rather than a building. These
+           are all sized against that. */
+        function pCone(gx, gy, gz, r, hZ, col) {
+            const bt = toScreen(gx, gy, gz * (TILE_H / 2));
+            const ap = toScreen(gx, gy, (gz + hZ) * (TILE_H / 2));
+            const rx = r * (TILE_W / 2) * camera.zoom, ry = r * (TILE_H / 2) * camera.zoom;
+            const g = ctx.createLinearGradient(bt.x - rx, 0, bt.x + rx, 0);
+            g.addColorStop(0, adjustColor(col, -45));
+            g.addColorStop(0.5, col);
+            g.addColorStop(1, adjustColor(col, -12));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(bt.x - rx, bt.y);
+            ctx.ellipse(bt.x, bt.y, rx, ry, 0, Math.PI, 0, true);
+            ctx.lineTo(ap.x, ap.y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // triangle between three grid points, for fins and gables
+        function pTri(p1, p2, p3, col) {
+            const a = toScreen(p1[0], p1[1], p1[2] * (TILE_H / 2));
+            const b = toScreen(p2[0], p2[1], p2[2] * (TILE_H / 2));
+            const c = toScreen(p3[0], p3[1], p3[2] * (TILE_H / 2));
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y);
+            ctx.closePath(); ctx.fill();
+        }
+
+        /* A walker: legs, torso, cockpit and a working arm. The Lumber Mill's
+           saw mech. sc is roughly its height in half-tiles. */
+        function pMech(gx, gy, gz, sc, body, glass) {
+            const legW = 0.17, hipZ = 0.95 * sc, torsoZ = 1.05 * sc;
+            drawPrism(gx - 0.26, gy - 0.06, gz, legW, legW, hipZ, adjustColor(body, -45));
+            drawPrism(gx + 0.09, gy + 0.14, gz, legW, legW, hipZ, adjustColor(body, -45));
+            // hips
+            drawPrism(gx - 0.28, gy - 0.1, gz + hipZ, 0.52, 0.46, 0.22 * sc, adjustColor(body, -22));
+            // torso
+            drawPrism(gx - 0.3, gy - 0.12, gz + hipZ + 0.22 * sc, 0.56, 0.5, torsoZ * 0.62, body);
+            // cockpit
+            drawPrism(gx - 0.2, gy - 0.02, gz + hipZ + 0.22 * sc + torsoZ * 0.62,
+                      0.36, 0.34, 0.3 * sc, adjustColor(body, 28));
+            pDisc(gx - 0.02, gy + 0.16, gz + hipZ + 0.3 * sc + torsoZ * 0.62, 0.13, glass, null);
+            // shoulder, then the arm that holds the blade
+            drawPrism(gx + 0.24, gy - 0.08, gz + hipZ + 0.5 * sc, 0.2, 0.2, 0.5 * sc,
+                      adjustColor(body, 14));
+        }
+
+        /* Cab, box trailer and wheels — the Upcycling Center's hauler. */
+        function pTruck(gx, gy, gz, sc, body) {
+            const wheel = '#15181e', wr = 0.15;
+            const axle = 0.62 * sc;
+            [[0.2, -0.04], [0.2, 0.52], [0.95, -0.04], [0.95, 0.52],
+             [1.28, -0.04], [1.28, 0.52]].forEach(o =>
+                pCyl(gx + o[0], gy + o[1], gz, wr, axle, wheel));
+            // trailer body, banded
+            drawPrism(gx + 0.68, gy - 0.14, gz + axle, 0.88, 0.76, 2.0 * sc, body);
+            drawPrism(gx + 0.68, gy - 0.14, gz + axle + 2.0 * sc, 0.88, 0.76, 0.18 * sc,
+                      adjustColor(body, 34));
+            drawPrism(gx + 0.66, gy - 0.16, gz + axle + 0.95 * sc, 0.92, 0.8, 0.2 * sc,
+                      adjustColor(body, -36));
+            // cab
+            drawPrism(gx - 0.02, gy - 0.08, gz + axle, 0.62, 0.66, 1.45 * sc,
+                      adjustColor(body, 16));
+            pDisc(gx + 0.18, gy + 0.58, gz + axle + 1.1 * sc, 0.16, 'rgba(165,225,255,0.85)', null);
+            // exhaust
+            pCyl(gx + 0.56, gy - 0.04, gz + axle, 0.05, 2.5 * sc, '#7a8494');
+        }
+
+        /* ── PLACEHOLDER STRUCTURES ──────────────────────────────────────────
+           Stand-ins until transparent art lands. Each is shaped so the building
+           is nameable from across the map: a saw mech, a furnace, a domed lab,
+           a refinery, a hauler, a lodge — and the specials as a charge, a silo
+           and a rocket. */
         const PLACEHOLDER = {
-            // Spaceport — landing pad, low hangar, beacon mast
+            // Spaceport — a rocket stood on its pad
             market: function (b, t) {
-                const h = 0.95 + t * 0.28;
-                pDisc(b.gx + 1, b.gy + 1.15, 0, 1.55, 'rgba(147,51,234,0.16)', 'rgba(167,110,250,0.55)');
-                pDisc(b.gx + 1, b.gy + 1.15, 0, 0.75, null, 'rgba(167,110,250,0.35)');
-                drawPrism(b.gx + 0.25, b.gy + 0.2, 0, 0.95, 0.85, h, b.color);
-                pCyl(b.gx + 1.55, b.gy + 0.55, 0, 0.16, h * 2.3, adjustColor(b.color, -10));
-                pGlow(b.gx + 1.55, b.gy + 0.55, h * 2.3 + 0.2, 0.55, '#c084fc', 0.85);
+                const h = 2.3 + t * 0.55;
+                pDisc(b.gx + 1, b.gy + 1.05, 0, 1.5, 'rgba(147,51,234,0.18)', 'rgba(180,130,255,0.6)');
+                pDisc(b.gx + 1, b.gy + 1.05, 0, 0.78, null, 'rgba(180,130,255,0.35)');
+                pCyl(b.gx + 1.72, b.gy + 0.42, 0, 0.07, h * 0.85, '#7a8494');   // gantry
+                drawPrism(b.gx + 1.62, b.gy + 0.32, h * 0.85, 0.24, 0.24, 0.1, '#8d9aa8');
+                [[-0.42, 0], [0.42, 0], [0, -0.42], [0, 0.42]].forEach(o =>
+                    pTri([b.gx + 1 + o[0], b.gy + 1.05 + o[1], 0],
+                         [b.gx + 1 + o[0] * 0.35, b.gy + 1.05 + o[1] * 0.35, 0],
+                         [b.gx + 1 + o[0] * 0.35, b.gy + 1.05 + o[1] * 0.35, 1.05],
+                         adjustColor(b.color, -12)));
+                pCyl(b.gx + 1, b.gy + 1.05, 0, 0.3, h, '#e2e8f0');
+                pCyl(b.gx + 1, b.gy + 1.05, h * 0.42, 0.315, h * 0.13, adjustColor(b.color, 14));
+                pCone(b.gx + 1, b.gy + 1.05, h, 0.3, 1.0, '#cbd5e1');
+                pGlow(b.gx + 1, b.gy + 1.05, 0.08, 0.85, '#b07dff', 0.5);
             },
 
-            // Lumber Mill — mill shed, saw blade, log pile
+            // Lumber Mill — a saw mech working the pile
             prodone: function (b, t) {
-                const h = 0.8 + t * 0.22;
-                drawPrism(b.gx + 0.1, b.gy + 0.15, 0, 1.4, 1.2, h, b.color);
-                pRoof(b.gx + 0.1, b.gy + 0.15, h, 1.4, 1.2, 0.55, adjustColor(b.color, -20));
-                pWheel(b.gx + 1.68, b.gy + 0.8, 0.62, 0.2, '#7c8a99');
+                const h = 1.0 + t * 0.26;
+                pDisc(b.gx + 1, b.gy + 1.1, 0, 1.35, 'rgba(60,40,20,0.35)', null);
+                drawPrism(b.gx + 0.06, b.gy + 0.1, 0, 1.0, 0.94, h, b.color);
+                pRoof(b.gx + 0.06, b.gy + 0.1, h, 1.0, 0.94, 0.75, adjustColor(b.color, -22));
+                pMech(b.gx + 1.42, b.gy + 1.1, 0, 1.5 + t * 0.09, '#c0392b', 'rgba(150,220,255,0.9)');
+                pWheel(b.gx + 1.76, b.gy + 1.4, 1.95, 0.26, '#96a3b1');
                 [[0, 0], [0.26, 0], [0.13, 0.3]].forEach(o =>
-                    pCyl(b.gx + 0.5 + o[0], b.gy + 1.8, o[1], 0.13, 0.22, '#7d5228'));
+                    pCyl(b.gx + 0.34 + o[0], b.gy + 1.66, o[1], 0.13, 0.28, '#7d5228'));
+                pCyl(b.gx + 0.28, b.gy + 0.04, 0, 0.07, 1.0, '#6b5136');
+                pDome(b.gx + 0.28, b.gy + 0.04, 1.0, 0.3, 0.8, '#2f6b4a');
             },
 
-            // Foundry — furnace block, twin stacks, ember light
+            // Foundry — furnace vessel, pipework, stack, molten light
             prodtwo: function (b, t) {
-                const h = 0.95 + t * 0.3;
-                drawPrism(b.gx + 0.1, b.gy + 0.1, 0, 1.6, 1.5, h, b.color);
-                pCyl(b.gx + 0.55, b.gy + 0.55, h, 0.22, 0.9 + t * 0.3, adjustColor(b.color, -35));
-                pCyl(b.gx + 1.25, b.gy + 0.9, h, 0.18, 0.7 + t * 0.25, adjustColor(b.color, -35));
-                pGlow(b.gx + 0.55, b.gy + 0.55, h + 1.0 + t * 0.3, 0.7, '#ff8c42', 0.8);
-                pGlow(b.gx + 1.0, b.gy + 1.7, 0.1, 0.9, '#ff6b2c', 0.45);
+                const h = 1.55 + t * 0.48;
+                drawPrism(b.gx + 0.04, b.gy + 0.04, 0, 1.9, 1.9, 0.22, '#2a2f38');
+                pCyl(b.gx + 1.0, b.gy + 0.98, 0.22, 0.52, h, adjustColor(b.color, -28));
+                pCyl(b.gx + 1.0, b.gy + 0.98, 0.22 + h * 0.2, 0.535, h * 0.42, '#ff6a1f');
+                pGlow(b.gx + 1.0, b.gy + 0.98, 0.22 + h * 0.4, 1.1, '#ff8c42', 0.7);
+                pCyl(b.gx + 1.0, b.gy + 0.98, 0.22 + h, 0.57, 0.3, adjustColor(b.color, 18));
+                pCyl(b.gx + 0.34, b.gy + 0.42, 0.22, 0.1, h * 0.9, '#5b636f');
+                pCyl(b.gx + 0.34, b.gy + 1.36, 0.22, 0.08, h * 0.62, '#5b636f');
+                drawPrism(b.gx + 0.28, b.gy + 1.52, 0.22, 0.46, 0.3, 0.7, '#3a4049');
+                pGlow(b.gx + 0.5, b.gy + 1.64, 0.6, 0.5, '#ff6a1f', 0.8);
+                pCyl(b.gx + 1.64, b.gy + 0.36, 0.22, 0.14, h + 0.9, '#474d57');
+                pGlow(b.gx + 1.64, b.gy + 0.36, 0.22 + h + 1.0, 0.6, '#ff8c42', 0.55);
             },
 
-            // Laboratory — observation dome on a plinth, antenna
+            // Laboratory — observation dome, ring walk, dish
             prodthree: function (b, t) {
-                const h = 0.72 + t * 0.2;
-                drawPrism(b.gx + 0.15, b.gy + 0.15, 0, 1.6, 1.6, h, adjustColor(b.color, -28));
-                pDome(b.gx + 0.95, b.gy + 0.95, h, 0.78, 1.1 + t * 0.2, b.color);
-                pCyl(b.gx + 1.75, b.gy + 0.35, 0, 0.1, h + 1.3, '#94a3b8');
-                pGlow(b.gx + 0.95, b.gy + 0.95, h + 0.6, 0.85, '#60a5fa', 0.4);
+                const h = 0.95 + t * 0.3;
+                drawPrism(b.gx + 0.1, b.gy + 0.1, 0, 1.75, 1.75, h, adjustColor(b.color, -34));
+                pDisc(b.gx + 0.97, b.gy + 0.97, h, 0.95, adjustColor(b.color, -14),
+                      'rgba(140,190,255,0.5)');
+                pDome(b.gx + 0.97, b.gy + 0.97, h, 0.72, 1.85 + t * 0.28, b.color);
+                pGlow(b.gx + 0.97, b.gy + 0.97, h + 0.9, 0.9, '#60a5fa', 0.45);
+                pCyl(b.gx + 1.74, b.gy + 0.26, 0, 0.07, h + 1.9, '#8d9aa8');
+                pWheel(b.gx + 1.74, b.gy + 0.26, h + 2.05, 0.24, '#aebbc9');
+                [[0.28, 1.56], [0.54, 1.62]].forEach(o =>
+                    pCyl(b.gx + o[0], b.gy + o[1], h, 0.07, 0.5, '#7c8794'));
             },
 
-            // Exploder — blast crater, squat reactor, spark
-            faucet: function (b, t) {
-                const h = 0.6 + t * 0.22;
-                pDisc(b.gx + 1, b.gy + 1.1, 0, 1.6, 'rgba(120,53,15,0.4)', 'rgba(245,158,11,0.4)');
-                pDisc(b.gx + 1, b.gy + 1.1, 0, 0.95, 'rgba(60,26,6,0.55)', null);
-                pCyl(b.gx + 1, b.gy + 1.1, 0, 0.62, h + 0.5, b.color);
-                pGlow(b.gx + 1, b.gy + 1.1, h + 0.8, 1.2, '#fbbf24', 0.75);
-            },
-
-            // Refinery — tank pair, catwalk, flare stack
+            // Refinery — tank pair, pipe bridge, flare
             prodfour: function (b, t) {
-                const h = 0.8 + t * 0.3;
-                pCyl(b.gx + 0.6, b.gy + 0.6, 0, 0.48, h, b.color);
-                pCyl(b.gx + 1.45, b.gy + 1.2, 0, 0.42, h * 0.78, adjustColor(b.color, -18));
-                drawPrism(b.gx + 0.35, b.gy + 1.55, 0, 1.1, 0.3, 0.25, adjustColor(b.color, -35));
-                pCyl(b.gx + 1.7, b.gy + 0.35, 0, 0.12, h + 0.7, '#7a8494');
-                pGlow(b.gx + 1.7, b.gy + 0.35, h + 0.95, 0.6, '#ff9f45', 0.9);
+                const h = 1.75 + t * 0.55;
+                drawPrism(b.gx + 0.04, b.gy + 0.04, 0, 1.9, 1.9, 0.18, '#2b2f36');
+                pCyl(b.gx + 0.58, b.gy + 0.6, 0.18, 0.46, h, b.color);
+                pCyl(b.gx + 0.58, b.gy + 0.6, 0.18 + h * 0.52, 0.475, 0.18, adjustColor(b.color, -30));
+                pCone(b.gx + 0.58, b.gy + 0.6, 0.18 + h, 0.46, 0.4, adjustColor(b.color, 20));
+                pCyl(b.gx + 1.42, b.gy + 1.28, 0.18, 0.4, h * 0.7, adjustColor(b.color, -16));
+                drawPrism(b.gx + 0.54, b.gy + 1.0, h * 0.6, 0.95, 0.14, 0.14, '#6c7683');
+                drawPrism(b.gx + 0.28, b.gy + 1.64, 0.18, 1.2, 0.26, 0.34, '#3c424b');
+                pCyl(b.gx + 1.7, b.gy + 0.3, 0.18, 0.1, h + 1.3, '#7a8494');
+                pCone(b.gx + 1.7, b.gy + 0.3, 0.18 + h + 1.3, 0.18, 0.7, '#ff9f45');
+                pGlow(b.gx + 1.7, b.gy + 0.3, 0.18 + h + 1.75, 0.7, '#ff9f45', 0.9);
             },
 
-            // Upcycling Center — long shed, intake hopper, conveyor
+            // Upcycling Center — the hauler backed up to the intake
             prodfive: function (b, t) {
-                const h = 0.78 + t * 0.22;
-                drawPrism(b.gx + 0.1, b.gy + 0.55, 0, 1.75, 1.2, h, b.color);
-                pRoof(b.gx + 0.1, b.gy + 0.55, h, 1.75, 1.2, 0.32, adjustColor(b.color, -22));
-                drawPrism(b.gx + 0.35, b.gy + 0.05, 0, 0.55, 0.45, h * 1.7, adjustColor(b.color, 22));
-                drawPrism(b.gx + 1.25, b.gy + 0.1, 0.15, 0.45, 0.4, h * 1.2, adjustColor(b.color, -35));
-                pGlow(b.gx + 0.62, b.gy + 0.28, h * 1.7 + 0.2, 0.5, '#4ade80', 0.6);
+                const h = 1.05 + t * 0.26;
+                drawPrism(b.gx + 0.04, b.gy + 0.04, 0, 1.9, 1.9, 0.16, '#262b33');
+                drawPrism(b.gx + 0.1, b.gy + 0.08, 0.16, 0.66, 1.6, h, adjustColor(b.color, -10));
+                pRoof(b.gx + 0.1, b.gy + 0.08, 0.16 + h, 0.66, 1.6, 0.5, adjustColor(b.color, -30));
+                drawPrism(b.gx + 0.2, b.gy + 0.6, 0.16 + h, 0.46, 0.55, 0.8, adjustColor(b.color, 26));
+                pGlow(b.gx + 0.43, b.gy + 0.88, 0.16 + h + 0.85, 0.5, '#4ade80', 0.5);
+                pTruck(b.gx + 0.55, b.gy + 0.62, 0.16, 0.92 + t * 0.05, '#8b5cf6');
             },
 
-            // Hunting Cabin — timber lodge, chimney, smoke
+            // Hunting Cabin — timber lodge, smoking chimney, drying rack
             prodsix: function (b, t) {
-                const h = 0.62 + t * 0.18;
-                drawPrism(b.gx + 0.35, b.gy + 0.4, 0, 1.2, 1.1, h, adjustColor(b.color, -12));
-                pRoof(b.gx + 0.3, b.gy + 0.35, h, 1.3, 1.2, 0.62, adjustColor(b.color, 25));
-                pCyl(b.gx + 1.42, b.gy + 0.6, h, 0.15, 0.55, '#5b4636');
-                pGlow(b.gx + 1.42, b.gy + 0.6, h + 0.85, 0.55, '#94a3b8', 0.3);
-                pDisc(b.gx + 0.55, b.gy + 1.75, 0, 0.3, 'rgba(13,148,136,0.3)', null);
+                const h = 0.9 + t * 0.24;
+                pDisc(b.gx + 1, b.gy + 1.05, 0, 1.3, 'rgba(20,60,55,0.3)', null);
+                drawPrism(b.gx + 0.36, b.gy + 0.4, 0, 1.14, 1.04, h, adjustColor(b.color, -14));
+                pRoof(b.gx + 0.3, b.gy + 0.34, h, 1.26, 1.16, 1.05, adjustColor(b.color, 26));
+                drawPrism(b.gx + 0.7, b.gy + 1.42, 0, 0.32, 0.06, h * 0.72, '#40332a');
+                pGlow(b.gx + 1.2, b.gy + 1.46, h * 0.55, 0.34, '#ffcf7a', 0.55);
+                pCyl(b.gx + 1.36, b.gy + 0.58, h, 0.13, 0.95, '#5b4636');
+                pGlow(b.gx + 1.36, b.gy + 0.58, h + 1.3, 0.55, '#aab6c4', 0.3);
+                pCyl(b.gx + 0.28, b.gy + 1.76, 0, 0.05, 0.7, '#6b5136');
+                pCyl(b.gx + 0.8, b.gy + 1.76, 0, 0.05, 0.7, '#6b5136');
+                drawPrism(b.gx + 0.28, b.gy + 1.74, 0.7, 0.52, 0.04, 0.06, '#6b5136');
             },
 
-            // Storage — silo bank, and the tank fills as the base does
-            storage: function (b, t) {
-                const h = 0.9 + t * 0.35;
-                pCyl(b.gx + 0.5, b.gy + 0.55, 0, 0.36, h, b.color);
-                pCyl(b.gx + 1.2, b.gy + 0.45, 0, 0.32, h * 0.82, adjustColor(b.color, 18));
-                pCyl(b.gx + 0.85, b.gy + 1.35, 0, 0.34, h * 0.68, adjustColor(b.color, -15));
-                drawPrism(b.gx + 1.45, b.gy + 1.25, 0, 0.5, 0.5, 0.35, adjustColor(b.color, 30));
+            // Exploder — a banded charge clamped to its blast pad
+            faucet: function (b, t) {
+                const h = 1.05 + t * 0.38;
+                pDisc(b.gx + 1, b.gy + 1.05, 0, 1.55, 'rgba(120,53,15,0.42)', 'rgba(245,158,11,0.45)');
+                pDisc(b.gx + 1, b.gy + 1.05, 0, 0.95, 'rgba(50,22,5,0.6)', null);
+                [[-0.62, 0], [0.62, 0], [0, -0.62], [0, 0.62]].forEach(o =>
+                    pCyl(b.gx + 1 + o[0], b.gy + 1.05 + o[1], 0, 0.07, 0.7, '#6b7280'));
+                pCyl(b.gx + 1, b.gy + 1.05, 0, 0.48, h, adjustColor(b.color, -22));
+                pCyl(b.gx + 1, b.gy + 1.05, h * 0.38, 0.5, h * 0.2, '#1c1917');   // hazard band
+                pDome(b.gx + 1, b.gy + 1.05, h, 0.48, 0.85, adjustColor(b.color, 18));
+                pCyl(b.gx + 1, b.gy + 1.05, h + 0.6, 0.05, 0.4, '#6b7280');
+                pGlow(b.gx + 1, b.gy + 1.05, h + 1.0, 1.2, '#fbbf24', 0.8);
+            },
 
-                /* The base this building belongs to is the one being drawn, so the
-                   fill band is real: how full that outpost's storage is right now. */
+            // Storage — silo and container, the silo filled to the real level
+            storage: function (b, t) {
+                const h = 2.0 + t * 0.55;
+                drawPrism(b.gx + 0.04, b.gy + 0.04, 0, 1.9, 1.9, 0.16, '#262a31');
+                drawPrism(b.gx + 0.98, b.gy + 1.06, 0.16, 0.85, 0.66, 0.85, adjustColor(b.color, 26));
+                drawPrism(b.gx + 0.98, b.gy + 1.06, 0.16 + 0.85, 0.85, 0.66, 0.1,
+                          adjustColor(b.color, -22));
+                pCyl(b.gx + 0.6, b.gy + 0.58, 0.16, 0.42, h, b.color);
+                pCone(b.gx + 0.6, b.gy + 0.58, 0.16 + h, 0.42, 0.7, adjustColor(b.color, 22));
+                pCyl(b.gx + 1.02, b.gy + 0.58, 0.16, 0.03, h, '#8d9aa8');   // ladder
+
                 const owner = b._owner;
                 if (owner && owner.max_gamecurrency) {
                     const pct = Math.max(0, Math.min(1,
                         (owner.live_currency || 0) / owner.max_gamecurrency));
                     if (pct > 0.02)
-                        pCyl(b.gx + 0.5, b.gy + 0.55, 0, 0.37, h * pct,
+                        pCyl(b.gx + 0.6, b.gy + 0.58, 0.16, 0.435, h * pct,
                              pct > 0.95 ? '#f0a62a' : '#64ffda');
                 }
             }
@@ -1256,7 +1466,11 @@
                 drawGlow(b.gx, b.gy, rarityColor(b.staked_template_ids[0]));
             }
 
-            const art = ART[b.buildingid];
+            /* The art is on a white studio background. Keying it works, but a
+               JPEG's edges are soft and the result is only convincing at size —
+               so the map stays on placeholders and the render is shown at full
+               size when you click the building. Flip this once the PNGs land. */
+            const art = SHOW_ART_ON_MAP && ART[b.buildingid];
             if (art) { drawSprite(b, art, t); drawLevelTag(b, t); return; }
 
             const ph = PLACEHOLDER[b.buildingid];
@@ -1337,6 +1551,10 @@
                 if (base.globalX + SECTOR_SIZE < viewMinX || base.globalX > viewMaxX ||
                     base.globalY + SECTOR_SIZE < viewMinY || base.globalY > viewMaxY) return;
 
+                if (base._podium) drawPodium(base);
+                ctx.save();
+                ctx.translate(0, -podiumLift(base));
+
                 // Ground Tile
                 const p1 = toScreen(base.globalX, base.globalY), p2 = toScreen(base.globalX + BASE_GRID, base.globalY);
                 const p3 = toScreen(base.globalX + BASE_GRID, base.globalY + BASE_GRID), p4 = toScreen(base.globalX, base.globalY + BASE_GRID);
@@ -1371,6 +1589,7 @@
                     ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
                     ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.closePath(); ctx.fill();
                     if (isMine) drawHomePin(base);
+                    ctx.restore();
                     return;
                 }
 
@@ -1388,13 +1607,45 @@
                 renderQ.sort((a,b) => (a.gx+a.gy) - (b.gx+b.gy));
                 if (camera.zoom >= LOD_FULL) renderQ.forEach(b => drawTieredStructure(b));
                 else renderQ.forEach(b => drawFlatStructure(b));
+
+                ctx.restore();
             });
 
             requestAnimationFrame(render);
         }
 
+        /* Each building owns a 2x2 plot at its B_MAP offset; a little slack
+           makes the small ones clickable without pixel-hunting. */
+        function buildingAtGrid(base, gp) {
+            const lx = gp.x - base.globalX, ly = gp.y - base.globalY;
+            const ids = (base.buildings || []).map(b => b.buildingid);
+            for (const id of ids) {
+                const m = B_MAP[id];
+                if (!m) continue;
+                if (lx >= m.x - 0.4 && lx <= m.x + 2.4 && ly >= m.y - 0.4 && ly <= m.y + 2.4)
+                    return id;
+            }
+            return null;
+        }
+
+        function inBase(b, gp) {
+            return gp.x >= b.globalX && gp.x <= b.globalX + BASE_GRID &&
+                   gp.y >= b.globalY && gp.y <= b.globalY + BASE_GRID;
+        }
+
+        /* A podium base is drawn lifted, so the pixel you click sits above its
+           real grid position — undo the lift before testing those three. */
+        function pickBase(sx, sy) {
+            for (const b of worldData) {
+                if (!b._podium) continue;
+                if (inBase(b, toGrid(sx, sy + podiumLift(b)))) return b;
+            }
+            const gp = toGrid(sx, sy);
+            return worldData.find(b => !b._podium && inBase(b, gp)) || null;
+        }
+
         function getBaseAtGrid(gp) {
-            return worldData.find(b => gp.x >= b.globalX && gp.x <= b.globalX + BASE_GRID && gp.y >= b.globalY && gp.y <= b.globalY + BASE_GRID);
+            return worldData.find(b => inBase(b, gp));
         }
 
         canvas.addEventListener('mousedown', e => {
@@ -1407,7 +1658,7 @@
             if (isDragging) {
                 camera.x = camStart.x + (p.x - dragStart.x); camera.y = camStart.y + (p.y - dragStart.y);
             } else {
-                hoveredBase = getBaseAtGrid(toGrid(p.x, p.y));
+                hoveredBase = pickBase(p.x, p.y);
                 canvas.style.cursor = hoveredBase ? 'pointer' : 'grab';
             }
         });
@@ -1417,9 +1668,13 @@
             isDragging = false;
             const p = localPos(e);
             if (Math.abs(p.x - dragStart.x) < 5 && Math.abs(p.y - dragStart.y) < 5) {
-                const clickedBase = getBaseAtGrid(toGrid(p.x, p.y));
-                if (clickedBase) openInspector(clickedBase);
-                else closeInspector();
+                const clickedBase = pickBase(p.x, p.y);
+                const g = toGrid(p.x, p.y + podiumLift(clickedBase));
+                if (clickedBase) {
+                    openInspector(clickedBase);
+                    const hit = buildingAtGrid(clickedBase, g);
+                    if (hit) revealBuilding(hit);
+                } else closeInspector();
             }
         });
 
@@ -1465,6 +1720,37 @@
         
         /* Production buildings show what they make; the three special ones show
            what they are for instead of a misleading zero. */
+        /* The keyed canvas if the page could read the pixels, the raw file if
+           not — on file:// the canvas is tainted and keying is skipped. */
+        window.toggleArt = function (id, btn) {
+            const box = document.getElementById('art-' + id);
+            if (!box) return;
+            if (box.firstChild) {
+                box.innerHTML = '';
+                btn.innerHTML = '\u25a3 VIEW RENDER';
+                return;
+            }
+            const a = ART[id];
+            const img = document.createElement('img');
+            img.className = 'art-img';
+            if (a && a.toDataURL) { img.src = a.toDataURL('image/png'); }
+            else { img.src = ART_DIR.split('/').map(encodeURIComponent).join('/') +
+                             encodeURIComponent(ART_FOUND[id]); img.classList.add('raw'); }
+            img.alt = (B_MAP[id] || {}).name || id;
+            box.appendChild(img);
+            btn.innerHTML = '\u25a2 HIDE RENDER';
+        };
+
+        /* Opening straight onto one building, for a click on the map. */
+        function revealBuilding(id) {
+            const card = document.querySelector('[data-bid="' + id + '"]');
+            if (!card) return;
+            card.classList.add('picked');
+            card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            const btn = card.querySelector('.art-toggle');
+            if (btn && !document.getElementById('art-' + id).firstChild) toggleArt(id, btn);
+        }
+
         function roleLine(b, baseData) {
             const r = B_ROLE[b.trueId] || { kind: 'prod' };
             const lvl = Number(b.level) || 0;
@@ -1549,7 +1835,9 @@
                 }
 
                 const card = document.createElement('div');
-                card.className = "bg-[#0b101e] border border-gray-800 rounded p-4 relative overflow-hidden";
+                card.className = "bg-[#0b101e] border border-gray-800 rounded p-4 relative overflow-hidden"
+                    + (ART_FOUND[b.trueId] ? ' has-art' : '');
+                card.setAttribute('data-bid', b.trueId);
                 card.innerHTML = `
                     <div class="absolute top-0 left-0 w-1 h-full" style="background-color: ${b.color}"></div>
                     <div class="flex justify-between items-start mb-3 pl-2">
@@ -1570,6 +1858,13 @@
                     <div class="grid grid-cols-3 gap-2 mt-3 pl-2">
                         ${slotsHTML}
                     </div>
+                    ${ART_FOUND[b.trueId] ? `
+                    <div class="art-wrap pl-2" data-art="${b.trueId}">
+                        <button class="art-toggle" onclick="toggleArt('${b.trueId}', this)">
+                            &#9635; VIEW RENDER
+                        </button>
+                        <div class="art-view" id="art-${b.trueId}"></div>
+                    </div>` : ''}
                 `;
                 listDiv.appendChild(card);
             });
@@ -1723,8 +2018,9 @@
             if (!worldData.length) return;
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
             worldData.forEach(b => {
-                [[b.globalX, b.globalY], [b.globalX + BASE_GRID, b.globalY],
-                 [b.globalX + BASE_GRID, b.globalY + BASE_GRID], [b.globalX, b.globalY + BASE_GRID]]
+                [[b.globalX - 1, b.globalY - 1], [b.globalX + BASE_GRID + 1, b.globalY - 1],
+                 [b.globalX + BASE_GRID + 1, b.globalY + BASE_GRID + 1],
+                 [b.globalX - 1, b.globalY + BASE_GRID + 1]]
                     .forEach(c => {
                         const i = toIso(c[0], c[1]);
                         minX = Math.min(minX, i.x); maxX = Math.max(maxX, i.x);
