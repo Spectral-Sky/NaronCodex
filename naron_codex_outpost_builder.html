@@ -181,6 +181,85 @@
     .nc-disclaimer b { color:#9fb0c4; }
     .nc-disclaimer a { color:var(--gold); text-decoration:none; }
     .nc-disclaimer a:hover { text-decoration:underline; }
+
+    /* ── DOCK ────────────────────────────────────────────────────────────── */
+    #nc-dock {
+        position:fixed; left:50%; transform:translateX(-50%); bottom:22px; z-index:58;
+        display:flex; align-items:stretch; gap:10px;
+        font-family:'Rajdhani','Segoe UI',sans-serif;
+    }
+    #home-btn {
+        display:flex; align-items:center; gap:11px; padding:11px 20px 11px 16px;
+        background:rgba(6,10,20,0.94); border:1px solid rgba(100,255,218,0.45);
+        border-left:3px solid #64ffda; border-radius:3px; cursor:pointer;
+        color:#e2e8f0; font-family:inherit; text-align:left;
+        box-shadow:0 6px 24px rgba(0,0,0,0.55); transition:border-color .15s, background .15s;
+    }
+    #home-btn:hover { background:rgba(12,22,38,0.98); border-color:#64ffda; }
+    #home-btn.inactive { border-left-color:#f0a62a; }
+    #home-btn.inactive .home-icon { color:#f0a62a; }
+    .home-icon { font-size:1.45rem; color:#64ffda; line-height:1; }
+    .home-text { display:flex; flex-direction:column; line-height:1.25; }
+    .home-text b { font-size:0.78rem; letter-spacing:2px; text-transform:uppercase; color:#fff; }
+    .home-text em {
+        font-style:normal; font-size:0.7rem; color:#8fa1b5; max-width:170px;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    #zoom-wrap {
+        display:flex; align-items:center; gap:8px; padding:0 14px;
+        background:rgba(6,10,20,0.94); border:1px solid rgba(255,255,255,0.12);
+        border-radius:3px; box-shadow:0 6px 24px rgba(0,0,0,0.55);
+    }
+    .zoom-step {
+        background:none; border:none; color:#8fa1b5; font-size:1.05rem; line-height:1;
+        cursor:pointer; padding:4px 3px; font-family:inherit;
+    }
+    .zoom-step:hover { color:#64ffda; }
+    #zoom-slider {
+        -webkit-appearance:none; appearance:none; width:150px; height:3px;
+        background:linear-gradient(90deg,#2a3a52,#64ffda); border-radius:2px; outline:none;
+    }
+    #zoom-slider::-webkit-slider-thumb {
+        -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+        background:#64ffda; cursor:grab; border:2px solid #04060d;
+        box-shadow:0 0 6px rgba(100,255,218,0.7);
+    }
+    #zoom-slider::-moz-range-thumb {
+        width:14px; height:14px; border-radius:50%; background:#64ffda;
+        cursor:grab; border:2px solid #04060d;
+    }
+    #zoom-label {
+        color:#8fa1b5; font-size:0.7rem; width:38px; text-align:right;
+        font-variant-numeric:tabular-nums;
+    }
+    @media (max-width: 720px) {
+        #zoom-slider { width:90px; }
+        .home-text em { max-width:100px; }
+    }
+
+    /* ── LEADERBOARD CUTS ────────────────────────────────────────────────── */
+    #lb-you {
+        padding:9px 14px; font-size:0.74rem; color:#64748b;
+        border-bottom:1px solid rgba(100,255,218,0.12);
+    }
+    #lb-you.in { color:#cbd5e1; cursor:pointer; }
+    #lb-you b { color:var(--gold); font-size:0.85rem; }
+    .lb-tier {
+        display:inline-block; margin-left:5px; padding:1px 7px; border-radius:2px;
+        background:rgba(100,255,218,0.14); color:#64ffda;
+        font-size:0.6rem; letter-spacing:1.4px; font-weight:700;
+    }
+    .lb-tier.out { background:rgba(148,163,184,0.12); color:#94a3b8; }
+    .lb-cut {
+        display:flex; align-items:center; gap:8px; padding:5px 14px;
+        color:var(--gold); font-size:0.58rem; letter-spacing:2.2px; font-weight:700;
+    }
+    .lb-cut::after {
+        content:''; flex:1; height:1px;
+        background:linear-gradient(90deg,rgba(232,160,32,0.55),rgba(232,160,32,0));
+    }
+    .lb-row.podium .lb-rank { color:var(--gold); font-weight:700; }
+    .lb-row.podium .lb-name { color:#fff; }
 </style>
 </head>
 <body>
@@ -224,6 +303,24 @@
     <!-- Canvas -->
     <canvas id="gameCanvas"></canvas>
 
+    <!-- NC_DOCK: the two controls you reach for constantly -->
+    <div id="nc-dock">
+        <button id="home-btn" onclick="goHome()" title="Return to your outpost (H)">
+            <span class="home-icon">&#9962;</span>
+            <span class="home-text">
+                <b>MY OUTPOST</b>
+                <em id="home-label">Connect wallet</em>
+            </span>
+        </button>
+        <div id="zoom-wrap">
+            <button class="zoom-step" onclick="setZoom(camera.zoom - 0.2)" title="Zoom out">&minus;</button>
+            <input id="zoom-slider" type="range" min="20" max="250" value="60"
+                   oninput="setZoom(this.value / 100)" aria-label="Map zoom">
+            <button class="zoom-step" onclick="setZoom(camera.zoom + 0.2)" title="Zoom in">&plus;</button>
+            <span id="zoom-label">60%</span>
+        </div>
+    </div>
+
     <!-- Global leaderboard drawer -->
     <div id="lb-drawer">
         <div class="lb-head">
@@ -231,10 +328,11 @@
             <button class="lb-x" onclick="toggleLeaderboard()">&times;</button>
         </div>
         <div class="lb-sorts">
-            <button class="lb-sort active" data-sort="score_building" onclick="setLbSort('score_building')">Building</button>
-            <button class="lb-sort" data-sort="gamecurrency_per_minute" onclick="setLbSort('gamecurrency_per_minute')">&#1071;/min</button>
+            <button class="lb-sort active" data-sort="gamecurrency_per_minute" onclick="setLbSort('gamecurrency_per_minute')">&#1071;/min</button>
+            <button class="lb-sort" data-sort="score_building" onclick="setLbSort('score_building')">Building</button>
             <button class="lb-sort" data-sort="score_mcp" onclick="setLbSort('score_mcp')">MCP</button>
         </div>
+        <div id="lb-you">&nbsp;</div>
         <div id="lb-list"></div>
     </div>
 
@@ -327,6 +425,7 @@
         };
 
         function syncWalletUi() {
+            setTimeout(syncHomeUi, 0);
             const w = getWallet();
             const btn = document.getElementById('nc-wallet-btn');
             if (btn) btn.textContent = w || 'CONNECT';
@@ -681,13 +780,20 @@
             });
         }
 
+        /* All nine probe at once and are published in one go, so the art pops
+           in as a finished base rather than a building at a time. */
         async function loadBuildingArt() {
-            for (const id of Object.keys(B_MAP)) {
+            const staged = {};
+            await Promise.all(Object.keys(B_MAP).map(async id => {
                 for (const file of artCandidates(id, B_MAP[id].name)) {
                     const img = await tryLoad(file);
-                    if (img) { ART[id] = img; ART_FOUND[id] = file; break; }
+                    if (img) { staged[id] = { img: img, file: file }; return; }
                 }
-            }
+            }));
+            Object.keys(staged).forEach(id => {
+                ART[id] = staged[id].img;
+                ART_FOUND[id] = staged[id].file;
+            });
             reportArt();
         }
 
@@ -1054,10 +1160,35 @@
             }
         });
 
+        const ZOOM_MIN = 0.2, ZOOM_MAX = 2.5;
+
+        /* Zooming used to scale about the world origin, which threw whatever you
+           were looking at off screen. Anchor it: the grid point under the anchor
+           (the cursor for the wheel, the viewport centre for the slider) stays
+           put. */
+        function setZoom(z, ax, ay) {
+            z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+            const cx = (ax == null) ? width / 2 : ax;
+            const cy = (ay == null) ? height / 2 : ay;
+            const g = toGrid(cx, cy);
+            camera.zoom = z;
+            const iso = toIso(g.x, g.y);
+            camera.x = cx - iso.x * z;
+            camera.y = cy - iso.y * z;
+            syncZoomUi();
+        }
+
+        function syncZoomUi() {
+            const sl = document.getElementById('zoom-slider');
+            const lb = document.getElementById('zoom-label');
+            if (sl) sl.value = String(Math.round(camera.zoom * 100));
+            if (lb) lb.textContent = Math.round(camera.zoom * 100) + '%';
+        }
+
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
-            const z = camera.zoom * (e.deltaY > 0 ? 0.9 : 1.1);
-            if (z > 0.2 && z < 2.5) camera.zoom = z;
+            const p = localPos(e);
+            setZoom(camera.zoom * (e.deltaY > 0 ? 0.9 : 1.1), p.x, p.y);
         }, {passive: false});
 
         const panel = document.getElementById('inspector-panel');
@@ -1199,7 +1330,7 @@
         /* ── LEADERBOARD ─────────────────────────────────────────────────────
            Every outpost on the map, ranked. Clicking one flies the camera to it
            rather than teleporting, so you keep your bearings on the grid. */
-        let _lbSort = 'score_building';
+        let _lbSort = 'gamecurrency_per_minute';   // the rate race is the headline
 
         window.toggleLeaderboard = function () {
             document.getElementById('lb-drawer').classList.toggle('open');
@@ -1212,25 +1343,61 @@
             renderLeaderboard();
         };
 
+        /* Production rate is the metric the game is actually played on, so it
+           leads. The cut lines are the only thing that makes a 334-long list
+           mean anything: they say where top 3, 10, 25, 50 and 100 end. */
+        const LB_TIERS = [3, 10, 25, 50, 100];
+
+        function lbValue(p) {
+            const v = Number(p[_lbSort]) || 0;
+            return _lbSort === 'gamecurrency_per_minute' ? fmtR(v) + ' \u042f' : v.toLocaleString();
+        }
+
         function renderLeaderboard() {
             const list = document.getElementById('lb-list');
             if (!list) return;
             const me = getWallet();
             const rows = worldData.slice().sort((a, b) =>
                 (Number(b[_lbSort]) || 0) - (Number(a[_lbSort]) || 0));
-            list.innerHTML = rows.map((p, i) => {
-                const v = Number(p[_lbSort]) || 0;
-                return '<div class="lb-row' + (p.wallet === me ? ' me' : '') +
+
+            let html = '';
+            rows.forEach((p, i) => {
+                const rank = i + 1;
+                html += '<div class="lb-row' + (p.wallet === me ? ' me' : '') +
+                    (rank <= 3 ? ' podium' : '') +
                     '" onclick="flyTo(\'' + p.wallet + '\')">' +
-                    '<span class="lb-rank">' + (i + 1) + '</span>' +
+                    '<span class="lb-rank">' + rank + '</span>' +
                     '<span class="lb-name" title="' + p.wallet + '">' +
                         (p.gamertag && p.gamertag.trim() ? p.gamertag : p.wallet) + '</span>' +
-                    '<span class="lb-val">' + v.toLocaleString() + '</span></div>';
-            }).join('');
+                    '<span class="lb-val">' + lbValue(p) + '</span></div>';
+
+                if (LB_TIERS.indexOf(rank) !== -1 && rank < rows.length)
+                    html += '<div class="lb-cut"><span>TOP ' + rank + '</span></div>';
+            });
+            list.innerHTML = html;
+
+            // where the viewer sits against those same cuts
+            const youEl = document.getElementById('lb-you');
+            if (youEl) {
+                const idx = rows.findIndex(p => p.wallet === me);
+                if (idx < 0) {
+                    youEl.innerHTML = '&nbsp;';
+                    youEl.className = '';
+                } else {
+                    const rank = idx + 1;
+                    const tier = LB_TIERS.find(t => t >= rank);
+                    youEl.innerHTML = 'You are <b>#' + rank + '</b> of ' + rows.length +
+                        (tier ? ' <span class="lb-tier">TOP ' + tier + '</span>'
+                              : ' <span class="lb-tier out">outside top 100</span>');
+                    youEl.className = tier ? 'in' : '';
+                    youEl.onclick = () => flyTo(me, false);
+                }
+            }
+            syncHomeUi();
         }
 
         let _pan = null;
-        window.flyTo = function (wallet) {
+        window.flyTo = function (wallet, openPanel) {
             const p = worldData.find(x => x.wallet === wallet);
             if (!p) return;
             const iso = toIso(p.globalX + (BASE_GRID / 2), p.globalY + (BASE_GRID / 2));
@@ -1240,8 +1407,33 @@
                 toY: (height / 2) - (iso.y * camera.zoom),
                 t0: performance.now(), ms: 650
             };
-            openInspector(p);
+            if (openPanel !== false) openInspector(p);
         };
+
+        /* Home is the one control you need after wandering 300 outposts out. */
+        window.goHome = function () {
+            const w = getWallet();
+            if (!w) { document.getElementById('nc-wallet-btn').click(); return; }
+            const me = worldData.find(x => x.wallet === w);
+            if (!me) { centerCameraOnUser(); return; }
+            if (camera.zoom < 0.55) setZoom(0.9);
+            flyTo(w, false);
+        };
+
+        function syncHomeUi() {
+            const btn = document.getElementById('home-btn');
+            if (!btn) return;
+            const w = getWallet();
+            const me = w && worldData.find(x => x.wallet === w);
+            const tag = me && me.gamertag && me.gamertag.trim() ? me.gamertag : w;
+            document.getElementById('home-label').textContent = w ? tag : 'Connect wallet';
+            btn.classList.toggle('inactive', !w);
+        }
+
+        window.addEventListener('keydown', e => {
+            if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+            if (e.key === 'h' || e.key === 'H') goHome();
+        });
 
         // eased camera interpolation, stepped from the existing render loop
         function stepPan() {
@@ -1301,7 +1493,7 @@
         }
 
         // Init
-        resize(); render(); updateLiveResources(); loadBuildingArt(); fetchAllPlayers();
+        resize(); render(); updateLiveResources(); syncZoomUi(); loadBuildingArt(); fetchAllPlayers();
 
     </script>
 </body>
