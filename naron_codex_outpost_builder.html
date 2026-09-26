@@ -702,8 +702,22 @@
         }
         window.addEventListener('resize', resize);
 
+        /* A sector is SECTOR_SIZE grid units, and iso maps that to half its
+           width horizontally. Framing an N x N block is therefore a straight
+           ratio — this is what stops the default view being an 18-by-3 band. */
+        const VIEW_BLOCK = 10;
+
+        function blockZoom(n) {
+            n = n || VIEW_BLOCK;
+            const isoW = n * SECTOR_SIZE * TILE_W;       // a block's iso width
+            const isoH = n * SECTOR_SIZE * TILE_H;
+            return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX,
+                Math.min(width / isoW, height / isoH) * 1.9));
+        }
+
         function centerCameraOnUser() {
             const me = worldData.find(p => p.wallet === window.loggedInWallet);
+            camera.zoom = blockZoom();
             if (me) {
                 const baseIso = toIso(me.globalX + (BASE_GRID/2), me.globalY + (BASE_GRID/2));
                 camera.x = (width / 2) - (baseIso.x * camera.zoom);
@@ -711,6 +725,7 @@
             } else {
                 camera.x = width / 2; camera.y = height / 2;
             }
+            syncZoomUi();
         }
 
         function toIso(gx, gy, z = 0) {
@@ -792,14 +807,20 @@
         const ART = {};          // buildingid -> HTMLImageElement, once loaded
         const ART_FOUND = {};    // buildingid -> the filename that answered
 
+        /* The fallback when a file is not in the manifest. Covers the display
+           name, its first word, the contract id, and an "A" variant suffix,
+           since the art is being drawn as Lumber A / FoundryA. */
         function artCandidates(id, name) {
             const lower = name.toLowerCase();
+            const stems = [name, name.split(' ')[0], lower.replace(/[^a-z0-9]+/g, '-'),
+                           lower.replace(/[^a-z0-9]+/g, ''), id];
             const out = [];
-            [name, lower.replace(/[^a-z0-9]+/g, '-'), lower.replace(/[^a-z0-9]+/g, '_'),
-             lower.replace(/[^a-z0-9]+/g, ''), id].forEach(n => {
-                ['png', 'webp'].forEach(x => {
-                    const f = n + '.' + x;
-                    if (out.indexOf(f) === -1) out.push(f);
+            stems.forEach(stem => {
+                ['', 'A', ' A'].forEach(sfx => {
+                    ['png', 'jpg', 'webp', 'jpeg'].forEach(ext => {
+                        const f = stem + sfx + '.' + ext;
+                        if (out.indexOf(f) === -1) out.push(f);
+                    });
                 });
             });
             return out;
@@ -816,16 +837,40 @@
 
         /* All nine probe at once and are published in one go, so the art pops
            in as a finished base rather than a building at a time. */
+        /* NC OB/manifest.json is the authoritative list, so a file can be named
+           anything and is found in one request. Anything it does not name still
+           falls back to guessing, so dropping a sensibly-named file in still
+           works without editing the manifest. */
+        async function readManifest() {
+            try {
+                const r = await fetch(ART_DIR + 'manifest.json', { cache: 'no-cache' });
+                if (!r.ok) return {};
+                const j = await r.json();
+                const out = {};
+                Object.keys(j).forEach(k => {
+                    if (k.charAt(0) !== '_' && B_MAP[k] && typeof j[k] === 'string') out[k] = j[k];
+                });
+                return out;
+            } catch (e) { return {}; }
+        }
+
         async function loadBuildingArt() {
             const staged = {};
+            const manifest = await readManifest();
             await Promise.all(Object.keys(B_MAP).map(async id => {
+                if (manifest[id]) {
+                    const img = await tryLoad(manifest[id]);
+                    if (img) { staged[id] = { img: img, file: manifest[id] }; return; }
+                    console.warn('[outpost art] manifest names ' + manifest[id] + ' for ' + id +
+                                 ' but it did not load');
+                }
                 for (const file of artCandidates(id, B_MAP[id].name)) {
                     const img = await tryLoad(file);
                     if (img) { staged[id] = { img: img, file: file }; return; }
                 }
             }));
             Object.keys(staged).forEach(id => {
-                ART[id] = staged[id].img;
+                ART[id] = keyOutBackground(staged[id].img);
                 ART_FOUND[id] = staged[id].file;
             });
             reportArt();
@@ -853,13 +898,97 @@
                         missing.length ? '| missing: ' + missing.join(', ') : '');
         }
 
+        /* The art is rendered on a white studio background and saved as JPEG,
+           which carries no alpha — drawn straight, every building would sit in a
+           white box. Flood the background out from the borders instead of
+           keying every bright pixel, so white *inside* the art (a lit furnace
+           window, a highlight) survives. The result is cached as a canvas at a
+           sane size, since the source files are 2,048px and megabytes each.
+
+           Reading pixels needs a same-origin image; from file:// the canvas is
+           tainted and this returns the untouched image rather than throwing. */
+        const ART_WORK_W = 560;
+
+        function keyOutBackground(img) {
+            const sc = Math.min(1, ART_WORK_W / img.width);
+            const w = Math.max(1, Math.round(img.width * sc));
+            const h = Math.max(1, Math.round(img.height * sc));
+            const cv = document.createElement('canvas');
+            cv.width = w; cv.height = h;
+            const c = cv.getContext('2d', { willReadFrequently: true });
+            c.drawImage(img, 0, 0, w, h);
+
+            let d;
+            try { d = c.getImageData(0, 0, w, h); }
+            catch (e) { console.warn('[outpost art] cannot key background here:', e.message); return img; }
+
+            const px = d.data, n = w * h;
+            const bright = i => {
+                const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2];
+                const mn = Math.min(r, g, b), mx = Math.max(r, g, b);
+                // the soft drop shadow under the render is light grey, not white
+                return mn > 176 && (mx - mn) < 30;
+            };
+
+            const stack = [];
+            for (let x = 0; x < w; x++) { stack.push(x); stack.push((h - 1) * w + x); }
+            for (let y = 0; y < h; y++) { stack.push(y * w); stack.push(y * w + w - 1); }
+
+            const gone = new Uint8Array(n);
+            while (stack.length) {
+                const i = stack.pop();
+                if (i < 0 || i >= n || gone[i] || !bright(i)) continue;
+                gone[i] = 1;
+                px[i * 4 + 3] = 0;
+                const x = i % w;
+                if (x > 0) stack.push(i - 1);
+                if (x < w - 1) stack.push(i + 1);
+                if (i >= w) stack.push(i - w);
+                if (i < n - w) stack.push(i + w);
+            }
+
+            /* JPEG edges blur into the background, leaving a white fringe. Fade
+               any bright pixel that touches a removed one. */
+            for (let y = 1; y < h - 1; y++) {
+                for (let x = 1; x < w - 1; x++) {
+                    const i = y * w + x;
+                    if (gone[i] || px[i * 4 + 3] === 0) continue;
+                    if (!(gone[i - 1] || gone[i + 1] || gone[i - w] || gone[i + w])) continue;
+                    const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2];
+                    const lum = (r + g + b) / 3;
+                    if (lum > 170) px[i * 4 + 3] = Math.max(0, Math.round((240 - lum) * 3.6));
+                }
+            }
+            c.putImageData(d, 0, 0);
+
+            // crop to what is actually drawn, so the sprite anchors on its own base
+            let minX = w, maxX = -1, minY = h, maxY = -1;
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    if (px[(y * w + x) * 4 + 3] > 8) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+            }
+            if (maxX < 0) return cv;
+            const cw = maxX - minX + 1, ch = maxY - minY + 1;
+            if (cw === w && ch === h) return cv;
+            const out = document.createElement('canvas');
+            out.width = cw; out.height = ch;
+            out.getContext('2d').drawImage(cv, minX, minY, cw, ch, 0, 0, cw, ch);
+            return out;
+        }
+
         /* A sprite is planted on the tile: bottom edge just past the footprint's
            centre, so it overlaps the ground the way the prisms did. Tier nudges
            the size a little, which is all the tiering the art needs for now. */
-        const SPRITE_TILES = 2.35;
+        const SPRITE_TILES = 1.95;
         function drawSprite(b, img, t) {
             const c = toScreen(b.gx + 1, b.gy + 1, 0);
-            const w = SPRITE_TILES * (0.86 + t * 0.07) * TILE_W * camera.zoom;
+            const w = SPRITE_TILES * (0.88 + t * 0.055) * TILE_W * camera.zoom;
             const h = w * (img.height / img.width);
             ctx.drawImage(img, c.x - w / 2, c.y - h + (TILE_H / 2) * camera.zoom, w, h);
         }
@@ -1131,7 +1260,17 @@
             if (art) { drawSprite(b, art, t); drawLevelTag(b, t); return; }
 
             const ph = PLACEHOLDER[b.buildingid];
-            if (ph) { ph(b, t); drawLevelTag(b, t); return; }
+            if (ph) {
+                /* Tier used to be a slightly taller box. Now it lightens the
+                   structure and adds real hardware — a skirt, corner pylons, a
+                   gold crown — so LOW / MED / HIGH / TOP are obvious across the
+                   map without reading the level tag. */
+                tierBase(b, t);     // apron and pylons sit under the structure
+                ph(Object.assign({}, b, { color: adjustColor(b.color, (t - 2) * 13) }), t);
+                tierCrown(b, t);    // only the crown belongs on top
+                drawLevelTag(b, t);
+                return;
+            }
 
             // Draw geometry based on tier
             if (t === 1) { // Low
@@ -1152,10 +1291,34 @@
             drawLevelTag(b, t);
         }
 
+        /* Shared across all nine, so a tier looks like a tier whichever
+           building it is. */
+        function tierBase(b, t) {
+            if (t >= 2)   // poured apron, a plinth the structure stands on
+                drawPrism(b.gx - 0.08, b.gy - 0.08, 0, 2.05, 2.05, 0.14,
+                          adjustColor(b.color, -62));
+
+            if (t >= 3)   // corner pylons, behind and beside the structure
+                [[0, 0], [1.97, 0], [0, 1.97], [1.97, 1.97]].forEach(o =>
+                    pCyl(b.gx - 0.08 + o[0], b.gy - 0.08 + o[1], 0.14, 0.07, 0.7,
+                         adjustColor(b.color, 45)));
+        }
+
+        function tierCrown(b, t) {
+            if (t < 4) return;   // the crown only a maxed building wears
+            const top = 1.1 + t * 0.35;
+            pCyl(b.gx + 1, b.gy + 1, top, 0.08, 0.45, '#e8a020');
+            pDisc(b.gx + 1, b.gy + 1, top + 0.45, 0.38,
+                  'rgba(232,160,32,0.16)', 'rgba(232,160,32,0.9)');
+            pGlow(b.gx + 1, b.gy + 1, top + 0.5, 0.58, '#e8a020', 0.5);
+        }
+
+        const TIER_INK = ['#9aa7b5', '#64ffda', '#8ab4ff', '#e8a020'];
+
         function drawLevelTag(b, t) {
             const lblPos = toScreen(b.gx + 1, b.gy + 1, (t * 0.5 + 1) * (TILE_H / 2) + 10);
             ctx.font = 'bold 9px "Inter"';
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = TIER_INK[t - 1] || '#fff';
             ctx.textAlign = 'center';
             ctx.fillText('Lv.' + b.level, lblPos.x, lblPos.y);
             ctx.textAlign = 'left';
@@ -1165,7 +1328,7 @@
             ctx.clearRect(0, 0, width, height);
             
             // Base bounds culling
-            const pad = 10;
+            const pad = SECTOR_SIZE * 2;   // a base is 9 units wide; 10 clipped its edge
             const tl = toGrid(0, 0), br = toGrid(width, height);
             const viewMinX = Math.min(tl.x, br.x) - pad, viewMaxX = Math.max(tl.x, br.x) + pad;
             const viewMinY = Math.min(tl.y, br.y) - pad, viewMaxY = Math.max(tl.y, br.y) + pad;
@@ -1584,7 +1747,7 @@
             if (!w) { document.getElementById('nc-wallet-btn').click(); return; }
             const me = worldData.find(x => x.wallet === w);
             if (!me) { centerCameraOnUser(); return; }
-            if (camera.zoom < 0.55) setZoom(0.9);
+            if (camera.zoom < blockZoom() * 0.9) setZoom(blockZoom());
             flyTo(w, false);
         };
 
