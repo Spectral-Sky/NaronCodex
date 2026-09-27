@@ -1,5 +1,5 @@
 {
   "_comment": "Maps each building to its art file. Filenames are free-form: put whatever you like here and the map picks it up. Buildings not listed fall back to name-guessing, then to the drawn placeholder.",
-  "prodone": "Lumber A.jpg",
+  "prodone": "LM1.png",
   "prodtwo": "FoundryA.jpg"
 }

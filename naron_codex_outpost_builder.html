@@ -1015,6 +1015,11 @@
             catch (e) { console.warn('[outpost art] cannot key background here:', e.message); return img; }
 
             const px = d.data, n = w * h;
+
+            /* A PNG that already carries transparency needs no keying — and
+               flooding it would eat pale parts of the art. Four clear corners
+               is the tell. */
+            const preCut = [0, w - 1, (h - 1) * w, n - 1].every(i => px[i * 4 + 3] < 10);
             const bright = i => {
                 const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2];
                 const mn = Math.min(r, g, b), mx = Math.max(r, g, b);
@@ -1022,6 +1027,7 @@
                 return mn > 176 && (mx - mn) < 30;
             };
 
+            if (!preCut) {
             const stack = [];
             for (let x = 0; x < w; x++) { stack.push(x); stack.push((h - 1) * w + x); }
             for (let y = 0; y < h; y++) { stack.push(y * w); stack.push(y * w + w - 1); }
@@ -1052,6 +1058,8 @@
                 }
             }
             c.putImageData(d, 0, 0);
+            }
+            cv._preCut = preCut;
 
             // crop to what is actually drawn, so the sprite anchors on its own base
             let minX = w, maxX = -1, minY = h, maxY = -1;
@@ -1071,6 +1079,7 @@
             const out = document.createElement('canvas');
             out.width = cw; out.height = ch;
             out.getContext('2d').drawImage(cv, minX, minY, cw, ch, 0, 0, cw, ch);
+            out._preCut = preCut;
             return out;
         }
 
@@ -1466,11 +1475,11 @@
                 drawGlow(b.gx, b.gy, rarityColor(b.staked_template_ids[0]));
             }
 
-            /* The art is on a white studio background. Keying it works, but a
-               JPEG's edges are soft and the result is only convincing at size —
-               so the map stays on placeholders and the render is shown at full
-               size when you click the building. Flip this once the PNGs land. */
-            const art = SHOW_ART_ON_MAP && ART[b.buildingid];
+            /* Art that arrived with its own transparency goes straight on the
+               map. JPEG renders on a studio background only convince at full
+               size, so those stay click-to-view until a PNG replaces them. */
+            const art = ART[b.buildingid] &&
+                        (SHOW_ART_ON_MAP || ART[b.buildingid]._preCut) && ART[b.buildingid];
             if (art) { drawSprite(b, art, t); drawLevelTag(b, t); return; }
 
             const ph = PLACEHOLDER[b.buildingid];
