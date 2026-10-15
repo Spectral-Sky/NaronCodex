@@ -242,24 +242,37 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
    api.waxsweden.org only from 26 Aug, against a true first transfer in Mar 2026.
    history.waxsweden.org carries the full range, so it is tried first and every
    pull is checked against the node's own tracked total before it is drawn. */
-const HISTORY = ['https://history.waxsweden.org', 'https://wax.eosusa.io', 'https://api.waxsweden.org'];
+/* Nodes checked 15 Oct 2026: eosdac carries shop.ale back to 27 Feb (3,147 transfers);
+   detroitledger starts 26 Aug and eosusa has gaps, so both would understate. waxsweden's
+   history node is full too but was refusing connections that day. Nodes differ in page
+   size as well: eosdac allows 100 rows a request, not 1,000, and says so in its error,
+   so the size is learned per node rather than assumed. */
+const HISTORY = ['https://wax-history.eosdac.io', 'https://history.waxsweden.org',
+                 'https://wax.eosusa.io', 'https://api.waxsweden.org'];
 const SHOP = 'shop.ale', COLLECT = 'collect.ale';
 const POOLS = 'pools.ale', CPU = 'cpu.ale', RAM = 'ram.ale';
 const LEGS = [SHOP, COLLECT, POOLS, CPU, RAM];
+const PAGE = {};            // node -> rows per request it accepts
+const DEAD = new Set();     // nodes that refused a connection; skipped for this visit
 
 let _ep = null;
 
-// A page that times out must not end the walk — dropping one page silently
-// truncates the history and understates every total, so each page is retried
-// on the same node before the next one is tried at all.
+// path carries {LIMIT}; the result says which page size it was read at, so the caller
+// knows a short page means the end. A page that times out must not end the walk —
+// dropping one silently truncates the history — so each is retried before moving on.
 async function hGet(path) {
-    const eps = _ep ? [_ep].concat(HISTORY.filter(e => e !== _ep)) : HISTORY;
+    const eps = (_ep ? [_ep].concat(HISTORY.filter(e => e !== _ep)) : HISTORY).filter(e => !DEAD.has(e));
     for (const ep of eps) {
+        let refused = 0;
         for (let attempt = 0; attempt < 3; attempt++) {
+            const lim = PAGE[ep] || 1000;
             try {
-                const r = await fetch(ep + path, { signal: AbortSignal.timeout(25000) });
-                if (r.ok) { _ep = ep; return await r.json(); }
-            } catch (_) { /* retry */ }
+                const r = await fetch(ep + path.replace('{LIMIT}', lim), { signal: AbortSignal.timeout(20000) });
+                if (r.ok) { _ep = ep; const d = await r.json(); d._limit = lim; return d; }
+                const m = /maximum:\s*(\d+)/.exec(await r.text());
+                if (m) { PAGE[ep] = Number(m[1]); attempt--; continue; }   // retry at its size
+            } catch (_) { refused++; }
+            if (refused >= 2) { DEAD.add(ep); break; }
             await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
         }
     }
@@ -271,14 +284,14 @@ const Q = encodeURIComponent('eosio.token:transfer');
 async function transfersOf(account) {
     const out = [];
     let before = '', truncated = false;
-    for (let page = 0; page < 40; page++) {
+    for (let page = 0; page < 400; page++) {       // 100-row nodes need ~40 pages for collect.ale
         const d = await hGet('/v2/history/get_actions?account=' + account + '&filter=' + Q +
-            '&limit=1000&sort=desc' + (before ? '&before=' + encodeURIComponent(before) : ''));
+            '&limit={LIMIT}&sort=desc' + (before ? '&before=' + encodeURIComponent(before) : ''));
         if (!d) { truncated = true; break; }           // a lost page, not the end of history
         const acts = d.actions || [];
         if (!acts.length) break;
         for (const a of acts) out.push(Object.assign({ ms: Date.parse(a.timestamp + 'Z') }, a.act.data));
-        if (acts.length < 1000) break;
+        if (acts.length < d._limit) break;
         before = acts[acts.length - 1].timestamp;   // inclusive, so pages overlap by one
     }
     // that overlap means the last row of a page repeats as the first of the next

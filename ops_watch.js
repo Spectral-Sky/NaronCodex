@@ -17,8 +17,12 @@
     try { who = localStorage.getItem('naron_wallet') || ''; } catch (e) {}
     if (who !== OWNER) return;
 
-    var NODES = ['https://history.waxsweden.org', 'https://hyperion.wax.detroitledger.tech',
-                 'https://wax.eosusa.io'];
+    // eosdac and detroitledger accept 100 rows a request, waxsweden and eosusa 1,000; the
+    // size is learned from the node's own error. A node that refuses a connection is
+    // skipped for the rest of the visit instead of being retried for every hour.
+    var NODES = ['https://wax-history.eosdac.io', 'https://history.waxsweden.org',
+                 'https://hyperion.wax.detroitledger.tech', 'https://wax.eosusa.io'];
+    var PAGE = {}, DEAD = {};
     var FILTER = 'dungeons.ale:playdungeon,arena.ale:playarena,quests.ale:finishquest';
     var HUMAN_GAP_S = 15;          // fastest a person manages on a phone
     var SESSION_BREAK_S = 300;     // a gap this long ends a session
@@ -37,23 +41,33 @@
     // all fights and quests in [a, b), complete or throws
     async function hourActs(a, b) {
         for (var n = 0; n < NODES.length; n++) {
-            for (var attempt = 0; attempt < 2; attempt++) {
+            var node = NODES[n];
+            if (DEAD[node]) continue;
+            var refused = 0;
+            for (var attempt = 0; attempt < 3; attempt++) {
                 try {
                     var out = [], seen = {}, total = null;
-                    for (var p = 0; p < 10; p++) {
-                        var r = await fetch(NODES[n] + '/v2/history/get_actions?filter=' + FILTER +
-                            '&after=' + iso(a) + '&before=' + iso(b) + '&limit=1000&sort=asc&skip=' + (p * 1000) +
-                            (p ? '' : '&track=true'), { signal: AbortSignal.timeout(25000) });
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                    for (var p = 0; p < 100; p++) {
+                        var lim = PAGE[node] || 1000;
+                        var r = await fetch(node + '/v2/history/get_actions?filter=' + FILTER +
+                            '&after=' + iso(a) + '&before=' + iso(b) + '&limit=' + lim + '&sort=asc&skip=' + (p * lim) +
+                            (p ? '' : '&track=true'), { signal: AbortSignal.timeout(20000) });
+                        if (!r.ok) {
+                            var m = /maximum:\s*(\d+)/.exec(await r.text());
+                            if (m && !PAGE[node]) { PAGE[node] = Number(m[1]); p = -1; out = []; seen = {}; continue; }
+                            throw new Error('HTTP ' + r.status);
+                        }
                         var j = await r.json();
                         if (!p) total = j.total ? Number(j.total.value) : null;
                         (j.actions || []).forEach(function (x) {
                             if (!seen[x.global_sequence]) { seen[x.global_sequence] = 1; out.push(x); }
                         });
-                        if ((j.actions || []).length < 1000 || out.length >= total) break;
+                        if ((j.actions || []).length < lim || out.length >= total) break;
                     }
                     if (total !== null && out.length >= total) return out;
-                } catch (e) { /* retry, then next node */ }
+                } catch (e) {
+                    if (e.name === 'TypeError' && ++refused >= 2) { DEAD[node] = 1; break; }   // connection refused
+                }
                 await sleep(500 * (attempt + 1));
             }
         }
