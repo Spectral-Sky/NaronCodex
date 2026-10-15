@@ -49,6 +49,11 @@
             --theme-dark: #120d05;
             --theme-hover: #261b0a;
             --theme-border: 1px solid #33240d;
+            /* readable text on the navy ground: headings, secondary text, labels */
+            --tx-head: #ffbf4d;
+            --tx-dim: #b9c3d2;
+            --tx-label: #ffe6a6;
+            --tx-faint: #8d97a8;
         }
 
         body {
@@ -107,7 +112,7 @@
         .wallet-btn { background:#111; color:var(--theme-color); border:1px dashed var(--theme-color); padding:6px 12px; font-family:'Courier New',monospace; font-size:0.74em; font-weight:bold; letter-spacing:1px; white-space:nowrap; cursor:pointer; transition:all 0.2s; border-radius:3px; }
         .wallet-btn:hover { background:var(--theme-hover); border-color:var(--theme-color); }
         .wallet-btn.logged-in { background:rgba(232,160,32,0.12); color:var(--theme-color); border:1px solid var(--theme-color); }
-        .tip-btn-sm { background:transparent; border:1px solid rgba(232,160,32,0.25); color:#a07840; font-family:'Courier New',monospace; font-size:0.7em; letter-spacing:1px; padding:5px 10px; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+        .tip-btn-sm { background:transparent; border:1px solid rgba(232,160,32,0.4); color:var(--tx-label); font-family:'Courier New',monospace; font-size:0.7em; letter-spacing:1px; padding:5px 10px; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
         .tip-btn-sm:hover { color:#c09060; border-color:rgba(232,160,32,0.5); }
 
         /* --- UI BAR --- */
@@ -119,7 +124,7 @@
 
         /* --- TABS --- */
         .tab-bar { display: flex; gap: 0; padding: 0 30px; background: rgba(5,5,16,0.97); border-bottom: 1px solid rgba(232,160,32,0.2); position: sticky; top: 138px; z-index: 4000; }
-        .tab-btn { background: transparent; color: #6a80a0; border: none; border-bottom: 2px solid transparent; padding: 12px 24px; font-family: 'Segoe UI', system-ui, Arial, sans-serif; font-size: 1em; font-weight:bold; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; white-space: nowrap; }
+        .tab-btn { background: transparent; color: #a9bad3; border: none; border-bottom: 2px solid transparent; padding: 12px 24px; font-family: 'Segoe UI', system-ui, Arial, sans-serif; font-size: 1em; font-weight:bold; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; white-space: nowrap; }
         .tab-sep { align-self:center; color:rgba(232,160,32,0.28); font-family:'Segoe UI',system-ui,Arial,sans-serif;
             font-weight:bold; font-size:0.95em; letter-spacing:-1px; user-select:none; pointer-events:none;
             transform:skewX(-18deg); padding:0 2px; }
@@ -366,6 +371,7 @@
         html.day .tab-bar { background:rgba(232,240,255,0.97); border-bottom-color:rgba(0,60,140,0.2); }
         html.day .tab-sep { color:rgba(0,60,140,0.3); }
         html.day .tab-btn { color:#5070a0; }
+        html.day { --tx-head:#8a5c00; --tx-dim:#3b4866; --tx-label:#6b4a00; --tx-faint:#5a6680; }
         html.day .tab-btn.active { color:#182038; border-bottom-color:#9a6800; }
         html.day .waffle { background:var(--theme-dark); }
         html.day .live-header { background-color:var(--theme-dark) !important; color:#9a6800 !important; border-color:#9a6800 !important; }
@@ -683,8 +689,8 @@
 
     <div id="tab-stats" class="tab-content active">
         <div style="padding:30px 40px;">
-            <div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.5);margin-bottom:20px;">◈ USAGE STATISTICS</div>
-            <div id="stats-loading" style="color:#666;font-size:0.7em;letter-spacing:2px;display:none;">LOADING DATA…</div>
+            <div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin-bottom:20px;">◈ USAGE STATISTICS</div>
+            <div id="stats-loading" style="color:var(--tx-dim);font-size:0.7em;letter-spacing:2px;display:none;">LOADING DATA…</div>
             <div id="stats-trends" style="margin-bottom:32px;"></div>
             <script src="ale_insights.js"></script>
             <div id="stats-insights" style="margin-bottom:32px;"></div>
@@ -2032,13 +2038,13 @@ function renderStatsLogin() {
         '<div id="st-kp-display" style="background:#030608;border:1px solid rgba(232,160,32,0.2);padding:6px 10px;text-align:center;letter-spacing:8px;color:#e8a020;font-size:1.05em;min-height:30px;margin-bottom:8px;border-radius:2px;">_</div>' +
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:4px;">' +
         [1,2,3,4,5,6,7,8,9].map(function(n){
-            return '<button style="background:rgba(12,8,3,0.9);border:1px solid rgba(232,160,32,0.15);color:#c0b090;padding:7px 4px;cursor:pointer;border-radius:2px;font-family:inherit;font-size:0.82em;" onclick="statsKp(\''+n+'\')">'+n+'</button>';
+            return '<button style="background:rgba(12,8,3,0.9);border:1px solid rgba(232,160,32,0.15);color:var(--tx-label);padding:7px 4px;cursor:pointer;border-radius:2px;font-family:inherit;font-size:0.82em;" onclick="statsKp(\''+n+'\')">'+n+'</button>';
         }).join('') +
         '</div>' +
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">' +
-        '<button style="background:rgba(12,8,3,0.9);border:1px solid rgba(232,160,32,0.15);color:#c0b090;padding:7px 4px;cursor:pointer;border-radius:2px;font-family:inherit;font-size:0.82em;" onclick="statsKpClear()">CLR</button>' +
-        '<button style="background:rgba(12,8,3,0.9);border:1px solid rgba(232,160,32,0.15);color:#c0b090;padding:7px 4px;cursor:pointer;border-radius:2px;font-family:inherit;font-size:0.82em;" onclick="statsKp(\'0\')">0</button>' +
-        '<button style="background:rgba(12,8,3,0.9);border:1px solid rgba(232,160,32,0.15);color:#c0b090;padding:7px 4px;cursor:pointer;border-radius:2px;font-family:inherit;font-size:0.82em;" onclick="statsKpEnter()">OK</button>' +
+        '<button style="background:rgba(12,8,3,0.9);border:1px solid rgba(232,160,32,0.15);color:var(--tx-label);padding:7px 4px;cursor:pointer;border-radius:2px;font-family:inherit;font-size:0.82em;" onclick="statsKpClear()">CLR</button>' +
+        '<button style="background:rgba(12,8,3,0.9);border:1px solid rgba(232,160,32,0.15);color:var(--tx-label);padding:7px 4px;cursor:pointer;border-radius:2px;font-family:inherit;font-size:0.82em;" onclick="statsKp(\'0\')">0</button>' +
+        '<button style="background:rgba(12,8,3,0.9);border:1px solid rgba(232,160,32,0.15);color:var(--tx-label);padding:7px 4px;cursor:pointer;border-radius:2px;font-family:inherit;font-size:0.82em;" onclick="statsKpEnter()">OK</button>' +
         '</div>' +
         '<div id="st-kp-status" style="font-size:0.6em;text-align:center;margin-top:6px;color:#e8a020;min-height:1em;letter-spacing:1px;"></div>' +
         '<button onclick="closeStatsConsole()" style="width:100%;margin-top:5px;padding:5px;background:transparent;border:1px solid rgba(255,255,255,0.07);color:#444;font-family:inherit;font-size:0.6em;letter-spacing:1px;cursor:pointer;border-radius:2px;">CANCEL</button>';
@@ -2099,22 +2105,22 @@ function _showStatsHome() {
     var dungEl  = document.getElementById('stats-dungeon');
     if (dungEl) dungEl.innerHTML = '';
     if (!arenaEl) return;
-    var tfStyle = 'background:transparent;font-family:\'Courier New\',monospace;font-size:0.63em;padding:4px 10px;cursor:pointer;letter-spacing:1px;';
+    var tfStyle = 'background:transparent;font-family:\'Courier New\',monospace;font-size:0.72em;padding:4px 10px;cursor:pointer;letter-spacing:1px;';
     arenaEl.innerHTML =
         '<div id="stats-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">' +
             '<button id="tf-0" onclick="selectTimeFilter(0)" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.6);color:#e8a020;">ALL TIME</button>' +
-            '<button id="tf-1" onclick="selectTimeFilter(1)" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.2);color:#808070;">1D</button>' +
-            '<button id="tf-3" onclick="selectTimeFilter(3)" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.2);color:#808070;">3D</button>' +
-            '<button id="tf-7" onclick="selectTimeFilter(7)" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.2);color:#808070;">7D</button>' +
+            '<button id="tf-1" onclick="selectTimeFilter(1)" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.2);color:var(--tx-dim);">1D</button>' +
+            '<button id="tf-3" onclick="selectTimeFilter(3)" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.2);color:var(--tx-dim);">3D</button>' +
+            '<button id="tf-7" onclick="selectTimeFilter(7)" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.2);color:var(--tx-dim);">7D</button>' +
             '<span style="width:1px;height:16px;background:rgba(255,255,255,0.08);display:inline-block;margin:0 4px;align-self:center;"></span>' +
             '<button id="sm-winrate" onclick="selectSortMode(\'winrate\')" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.6);color:#e8a020;">WIN RATE</button>' +
-            '<button id="sm-wins" onclick="selectSortMode(\'wins\')" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.2);color:#808070;"># WINS</button>' +
+            '<button id="sm-wins" onclick="selectSortMode(\'wins\')" style="' + tfStyle + 'border:1px solid rgba(232,160,32,0.2);color:var(--tx-dim);"># WINS</button>' +
             '<span style="width:1px;height:16px;background:rgba(255,255,255,0.08);display:inline-block;margin:0 4px;align-self:center;"></span>' +
             '<button id="tog-live"  onclick="toggleSource(\'live\')"  style="' + tfStyle + 'border:1px solid rgba(255,255,255,0.12);color:#606880;">⚡ LIVE</button>' +
             '<button id="tog-alpha" onclick="toggleSource(\'alpha\')" style="' + tfStyle + 'border:1px solid rgba(255,255,255,0.12);color:#606880;">α ALPHA</button>' +
             '<button onclick="_showStatsSetup()" style="' + tfStyle + 'border:1px solid rgba(255,255,255,0.08);color:#506070;margin-left:6px;">⚙</button>' +
         '</div>' +
-        '<div id="stats-msg" style="font-size:0.63em;color:#505060;letter-spacing:1px;min-height:1.2em;margin-bottom:8px;"></div>' +
+        '<div id="stats-msg" style="font-size:0.63em;color:var(--tx-dim);letter-spacing:1px;min-height:1.2em;margin-bottom:8px;"></div>' +
         '<div id="stats-results"></div>';
     runHistoricalScan();
 }
@@ -2266,8 +2272,8 @@ function renderTrends(csv) {
     var days   = _trendDays(w.firstDay);
     var labels = days.map(function(d, i){ return d.slice(5) + (i === days.length - 1 ? '*' : ''); });
 
-    el.innerHTML = '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ ACTIVITY OVER TIME — ALL PLAYERS</div>'
-        + '<div id="trend-note" style="font-size:0.58em;color:#505060;letter-spacing:1px;margin-bottom:8px;"></div>'
+    el.innerHTML = '<div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ ACTIVITY OVER TIME — ALL PLAYERS</div>'
+        + '<div id="trend-note" style="font-size:0.68em;color:var(--tx-dim);letter-spacing:1px;margin-bottom:8px;"></div>'
         + '<div style="position:relative;height:300px;"><canvas id="trend-canvas"></canvas></div>';
     var note = document.getElementById('trend-note');
     var baseNote = 'Per day (UTC) · * today, still counting · wins from the stats sheet'
@@ -2501,7 +2507,7 @@ function _renderStats(agg, opts) {
     if (!el) return;
     var diffs = Object.keys(agg.dungeon || {}).map(Number).sort(function(a,b){return a-b;});
     var sortLabel = _statsSortMode === 'wins' ? '# WINS' : 'WIN RATE';
-    var html = opts.label ? '<div style="font-size:0.56em;letter-spacing:2px;color:rgba(232,160,32,0.45);margin-bottom:14px;padding-bottom:5px;border-bottom:1px solid rgba(232,160,32,0.08);">'+opts.label+'</div>' : '';
+    var html = opts.label ? '<div style="font-size:0.68em;letter-spacing:2px;color:var(--tx-head);margin-bottom:14px;padding-bottom:5px;border-bottom:1px solid rgba(232,160,32,0.08);">'+opts.label+'</div>' : '';
     html += _barSection('ARENA — CLASS ' + sortLabel, agg.arena, agg.clsDR);
     if (Object.keys(agg.arenaRace || {}).length)
         html += _barSection('ARENA — RACE ' + sortLabel, agg.arenaRace, agg.raceDR);
@@ -2509,11 +2515,11 @@ function _renderStats(agg, opts) {
         html += _barSection('ARENA — ELEMENT ' + sortLabel, agg.arenaElement, agg.elemDR);
     if (diffs.length > 0) {
         html += '<div style="margin-top:32px;">';
-        html += '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ DUNGEON — CLASS USAGE &amp; WIN RATE</div>';
+        html += '<div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ DUNGEON — CLASS USAGE &amp; WIN RATE</div>';
         if (!p) {
             html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">';
             diffs.forEach(function(d) {
-                html += '<button id="ddb-'+d+'" onclick="selectDungDiff('+d+')" style="background:transparent;border:1px solid rgba(232,160,32,0.2);color:#808070;font-family:\'Courier New\',monospace;font-size:0.63em;padding:4px 10px;cursor:pointer;letter-spacing:1px;">LVL '+d+'</button>';
+                html += '<button id="ddb-'+d+'" onclick="selectDungDiff('+d+')" style="background:transparent;border:1px solid rgba(232,160,32,0.2);color:var(--tx-dim);font-family:\'Courier New\',monospace;font-size:0.63em;padding:4px 10px;cursor:pointer;letter-spacing:1px;">LVL '+d+'</button>';
             });
             html += '</div>';
         }
@@ -2522,13 +2528,13 @@ function _renderStats(agg, opts) {
     var nftLabel = _statsSortMode === 'wins' ? 'BY WINS' : _statsSortMode === 'winrate' ? 'BY WIN RATE' : 'BY USAGE';
     if (Object.keys(agg.crewNFTs || {}).length) {
         html += '<div style="margin-top:36px;">';
-        html += '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ TOP CREW NFTs — ' + nftLabel + '</div>';
+        html += '<div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ TOP CREW NFTs — ' + nftLabel + '</div>';
         html += _buildNftBars(agg.crewNFTs, 20, 'crew.worlds');
         html += '</div>';
     }
     if (Object.keys(agg.weaponNFTs || {}).length) {
         html += '<div style="margin-top:28px;">';
-        html += '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ TOP ARMS NFTs — ' + nftLabel + '</div>';
+        html += '<div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ TOP ARMS NFTs — ' + nftLabel + '</div>';
         html += _buildNftBars(agg.weaponNFTs, 20, 'arms.worlds');
         html += '</div>';
     }
@@ -2545,11 +2551,11 @@ function _renderStats(agg, opts) {
         var hasMyRace   = Object.keys(agg.myArenaRace    || {}).length > 0;
         var hasMyElem   = Object.keys(agg.myArenaElement || {}).length > 0;
         var sub = function(label) {
-            return '<div style="font-size:0.58em;letter-spacing:2px;color:rgba(232,160,32,0.4);margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.07);">' + label + '</div>';
+            return '<div style="font-size:0.68em;letter-spacing:2px;color:var(--tx-head);margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.07);">' + label + '</div>';
         };
         html += '<div style="margin-top:44px;padding-top:20px;border-top:1px solid rgba(232,160,32,0.12);">';
-        html += '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:6px;">◈ YOUR STATS</div>';
-        html += '<div style="font-size:0.56em;color:#707060;letter-spacing:1px;margin-bottom:18px;">'
+        html += '<div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin-bottom:6px;">◈ YOUR STATS</div>';
+        html += '<div style="font-size:0.68em;color:var(--tx-dim);letter-spacing:1px;margin-bottom:18px;">'
             + myWallet + ' &nbsp;·&nbsp; '
             + agg.myWins + ' wins / ' + agg.myFights + ' fights &nbsp;·&nbsp; '
             + myWinPct + '% win rate</div>';
@@ -2585,7 +2591,7 @@ function _syncDungButtons(diff) {
     document.querySelectorAll('[id^="ddb-"]').forEach(function(b) {
         var d = Number(b.id.replace('ddb-',''));
         b.style.borderColor = d===diff ? 'rgba(232,160,32,0.6)' : 'rgba(232,160,32,0.2)';
-        b.style.color = d===diff ? '#e8a020' : '#808070';
+        b.style.color = d===diff ? '#e8a020' : 'var(--tx-dim)';
     });
 }
 function _fillDungBars(diff, p, agg) {
@@ -2594,19 +2600,19 @@ function _fillDungBars(diff, p, agg) {
     var el = document.getElementById(p+'dung-bars');
     if (el) {
         var data = agg.dungeon && agg.dungeon[diff];
-        el.innerHTML = data ? _buildUsageBars(data) : '<div style="font-size:0.6em;color:#404050;">No data for level '+diff+'</div>';
+        el.innerHTML = data ? _buildUsageBars(data) : '<div style="font-size:0.6em;color:var(--tx-faint);">No data for level '+diff+'</div>';
     }
     var rel = document.getElementById(p+'dung-race-bars');
     if (rel) {
         var rdata = agg.dungeonRace && agg.dungeonRace[diff];
         rel.innerHTML = rdata && Object.keys(rdata).length
-            ? '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.4);margin:14px 0 8px;padding-top:10px;border-top:1px solid rgba(232,160,32,0.07);">RACE USAGE &amp; WIN RATE</div>' + _buildUsageBars(rdata) : '';
+            ? '<div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin:14px 0 8px;padding-top:10px;border-top:1px solid rgba(232,160,32,0.07);">RACE USAGE &amp; WIN RATE</div>' + _buildUsageBars(rdata) : '';
     }
     var eel = document.getElementById(p+'dung-element-bars');
     if (eel) {
         var edata = agg.dungeonElement && agg.dungeonElement[diff];
         eel.innerHTML = edata && Object.keys(edata).length
-            ? '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.4);margin:14px 0 8px;padding-top:10px;border-top:1px solid rgba(232,160,32,0.07);">ELEMENT USAGE &amp; WIN RATE</div>' + _buildUsageBars(edata) : '';
+            ? '<div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin:14px 0 8px;padding-top:10px;border-top:1px solid rgba(232,160,32,0.07);">ELEMENT USAGE &amp; WIN RATE</div>' + _buildUsageBars(edata) : '';
     }
 }
 
@@ -2737,7 +2743,7 @@ window.selectTimeFilter = function(days) {
     document.querySelectorAll('#stats-filter-bar button[id^="tf-"]').forEach(function(b) {
         var active = (b.id === 'tf-' + days);
         b.style.borderColor = active ? 'rgba(232,160,32,0.6)' : 'rgba(232,160,32,0.2)';
-        b.style.color = active ? '#e8a020' : '#808070';
+        b.style.color = active ? '#e8a020' : 'var(--tx-dim)';
     });
     if (!_rawCSV) return;
     var cutoff = days ? Date.now() - days * 86400000 : 0;
@@ -2759,7 +2765,7 @@ window.selectSortMode = function(mode) {
     document.querySelectorAll('#stats-filter-bar button[id^="sm-"]').forEach(function(b) {
         var active = (b.id === 'sm-' + mode);
         b.style.borderColor = active ? 'rgba(232,160,32,0.6)' : 'rgba(232,160,32,0.2)';
-        b.style.color = active ? '#e8a020' : '#808070';
+        b.style.color = active ? '#e8a020' : 'var(--tx-dim)';
     });
     _rerenderAll();
 };
@@ -2770,7 +2776,7 @@ function _renderCompare(beta, alpha, labels) {
     var aLabel = (labels && labels.alphaLabel) || '⚡ LIVE';
     var el = document.getElementById('stats-results');
     if (!el) return;
-    var legend = '<div style="display:flex;gap:16px;align-items:center;font-size:0.55em;letter-spacing:1px;color:#707080;margin-bottom:14px;flex-wrap:wrap;">' +
+    var legend = '<div style="display:flex;gap:16px;align-items:center;font-size:0.68em;letter-spacing:1px;color:var(--tx-dim);margin-bottom:14px;flex-wrap:wrap;">' +
         '<span>◉ Bar = ' + bLabel + ' win rate</span>' +
         '<span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:2px;height:12px;background:rgba(255,255,255,0.45);"></span> Tick = ' + aLabel + '</span>' +
         '<span style="color:#50d890;">▲ = ' + bLabel + ' higher</span><span style="color:#e05050;">▼ = ' + bLabel + ' lower</span>' +
@@ -2783,10 +2789,10 @@ function _renderCompare(beta, alpha, labels) {
     if (Object.keys(beta.arenaElement || {}).length || Object.keys(alpha.arenaElement || {}).length)
         html += _barSectionCmp('ARENA — ELEMENT', beta.arenaElement, alpha.arenaElement, bLabel, aLabel);
     if (diffs.length) {
-        html += '<div style="margin-top:32px;"><div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ DUNGEON — CLASS ' + bLabel + ' vs ' + aLabel + '</div>';
+        html += '<div style="margin-top:32px;"><div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ DUNGEON — CLASS ' + bLabel + ' vs ' + aLabel + '</div>';
         html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">';
         diffs.forEach(function(d) {
-            html += '<button id="ddb-'+d+'" onclick="selectDungDiff('+d+')" style="background:transparent;border:1px solid rgba(232,160,32,0.2);color:#808070;font-family:\'Courier New\',monospace;font-size:0.63em;padding:4px 10px;cursor:pointer;letter-spacing:1px;">LVL '+d+'</button>';
+            html += '<button id="ddb-'+d+'" onclick="selectDungDiff('+d+')" style="background:transparent;border:1px solid rgba(232,160,32,0.2);color:var(--tx-dim);font-family:\'Courier New\',monospace;font-size:0.63em;padding:4px 10px;cursor:pointer;letter-spacing:1px;">LVL '+d+'</button>';
         });
         html += '</div><div id="dung-bars"></div><div id="dung-race-bars"></div><div id="dung-element-bars"></div></div>';
     }
@@ -2806,7 +2812,7 @@ function _selectDungDiffCompare(diff, beta, alpha) {
     document.querySelectorAll('[id^="ddb-"]').forEach(function(b) {
         var d = Number(b.id.replace('ddb-',''));
         b.style.borderColor = d===diff ? 'rgba(232,160,32,0.6)' : 'rgba(232,160,32,0.2)';
-        b.style.color = d===diff ? '#e8a020' : '#808070';
+        b.style.color = d===diff ? '#e8a020' : 'var(--tx-dim)';
     });
     var bD = beta  && beta.dungeon  && beta.dungeon[diff]  || {};
     var aD = alpha && alpha.dungeon && alpha.dungeon[diff]  || {};
@@ -2818,18 +2824,18 @@ function _selectDungDiffCompare(diff, beta, alpha) {
     if (el) el.innerHTML = Object.keys(bD).length || Object.keys(aD).length ? _buildBarsCmp(bD, aD) : '';
     var rel = document.getElementById('dung-race-bars');
     if (rel) rel.innerHTML = Object.keys(bR).length || Object.keys(aR).length
-        ? '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.4);margin:14px 0 8px;padding-top:10px;border-top:1px solid rgba(232,160,32,0.07);">RACE β vs α</div>' + _buildBarsCmp(bR, aR) : '';
+        ? '<div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin:14px 0 8px;padding-top:10px;border-top:1px solid rgba(232,160,32,0.07);">RACE β vs α</div>' + _buildBarsCmp(bR, aR) : '';
     var eel = document.getElementById('dung-element-bars');
     if (eel) eel.innerHTML = Object.keys(bE).length || Object.keys(aE).length
-        ? '<div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.4);margin:14px 0 8px;padding-top:10px;border-top:1px solid rgba(232,160,32,0.07);">ELEMENT β vs α</div>' + _buildBarsCmp(bE, aE) : '';
+        ? '<div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin:14px 0 8px;padding-top:10px;border-top:1px solid rgba(232,160,32,0.07);">ELEMENT β vs α</div>' + _buildBarsCmp(bE, aE) : '';
 }
 
 function _barSectionCmp(title, betaData, alphaData, bLabel, aLabel) {
     var bl = bLabel || 'ALL TIME', al = aLabel || '⚡ LIVE';
     var inner = (Object.keys(betaData||{}).length || Object.keys(alphaData||{}).length)
         ? _buildBarsCmp(betaData, alphaData)
-        : '<div style="font-size:0.6em;color:#404050;padding:8px 0;">No data</div>';
-    return '<div style="margin-bottom:4px;"><div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ '+title+' — '+bl+' vs '+al+'</div>'+inner+'</div>';
+        : '<div style="font-size:0.6em;color:var(--tx-faint);padding:8px 0;">No data</div>';
+    return '<div style="margin-bottom:4px;"><div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ '+title+' — '+bl+' vs '+al+'</div>'+inner+'</div>';
 }
 
 function _buildBarsCmp(betaStats, alphaStats) {
@@ -2852,15 +2858,15 @@ function _buildBarsCmp(betaStats, alphaStats) {
         var aPct  = e.aPct !== null ? Math.round(e.aPct * 100) : null;
         var delta = (bPct !== null && aPct !== null) ? bPct - aPct : null;
         var deltaStr  = delta !== null ? (delta >= 0 ? '+' : '') + delta + '%' : '—';
-        var deltaCol  = delta === null ? '#505060' : delta > 0 ? '#50d890' : delta < 0 ? '#e05050' : '#707060';
+        var deltaCol  = delta === null ? 'var(--tx-faint)' : delta > 0 ? '#50d890' : delta < 0 ? '#e05050' : 'var(--tx-dim)';
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">' +
             '<span style="font-size:1em;min-width:22px;text-align:center;line-height:1;">' + meta.e + '</span>' +
-            '<span style="font-size:0.56em;letter-spacing:1px;color:#b0a080;min-width:90px;text-transform:uppercase;">' + e.cls + '</span>' +
+            '<span style="font-size:0.68em;letter-spacing:1px;color:var(--tx-label);min-width:90px;text-transform:uppercase;">' + e.cls + '</span>' +
             '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:10px;height:13px;overflow:hidden;position:relative;">' +
                 (bPct !== null ? '<div style="height:100%;width:'+bPct+'%;background:'+meta.c+';border-radius:10px;transition:width 0.4s;"></div>' : '') +
                 (aPct !== null ? '<div style="position:absolute;top:0;bottom:0;left:'+aPct+'%;width:2px;background:rgba(255,255,255,0.45);border-radius:1px;"></div>' : '') +
             '</div>' +
-            '<span style="font-size:0.53em;color:#707060;min-width:36px;text-align:right;">' + (bPct !== null ? bPct+'%' : '—') + '</span>' +
+            '<span style="font-size:0.68em;color:var(--tx-dim);min-width:36px;text-align:right;">' + (bPct !== null ? bPct+'%' : '—') + '</span>' +
             '<span style="font-size:0.52em;min-width:38px;text-align:right;color:'+deltaCol+';font-family:\'Courier New\',monospace;font-weight:bold;">' + deltaStr + '</span>' +
         '</div>';
     });
@@ -2874,8 +2880,8 @@ function _fmtDR(dr) {
 }
 function _barSection(title, data, dr) {
     var drStr = dr ? '<span style="font-size:0.75em;color:#404858;letter-spacing:1px;margin-left:8px;font-weight:normal;">' + _fmtDR(dr) + '</span>' : '';
-    var inner = data && Object.keys(data).length ? _buildBars(data) : '<div style="font-size:0.6em;color:#404050;padding:8px 0;">No data</div>';
-    return '<div style="margin-bottom:4px;"><div style="font-size:0.6em;letter-spacing:3px;color:rgba(232,160,32,0.55);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ '+title+drStr+'</div>'+inner+'</div>';
+    var inner = data && Object.keys(data).length ? _buildBars(data) : '<div style="font-size:0.6em;color:var(--tx-faint);padding:8px 0;">No data</div>';
+    return '<div style="margin-bottom:4px;"><div style="font-size:0.72em;letter-spacing:3px;color:var(--tx-head);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(232,160,32,0.1);">◈ '+title+drStr+'</div>'+inner+'</div>';
 }
 
 function _buildBars(classStats) {
@@ -2889,11 +2895,11 @@ function _buildBars(classStats) {
         var meta = _getMeta(e.cls);
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">' +
             '<span style="font-size:1em;min-width:22px;text-align:center;line-height:1;">' + meta.e + '</span>' +
-            '<span style="font-size:0.56em;letter-spacing:1px;color:#b0a080;min-width:90px;text-transform:uppercase;">' + e.cls + '</span>' +
+            '<span style="font-size:0.68em;letter-spacing:1px;color:var(--tx-label);min-width:90px;text-transform:uppercase;">' + e.cls + '</span>' +
             '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:10px;height:13px;overflow:hidden;">' +
                 '<div style="height:100%;width:' + pct + '%;background:' + meta.c + ';border-radius:10px;transition:width 0.4s;"></div>' +
             '</div>' +
-            '<span style="font-size:0.54em;color:#707060;min-width:86px;text-align:right;">' + e.wins + ' wins · ' + pct + '%</span>' +
+            '<span style="font-size:0.68em;color:var(--tx-dim);min-width:86px;text-align:right;">' + e.wins + ' wins · ' + pct + '%</span>' +
         '</div>';
     });
     return html + '</div>';
@@ -2903,7 +2909,7 @@ function _buildUsageBars(classStats) {
         var s = classStats[c];
         return {cls:c, played:s.played, wins:s.wins||0};
     });
-    if (!entries.length) return '<div style="font-size:0.6em;color:#404050;padding:8px 0;">No data</div>';
+    if (!entries.length) return '<div style="font-size:0.6em;color:var(--tx-faint);padding:8px 0;">No data</div>';
     var maxPlayed = entries.reduce(function(m, e){ return Math.max(m, e.played); }, 1);
     entries.sort(function(a,b){ return _statsSortMode === 'wins' ? b.wins - a.wins : b.played - a.played; });
     var html = '<div style="max-width:560px;">';
@@ -2912,11 +2918,11 @@ function _buildUsageBars(classStats) {
         var meta = _getMeta(e.cls);
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">' +
             '<span style="font-size:1em;min-width:22px;text-align:center;line-height:1;">' + meta.e + '</span>' +
-            '<span style="font-size:0.56em;letter-spacing:1px;color:#b0a080;min-width:90px;text-transform:uppercase;">' + e.cls + '</span>' +
+            '<span style="font-size:0.68em;letter-spacing:1px;color:var(--tx-label);min-width:90px;text-transform:uppercase;">' + e.cls + '</span>' +
             '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:10px;height:13px;overflow:hidden;">' +
                 '<div style="height:100%;width:' + barPct + '%;background:' + meta.c + ';border-radius:10px;transition:width 0.4s;"></div>' +
             '</div>' +
-            '<span style="font-size:0.54em;color:#707060;min-width:110px;text-align:right;">' + e.wins + ' wins · ' + e.played + ' uses</span>' +
+            '<span style="font-size:0.68em;color:var(--tx-dim);min-width:110px;text-align:right;">' + e.wins + ' wins · ' + e.played + ' uses</span>' +
         '</div>';
     });
     return html + '</div>';
@@ -2960,17 +2966,17 @@ function _buildNftBars(nftStats, topN, folder) {
         var s = nftStats[id];
         return {id:id, wins:s.wins, played:s.played, pct: s.played>0 ? s.wins/s.played : 0};
     }).sort(function(a,b){ return _statsSortMode === 'wins' ? b.wins - a.wins : _statsSortMode === 'winrate' ? b.pct - a.pct : b.played - a.played; }).slice(0, topN || 20);
-    if (!entries.length) return '<div style="font-size:0.6em;color:#404050;padding:8px 0;">No data</div>';
+    if (!entries.length) return '<div style="font-size:0.6em;color:var(--tx-faint);padding:8px 0;">No data</div>';
     var maxPlayed = entries.reduce(function(m, e){ return Math.max(m, e.played); }, 1);
     var html = '<div style="max-width:620px;">';
     entries.forEach(function(e) {
         var barPct = Math.round(e.played / maxPlayed * 100);
         var winPct = Math.round(e.pct * 100);
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
-            '<span style="font-size:0.48em;color:#605040;min-width:74px;font-family:\'Courier New\',monospace;flex-shrink:0;">#' + e.id + '</span>' +
+            '<span style="font-size:0.66em;color:var(--tx-label);min-width:74px;font-family:\'Courier New\',monospace;flex-shrink:0;">#' + e.id + '</span>' +
             '<div style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;height:22px;overflow:hidden;position:relative;">' +
                 '<div style="height:100%;width:' + barPct + '%;background:linear-gradient(90deg,rgba(232,160,32,0.3),rgba(200,90,20,0.15));border-radius:10px;transition:width 0.4s;"></div>' +
-                '<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.5em;color:#909080;white-space:nowrap;letter-spacing:0.5px;">' + winPct + '% win &middot; ' + e.played + ' fights</span>' +
+                '<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.66em;color:var(--tx-dim);white-space:nowrap;letter-spacing:0.5px;">' + winPct + '% win &middot; ' + e.played + ' fights</span>' +
             '</div>' +
             '<img src="' + (folder||'') + '/' + e.id + '.webp" alt="" width="30" height="30" ' +
                 'class="nft-stats-thumb" ' +
@@ -3042,24 +3048,24 @@ loadStatsIfNeeded();
 </script>
 
 <!-- ── TIP ──────────────────────────────────────────────────────────────── -->
-<style>#tip-pop{position:fixed;display:none;flex-direction:column;gap:10px;z-index:9999;background:rgba(4,8,20,0.97);border:1px solid rgba(232,160,32,0.35);padding:14px 18px;min-width:210px;box-shadow:0 6px 24px rgba(0,0,0,0.9);}.tip-btn-sm{background:transparent;border:1px solid rgba(232,160,32,0.25);color:#a07840;font-family:'Courier New',monospace;font-size:0.7em;letter-spacing:1px;padding:5px 10px;cursor:pointer;transition:all 0.2s;}.tip-btn-sm:hover{color:#c09060;border-color:rgba(232,160,32,0.5);}</style>
+<style>#tip-pop{position:fixed;display:none;flex-direction:column;gap:10px;z-index:9999;background:rgba(4,8,20,0.97);border:1px solid rgba(232,160,32,0.35);padding:14px 18px;min-width:210px;box-shadow:0 6px 24px rgba(0,0,0,0.9);}.tip-btn-sm{background:transparent;border:1px solid rgba(232,160,32,0.25);color:var(--tx-label);font-family:'Courier New',monospace;font-size:0.7em;letter-spacing:1px;padding:5px 10px;cursor:pointer;transition:all 0.2s;}.tip-btn-sm:hover{color:var(--tx-label);border-color:rgba(232,160,32,0.5);}</style>
 <div id="tip-pop">
     <button onclick="toggleTipPop()" style="position:absolute;top:5px;right:8px;background:transparent;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:1.1em;padding:2px 5px;line-height:1;">✕</button>
-    <div style="font-size:0.58em;letter-spacing:2px;color:rgba(232,160,32,0.5);">&#9829; SUPPORT NARON CODEX</div>
+    <div style="font-size:0.68em;letter-spacing:2px;color:var(--tx-head);">&#9829; SUPPORT NARON CODEX</div>
     <div style="display:flex;gap:7px;align-items:center;">
-        <select id="tip-amt" style="background:#0a0e1c;color:#c09060;border:1px solid rgba(232,160,32,0.3);padding:5px 8px;font-family:'Courier New',monospace;font-size:0.78em;cursor:pointer;outline:none;letter-spacing:1px;">
+        <select id="tip-amt" style="background:#0a0e1c;color:var(--tx-label);border:1px solid rgba(232,160,32,0.3);padding:5px 8px;font-family:'Courier New',monospace;font-size:0.78em;cursor:pointer;outline:none;letter-spacing:1px;">
             <option value="1">1 WAX</option><option value="5">5 WAX</option><option value="10" selected>10 WAX</option><option value="50">50 WAX</option><option value="100">100 WAX</option><option value="500">500 WAX</option><option value="1000">1000 WAX</option>
         </select>
-        <button onclick="sendWaxTip('tip-amt','tip-fb')" style="background:transparent;border:1px solid rgba(232,160,32,0.4);color:#c09060;font-family:'Courier New',monospace;font-size:0.78em;padding:5px 12px;cursor:pointer;letter-spacing:1px;white-space:nowrap;">SEND &#9829;</button>
+        <button onclick="sendWaxTip('tip-amt','tip-fb')" style="background:transparent;border:1px solid rgba(232,160,32,0.4);color:var(--tx-label);font-family:'Courier New',monospace;font-size:0.78em;padding:5px 12px;cursor:pointer;letter-spacing:1px;white-space:nowrap;">SEND &#9829;</button>
     </div>
     <div id="tip-fb" style="font-size:0.65em;min-height:14px;letter-spacing:1px;"></div>
 </div>
 <div id="tip-footer" style="border-top:1px solid rgba(232,160,32,0.1);padding:14px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:rgba(8,10,18,0.6);">
-    <span style="font-size:0.6em;letter-spacing:2px;color:rgba(232,160,32,0.4);white-space:nowrap;">&#9829; SUPPORT NARON CODEX</span>
-    <select id="tip-amt-b" style="background:#0a0e1c;color:#c09060;border:1px solid rgba(232,160,32,0.3);padding:5px 10px;font-family:'Courier New',monospace;font-size:0.75em;cursor:pointer;outline:none;letter-spacing:1px;">
+    <span style="font-size:0.6em;letter-spacing:2px;color:var(--tx-head);white-space:nowrap;">&#9829; SUPPORT NARON CODEX</span>
+    <select id="tip-amt-b" style="background:#0a0e1c;color:var(--tx-label);border:1px solid rgba(232,160,32,0.3);padding:5px 10px;font-family:'Courier New',monospace;font-size:0.75em;cursor:pointer;outline:none;letter-spacing:1px;">
         <option value="1">1 WAX</option><option value="5">5 WAX</option><option value="10" selected>10 WAX</option><option value="50">50 WAX</option><option value="100">100 WAX</option><option value="500">500 WAX</option><option value="1000">1000 WAX</option>
     </select>
-    <button onclick="sendWaxTip('tip-amt-b','tip-fb-b')" style="background:transparent;border:1px solid rgba(232,160,32,0.35);color:#c09060;font-family:'Courier New',monospace;font-size:0.75em;padding:5px 14px;cursor:pointer;letter-spacing:1px;transition:all 0.2s;">[ SEND TIP &#9829; ]</button>
+    <button onclick="sendWaxTip('tip-amt-b','tip-fb-b')" style="background:transparent;border:1px solid rgba(232,160,32,0.35);color:var(--tx-label);font-family:'Courier New',monospace;font-size:0.75em;padding:5px 14px;cursor:pointer;letter-spacing:1px;transition:all 0.2s;">[ SEND TIP &#9829; ]</button>
     <span id="tip-fb-b" style="font-size:0.68em;letter-spacing:1px;min-height:1em;"></span>
 </div>
 <script>
