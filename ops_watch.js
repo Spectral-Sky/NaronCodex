@@ -20,11 +20,13 @@
     try { who = localStorage.getItem('naron_wallet') || ''; } catch (e) {}
     if (who !== OWNER) return;
 
-    // eosdac and detroitledger accept 100 rows a request, waxsweden and eosusa 1,000; the
-    // size is learned from the node's own error. A node that refuses a connection is
-    // skipped for the rest of the visit instead of being retried for every hour.
-    var NODES = ['https://wax-history.eosdac.io', 'https://history.waxsweden.org',
-                 'https://hyperion.wax.detroitledger.tech', 'https://wax.eosusa.io'];
+    // waxsweden takes 1,000 rows a request, eosdac and detroitledger 100 (learned from their
+    // own error), so waxsweden is a tenth of the requests when it's up. All three agreed to
+    // the action on every window compared. eosusa is left out: its index has gaps that its
+    // own total shares, so the completeness check can't catch them. A node that refuses a
+    // connection is skipped for the rest of the visit.
+    var NODES = ['https://history.waxsweden.org', 'https://wax-history.eosdac.io',
+                 'https://hyperion.wax.detroitledger.tech'];
     var PAGE = {}, DEAD = {};
     var FILTER = 'dungeons.ale:playdungeon,arena.ale:playarena,quests.ale:finishquest,players.ale:travel';
     var MOVE_S = 12;               // a move to a new location faster than this, repeatedly, is the signal
@@ -35,7 +37,7 @@
     var SESSION_BREAK_S = 300;     // a gap this long ends a session
     var HOUR = 3600e3;
 
-    var _hours = 24, _data = null, _sort = 'score', _open = null, _busy = false;
+    var _hours = 24, _data = null, _sort = 'score', _open = null, _busy = false, _queued = false;
 
     function iso(ms) { return new Date(ms).toISOString().slice(0, 19); }
     function esc(s) {
@@ -45,20 +47,60 @@
     }
     function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-    // all fights and quests in [a, b), complete or throws
-    async function hourActs(a, b) {
-        for (var n = 0; n < NODES.length; n++) {
-            var node = NODES[n];
-            if (DEAD[node]) continue;
+    /* The public nodes rate-limit (eosdac answers 429 past a few requests a second),
+       so requests to each node are spaced out, a 429 waits and retries the same page
+       rather than restarting the hour, and finished hours are kept for the visit so
+       widening 24 h to 7 days only fetches what isn't already here. */
+    var GAP_MS = 250;              // starting spacing between requests to one node
+    var GAP_MAX = 3000;
+    var lastAt = {}, gap = {}, HOUR_CACHE = {};
+
+    async function politeFetch(node, url) {
+        for (var k = 0; k < 7; k++) {
+            var g = gap[node] || GAP_MS;
+            var wait = (lastAt[node] || 0) + g - Date.now();
+            if (wait > 0) await sleep(wait);
+            lastAt[node] = Date.now();
+            var r = await fetch(url, { signal: AbortSignal.timeout(9000) });   // a healthy node answers in ~1 s
+            if (r.status !== 429 && r.status !== 503) {   // 503: overloaded, same as being told to slow down
+                gap[node] = Math.max(GAP_MS, g * 0.9);       // ease back once it's accepting again
+                return r;
+            }
+            gap[node] = Math.min(GAP_MAX, g * 2);            // it told us to slow down; stay slower
+            var ra = Number(r.headers.get('Retry-After'));
+            var back = ra > 0 ? ra * 1000 : Math.min(16000, 2000 * Math.pow(2, k));
+            lastAt[node] = Date.now() + back;              // hold every reader off this node
+            await sleep(back);
+        }
+        throw new Error('rate-limited by ' + node.replace('https://', ''));
+    }
+
+    // all fights, quests and travel in [a, b), complete or throws
+    async function hourActs(a, b, prefer) {
+        var key = a + '|' + b;
+        if (HOUR_CACHE[key]) return HOUR_CACHE[key];
+        // cheapest node first: time per row, i.e. its current spacing over its page size.
+        // waxsweden (1,000 rows a page) wins while it's healthy; if it starts throttling its
+        // spacing grows and the work moves to the next node on its own. The second reader
+        // breaks ties the other way so the two don't queue behind each other.
+        var live = NODES.filter(function (x) { return !(DEAD[x] > Date.now()); });
+        if (!live.length) live = NODES.slice();   // everything cooling down: try anyway
+        var cost = function (x) { return (gap[x] || GAP_MS) / (PAGE[x] || 1000); };
+        var order = live.slice().sort(function (x, y) {
+            return cost(x) - cost(y) || (prefer ? NODES.indexOf(y) - NODES.indexOf(x) : NODES.indexOf(x) - NODES.indexOf(y));
+        });
+        for (var n = 0; n < order.length; n++) {
+            var node = order[n];
+            if (DEAD[node] > Date.now()) continue;
             var refused = 0;
-            for (var attempt = 0; attempt < 3; attempt++) {
+            for (var attempt = 0; attempt < 2; attempt++) {
                 try {
                     var out = [], seen = {}, total = null;
-                    for (var p = 0; p < 100; p++) {
+                    for (var p = 0; p < 200; p++) {
                         var lim = PAGE[node] || 1000;
-                        var r = await fetch(node + '/v2/history/get_actions?filter=' + FILTER +
+                        var r = await politeFetch(node, node + '/v2/history/get_actions?filter=' + FILTER +
                             '&after=' + iso(a) + '&before=' + iso(b) + '&limit=' + lim + '&sort=asc&skip=' + (p * lim) +
-                            (p ? '' : '&track=true'), { signal: AbortSignal.timeout(20000) });
+                            (p ? '' : '&track=true'));
                         if (!r.ok) {
                             var m = /maximum:\s*(\d+)/.exec(await r.text());
                             if (m && !PAGE[node]) { PAGE[node] = Number(m[1]); p = -1; out = []; seen = {}; continue; }
@@ -71,31 +113,44 @@
                         });
                         if ((j.actions || []).length < lim || out.length >= total) break;
                     }
-                    if (total !== null && out.length >= total) return out;
+                    if (total !== null && out.length >= total) {
+                        // only hours safely in the past are cached; the newest may still be filling
+                        if (b < Date.now() - 10 * 60e3) HOUR_CACHE[key] = out;
+                        return out;
+                    }
                 } catch (e) {
-                    if (e.name === 'TypeError' && ++refused >= 2) { DEAD[node] = 1; break; }   // connection refused
+                    // dropped connections: rest this node for a minute rather than for the whole visit,
+                    // since a node just back from an outage drops the odd connection
+                    // a hang counts the same as a refusal: waiting out timeouts on a node that has gone
+                    // quiet was what stalled whole scans
+                    if ((e.name === 'TypeError' || e.name === 'TimeoutError' || e.name === 'AbortError') &&
+                        ++refused >= 1) { DEAD[node] = Date.now() + 60000; break; }
+                    if (/rate-limited/.test(e.message)) break;                                 // try the next node
                 }
-                await sleep(500 * (attempt + 1));
+                await sleep(1000 * (attempt + 1));
             }
         }
         throw new Error('no node returned a complete read for ' + iso(a));
     }
 
     async function scan(hours, progress) {
-        var end = Math.floor(Date.now() / 60000) * 60000 - 2 * 60000;   // let nodes catch up
+        // whole hours, so a wider window reuses the same cached slices
+        var end = Math.floor((Date.now() - 2 * 60000) / HOUR) * HOUR;
         var slices = [];
-        for (var t = end - hours * HOUR; t < end; t += HOUR) slices.push([t, Math.min(end, t + HOUR)]);
-        var acts = [], done = 0, next = 0;
-        async function worker() {
+        for (var t = end - hours * HOUR; t < end; t += HOUR) slices.push([t, t + HOUR]);
+        slices.push([end, Math.floor((Date.now() - 2 * 60000) / 60000) * 60000]);   // the hour in progress
+        var parts = [], done = 0, next = 0;
+        async function worker(id) {
             while (next < slices.length) {
-                var s = slices[next++];
-                var got = await hourActs(s[0], s[1]);   // awaited first: concat must see the latest list
-                acts = acts.concat(got);
+                var i = next++, s = slices[i];
+                parts[i] = s[1] > s[0] ? await hourActs(s[0], s[1], id) : [];   // awaited, then stored by index
                 progress(++done, slices.length);
             }
         }
-        await Promise.all([worker(), worker(), worker()]);   // three at a time keeps the nodes happy
-        return { acts: acts, from: end - hours * HOUR, to: end };
+        await Promise.all([worker(0), worker(1)]);   // two readers, each starting on a different node
+        var acts = [];
+        parts.forEach(function (p) { acts = acts.concat(p); });
+        return { acts: acts, from: end - hours * HOUR, to: slices[slices.length - 1][1] };
     }
 
     function sd(a) {
@@ -365,7 +420,7 @@
     }
 
     async function load() {
-        if (_busy) return;
+        if (_busy) { _queued = true; return; }        // picked up when the running scan ends
         _busy = true;
         var el = document.getElementById('watch');
         _data = null; _open = null;
@@ -374,7 +429,8 @@
         try {
             var raw = await scan(_hours, function (d, n) {
                 var p = document.getElementById('aw-prog');
-                if (p) p.textContent = 'READING CHAIN HISTORY · ' + d + ' / ' + n + ' HOURS';
+                if (p) p.textContent = 'READING CHAIN HISTORY · ' + d + ' / ' + n + ' HOURS' +
+                                       (_queued ? ' · THEN ' + _hours + ' H' : '');
             });
             _data = { rows: analyse(raw), from: raw.from, to: raw.to };
             render();
@@ -384,6 +440,7 @@
             bindControls();
         }
         _busy = false;
+        if (_queued) { _queued = false; load(); }
     }
 
     window.opsWatchOpen = function () { if (!_data && !_busy) load(); };
