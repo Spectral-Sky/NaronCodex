@@ -119,8 +119,12 @@
                 hours[Math.floor(L[i].t / HOUR)] = 1;
                 if (i) {
                     var g = (L[i].t - L[i - 1].t) / 1000;
-                    gaps.push(g);
-                    if (g < HUMAN_GAP_S) fast++;
+                    // a quick retry at the same arena or dungeon is just a skipped
+                    // animation; only a fast move to somewhere new is out of reach
+                    if (L[i].loc !== L[i - 1].loc) {
+                        gaps.push(g);
+                        if (g < HUMAN_GAP_S) fast++;
+                    }
                     if (g >= SESSION_BREAK_S) sessStart = L[i].t;
                 }
                 sess = Math.max(sess, L[i].t - sessStart);
@@ -131,7 +135,7 @@
             gaps.sort(function (a, b) { return a - b; });
             var r = {
                 wallet: w, fights: L.length, quests: e.quests, burst: burst, locs: locs,
-                fast: fast, fastPct: gaps.length ? fast / gaps.length * 100 : 0,
+                moves: gaps.length, fast: fast, fastPct: gaps.length ? fast / gaps.length * 100 : 0,
                 medGap: gaps.length ? gaps[gaps.length >> 1] : null,
                 batched: batched, hoursPerDay: Object.keys(hours).length / days,
                 session: sess / HOUR, timeline: L
@@ -139,19 +143,19 @@
             r.flags = [];
             if (r.batched) r.flags.push(['BATCH', 'fights signed together in one transaction']);
             if (r.locs >= 4) r.flags.push(['BURST', r.locs + ' different locations inside one minute']);
-            if (r.fights >= 20 && r.fastPct >= 25)
-                r.flags.push(['FAST', Math.round(r.fastPct) + '% of gaps under ' + HUMAN_GAP_S + ' s']);
+            if (gaps.length >= 15 && r.fastPct >= 25)
+                r.flags.push(['FAST', Math.round(r.fastPct) + '% of moves to a new location under ' + HUMAN_GAP_S + ' s']);
             if (r.session >= 6) r.flags.push(['MARATHON', r.session.toFixed(1) + ' h without a 5-minute break']);
             if (r.hoursPerDay >= 18) r.flags.push(['24/7', r.hoursPerDay.toFixed(1) + ' active hours a day']);
-            r.score = r.flags.length * 1000 + r.locs * 50 + r.fastPct + r.burst * 10;
+            r.score = r.flags.length * 1000 + r.locs * 50 + r.fastPct;   // fights/min left out: same-spot retries inflate it
             return r;
         });
     }
 
     var COLS = [
         ['wallet', 'Wallet', 'txt'], ['flags', 'Flags', 'txt'], ['fights', 'Fights', 'num'],
-        ['quests', 'Quests', 'num'], ['burst', 'Most / min', 'num'], ['locs', 'Locations / min', 'num'],
-        ['fastPct', 'Gaps < 15 s', 'num'], ['medGap', 'Median gap', 'num'], ['batched', 'Same trx', 'num'],
+        ['quests', 'Quests', 'num'], ['burst', 'Fights / min', 'num'], ['locs', 'Locations / min', 'num'],
+        ['fastPct', 'Moves < 15 s', 'num'], ['medGap', 'Median move', 'num'], ['batched', 'Same trx', 'num'],
         ['hoursPerDay', 'Hours / day', 'num'], ['session', 'Longest session', 'num']
     ];
 
@@ -160,7 +164,7 @@
         if (k === 'flags') return r.flags.map(function (f) {
             return '<span class="aw-flag aw-' + f[0].replace('/', '') + '" title="' + esc(f[1]) + '">' + f[0] + '</span>';
         }).join(' ') || '<span class="aw-none">&ndash;</span>';
-        if (k === 'fastPct') return r.fights > 1 ? Math.round(r.fastPct) + '% <small>(' + r.fast + ')</small>' : '&ndash;';
+        if (k === 'fastPct') return r.moves ? Math.round(r.fastPct) + '% <small>(' + r.fast + ' of ' + r.moves + ')</small>' : '&ndash;';
         if (k === 'medGap') return r.medGap == null ? '&ndash;' : (r.medGap < 120 ? Math.round(r.medGap) + ' s' : (r.medGap / 60).toFixed(1) + ' min');
         if (k === 'hoursPerDay') return r.hoursPerDay.toFixed(1);
         if (k === 'session') return r.session.toFixed(1) + ' h';
@@ -188,8 +192,9 @@
             '</div>' +
             '<p class="note">A phone manages about one fight per ' + HUMAN_GAP_S + ' s. Flags: ' +
             '<b>BATCH</b> fights signed in one transaction &middot; <b>BURST</b> 4+ locations in a minute &middot; ' +
-            '<b>FAST</b> a quarter or more of gaps under ' + HUMAN_GAP_S + ' s &middot; <b>MARATHON</b> 6 h+ with no ' +
-            '5-minute break &middot; <b>24/7</b> 18+ active hours a day. Naron Codex&rsquo;s own Dungeon Run queue ' +
+            '<b>FAST</b> a quarter or more of moves to a new location under ' + HUMAN_GAP_S + ' s &middot; <b>MARATHON</b> 6 h+ with no ' +
+            '5-minute break &middot; <b>24/7</b> 18+ active hours a day. Quick retries at the same arena or dungeon ' +
+            'are ignored (the animation can be skipped); only moves to a new location are timed. Naron Codex&rsquo;s own Dungeon Run queue ' +
             'fires fights back to back, so speed alone is a reason to look closer, not proof. ' +
             'Click a wallet for its fight-by-fight timeline.</p>' +
             '<div class="aw-wrap"><table class="aw-table"><thead><tr>' +
@@ -223,10 +228,11 @@
         var rows = [];
         for (var i = L.length - 1; i >= start; i--) {
             var f = L[i], g = i ? (f.t - L[i - 1].t) / 1000 : null;
-            var cls = g == null ? '' : g < HUMAN_GAP_S ? 'aw-g-bad' : g < 30 ? 'aw-g-warn' : '';
+            var same = i && f.loc === L[i - 1].loc;
+            var cls = g == null ? '' : same ? 'aw-g-same' : g < HUMAN_GAP_S ? 'aw-g-bad' : g < 30 ? 'aw-g-warn' : '';
             rows.push('<tr><td class="txt">' + iso(f.t).replace('T', ' ') + '.' + String(f.t % 1000).padStart(3, '0').slice(0, 1) +
                 '</td><td class="txt">' + f.kind + (f.diff ? ' L' + esc(f.diff) : '') + '</td><td class="txt">' + esc(f.loc) +
-                '</td><td class="num ' + cls + '">' + (g == null ? '&ndash;' : g.toFixed(1) + ' s') +
+                '</td><td class="num ' + cls + '">' + (g == null ? '&ndash;' : g.toFixed(1) + ' s' + (same ? ' <small>same spot</small>' : '')) +
                 '</td><td class="txt' + (trxCount[f.trx] > 1 ? ' aw-g-bad' : '') + '" title="' + esc(f.trx) + '">' +
                 esc(f.trx.slice(0, 12)) + (trxCount[f.trx] > 1 ? ' &times;' + trxCount[f.trx] : '') + '</td></tr>');
         }
@@ -258,7 +264,7 @@
 
     function csv() {
         var head = ['wallet', 'flags', 'fights', 'quests', 'max_per_min', 'max_locations_per_min',
-                    'gaps_under_15s', 'gaps_under_15s_pct', 'median_gap_s', 'same_trx_fights', 'hours_per_day', 'longest_session_h'];
+                    'moves_under_15s', 'moves_under_15s_pct', 'median_move_gap_s', 'same_trx_fights', 'hours_per_day', 'longest_session_h'];
         var lines = [head.join(',')].concat(_data.rows.map(function (r) {
             return [r.wallet, r.flags.map(function (f) { return f[0]; }).join(' '), r.fights, r.quests, r.burst, r.locs,
                     r.fast, r.fastPct.toFixed(1), r.medGap == null ? '' : r.medGap, r.batched,
