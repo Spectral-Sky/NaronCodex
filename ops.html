@@ -37,6 +37,11 @@ a { color:inherit; }
 .logo-section h1 { font-size:1.05em; letter-spacing:4px; color:var(--gold); margin:0;
     text-transform:uppercase; }
 .nav-links { display:flex; gap:10px; }
+/* the menu was never hidden here, so it sat open across the page; same rule as pools.html */
+.nav-dropdown-wrap { position:relative; }
+.nav-dropdown-menu { display:none; position:absolute; top:100%; left:0; background:rgba(2,6,20,0.98);
+    border:1px solid var(--border); min-width:160px; z-index:300; padding:4px 0; }
+.nav-dropdown-wrap:hover .nav-dropdown-menu { display:block; }
 .nav-btn { background:transparent; color:#8fa1b5; border:1px solid transparent; padding:8px 16px;
     font-family:inherit; font-weight:bold; font-size:0.78em; text-decoration:none;
     cursor:pointer; text-transform:uppercase; letter-spacing:1px; }
@@ -108,6 +113,34 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
     text-transform:uppercase; padding:7px 14px; cursor:pointer; border-radius:2px;
     transition:color 0.15s, border-color 0.15s; }
 .ops-csv:hover { color:var(--gold); border-color:var(--gold); }
+
+/* ── VIEW SWITCH + AUTOMATION WATCH (owner only) ──────────────────────────── */
+.view-switch { display:flex; gap:0; margin:0 0 20px; border-bottom:1px solid var(--border); }
+.vs-btn { background:transparent; border:none; border-bottom:2px solid transparent; margin-bottom:-1px;
+    color:var(--muted); font-family:inherit; font-size:0.78em; font-weight:700; letter-spacing:2px;
+    text-transform:uppercase; padding:10px 18px; cursor:pointer; }
+.vs-btn:hover { color:#fff; }
+.vs-btn.active { color:var(--gold); border-bottom-color:var(--gold); }
+.aw-wrap { overflow-x:auto; }
+.aw-table th { cursor:pointer; white-space:nowrap; user-select:none; }
+.aw-table th:hover, .aw-table th.aw-sorted { color:var(--gold); }
+.aw-table td { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.aw-table td small { color:var(--muted); }
+.aw-row { cursor:pointer; }
+.aw-row:hover td { background:rgba(232,160,32,0.06); }
+.aw-row.aw-hot td:first-child { color:#ffb090; font-weight:600; }
+.aw-row.aw-me td:first-child { color:var(--gold); }
+.aw-flag { display:inline-block; padding:2px 7px; border-radius:2px; font-size:0.78em; font-weight:700;
+    letter-spacing:1px; background:rgba(217,89,38,0.16); color:#ff9a6a; border:1px solid rgba(217,89,38,0.45); }
+.aw-flag.aw-BATCH { background:rgba(213,81,129,0.16); color:#ff8fb8; border-color:rgba(213,81,129,0.5); }
+.aw-flag.aw-247 { background:rgba(144,133,233,0.16); color:#b8afff; border-color:rgba(144,133,233,0.5); }
+.aw-none { color:var(--muted); }
+.aw-detail td { background:rgba(6,11,22,0.9); padding:12px 16px 16px; }
+.aw-tl-head { font-size:0.8em; letter-spacing:1.4px; color:var(--gold); text-transform:uppercase; margin-bottom:8px; }
+.aw-tl { font-size:0.92em; }
+.aw-tl td { padding:4px 10px; }
+.aw-g-bad { color:#ff8a6a !important; font-weight:700; }
+.aw-g-warn { color:#ffc45a !important; }
 </style>
 </head>
 <body>
@@ -152,9 +185,47 @@ tr.total td { border-top:1px solid var(--border); font-weight:bold; color:#fff; 
 </header>
 
 <div class="wrap">
-    <h1 class="page-title">Gem Revenue Flow</h1>
-    <div id="body"><div class="loading">READING CHAIN HISTORY&hellip;</div></div>
+    <div id="view-switch"></div>
+    <div id="view-revenue">
+        <h1 class="page-title">Gem Revenue Flow</h1>
+        <div id="body"><div class="loading">READING CHAIN HISTORY&hellip;</div></div>
+    </div>
+    <div id="view-watch" hidden>
+        <h1 class="page-title">Automation Watch</h1>
+        <div id="watch"></div>
+    </div>
 </div>
+<script>
+/* ── OWNER-ONLY VIEW ─────────────────────────────────────────────────────────
+   A second, narrower gate inside ops: the Automation Watch view, and the script
+   behind it, only load for the owner's wallet. Everyone else who passes the ops
+   gate sees this page exactly as before, with no switch and nothing extra loaded.
+   Like the gate above it this reads the wallet the site stores, so it keeps the
+   view out of sight rather than securing it; the data is public chain history. */
+(function () {
+    var OWNER = '1x1ci.wam';
+    var who = '';
+    try { who = localStorage.getItem('naron_wallet') || ''; } catch (e) {}
+    if (who !== OWNER) return;
+
+    var sw = document.getElementById('view-switch');
+    sw.className = 'view-switch';
+    sw.innerHTML = '<button class="vs-btn active" data-v="revenue">Gem Revenue</button>' +
+                   '<button class="vs-btn" data-v="watch">Automation Watch</button>';
+    sw.querySelectorAll('.vs-btn').forEach(function (b) {
+        b.onclick = function () {
+            var v = b.getAttribute('data-v');
+            sw.querySelectorAll('.vs-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+            document.getElementById('view-revenue').hidden = v !== 'revenue';
+            document.getElementById('view-watch').hidden = v !== 'watch';
+            if (v === 'watch' && window.opsWatchOpen) window.opsWatchOpen();   // scan only once opened
+        };
+    });
+    var s = document.createElement('script');
+    s.src = 'ops_watch.js';
+    document.body.appendChild(s);
+})();
+</script>
 
 <div id="tip"></div>
 
