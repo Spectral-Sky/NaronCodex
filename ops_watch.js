@@ -1,8 +1,11 @@
 /* ── AUTOMATION WATCH ─────────────────────────────────────────────────────────
-   Loaded by ops.html only after its owner check. Reads dungeon, arena and quest
-   actions from chain history and measures, per wallet, the things a person on a
-   phone can't do: fights closer than ~15 s apart, several different locations in
-   one minute, fights signed together in one transaction, play with no breaks.
+   Loaded by ops.html only after its owner check. Reads dungeon, arena, quest and
+   travel actions from chain history and measures, per wallet, what a person on a
+   phone can't keep up: moving to a new location every 12 s or faster for minutes
+   on end, fighting a near-identical few seconds after every travel, several
+   locations in one minute, travel or fights bundled into one transaction, and play
+   with no breaks. Quick retries at the same location are ignored: the fight
+   animation can be skipped, so those are normal.
 
    Every hour of history is checked against the node's own total before it's used.
    A node that answers short is skipped for the next one, never accepted.
@@ -23,8 +26,12 @@
     var NODES = ['https://wax-history.eosdac.io', 'https://history.waxsweden.org',
                  'https://hyperion.wax.detroitledger.tech', 'https://wax.eosusa.io'];
     var PAGE = {}, DEAD = {};
-    var FILTER = 'dungeons.ale:playdungeon,arena.ale:playarena,quests.ale:finishquest';
-    var HUMAN_GAP_S = 15;          // fastest a person manages on a phone
+    var FILTER = 'dungeons.ale:playdungeon,arena.ale:playarena,quests.ale:finishquest,players.ale:travel';
+    var MOVE_S = 12;               // a move to a new location faster than this, repeatedly, is the signal
+    var SUSTAIN_WIN = 3 * 60e3;    // ...measured over any 3 minutes
+    var SUSTAIN_MOVES = 15;        // 15 moves in 3 min = averaging under 12 s a move
+    var METRO_SPREAD_S = 1.0;      // travel-to-fight delay this steady...
+    var METRO_MIN = 20;            // ...over at least this many moves
     var SESSION_BREAK_S = 300;     // a gap this long ends a session
     var HOUR = 3600e3;
 
@@ -82,7 +89,7 @@
         async function worker() {
             while (next < slices.length) {
                 var s = slices[next++];
-                var got = await hourActs(s[0], s[1]);
+                var got = await hourActs(s[0], s[1]);   // awaited first: concat must see the latest list
                 acts = acts.concat(got);
                 progress(++done, slices.length);
             }
@@ -91,81 +98,137 @@
         return { acts: acts, from: end - hours * HOUR, to: end };
     }
 
+    function sd(a) {
+        if (a.length < 2) return null;
+        var m = a.reduce(function (s, x) { return s + x; }, 0) / a.length;
+        return Math.sqrt(a.reduce(function (s, x) { return s + (x - m) * (x - m); }, 0) / a.length);
+    }
+    function median(a) {
+        if (!a.length) return null;
+        var b = a.slice().sort(function (x, y) { return x - y; });
+        return b[b.length >> 1];
+    }
+    function hhmm(ms) { return new Date(ms).toISOString().slice(11, 16); }
+
     function analyse(raw) {
-        var by = {};
+        var by = {}, trxActs = {};
         raw.acts.forEach(function (a) {
             var auth = (a.act.authorization || [])[0] || {};
             var w = auth.actor;
             if (!w) return;
             var d = a.act.data || {};
-            var e = by[w] || (by[w] = { wallet: w, fights: [], quests: 0 });
+            var e = by[w] || (by[w] = { wallet: w, fights: [], travels: [], quests: 0 });
+            var t = Date.parse(a['@timestamp'] + 'Z');
+            (trxActs[a.trx_id] = trxActs[a.trx_id] || []).push({ w: w, n: a.act.name });
             if (a.act.name === 'finishquest') { e.quests++; return; }
+            if (a.act.name === 'travel') {
+                e.travels.push({ t: t, trx: a.trx_id, kind: 'travel',
+                                 loc: (d.planet || '') + (d.x != null ? ' ' + d.x + ',' + d.y : '') });
+                return;
+            }
             e.fights.push({
-                t: Date.parse(a['@timestamp'] + 'Z'), kind: a.act.name === 'playarena' ? 'arena' : 'dungeon',
+                t: t, kind: a.act.name === 'playarena' ? 'arena' : 'dungeon',
                 loc: (d.planet || '?') + '/' + (d.land_id || '?'), trx: a.trx_id, diff: d.difficulty || ''
             });
         });
         var days = (raw.to - raw.from) / 86400e3;
+
         return Object.keys(by).map(function (w) {
-            var e = by[w], L = e.fights.sort(function (x, y) { return x.t - y.t; });
-            var burst = 0, locs = 0, fast = 0, j = 0, sess = 0, sessStart = L.length ? L[0].t : 0, hours = {};
-            var gaps = [];
-            for (var i = 0; i < L.length; i++) {
+            var e = by[w];
+            var L = e.fights.sort(function (x, y) { return x.t - y.t; });
+            var T = e.travels.sort(function (x, y) { return x.t - y.t; });
+
+            // fastest minute, with when and how long it really took
+            var best = { n: 0 }, locs = 0, j = 0, i, k;
+            for (i = 0; i < L.length; i++) {
                 while (L[i].t - L[j].t >= 60000) j++;
-                burst = Math.max(burst, i - j + 1);
+                if (i - j + 1 > best.n) best = { n: i - j + 1, a: L[j].t, b: L[i].t };
                 var ls = {};
-                for (var k = j; k <= i; k++) ls[L[k].loc] = 1;
+                for (k = j; k <= i; k++) ls[L[k].loc] = 1;
                 locs = Math.max(locs, Object.keys(ls).length);
+            }
+
+            // moves to a new location; same-spot retries are skipped animations
+            var moves = [];
+            for (i = 1; i < L.length; i++)
+                if (L[i].loc !== L[i - 1].loc) moves.push({ t: L[i].t, g: (L[i].t - L[i - 1].t) / 1000 });
+            var under = moves.filter(function (m) { return m.g < MOVE_S; }).length;
+
+            // sustained pace: most moves inside any 3 minutes, and when
+            var sus = { n: 0 }, a0 = 0;
+            for (i = 0; i < moves.length; i++) {
+                while (moves[i].t - moves[a0].t > SUSTAIN_WIN) a0++;
+                if (i - a0 + 1 > sus.n) sus = { n: i - a0 + 1, a: moves[a0].t, b: moves[i].t };
+            }
+
+            // travel -> fight: how long after each travel the next fight came
+            var tf = [], ti = -1;
+            L.forEach(function (f) {
+                while (ti + 1 < T.length && T[ti + 1].t <= f.t) ti++;
+                var tr = ti >= 0 ? T[ti] : null;
+                if (tr && f.t - tr.t < 120000 && !tr.used) { tf.push((f.t - tr.t) / 1000); tr.used = 1; }
+            });
+
+            // bundling: fights sharing a transaction, and travel inside a fight's transaction
+            var trxCount = {};
+            L.forEach(function (f) { trxCount[f.trx] = (trxCount[f.trx] || 0) + 1; });
+            var batched = Object.keys(trxCount).reduce(function (s, x) { return s + (trxCount[x] > 1 ? trxCount[x] : 0); }, 0);
+            var bundled = L.filter(function (f) {
+                return (trxActs[f.trx] || []).some(function (x) { return x.w === w && x.n === 'travel'; });
+            }).length;
+
+            // sessions and hours
+            var hours = {}, sess = 0, sessStart = L.length ? L[0].t : 0;
+            for (i = 0; i < L.length; i++) {
                 hours[Math.floor(L[i].t / HOUR)] = 1;
-                if (i) {
-                    var g = (L[i].t - L[i - 1].t) / 1000;
-                    // a quick retry at the same arena or dungeon is just a skipped
-                    // animation; only a fast move to somewhere new is out of reach
-                    if (L[i].loc !== L[i - 1].loc) {
-                        gaps.push(g);
-                        if (g < HUMAN_GAP_S) fast++;
-                    }
-                    if (g >= SESSION_BREAK_S) sessStart = L[i].t;
-                }
+                if (i && L[i].t - L[i - 1].t >= SESSION_BREAK_S * 1000) sessStart = L[i].t;
                 sess = Math.max(sess, L[i].t - sessStart);
             }
-            var trx = {};
-            L.forEach(function (f) { trx[f.trx] = (trx[f.trx] || 0) + 1; });
-            var batched = Object.keys(trx).reduce(function (s, k) { return s + (trx[k] > 1 ? trx[k] : 0); }, 0);
-            gaps.sort(function (a, b) { return a - b; });
+
             var r = {
-                wallet: w, fights: L.length, quests: e.quests, burst: burst, locs: locs,
-                moves: gaps.length, fast: fast, fastPct: gaps.length ? fast / gaps.length * 100 : 0,
-                medGap: gaps.length ? gaps[gaps.length >> 1] : null,
-                batched: batched, hoursPerDay: Object.keys(hours).length / days,
-                session: sess / HOUR, timeline: L
+                wallet: w, fights: L.length, quests: e.quests, travels: T.length,
+                best: best, locs: locs, moves: moves.length, under: under,
+                underPct: moves.length ? under / moves.length * 100 : 0,
+                sus: sus, tfMed: median(tf), tfSd: sd(tf), tfN: tf.length,
+                batched: batched, bundled: bundled,
+                hoursPerDay: Object.keys(hours).length / days, session: sess / HOUR,
+                timeline: L.concat(T).sort(function (x, y) { return x.t - y.t; })
             };
             r.flags = [];
+            if (r.sus.n >= SUSTAIN_MOVES)
+                r.flags.push(['SUSTAINED', r.sus.n + ' moves to new locations in 3 min (' + hhmm(r.sus.a) + '–' + hhmm(r.sus.b) + ' UTC)']);
+            if (r.tfN >= METRO_MIN && r.tfSd != null && r.tfSd <= METRO_SPREAD_S)
+                r.flags.push(['METRONOME', 'fights ' + r.tfMed.toFixed(1) + ' s after travel, ±' + r.tfSd.toFixed(2) + ' s over ' + r.tfN + ' moves']);
+            if (r.bundled) r.flags.push(['BUNDLE', r.bundled + ' fights signed in the same transaction as a travel']);
             if (r.batched) r.flags.push(['BATCH', 'fights signed together in one transaction']);
-            if (r.locs >= 4) r.flags.push(['BURST', r.locs + ' different locations inside one minute']);
-            if (gaps.length >= 15 && r.fastPct >= 25)
-                r.flags.push(['FAST', Math.round(r.fastPct) + '% of moves to a new location under ' + HUMAN_GAP_S + ' s']);
+            if (r.locs >= 5) r.flags.push(['BURST', r.locs + ' different locations inside one minute']);
             if (r.session >= 6) r.flags.push(['MARATHON', r.session.toFixed(1) + ' h without a 5-minute break']);
             if (r.hoursPerDay >= 18) r.flags.push(['24/7', r.hoursPerDay.toFixed(1) + ' active hours a day']);
-            r.score = r.flags.length * 1000 + r.locs * 50 + r.fastPct;   // fights/min left out: same-spot retries inflate it
+            var heavy = { SUSTAINED: 3, METRONOME: 3, BUNDLE: 3 };
+            r.score = r.flags.reduce(function (s, f) { return s + (heavy[f[0]] || 1) * 1000; }, 0) +
+                      r.sus.n * 20 + r.underPct + (r.tfSd != null ? 50 / (1 + r.tfSd) : 0);
             return r;
         });
     }
 
     var COLS = [
         ['wallet', 'Wallet', 'txt'], ['flags', 'Flags', 'txt'], ['fights', 'Fights', 'num'],
-        ['quests', 'Quests', 'num'], ['burst', 'Fights / min', 'num'], ['locs', 'Locations / min', 'num'],
-        ['fastPct', 'Moves < 15 s', 'num'], ['medGap', 'Median move', 'num'], ['batched', 'Same trx', 'num'],
-        ['hoursPerDay', 'Hours / day', 'num'], ['session', 'Longest session', 'num']
+        ['quests', 'Quests', 'num'], ['best', 'Fastest minute', 'num'], ['locs', 'Locations / min', 'num'],
+        ['underPct', 'Moves < 12 s', 'num'], ['sus', 'Best 3 min', 'num'], ['tf', 'Travel → fight', 'num'],
+        ['batched', 'Same trx', 'num'], ['hoursPerDay', 'Hours / day', 'num'], ['session', 'Longest session', 'num']
     ];
+    var SORTKEY = { best: function (r) { return r.best.n; }, sus: function (r) { return r.sus.n; },
+                    tf: function (r) { return r.tfSd == null ? 1e9 : r.tfSd; } };
 
     function cell(r, k) {
         if (k === 'wallet') return esc(r.wallet);
         if (k === 'flags') return r.flags.map(function (f) {
             return '<span class="aw-flag aw-' + f[0].replace('/', '') + '" title="' + esc(f[1]) + '">' + f[0] + '</span>';
         }).join(' ') || '<span class="aw-none">&ndash;</span>';
-        if (k === 'fastPct') return r.moves ? Math.round(r.fastPct) + '% <small>(' + r.fast + ' of ' + r.moves + ')</small>' : '&ndash;';
-        if (k === 'medGap') return r.medGap == null ? '&ndash;' : (r.medGap < 120 ? Math.round(r.medGap) + ' s' : (r.medGap / 60).toFixed(1) + ' min');
+        if (k === 'best') return r.best.n ? r.best.n + ' <small>in ' + Math.round((r.best.b - r.best.a) / 1000) + ' s &middot; ' + hhmm(r.best.a) + '</small>' : '&ndash;';
+        if (k === 'underPct') return r.moves ? Math.round(r.underPct) + '% <small>(' + r.under + ' of ' + r.moves + ')</small>' : '&ndash;';
+        if (k === 'sus') return r.sus.n ? r.sus.n + ' <small>moves &middot; ' + hhmm(r.sus.a) + '</small>' : '&ndash;';
+        if (k === 'tf') return r.tfN ? r.tfMed.toFixed(1) + ' s <small>±' + (r.tfSd == null ? '–' : r.tfSd.toFixed(1)) + ' &middot; ' + r.tfN + '</small>' : '&ndash;';
         if (k === 'hoursPerDay') return r.hoursPerDay.toFixed(1);
         if (k === 'session') return r.session.toFixed(1) + ' h';
         return String(r[k]);
@@ -176,8 +239,9 @@
         if (!_data) return;
         var rows = _data.rows.slice().sort(function (a, b) {
             if (_sort === 'wallet') return a.wallet.localeCompare(b.wallet);
-            if (_sort === 'flags') return b.flags.length - a.flags.length || b.score - a.score;
-            if (_sort === 'medGap') return (a.medGap == null ? 1e9 : a.medGap) - (b.medGap == null ? 1e9 : b.medGap);
+            if (_sort === 'flags' || _sort === 'score') return b.score - a.score;
+            if (_sort === 'tf') return SORTKEY.tf(a) - SORTKEY.tf(b);
+            if (SORTKEY[_sort]) return SORTKEY[_sort](b) - SORTKEY[_sort](a);
             return (b[_sort] || 0) - (a[_sort] || 0);
         });
         var flagged = rows.filter(function (r) { return r.flags.length; }).length;
@@ -190,13 +254,14 @@
               tileH('Fights', fights.toLocaleString(), 'dungeons and arenas') +
               tileH('Flagged', flagged, 'at least one signal below') +
             '</div>' +
-            '<p class="note">A phone manages about one fight per ' + HUMAN_GAP_S + ' s. Flags: ' +
-            '<b>BATCH</b> fights signed in one transaction &middot; <b>BURST</b> 4+ locations in a minute &middot; ' +
-            '<b>FAST</b> a quarter or more of moves to a new location under ' + HUMAN_GAP_S + ' s &middot; <b>MARATHON</b> 6 h+ with no ' +
-            '5-minute break &middot; <b>24/7</b> 18+ active hours a day. Quick retries at the same arena or dungeon ' +
-            'are ignored (the animation can be skipped); only moves to a new location are timed. Naron Codex&rsquo;s own Dungeon Run queue ' +
-            'fires fights back to back, so speed alone is a reason to look closer, not proof. ' +
-            'Click a wallet for its fight-by-fight timeline.</p>' +
+            '<p class="note">Only <b>moves to a new location</b> are timed: a retry at the same arena or dungeon ' +
+            'can follow within seconds by skipping the animation, so it&rsquo;s normal. Strong signals: ' +
+            '<b>SUSTAINED</b> ' + SUSTAIN_MOVES + '+ moves in any 3 minutes (averaging under ' + MOVE_S + ' s a move) &middot; ' +
+            '<b>METRONOME</b> fighting the same few seconds after every travel, within ±' + METRO_SPREAD_S + ' s over ' + METRO_MIN + '+ moves &middot; ' +
+            '<b>BUNDLE</b> travel signed in the same transaction as a fight. Weaker: <b>BATCH</b> fights sharing a transaction &middot; ' +
+            '<b>BURST</b> 5+ locations in a minute &middot; <b>MARATHON</b> 6 h+ with no 5-minute break &middot; ' +
+            '<b>24/7</b> 18+ active hours a day. Naron Codex&rsquo;s Dungeon Run queue also fires back to back, so ' +
+            'look closer before concluding. Click a wallet for its timeline, travel included.</p>' +
             '<div class="aw-wrap"><table class="aw-table"><thead><tr>' +
             COLS.map(function (c) {
                 return '<th class="' + c[2] + (c[0] === _sort ? ' aw-sorted' : '') + '" data-k="' + c[0] + '">' + c[1] + '</th>';
@@ -220,26 +285,45 @@
         bindControls();
     }
 
-    // newest 60 fights, with the gap to the previous one coloured by how humanly possible it is
+    // newest 80 events, travel included; each fight shows the gap since the last fight
+    // and, when a travel came between, how long after the travel
     function timeline(r) {
-        var L = r.timeline, start = Math.max(0, L.length - 60);
+        var L = r.timeline, start = Math.max(0, L.length - 80), i, f;
         var trxCount = {};
-        L.forEach(function (f) { trxCount[f.trx] = (trxCount[f.trx] || 0) + 1; });
+        L.forEach(function (x) { if (x.kind !== 'travel') trxCount[x.trx] = (trxCount[x.trx] || 0) + 1; });
+        var info = [], lastFight = null, lastTravel = null;
+        for (i = 0; i < L.length; i++) {
+            f = L[i];
+            if (f.kind === 'travel') { lastTravel = f; info.push(null); continue; }
+            info.push({
+                g: lastFight ? (f.t - lastFight.t) / 1000 : null,
+                same: !!(lastFight && lastFight.loc === f.loc),
+                tf: lastTravel && (!lastFight || lastTravel.t > lastFight.t) ? (f.t - lastTravel.t) / 1000 : null
+            });
+            lastFight = f;
+        }
         var rows = [];
-        for (var i = L.length - 1; i >= start; i--) {
-            var f = L[i], g = i ? (f.t - L[i - 1].t) / 1000 : null;
-            var same = i && f.loc === L[i - 1].loc;
-            var cls = g == null ? '' : same ? 'aw-g-same' : g < HUMAN_GAP_S ? 'aw-g-bad' : g < 30 ? 'aw-g-warn' : '';
-            rows.push('<tr><td class="txt">' + iso(f.t).replace('T', ' ') + '.' + String(f.t % 1000).padStart(3, '0').slice(0, 1) +
-                '</td><td class="txt">' + f.kind + (f.diff ? ' L' + esc(f.diff) : '') + '</td><td class="txt">' + esc(f.loc) +
-                '</td><td class="num ' + cls + '">' + (g == null ? '&ndash;' : g.toFixed(1) + ' s' + (same ? ' <small>same spot</small>' : '')) +
+        for (i = L.length - 1; i >= start; i--) {
+            f = L[i];
+            var stamp = iso(f.t).replace('T', ' ') + '.' + String(f.t % 1000).padStart(3, '0').slice(0, 1);
+            if (f.kind === 'travel') {
+                rows.push('<tr class="aw-travel"><td class="txt">' + stamp + '</td><td class="txt">travel</td><td class="txt">' +
+                    esc(f.loc) + '</td><td class="num"></td><td class="num"></td><td class="txt"></td></tr>');
+                continue;
+            }
+            var x = info[i];
+            var cls = x.g == null ? '' : x.same ? 'aw-g-same' : x.g < MOVE_S ? 'aw-g-bad' : x.g < 20 ? 'aw-g-warn' : '';
+            rows.push('<tr><td class="txt">' + stamp + '</td><td class="txt">' + f.kind + (f.diff ? ' L' + esc(f.diff) : '') +
+                '</td><td class="txt">' + esc(f.loc) + '</td><td class="num ' + cls + '">' +
+                (x.g == null ? '&ndash;' : x.g.toFixed(1) + ' s' + (x.same ? ' <small>same spot</small>' : '')) +
+                '</td><td class="num">' + (x.tf == null ? '' : x.tf.toFixed(1) + ' s') +
                 '</td><td class="txt' + (trxCount[f.trx] > 1 ? ' aw-g-bad' : '') + '" title="' + esc(f.trx) + '">' +
                 esc(f.trx.slice(0, 12)) + (trxCount[f.trx] > 1 ? ' &times;' + trxCount[f.trx] : '') + '</td></tr>');
         }
         return '<div class="aw-tl-head">' + esc(r.wallet) + ' &middot; newest ' + (L.length - start) + ' of ' + L.length +
-            ' fights</div><table class="aw-tl"><thead><tr><th class="txt">Time (UTC)</th><th class="txt">Fight</th>' +
-            '<th class="txt">Location</th><th class="num">Gap</th><th class="txt">Transaction</th></tr></thead><tbody>' +
-            rows.join('') + '</tbody></table>';
+            ' fights and travels</div><table class="aw-tl"><thead><tr><th class="txt">Time (UTC)</th><th class="txt">Action</th>' +
+            '<th class="txt">Location</th><th class="num">Since last fight</th><th class="num">After travel</th>' +
+            '<th class="txt">Transaction</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
     }
 
     function controls() {
@@ -247,7 +331,7 @@
             return '<button class="ops-tab' + (_hours === h ? ' active' : '') + '" data-h="' + h + '">' + l + '</button>';
         };
         return '<div class="ops-tabs">' + b(24, 'Last 24 h') + b(72, 'Last 3 days') + b(168, 'Last 7 days') +
-            '<span class="ops-tab-note">dungeons, arenas and quests from chain history</span>' +
+            '<span class="ops-tab-note">fights, quests and travel from chain history</span>' +
             (_data ? '<button class="ops-csv" id="aw-csv">&#8681; CSV</button>' : '') + '</div>';
     }
     function bindControls() {
@@ -263,12 +347,14 @@
     }
 
     function csv() {
-        var head = ['wallet', 'flags', 'fights', 'quests', 'max_per_min', 'max_locations_per_min',
-                    'moves_under_15s', 'moves_under_15s_pct', 'median_move_gap_s', 'same_trx_fights', 'hours_per_day', 'longest_session_h'];
+        var head = ['wallet', 'flags', 'fights', 'quests', 'travels', 'fastest_minute_fights', 'fastest_minute_secs',
+                    'max_locations_per_min', 'moves', 'moves_under_12s', 'best_3min_moves', 'travel_to_fight_median_s',
+                    'travel_to_fight_spread_s', 'same_trx_fights', 'travel_bundled_fights', 'hours_per_day', 'longest_session_h'];
         var lines = [head.join(',')].concat(_data.rows.map(function (r) {
-            return [r.wallet, r.flags.map(function (f) { return f[0]; }).join(' '), r.fights, r.quests, r.burst, r.locs,
-                    r.fast, r.fastPct.toFixed(1), r.medGap == null ? '' : r.medGap, r.batched,
-                    r.hoursPerDay.toFixed(2), r.session.toFixed(2)].join(',');
+            return [r.wallet, r.flags.map(function (f) { return f[0]; }).join(' '), r.fights, r.quests, r.travels,
+                    r.best.n, r.best.n ? Math.round((r.best.b - r.best.a) / 1000) : '', r.locs, r.moves, r.under, r.sus.n,
+                    r.tfMed == null ? '' : r.tfMed.toFixed(1), r.tfSd == null ? '' : r.tfSd.toFixed(2),
+                    r.batched, r.bundled, r.hoursPerDay.toFixed(2), r.session.toFixed(2)].join(',');
         }));
         var url = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
         var a = document.createElement('a');
