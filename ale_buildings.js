@@ -271,7 +271,7 @@
     /* ── view ───────────────────────────────────────────────────────────────── */
     var COLS = [
         ['type', 'Building', 'txt'], ['planet', 'Planet', 'txt'], ['xy', 'X, Y', 'txt'], ['land', 'Land', 'txt'],
-        ['tag', 'Owner', 'txt'], ['owner', 'Wallet', 'txt'], ['level', 'Level', 'num'], ['boost', 'Boost now', 'num'],
+        ['tag', 'Owner', 'txt'], ['owner', 'Wallet', 'txt'], ['boost', 'Boost now', 'num'],
         ['lastBoost', 'Last boosted', 'txt'], ['busy', 'Fights / day', 'num'], ['visitors', 'Unique visitors', 'num'],
         ['users', 'Tavern users', 'num'], ['tlm', 'TLM', 'num'], ['shards', 'Shards', 'num'],
         ['credits', 'Credits', 'num'], ['gems', 'Gems', 'num'], ['since', 'Unclaimed since', 'txt']
@@ -402,12 +402,12 @@
     }
 
     function csv() {
-        var head = ['building', 'planet', 'x', 'y', 'land_id', 'land', 'owner_tag', 'owner_wallet', 'level', 'boost_now_est',
+        var head = ['building', 'planet', 'x', 'y', 'land_id', 'land', 'owner_tag', 'owner_wallet', 'boost_now_est',
                     'last_boost_utc', 'last_boost_by', 'last_boost_target', 'fights_per_day', 'unique_visitors', 'window_hours',
                     'tavern_users', 'tlm', 'shards', 'credits', 'gems', 'unclaimed_since_utc'];
         var q = function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
         var lines = [head.join(',')].concat(visible().map(function (r) {
-            return [r.type, r.planet, r.x, r.y, r.landId, r.land, r.tag, r.owner, r.level, Math.round(r.boost),
+            return [r.type, r.planet, r.x, r.y, r.landId, r.land, r.tag, r.owner, Math.round(r.boost),
                     r.lastBoost ? iso(r.lastBoost.t) : '', r.lastBoost ? r.lastBoost.by : '', r.lastBoost ? r.lastBoost.target : '',
                     r.fights == null ? '' : r.fights.toFixed(2), r.visitors == null ? '' : r.visitors, _fightsFor || '',
                     r.users == null ? '' : r.users, r.tlm.toFixed(4), r.shards.toFixed(1), r.credits, r.gems,
