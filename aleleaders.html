@@ -411,6 +411,10 @@
 <div class="title-bar">
     <h1>&#9670; ALIEN LEGENDS &mdash; LEADERBOARD</h1>
     <p class="sub">ALL PLAYERS &middot; SORTABLE BY ANY STAT &middot; SOURCE: PLAYERS.ALE</p>
+    <div class="lb-views">
+        <button class="lb-view on" data-view="players" onclick="lbSetView('players')">&#9670; Players</button>
+        <button class="lb-view" data-view="buildings" onclick="lbSetView('buildings')">&#9962; Buildings</button>
+    </div>
 </div>
 
 <div class="controls-bar">
@@ -491,6 +495,27 @@
         <tbody id="lb-tbody"></tbody>
     </table>
 </div>
+<div id="bld-view"></div>
+<script>
+/* Players / Buildings. The buildings code only loads the first time its tab opens,
+   so the player leaderboard pays nothing for it. */
+window.lbSetView = function (v) {
+    document.body.classList.toggle('bld-mode', v === 'buildings');
+    document.querySelectorAll('.lb-view').forEach(function (b) {
+        b.classList.toggle('on', b.getAttribute('data-view') === v);
+    });
+    var sub = document.querySelector('.title-bar .sub');
+    if (sub) sub.innerHTML = v === 'buildings'
+        ? 'EVERY BUILDING &middot; OWNER, BOOST, TRAFFIC &amp; EARNINGS &middot; SOURCE: LANDS.ALE + CHAIN HISTORY'
+        : 'ALL PLAYERS &middot; SORTABLE BY ANY STAT &middot; SOURCE: PLAYERS.ALE';
+    if (v !== 'buildings') return;
+    if (window.aleBuildingsOpen) { window.aleBuildingsOpen(); return; }
+    var s = document.createElement('script');
+    s.src = 'ale_buildings.js';
+    s.onload = function () { window.aleBuildingsOpen(); };
+    document.body.appendChild(s);
+};
+</script>
 
 <footer>
     <span>SOURCE &middot; PLAYERS.ALE &middot; WAX BLOCKCHAIN</span>
@@ -1954,7 +1979,60 @@
 </script>
 <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 <!-- ── TIP ──────────────────────────────────────────────────────────────── -->
-<style>#tip-pop{position:fixed;display:none;flex-direction:column;gap:10px;z-index:9999;background:rgba(4,8,20,0.97);border:1px solid rgba(232,160,32,0.35);padding:14px 18px;min-width:210px;box-shadow:0 6px 24px rgba(0,0,0,0.9);}.tip-btn-sm{background:transparent;border:1px solid rgba(232,160,32,0.25);color:#a07840;font-family:'Courier New',monospace;font-size:0.7em;letter-spacing:1px;padding:5px 10px;cursor:pointer;transition:all 0.2s;}.tip-btn-sm:hover{color:#c09060;border-color:rgba(232,160,32,0.5);}</style>
+<style>#tip-pop{position:fixed;display:none;flex-direction:column;gap:10px;z-index:9999;background:rgba(4,8,20,0.97);border:1px solid rgba(232,160,32,0.35);padding:14px 18px;min-width:210px;box-shadow:0 6px 24px rgba(0,0,0,0.9);}.tip-btn-sm{background:transparent;border:1px solid rgba(232,160,32,0.25);color:#a07840;font-family:'Courier New',monospace;font-size:0.7em;letter-spacing:1px;padding:5px 10px;cursor:pointer;transition:all 0.2s;}.tip-btn-sm:hover{color:#c09060;border-color:rgba(232,160,32,0.5);}
+    /* ── PLAYERS / BUILDINGS TABS ─────────────────────────────────────────── */
+    .lb-views { display:flex; gap:6px; margin-top:12px; }
+    .lb-view { background:transparent; border:1px solid rgba(232,160,32,0.35); color:#c9b48a;
+        font-family:inherit; font-size:0.72em; letter-spacing:2px; text-transform:uppercase;
+        padding:6px 16px; cursor:pointer; border-radius:2px; }
+    .lb-view:hover { color:#fff; border-color:var(--gold); }
+    .lb-view.on { background:var(--gold); color:#1a1206; border-color:var(--gold); font-weight:bold; }
+    body.bld-mode .controls-bar, body.bld-mode #lb-sv-tray, body.bld-mode #lb-gem-tray,
+    body.bld-mode #col-toggles, body.bld-mode #progress-wrap, body.bld-mode #ale-stats-panel,
+    body.bld-mode .table-wrap { display:none !important; }
+    #bld-view { display:none; flex:1; min-height:0; overflow:auto; padding:0 28px 30px; }
+    body.bld-mode #bld-view { display:block; }
+    .bld-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:12px 0 8px; }
+    .bld-pill { background:transparent; border:1px solid rgba(232,160,32,0.35); color:#c9b48a;
+        font-family:inherit; font-size:0.72em; letter-spacing:1px; padding:5px 12px; cursor:pointer; border-radius:2px; }
+    .bld-pill:hover { color:#fff; }
+    .bld-pill.on { background:var(--gold); color:#1a1206; border-color:var(--gold); font-weight:bold; }
+    .bld-sep { width:10px; }
+    .bld-lbl { font-size:0.68em; color:#a9b4c4; letter-spacing:1px; }
+    #bld-planet, #bld-search { background:rgba(3,6,15,0.9); border:1px solid rgba(232,160,32,0.3); color:#e6d3a8;
+        font-family:inherit; font-size:0.74em; padding:5px 10px; border-radius:2px; outline:none; }
+    #bld-search { width:210px; }
+    #bld-planet:focus, #bld-search:focus { border-color:var(--gold); }
+    #bld-csv { margin-left:auto; }
+    .bld-status { font-size:0.72em; color:#ffbf4d; min-height:1.3em; letter-spacing:1px; }
+    .bld-note { font-size:0.7em; color:#a9b4c4; line-height:1.6; margin:4px 0 12px; max-width:1100px; }
+    .bld-empty { padding:40px 0; color:#a9b4c4; letter-spacing:2px; }
+    .bld-wrap { overflow:auto; }
+    .bld-table { border-collapse:separate; border-spacing:0; font-size:0.76em; }
+    .bld-table th { position:sticky; top:0; z-index:2; background:#090912; border-bottom:2px solid var(--gold);
+        padding:9px 11px; cursor:pointer; letter-spacing:1px; text-transform:uppercase; color:#c9b48a;
+        font-weight:normal; white-space:nowrap; user-select:none; }
+    .bld-table th:hover, .bld-table th.sort-asc, .bld-table th.sort-desc { color:var(--gold); }
+    .bld-table th.sort-asc::after { content:' \25B2'; } .bld-table th.sort-desc::after { content:' \25BC'; }
+    .bld-table td { padding:7px 11px; border-bottom:1px solid rgba(255,255,255,0.05); white-space:nowrap;
+        color:#d4dbe6; font-variant-numeric:tabular-nums; }
+    .bld-table .num { text-align:right; } .bld-table .txt { text-align:left; }
+    .bld-table tr:hover td { background:rgba(232,160,32,0.06); }
+    .bld-table td small { color:#a9b4c4; }
+    .bld-dim { color:#7f8a9a; }
+    .bld-type { display:inline-block; min-width:62px; padding:1px 7px; border-radius:2px; font-size:0.92em;
+        letter-spacing:1px; text-transform:uppercase; text-align:center; font-weight:bold; }
+    .bld-dungeon { background:rgba(96,165,250,0.16); color:#8ec0ff; }
+    .bld-arena { background:rgba(255,110,90,0.16); color:#ff9b88; }
+    .bld-tavern { background:rgba(232,160,32,0.16); color:#ffc45a; }
+    html.day .lb-view, html.day .bld-pill { color:#6b4a00; border-color:rgba(154,104,0,0.4); }
+    html.day .lb-view.on, html.day .bld-pill.on { color:#fff; background:#9a6800; border-color:#9a6800; }
+    html.day .bld-table th { background:#e4ecf8; color:#3b4866; }
+    html.day .bld-table td { color:#1a2850; border-bottom-color:rgba(0,40,100,0.08); }
+    html.day .bld-table td small, html.day .bld-note, html.day .bld-lbl, html.day .bld-dim { color:#3b4866; }
+    html.day .bld-status { color:#8a5c00; }
+    html.day #bld-planet, html.day #bld-search { background:#f0f4ff; color:#1a2850; border-color:rgba(154,104,0,0.4); }
+</style>
 <div id="tip-pop">
     <button onclick="toggleTipPop()" style="position:absolute;top:5px;right:8px;background:transparent;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:1.1em;padding:2px 5px;line-height:1;">✕</button>
     <div style="font-size:0.58em;letter-spacing:2px;color:rgba(232,160,32,0.5);">&#9829; SUPPORT NARON CODEX</div>
