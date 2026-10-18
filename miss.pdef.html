@@ -6,6 +6,7 @@
     <title>PD Missions // Live Board</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="NCico.png">
+    <script src="waxjs.js"></script>
     <script type="module">
         import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
         import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
@@ -44,7 +45,7 @@
             background: var(--bg);
             background-image: radial-gradient(ellipse at 50% 0%, #0a1028 0%, var(--bg) 70%);
             color: var(--text);
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
             margin: 0; padding: 0;
             overflow-x: hidden;
             cursor: crosshair;
@@ -96,14 +97,14 @@
         .logo-section h1 { color:var(--accent); margin:0; font-size:1.5em; letter-spacing:4px; text-transform:uppercase; text-shadow:0 0 10px var(--accent); }
         .logo-section .logo-sub { color:var(--text-muted); font-size:0.65em; letter-spacing:2px; margin-top:2px; }
         .nav-links { display:flex; gap:6px; align-items:center; }
-        .nav-btn { background:transparent; color:#6080a0; border:1px solid transparent; padding:7px 14px; font-family:'Courier New',monospace; font-size:0.8em; font-weight:bold; text-decoration:none; cursor:pointer; transition:all 0.2s; text-transform:uppercase; letter-spacing:1px; border-radius:4px; }
+        .nav-btn { background:transparent; color:#6080a0; border:1px solid transparent; padding:7px 14px; font-family:inherit; font-size:0.8em; font-weight:bold; text-decoration:none; cursor:pointer; transition:all 0.2s; text-transform:uppercase; letter-spacing:1px; border-radius:4px; }
         .nav-btn:hover { color:var(--accent); border-color:var(--accent); }
         .nav-btn.active { color:#000; background:var(--accent); border-color:var(--accent); box-shadow:0 0 12px var(--accent-glow); }
 
         .wallet-section { position:relative; display:flex; gap:6px; align-items:center; flex-shrink:0; }
         .wallet-btn {
             background:#111; color:var(--accent); border:1px dashed var(--accent);
-            padding:8px 14px; font-family:'Courier New',monospace; font-size:0.78em; font-weight:bold;
+            padding:8px 14px; font-family:inherit; font-size:0.78em; font-weight:bold;
             cursor:pointer; transition:all 0.2s; white-space:nowrap; flex-shrink:0;
         }
         .wallet-btn:hover { background:var(--accent-dim); box-shadow:0 0 10px var(--accent-glow); }
@@ -111,11 +112,11 @@
 
         /* ── FONT PICKER DROPDOWN (injected) ── */
         .nav-dropdown-wrap { position:relative; display:inline-block; }
-        .nav-dropdown-btn { background:transparent; color:#6080a0; border:1px solid transparent; padding:7px 12px; font-family:'Courier New',monospace; font-weight:bold; font-size:0.8em; cursor:pointer; transition:all 0.2s; text-transform:uppercase; letter-spacing:1px; white-space:nowrap; }
+        .nav-dropdown-btn { background:transparent; color:#6080a0; border:1px solid transparent; padding:7px 12px; font-family:inherit; font-weight:bold; font-size:0.8em; cursor:pointer; transition:all 0.2s; text-transform:uppercase; letter-spacing:1px; white-space:nowrap; }
         .nav-dropdown-btn:hover { color:var(--accent); border-color:var(--accent); }
         .nav-dropdown-menu { display:none; position:absolute; top:100%; right:0; z-index:7000; background:#02080e; border:1px solid var(--accent); min-width:160px; padding:6px 0; box-shadow:0 8px 24px rgba(0,0,0,0.9); }
         .nav-dropdown-wrap:hover .nav-dropdown-menu { display:block; }
-        .nav-dropdown-item { display:block; padding:7px 14px; color:#6080a0; text-decoration:none; font-family:'Courier New',monospace; font-size:0.82em; letter-spacing:1px; text-transform:uppercase; transition:all 0.15s; white-space:nowrap; }
+        .nav-dropdown-item { display:block; padding:7px 14px; color:#6080a0; text-decoration:none; font-family:inherit; font-size:0.82em; letter-spacing:1px; text-transform:uppercase; transition:all 0.15s; white-space:nowrap; }
         .nav-dropdown-item:hover { color:var(--accent); background:rgba(91,173,255,0.06); }
         .nav-dropdown-item.active { color:var(--accent); font-weight:bold; }
         .font-preview { display:block; font-size:0.82em; color:var(--text-dim); margin-top:1px; }
@@ -133,7 +134,7 @@
         .filter-label { color:var(--text-muted); font-size:0.7em; letter-spacing:2px; text-transform:uppercase; white-space:nowrap; }
         .filter-pill {
             background:transparent; color:var(--text-muted); border:1px solid var(--border);
-            padding:4px 10px; font-family:'Courier New',monospace; font-size:0.75em; font-weight:bold;
+            padding:4px 10px; font-family:inherit; font-size:0.75em; font-weight:bold;
             text-transform:uppercase; letter-spacing:1px; cursor:pointer; transition:all 0.2s; border-radius:3px;
         }
         .filter-pill:hover { color:var(--accent); border-color:var(--accent); }
@@ -155,7 +156,7 @@
         .def-price-wrap label { color:var(--text-muted); font-size:0.7em; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; }
         #def-price-input {
             background:#000; border:1px solid var(--border); color:var(--accent);
-            padding:4px 8px; font-family:'Courier New',monospace; font-size:0.85em; font-weight:bold;
+            padding:4px 8px; font-family:inherit; font-size:0.85em; font-weight:bold;
             width:80px; text-align:right; transition:border-color 0.2s;
         }
         #def-price-input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 8px var(--accent-glow); }
@@ -167,7 +168,7 @@
 
         .refresh-btn {
             background:transparent; border:1px solid var(--border); color:var(--text-muted);
-            padding:4px 10px; font-family:'Courier New',monospace; font-size:0.75em;
+            padding:4px 10px; font-family:inherit; font-size:0.75em;
             cursor:pointer; transition:all 0.2s; margin-left:auto;
         }
         .refresh-btn:hover { border-color:var(--accent); color:var(--accent); }
@@ -175,11 +176,12 @@
 
         /* ── STATS BAR ── */
         .stats-bar {
-            background:var(--surface); border-bottom:1px solid var(--border);
-            padding:8px 24px; display:flex; gap:24px; align-items:center; flex-wrap:wrap;
+            background:var(--surface); border-top:1px solid var(--border);
+            padding:14px 24px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;
         }
-        .stat-chip { display:flex; align-items:center; gap:6px; }
-        .stat-chip .sc-label { color:var(--text-muted); font-size:0.68em; letter-spacing:2px; text-transform:uppercase; }
+        .stat-chip { display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:10px;
+            padding:7px 14px; background:var(--bg2); }
+        .stat-chip .sc-label { color:#a9bdd8; font-size:0.68em; letter-spacing:2px; text-transform:uppercase; }
         .stat-chip .sc-val { color:var(--text); font-size:0.85em; font-weight:bold; font-variant-numeric:tabular-nums; }
 
         /* ── TABLE WRAPPER ── */
@@ -215,7 +217,7 @@
         tbody tr.row-expired { opacity:0.35; filter:grayscale(0.6); }
 
         td { padding:9px 12px; font-size:0.82em; vertical-align:middle; }
-        td.mono { font-family:'Courier New',monospace; }
+        td.mono { font-variant-numeric:tabular-nums; }
         td.dim { color:var(--text-muted); }
 
         /* Planet badge */
@@ -227,7 +229,7 @@
 
         /* Mission name */
         .mission-title-btn {
-            background:transparent; border:none; color:var(--text); font-family:'Courier New',monospace;
+            background:transparent; border:none; color:var(--text); font-family:inherit;
             font-size:1em; text-align:left; cursor:pointer; padding:0; transition:color 0.2s;
             font-weight:bold;
         }
@@ -321,7 +323,7 @@
         .val-in-group { display:flex; border:1px solid var(--border); border-radius:4px; overflow:hidden; }
         .val-pill {
             background:transparent; color:var(--text-muted); border:none; border-right:1px solid var(--border);
-            padding:4px 10px; font-family:'Courier New',monospace; font-size:0.75em; font-weight:bold;
+            padding:4px 10px; font-family:inherit; font-size:0.75em; font-weight:bold;
             text-transform:uppercase; letter-spacing:1px; cursor:pointer; transition:all 0.15s;
         }
         .val-pill:last-child { border-right:none; }
@@ -355,14 +357,14 @@
         .ptick-manual-wrap label { color:var(--text-dim); font-size:0.9em; }
         #def-price-input {
             background:#000; border:1px solid var(--border); color:var(--accent);
-            padding:3px 7px; font-family:'Courier New',monospace; font-size:0.9em; font-weight:bold;
+            padding:3px 7px; font-family:inherit; font-size:0.9em; font-weight:bold;
             width:72px; text-align:right; transition:border-color 0.2s;
         }
         #def-price-input:focus { outline:none; border-color:var(--accent); }
         #def-price-input.has-live { border-color:#3a5070; }
         .ptick-live-btn {
             background:transparent; border:1px solid #3a5070; color:var(--text-dim);
-            padding:2px 6px; font-family:'Courier New',monospace; font-size:0.8em; cursor:pointer; transition:all 0.2s;
+            padding:2px 6px; font-family:inherit; font-size:0.8em; cursor:pointer; transition:all 0.2s;
         }
         .ptick-live-btn:hover { border-color:var(--accent); color:var(--accent); }
 
@@ -374,7 +376,7 @@
         }
         .ep-footer .ep-label { text-transform:uppercase; white-space:nowrap; color:var(--text-dim); }
         .ep-select {
-            background:#000; border:1px solid var(--border); color:var(--text); font-family:'Courier New',monospace;
+            background:#000; border:1px solid var(--border); color:var(--text); font-family:inherit;
             font-size:1em; padding:3px 8px; cursor:pointer; transition:border-color 0.2s;
         }
         .ep-select:focus { outline:none; border-color:var(--accent); }
@@ -383,7 +385,7 @@
         .ep-ping.err { color:var(--loss); }
         .ep-test-btn {
             background:transparent; border:1px solid var(--border); color:var(--text-muted);
-            padding:3px 8px; font-family:'Courier New',monospace; font-size:1em; cursor:pointer; transition:all 0.2s;
+            padding:3px 8px; font-family:inherit; font-size:1em; cursor:pointer; transition:all 0.2s;
         }
         .ep-test-btn:hover { border-color:var(--accent); color:var(--accent); }
 
@@ -392,6 +394,116 @@
 
         /* Font picker (injected) */
         var _FM={'segoe':'\'Segoe UI\',sans-serif','calibri':'Calibri,sans-serif','georgia':'Georgia,serif','terminal':'\'Courier New\',monospace'};
+
+        /* ── MY DIVISIONS ─────────────────────────────────────────────────── */
+        #pd-divs { margin:14px 20px 18px; padding:14px 16px 10px; background:var(--surface);
+            border:1px solid var(--border); border-left:3px solid var(--accent); }
+        .pdd-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+        .pdd-title { color:var(--accent); font-weight:bold; letter-spacing:3px; text-transform:uppercase; font-size:0.9em; margin-right:6px; }
+        #pdd-wallet { background:var(--bg2); border:1px solid var(--border); color:var(--text); padding:6px 10px;
+            font-family:inherit; font-size:0.8em; width:180px; outline:none; }
+        #pdd-wallet:focus { border-color:var(--accent); }
+        .pdd-btn { background:transparent; border:1px solid var(--accent); color:var(--accent); padding:5px 12px;
+            font-family:inherit; font-size:0.75em; letter-spacing:1px; cursor:pointer; text-transform:uppercase; }
+        .pdd-btn:hover:not(:disabled) { background:var(--accent-dim); }
+        .pdd-btn:disabled { opacity:0.4; cursor:default; }
+        .pdd-mode { margin-left:auto; font-size:0.75em; color:#a9bdd8; letter-spacing:1px; }
+        .pdd-msg { font-size:0.8em; padding:7px 10px; margin-bottom:10px; border:1px solid rgba(62,217,122,0.4); color:#7dffb0; background:rgba(62,217,122,0.06); }
+        .pdd-msg.bad { border-color:rgba(224,80,80,0.5); color:#ff9a9a; background:rgba(224,80,80,0.07); }
+        .pdd-empty { padding:16px 0; color:#a9bdd8; font-size:0.85em; }
+        .pdd-chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+        .pdd-chip { background:var(--bg2); border:1px solid var(--border); padding:6px 10px; min-width:96px; }
+        .pdd-chip span { display:block; font-size:0.62em; color:#a9bdd8; letter-spacing:1.4px; text-transform:uppercase; }
+        .pdd-chip b { font-size:0.95em; color:#fff; font-variant-numeric:tabular-nums; }
+        .pdd-chip small { color:#a9bdd8; font-weight:normal; }
+        .pdd-bundle { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+        .pdd-go { background:var(--accent); color:#04101f; border:none; padding:8px 16px; font-family:inherit;
+            font-weight:bold; font-size:0.8em; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer; }
+        .pdd-go:disabled { background:#2a3a55; color:#7f93ad; cursor:default; }
+        .pdd-chk { font-size:0.78em; color:#c8d8f0; cursor:pointer; }
+        .pdd-hint { font-size:0.72em; color:#a9bdd8; }
+        .pdd-wrap { overflow-x:auto; }
+        .pdd-table { width:100%; border-collapse:collapse; font-size:0.8em; }
+        .pdd-table th { text-align:left; color:#a9bdd8; font-weight:normal; letter-spacing:1px; text-transform:uppercase;
+            font-size:0.82em; padding:6px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+        .pdd-table td { padding:7px 8px; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text); white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .pdd-table .num { text-align:right; } .pdd-table th.num { text-align:right; }
+        .pdd-table small { color:#a9bdd8; }
+        .pdd-table tr.pdd-ready td { background:rgba(62,217,122,0.06); }
+        .pdd-ready { color:#3ed97a; font-weight:bold; letter-spacing:1px; }
+        .pdd-run { color:var(--warn); }
+        .pdd-idle, .pdd-dim { color:#a9bdd8; }
+        .pdd-sel { background:var(--bg2); color:var(--text); border:1px solid var(--border); font-family:inherit;
+            font-size:0.92em; padding:4px 6px; max-width:380px; }
+        .pdd-seg { display:inline-flex; align-items:center; gap:0; font-size:0.75em; }
+        .pdd-seg > span { color:#a9bdd8; margin-right:8px; letter-spacing:1px; }
+        .pdd-segb { background:transparent; border:1px solid var(--border); color:#c8d8f0; padding:5px 10px; font-family:inherit; cursor:pointer; }
+        .pdd-segb.on { background:var(--accent-dim); border-color:var(--accent); color:#fff; }
+        .pdd-better { color:#3ed97a; font-weight:bold; }
+        .pdd-same { color:#c8d8f0; }
+        .pdd-note { font-size:0.72em; color:#a9bdd8; line-height:1.55; margin:10px 0 2px; }
+        html.day #pd-divs { background:#f4f8ff; }
+        html.day .pdd-chip, html.day #pdd-wallet, html.day .pdd-sel { background:#fff; color:#1a2850; }
+        html.day .pdd-chip b, html.day .pdd-table td { color:#1a2850; }
+        html.day .pdd-chip span, html.day .pdd-mode, html.day .pdd-hint, html.day .pdd-note,
+        html.day .pdd-table th, html.day .pdd-table small, html.day .pdd-empty, html.day .pdd-chk { color:#3b4866; }
+
+        /* ── PORTAL: tabs, cards, decks ───────────────────────────────────── */
+        .pdd-tabs { display:flex; gap:4px; margin:4px 0 12px; border-bottom:1px solid var(--border); }
+        .pdd-tab { background:transparent; border:none; border-bottom:2px solid transparent; margin-bottom:-1px; color:#a9bdd8;
+            font-family:inherit; font-size:0.82em; font-weight:bold; letter-spacing:1.5px; text-transform:uppercase; padding:8px 14px; cursor:pointer; }
+        .pdd-tab:hover { color:#fff; }
+        .pdd-tab.on { color:var(--accent); border-bottom-color:var(--accent); }
+        .pdd-row { cursor:pointer; }
+        .pdd-row:hover td { background:rgba(91,173,255,0.05); }
+        .pdd-caret { display:inline-block; width:14px; color:var(--accent); }
+        .pdd-thumb { width:26px; height:26px; object-fit:cover; border-radius:5px; vertical-align:middle; margin-right:7px; }
+        .pdd-deckrow td { background:rgba(0,0,0,0.25); padding:14px 12px 16px; white-space:normal; }
+        .pdd-deck { display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap; }
+        .pdd-face { flex:0 0 auto; display:flex; flex-direction:column; gap:8px; }
+        .pdd-face-stats { font-size:0.8em; color:#c8d8f0; line-height:1.6; }
+        .pdd-face-stats b { color:#fff; }
+        .pdd-units { flex:1; display:flex; flex-wrap:wrap; gap:12px; align-content:flex-start; min-width:280px; }
+        .pdd-unit { display:flex; flex-direction:column; gap:6px; align-items:center; }
+        .pdd-gear { display:flex; gap:4px; }
+        .pdc { position:relative; background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden;
+            display:flex; flex-direction:column; align-items:center; text-align:center; }
+        .pdc-l { width:190px; } .pdc-m { width:132px; } .pdc-s { width:104px; } .pdc-xs { width:46px; border-radius:7px; }
+        .pdc-img { width:100%; aspect-ratio:3/4; background:#060912; display:flex; align-items:center; justify-content:center; }
+        .pdc-img img { width:100%; height:100%; object-fit:cover; }
+        .pdc-img span { font-size:0.7em; color:#a9bdd8; padding:6px; }
+        .pdc-name { font-size:0.74em; color:#fff; padding:5px 6px 2px; line-height:1.25; }
+        .pdc-l .pdc-name { font-size:0.88em; font-weight:bold; }
+        .pdc-xs .pdc-name { display:none; }
+        .pdc-stats { font-size:0.66em; color:#a9bdd8; padding:0 6px 4px; }
+        .pdc-meta { font-size:0.66em; color:#c8d8f0; padding:0 6px 6px; }
+        .pdc-forge { color:#7dffb0; } .pdc-forge.locked { color:#ff8a8a; font-weight:bold; }
+        .pdc-chk { position:absolute; top:5px; left:5px; z-index:2; background:rgba(0,0,0,0.6); border-radius:4px; padding:1px 3px; }
+        .pdc-rm { margin:0 6px 7px; background:transparent; border:1px solid rgba(224,80,80,0.6); color:#ff9a9a; font-family:inherit;
+            font-size:0.66em; padding:3px 8px; border-radius:5px; cursor:pointer; }
+        .pdc-rm[data-creatediv] { border-color:var(--accent); color:var(--accent); }
+        .pdc-rm:hover { background:rgba(224,80,80,0.12); }
+        .pdc-x { position:absolute; top:1px; right:1px; width:16px; height:16px; line-height:14px; border-radius:50%; border:none;
+            background:rgba(224,80,80,0.85); color:#fff; font-size:12px; cursor:pointer; padding:0; }
+        .pdd-cats { display:flex; flex-wrap:wrap; gap:0; margin-bottom:12px; }
+        .pdd-sec { margin:0 0 18px; }
+        .pdd-sech { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:0.86em; }
+        .pdd-sech b { color:#fff; letter-spacing:0.5px; }
+        .pdd-sech small { color:#a9bdd8; }
+        .pdd-sech .pdd-go, .pdd-sech .pdd-btn { margin-left:auto; }
+        .pdd-grid { display:flex; flex-wrap:wrap; gap:10px; }
+        .pdd-sm { padding:6px 12px; font-size:0.74em; }
+        .pdd-form { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
+        .pdd-form label { display:flex; flex-direction:column; gap:4px; font-size:0.72em; color:#a9bdd8; letter-spacing:1px; text-transform:uppercase; }
+        .pdd-done td { color:#a9bdd8; }
+        #lore-divs { margin-top:16px; }
+        #lore-divs .pdd-deck { margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+        .pdd-lore-h { font-size:0.78em; color:var(--accent); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:10px; }
+        html.day .pdc { background:#fff; }
+        html.day .pdc-name, html.day .pdd-sech b, html.day .pdd-face-stats b { color:#1a2850; }
+        html.day .pdc-stats, html.day .pdc-meta, html.day .pdd-face-stats, html.day .pdd-sech small,
+        html.day .pdd-form label, html.day .pdd-tab { color:#3b4866; }
+        html.day .pdd-deckrow td { background:#eef3fc; }
     </style>
 </head>
 <body>
@@ -492,32 +604,7 @@
 </div>
 
 <!-- ── STATS BAR ── -->
-<div class="stats-bar" id="stats-bar" style="display:none">
-    <div class="stat-chip">
-        <span class="sc-label">Active</span>
-        <span class="sc-val" id="stat-active">—</span>
-    </div>
-    <div class="stat-chip">
-        <span class="sc-label">DEF→TLM</span>
-        <span class="sc-val" id="stat-deftlm">—</span>
-    </div>
-    <div class="stat-chip">
-        <span class="sc-label">TLM→DEF</span>
-        <span class="sc-val" id="stat-tlmdef">—</span>
-    </div>
-    <div class="stat-chip">
-        <span class="sc-label">Free</span>
-        <span class="sc-val" id="stat-free">—</span>
-    </div>
-    <div class="stat-chip">
-        <span class="sc-label">Chests</span>
-        <span class="sc-val" id="stat-chests">—</span>
-    </div>
-    <div class="stat-chip">
-        <span class="sc-label">Divisions deployed</span>
-        <span class="sc-val" id="stat-divs">—</span>
-    </div>
-</div>
+<section id="pd-divs"></section>
 
 <!-- ── PROFIT LEGEND (shown when DEF price set) ── -->
 <div class="legend-bar" id="profit-legend" style="display:none">
@@ -548,6 +635,33 @@
 </div>
 
 <!-- ── LORE MODAL ── -->
+<div class="stats-bar" id="stats-bar" style="display:none">
+    <div class="stat-chip">
+        <span class="sc-label">Active</span>
+        <span class="sc-val" id="stat-active">—</span>
+    </div>
+    <div class="stat-chip">
+        <span class="sc-label">DEF→TLM</span>
+        <span class="sc-val" id="stat-deftlm">—</span>
+    </div>
+    <div class="stat-chip">
+        <span class="sc-label">TLM→DEF</span>
+        <span class="sc-val" id="stat-tlmdef">—</span>
+    </div>
+    <div class="stat-chip">
+        <span class="sc-label">Free</span>
+        <span class="sc-val" id="stat-free">—</span>
+    </div>
+    <div class="stat-chip">
+        <span class="sc-label">Chests</span>
+        <span class="sc-val" id="stat-chests">—</span>
+    </div>
+    <div class="stat-chip">
+        <span class="sc-label">Divisions deployed</span>
+        <span class="sc-val" id="stat-divs">—</span>
+    </div>
+</div>
+
 <div id="lore-backdrop" onclick="closeLore(event)">
     <div id="lore-modal">
         <button class="lore-close" onclick="closeLore()">✕</button>
@@ -1669,7 +1783,7 @@ function _inj() {
     if (!ws) return;
     var fd = document.createElement('div');
     fd.className = 'nav-dropdown-wrap pg-font-dd';
-    fd.innerHTML = '<button class="nav-dropdown-btn">Aa &#9660;<\/button><div class="nav-dropdown-menu"><a class="nav-dropdown-item font-opt" href="#" data-font="segoe" onclick="pgSetFont(this.dataset.font);return false;">CLEAN<span class="font-preview" style="font-family:\'Segoe UI\',sans-serif;">Segoe UI<\/span><\/a><a class="nav-dropdown-item font-opt" href="#" data-font="calibri" onclick="pgSetFont(this.dataset.font);return false;">SOFT<span class="font-preview" style="font-family:Calibri,sans-serif;">Calibri<\/span><\/a><a class="nav-dropdown-item font-opt" href="#" data-font="georgia" onclick="pgSetFont(this.dataset.font);return false;">CLASSIC<span class="font-preview" style="font-family:Georgia,serif;">Georgia<\/span><\/a><a class="nav-dropdown-item font-opt active" href="#" data-font="terminal" onclick="pgSetFont(this.dataset.font);return false;">TERMINAL<span class="font-preview" style="font-family:\'Courier New\',monospace;">Courier New<\/span><\/a><\/div>';
+    fd.innerHTML = '<button class="nav-dropdown-btn">Aa &#9660;<\/button><div class="nav-dropdown-menu"><a class="nav-dropdown-item font-opt active" href="#" data-font="segoe" onclick="pgSetFont(this.dataset.font);return false;">CLEAN<span class="font-preview" style="font-family:\'Segoe UI\',sans-serif;">Segoe UI<\/span><\/a><a class="nav-dropdown-item font-opt" href="#" data-font="calibri" onclick="pgSetFont(this.dataset.font);return false;">SOFT<span class="font-preview" style="font-family:Calibri,sans-serif;">Calibri<\/span><\/a><a class="nav-dropdown-item font-opt" href="#" data-font="georgia" onclick="pgSetFont(this.dataset.font);return false;">CLASSIC<span class="font-preview" style="font-family:Georgia,serif;">Georgia<\/span><\/a><a class="nav-dropdown-item font-opt" href="#" data-font="terminal" onclick="pgSetFont(this.dataset.font);return false;">TERMINAL<span class="font-preview" style="font-family:\'Courier New\',monospace;">Courier New<\/span><\/a><\/div>';
     var mb = document.createElement('button');
     mb.id = 'pg-mode-btn'; mb.className = 'pg-mode-btn'; mb.title = 'Toggle day/night mode';
     var isDay = document.documentElement.classList.contains('day');
@@ -1695,5 +1809,6 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchPrices();
 });
 </script>
+<script src="pd_divisions.js"></script>
 </body>
 </html>
