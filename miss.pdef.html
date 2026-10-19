@@ -527,6 +527,23 @@
         .pdd-sel.pdd-sel-short { color:#ff8a8a; border-color:rgba(255,107,107,0.6); }
         .pdd-sel.pdd-sel-short option:not(.pdd-opt-short) { color:var(--text); }
         .pdd-build .pdd-deck { margin:12px 0; }
+        .pdd-autos { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:12px; }
+        .pdd-autos small { opacity:0.75; }
+        .pdd-bunits { gap:10px; }
+        .pdd-bunit { display:flex; gap:4px; align-items:flex-start; }
+        .pdd-slots { display:flex; flex-direction:column; gap:4px; }
+        .pdd-slot { width:34px; height:44px; padding:0; border:1px dashed var(--border); border-radius:6px; background:rgba(0,0,0,0.3);
+            color:#a9bdd8; font-family:inherit; font-size:15px; line-height:1; cursor:pointer; display:flex; flex-direction:column;
+            align-items:center; justify-content:center; overflow:hidden; }
+        .pdd-slot small { font-size:8px; letter-spacing:0.5px; text-transform:uppercase; margin-top:2px; }
+        .pdd-slot:hover:not(:disabled), .pdd-slot.on { border-color:var(--accent); color:var(--accent); border-style:solid; }
+        .pdd-slot:disabled { opacity:0.3; cursor:default; }
+        .pdd-slot.full { border-style:solid; border-color:var(--accent); }
+        .pdd-slot.full img { width:100%; height:100%; object-fit:cover; }
+        .pdd-slot.full:hover { border-color:#ff8a8a; }
+        .pdd-picker { margin:4px 0 12px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:rgba(0,0,0,0.2); }
+        .pdd-pickc { display:contents; }
+        html.day .pdd-slot { background:#eef3fc; color:#3b4866; }
         html.day .pdc { background:#fff; }
         html.day .pdc-step, html.day .pdc-step b, html.day .pdc-step button { color:#1a2850; }
         html.day .pdc-step button { background:#eef3fc; }
@@ -1513,7 +1530,7 @@ function fmtWaxHr(m) {
         var cv = chestWaxValue(m);
         if (!cv) return '<span style="color:var(--text-dim)" title="Fetching chest NFT price…">…</span>';
         var whr2 = cv / m.cooldownHrs;
-        return '<span class="tok tok-wax" title="' + fmtN(cv, 3) + ' WAX chest value ÷ ' + fmtN(m.cooldownHrs, 1) + 'h">' + fmtN(whr2, 4) + ' WAX/hr</span>';
+        return '<span class="tok tok-wax" title="' + fmtN(cv, 3) + ' WAX chest value ÷ ' + fmtN(m.cooldownHrs, 1) + 'h · an estimate at the chest floor price">~' + fmtN(whr2, 4) + ' WAX/hr</span>';
     }
 
     var whr = calcWaxHr(m);
@@ -1847,6 +1864,6 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchPrices();
 });
 </script>
-<script src="pd_divisions.js?v=1.2.51"></script>
+<script src="pd_divisions.js?v=1.2.52"></script>
 </body>
 </html>

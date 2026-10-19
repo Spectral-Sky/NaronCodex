@@ -244,7 +244,7 @@
         if (cfg.nft_reward_count > 0) {
             var parsed = pg().allMissions.find(function (x) { return x.id === m.mission_id; });
             var wax = parsed && parsed.chestFloorWax ? parsed.chestFloorWax * cfg.nft_reward_count : 0;
-            return { tlm: toTlm(wax, 'WAX'), label: cfg.nft_reward_count + ' chest' + (cfg.nft_reward_count > 1 ? 's' : '') };
+            return { tlm: toTlm(wax, 'WAX'), est: true, label: cfg.nft_reward_count + ' chest' + (cfg.nft_reward_count > 1 ? 's' : '') };
         }
         var tier = null;
         (cfg.tiers || []).forEach(function (t) { if (Number(div.atk_cached) >= Number(t.min_atk || 0) && (!tier || Number(t.min_atk) >= Number(tier.min_atk))) tier = t; });
@@ -252,6 +252,8 @@
         var a = amt(tier.reward_asset);
         return { tlm: toTlm(a.n, a.sym), label: n(a.n, a.sym === 'DEF' ? 3 : 2) + ' ' + a.sym };
     }
+    // per hour, with ~ when the reward is chests (valued at the market floor, so an estimate)
+    function perH(e) { return (e.reward && e.reward.est ? '~' : '') + show(e.perHour); }
     function evaluate(m, div, d) {
         var ok = m.status === 1 && utc(m.end_base) > Date.now() &&
                  Number(div.atk_cached) >= Number(m.min_div_attack || 0) &&
@@ -456,7 +458,7 @@
             var sel = '<select class="pdd-sel" data-div="' + x.division_id + '"' + (st.opts.length ? '' : ' disabled') + '>' +
                 (st.opts.length ? st.opts.slice(0, 15).map(function (o) {
                     return '<option value="' + o.m.mission_id + '"' + (Number(o.m.mission_id) === to ? ' selected' : '') + '>' +
-                        esc('#' + o.m.mission_id + ' ' + (o.m._meta.title || '') + ' · ' + show(o.perHour) + '/h · ' + dur(o.secs)) + '</option>';
+                        esc('#' + o.m.mission_id + ' ' + (o.m._meta.title || '') + ' · ' + perH(o) + '/h · ' + dur(o.secs)) + '</option>';
                 }).join('') : '<option>no mission it qualifies for</option>') + '</select>';
             var actBtn = !signable() ? '' : st.status === 'running' ? '<button class="pdd-btn" disabled>busy</button>'
                 : p ? '<button class="pdd-btn pdd-one" data-div="' + x.division_id + '">' + (st.status === 'ready' ? 'Claim &amp; resend' : 'Send') + '</button>' : '';
@@ -469,11 +471,11 @@
                 '<td class="num">' + st.units.length + '<small>/' + x.slots_max + '</small></td><td class="num">' + n(x.atk_cached) + '</td>' +
                 '<td class="num">' + n(x.def_cached) + '</td><td class="num">' + n(x.movecost_cached) + '</td>' +
                 '<td class="txt">' + (curM ? esc('#' + curM.mission_id + ' ' + (curM._meta.title || '')) + ' <small>' + esc(curM._meta.planet || '') + '</small>' : '<span class="pdd-dim">–</span>') + '</td>' +
-                '<td class="txt">' + status + '</td><td class="num">' + (st.cur ? show(st.cur.perHour) : '–') + '</td>' +
+                '<td class="txt">' + status + '</td><td class="num">' + (st.cur ? perH(st.cur) : '–') + '</td>' +
                 '<td class="txt">' + (st.best ? '<span class="' + (better ? 'pdd-better' : 'pdd-same') + '" title="' +
                     esc((st.best.m._meta.title || '') + ' · reward ' + st.best.reward.label + ' · entry ' + (st.best.cost.n ? n(st.best.cost.n, 4) + ' ' + st.best.cost.sym : 'free') + ' · locks ' + dur(st.best.secs)) + '">#' +
-                    st.best.m.mission_id + ' ' + show(st.best.perHour) + '/h</span>' +
-                    (st.cur && better && String(st.best.m.mission_id) !== String(st.lock.mission_id) ? ' <small>+' + show(st.best.perHour - st.cur.perHour) + '</small>' : '')
+                    st.best.m.mission_id + ' ' + perH(st.best) + '/h</span>' +
+                    (st.cur && better && String(st.best.m.mission_id) !== String(st.lock.mission_id) ? ' <small>+' + (st.best.reward.est || st.cur.reward.est ? '~' : '') + show(st.best.perHour - st.cur.perHour) + '</small>' : '')
                     : '<span class="pdd-dim">none</span>') + '</td>' +
                 '<td class="txt">' + sel + '</td><td class="txt">' + actBtn + '</td></tr>';
             if (S.open[x.division_id]) h += '<tr class="pdd-deckrow"><td colspan="11">' + deckHtml(st, true) + '</td></tr>';
@@ -636,7 +638,7 @@
             var miss = o.short ? [o.short.atk ? n(o.short.atk) + ' ATK' : '', o.short.def ? n(o.short.def) + ' DEF' : ''].filter(Boolean).join(' + ') : '';
             return '<option value="' + o.key + '"' + (o.short ? ' class="pdd-opt-short"' : '') + (B.target === o.key ? ' selected' : '') + '>' +
                 esc((o.short ? '✗ ' : '') + '#' + o.m.mission_id + ' ' + (o.m._meta.title || '') + ' · needs ATK ' + n(o.need.atk) + ' / DEF ' + n(o.need.def) +
-                    (o.short ? ' · short ' + miss : '') + ' · ' + o.ev.reward.label + ' · ' + show(o.ev.perHour) + '/h' +
+                    (o.short ? ' · short ' + miss : '') + ' · ' + o.ev.reward.label + ' · ' + perH(o.ev) + '/h' +
                     (o.short ? '' : ' · ' + o.units.length + ' unit' + (o.units.length === 1 ? '' : 's'))) + '</option>';
         };
         var reach = B.targets.filter(function (o) { return !o.short; }), out = B.targets.filter(function (o) { return o.short; });
@@ -658,25 +660,40 @@
         h += '<div class="pdd-chips">' + chip('ATK', n(t.atk) + (tgt ? ' <small>/ ' + n(tgt.need.atk) + '</small>' : '')) +
             chip('DEF', n(t.def) + (tgt ? ' <small>/ ' + n(tgt.need.def) + '</small>' : '')) + chip('Move', n(t.move)) +
             chip('Units', (L.base.length + units.length) + ' <small>/ ' + (L.div ? L.div.slots_max : L.room) + '</small>') +
-            (ev ? chip('Lock', dur(ev.secs)) + chip('Earns', (ev.ok ? show(ev.perHour) + '/h' : '<span class="pdd-bad">doesn’t qualify</span>')) : '') + '</div>';
-        h += '<div class="pdd-deck"><div class="pdd-face">' + cardHtml(L.lead, { size: 'l' }) + '</div><div class="pdd-units">' +
+            (ev ? chip('Lock', dur(ev.secs)) + chip('Earns', (ev.ok ? perH(ev) + '/h' : '<span class="pdd-bad">doesn’t qualify</span>')) : '') + '</div>';
+        // one Auto per gear type: the best spare cards onto the strongest units without one
+        var empty = function (k) { return units.filter(function (u) { return !u[k]; }).length; };
+        h += '<div class="pdd-autos"><span class="pdd-hint">Suggested gear:</span>' + BGEAR.map(function (g) {
+            var k = g[0], nsp = spare(k).length, can2 = Math.min(nsp, gearLeft[k], empty(k));
+            return '<button class="pdd-btn pdd-sm" data-bauto="' + k + '"' + (can2 > 0 ? '' : ' disabled') + ' title="' +
+                esc(nsp + ' spare · ' + fmtCap(gearLeft[k]) + ' slot' + (gearLeft[k] === 1 ? '' : 's') + ' left · ' + empty(k) + ' unit' + (empty(k) === 1 ? '' : 's') + ' without one') + '">' +
+                CAT[g[2]] + ' <small>(auto' + (can2 > 0 ? ' +' + can2 : '') + ')</small></button>';
+        }).join('') + '</div>';
+        h += '<div class="pdd-deck"><div class="pdd-face">' + cardHtml(L.lead, { size: 'l' }) + '</div><div class="pdd-units pdd-bunits">' +
             (L.base.length ? '<div class="pdd-hint pdd-full">' + L.base.length + ' unit' + (L.base.length === 1 ? '' : 's') + ' already in this division stay as they are.</div>' : '') +
             units.map(function (u, i) {
-                var gear = BGEAR.map(function (g) {
-                    var k = g[0];
-                    if (u[k]) return cardHtml(u[k], { size: 'xs', extra: '<button class="pdc-x" data-bgear="' + i + '|' + k + '" title="Take it off">×</button>' });
-                    var sp = spare(k);
-                    return sp.length && gearLeft[k] > 0 ? '<select class="pdd-sel pdd-mini" data-baddgear="' + i + '|' + k + '" title="Add ' + CAT[g[2]] + '">' +
-                        '<option value="">+' + CAT[g[2]].slice(0, 3) + '</option>' + sp.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name + ' · ' + c.atk + '/' + c.def) + '</option>'; }).join('') + '</select>' : '';
+                var slots = BGEAR.map(function (g) {
+                    var k = g[0], c = u[k], picking = B.pick === i + '|' + k;
+                    if (c) return '<button class="pdd-slot full" data-bgear="' + i + '|' + k + '" title="' + esc(c.name + ' · ATK ' + c.atk + ' DEF ' + c.def + ' · click to take it off') + '">' +
+                        (c.img ? imgTag(c.img, 80) : '<small>' + esc(c.name.slice(0, 3)) + '</small>') + '</button>';
+                    var none = !spare(k).length ? 'no spare ' + CAT[g[2]] : gearLeft[k] <= 0 ? 'no ' + CAT[g[2]] + ' slots left: buy more in Forge & shop' : '';
+                    return '<button class="pdd-slot' + (picking ? ' on' : '') + '" data-bslot="' + i + '|' + k + '"' + (none ? ' disabled title="' + esc(none) + '"' : ' title="Add ' + CAT[g[2]] + '"') + '>+<small>' + CAT[g[2]].slice(0, 3) + '</small></button>';
                 }).join('');
                 var ut = unitTotals(u);
-                return '<div class="pdd-unit">' + cardHtml(u.m, { size: 's', extra: '<div class="pdc-meta">unit ' + ut.atk + ' / ' + ut.def + '</div><button class="pdc-rm" data-bunit="' + i + '">Remove</button>' }) +
-                    '<div class="pdd-gear">' + gear + '</div></div>';
+                return '<div class="pdd-bunit">' + cardHtml(u.m, { size: 's', extra: '<div class="pdc-meta">unit ' + ut.atk + ' / ' + ut.def + '</div><button class="pdc-rm" data-bunit="' + i + '">Remove</button>' }) +
+                    '<div class="pdd-slots">' + slots + '</div></div>';
             }).join('') +
             (spare('m').length && L.base.length + units.length < (L.div ? Number(L.div.slots_max) : L.room)
                 ? '<label class="pdd-addu">Add a mercenary <select class="pdd-sel" id="pdd-baddunit"><option value="">choose…</option>' +
                   spare('m').map(function (c) { return '<option value="' + c.id + '">' + esc(c.name + ' · ATK ' + c.atk + ' DEF ' + c.def + ' · move ' + c.move) + '</option>'; }).join('') + '</select></label>' : '') +
             '</div></div>';
+        // the + of a slot opens the spare cards of that kind, strongest first
+        if (B.pick) {
+            var pp = B.pick.split('|'), pu = units[pp[0]], pg2 = BGEAR.find(function (g) { return g[0] === pp[1]; });
+            if (pu && pg2) h += '<div class="pdd-picker"><div class="pdd-sech"><b>Choose ' + CAT[pg2[2]] + '</b> <small>for ' + esc(pu.m.name) + '</small>' +
+                '<button class="pdd-btn pdd-sm" id="pdd-pickx">Cancel</button></div><div class="pdd-grid">' +
+                spare(pp[1]).map(function (c) { return '<div class="pdd-pickc" data-bput="' + c.id + '">' + cardHtml(c, { size: 's', cls: 'pdc-pick' }) + '</div>'; }).join('') + '</div></div>';
+        }
         var steps = L.div ? '' : ' (2 signatures: create, then assign)';
         h += '<div class="pdd-bundle"><button class="pdd-go" id="pdd-build"' + (can && (units.length || !L.div) && ok ? '' : ' disabled') + '>' +
             (L.div ? 'Add ' + units.length + ' unit' + (units.length === 1 ? '' : 's') + ' to division #' + L.div.division_id : 'Create division' + (units.length ? ' with ' + units.length + ' unit' + (units.length === 1 ? '' : 's') : '')) + '</button>' +
@@ -877,17 +894,37 @@
         var tg = el.querySelector('#pdd-target');
         if (tg) tg.onchange = function () {
             var o = S.b.targets.find(function (x) { return x.key === tg.value; });
-            S.b.target = tg.value; S.b.units = o ? o.units.map(function (u) { return Object.assign({}, u); }) : []; render();
+            S.b.target = tg.value; S.b.pick = null; S.b.units = o ? o.units.map(function (u) { return Object.assign({}, u); }) : []; render();
         };
         var findFree = function (id) { return inventory().free.find(function (c) { return c.id === id; }); };
-        el.querySelectorAll('[data-bunit]').forEach(function (b) { b.onclick = function () { S.b.units.splice(Number(b.getAttribute('data-bunit')), 1); render(); }; });
+        el.querySelectorAll('[data-bunit]').forEach(function (b) { b.onclick = function () { S.b.units.splice(Number(b.getAttribute('data-bunit')), 1); S.b.pick = null; render(); }; });
         el.querySelectorAll('[data-bgear]').forEach(function (b) {
-            b.onclick = function () { var p = b.getAttribute('data-bgear').split('|'); S.b.units[p[0]] = Object.assign({}, S.b.units[p[0]]); delete S.b.units[p[0]][p[1]]; render(); };
+            b.onclick = function () { var p = b.getAttribute('data-bgear').split('|'); S.b.units[p[0]] = Object.assign({}, S.b.units[p[0]]); delete S.b.units[p[0]][p[1]]; S.b.pick = null; render(); };
         });
-        el.querySelectorAll('[data-baddgear]').forEach(function (sel) {
-            sel.onchange = function () {
-                var p = sel.getAttribute('data-baddgear').split('|'), c = findFree(sel.value);
-                if (c) { S.b.units[p[0]] = Object.assign({}, S.b.units[p[0]]); S.b.units[p[0]][p[1]] = c; } render();
+        el.querySelectorAll('[data-bslot]').forEach(function (b) {
+            b.onclick = function () { var k = b.getAttribute('data-bslot'); S.b.pick = S.b.pick === k ? null : k; render(); };
+        });
+        var px = el.querySelector('#pdd-pickx'); if (px) px.onclick = function () { S.b.pick = null; render(); };
+        el.querySelectorAll('[data-bput]').forEach(function (f) {
+            f.onclick = function () {
+                var p = S.b.pick.split('|'), c = findFree(f.getAttribute('data-bput'));
+                if (c) { S.b.units[p[0]] = Object.assign({}, S.b.units[p[0]]); S.b.units[p[0]][p[1]] = c; }
+                S.b.pick = null; render();
+            };
+        });
+        el.querySelectorAll('[data-bauto]').forEach(function (b) {
+            b.onclick = function () {
+                var k = b.getAttribute('data-bauto'), P = builderPools(), used = {};
+                S.b.units.forEach(function (u) { ['m', 'c', 'w', 's', 'l'].forEach(function (x) { if (u[x]) used[u[x].id] = 1; }); });
+                var left = P.caps[k] - S.b.units.filter(function (u) { return u[k]; }).length;
+                var pool = P[k].filter(function (c) { return !used[c.id]; });         // strongest first
+                var order = S.b.units.map(function (u, i) { return i; }).filter(function (i) { return !S.b.units[i][k]; })
+                    .sort(function (x, y) { var a = unitTotals(S.b.units[x]), c = unitTotals(S.b.units[y]); return (c.atk + c.def) - (a.atk + a.def); });
+                order.forEach(function (i) {
+                    if (left <= 0 || !pool.length) return;
+                    S.b.units[i] = Object.assign({}, S.b.units[i]); S.b.units[i][k] = pool.shift(); left--;
+                });
+                S.b.pick = null; render();
             };
         });
         var au = el.querySelector('#pdd-baddunit');
