@@ -172,7 +172,9 @@
                 walletAssets(wallet).catch(function () { return []; }), templatePrices(),
                 table('forge.pdef', 'forge.pdef', 'forgelvls'), table('forge.pdef', 'forge.pdef', 'shopitems'),
                 table('forge.pdef', 'forge.pdef', 'shopcats'), table('forge.pdef', 'forge.pdef', 'itemcats'),
-                table('forge.pdef', wallet, 'powerups')
+                table('forge.pdef', wallet, 'powerups'),
+                table('miss.pdef', 'miss.pdef', 'shardrews').catch(function () { return []; }),
+                table('miss.pdef', 'miss.pdef', 'shardcaps').catch(function () { return []; })
             ]);
             var d = {
                 divs: got[0], units: got[1], locks: got[2], inGame: got[3].map(function (b) { return b.balance; }),
@@ -182,6 +184,9 @@
                 forgeLvls: got[15], shopItems: got[16], shopCats: {}, itemCat: {}, assets: {}, owned: {}
             };
             got[19].forEach(function (p) { d.owned[p.powerup_id] = Number(p.amount) || 0; });
+            d.shards = {}; d.shardLeft = {};
+            got[20].forEach(function (r) { d.shards[r.reward_config_id] = Number(r.shard_reward) / 10; });   // stored in tenths
+            got[21].forEach(function (c) { d.shardLeft[c.mission_id] = Math.max(0, Number(c.max_joins) - Number(c.joins_consumed)); });
             got[5].forEach(function (m) { var meta = {}; try { meta = JSON.parse(m.meta || '{}'); } catch (e) {} m._meta = meta; d.missions[m.mission_id] = m; });
             got[6].forEach(function (c) { d.costs[c.mission_id] = amt(c.cost); });
             got[7].forEach(function (c) { d.cfgs[c.reward_config_id] = c; });
@@ -238,7 +243,19 @@
         if (v === 'usd') return (p.tlmInWax && p.waxInUsd) ? '$' + n(tlm * p.tlmInWax * p.waxInUsd, 3) : '–';
         return n(tlm, 2);
     }
+    // shards are paid on top of the reward until the mission's shard joins run out; no market price, so no TLM value
+    function shardLabel(m, d) {
+        var sh = d.shards && d.shards[m.reward_config_id];
+        if (!sh) return '';
+        var left = d.shardLeft[m.mission_id];
+        return ' + ' + n(sh, 1) + ' shards' + (left === 0 ? ' (shard cap reached)' : left != null ? ' (' + n(left) + ' joins left)' : '');
+    }
     function rewardFor(m, div, d) {
+        var r = rewardBase(m, div, d);
+        r.label += shardLabel(m, d);
+        return r;
+    }
+    function rewardBase(m, div, d) {
         var cfg = d.cfgs[m.reward_config_id];
         if (!cfg) return { tlm: 0, label: '–' };
         if (cfg.nft_reward_count > 0) {

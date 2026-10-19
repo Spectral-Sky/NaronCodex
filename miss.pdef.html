@@ -245,6 +245,10 @@
         .tok-tlm   { color:#e8a020; }
         .tok-def   { color:#5badff; }
         .tok-chest { color:#bc13fe; }
+        .tok-shard { color:#4fe3d1; display:block; }
+        .tok-shard.shard-gone { color:var(--text-muted); text-decoration:line-through; }
+        .shard-cap { display:block; font-size:0.78em; color:var(--text-muted); }
+        .shard-cap.gone { color:#ff8a8a; }
         .tok-free  { color:#3ed97a; }
         .ratio-unit { color:var(--text-dim); font-size:0.85em; font-weight:normal; }
 
@@ -1154,6 +1158,8 @@ async function fetchTable(table, limit) {
     return data.rows || [];
 }
 
+var SHARD_SCALE = 10, shardMap = {}, shardCapMap = {};
+
 async function loadData() {
     document.getElementById('loading-state').style.display = 'block';
     document.getElementById('error-state').style.display = 'none';
@@ -1164,7 +1170,9 @@ async function loadData() {
         const results = await Promise.all([
             fetchTable('missions'),
             fetchTable('entrycosts'),
-            fetchTable('rewardcfgs')
+            fetchTable('rewardcfgs'),
+            fetchTable('shardrews').catch(function () { return []; }),
+            fetchTable('shardcaps').catch(function () { return []; })
         ]);
         const missions = results[0];
         const costs    = results[1];
@@ -1175,6 +1183,13 @@ async function loadData() {
 
         rewardMap = {};
         rewards.forEach(function(r) { rewardMap[r.reward_config_id] = r; });
+
+        // Shards are paid on top of the reward config, from miss.pdef::shardrews, until
+        // the mission's shard joins (shardcaps) run out. shard_reward is stored in tenths:
+        // #33's 10000 shows as 1,000 shards in the game.
+        shardMap = {}; shardCapMap = {};
+        results[3].forEach(function(r) { shardMap[r.reward_config_id] = Number(r.shard_reward) / SHARD_SCALE; });
+        results[4].forEach(function(c) { shardCapMap[c.mission_id] = { max: Number(c.max_joins), used: Number(c.joins_consumed) }; });
 
         allMissions = missions
             .filter(function(m) { return m.status === 1; })
@@ -1242,6 +1257,9 @@ function parseMission(m) {
     }
 
     var cooldownHrs = m.cooldown_base_sec / 3600;
+    var rwShards = shardMap[m.reward_config_id] || 0;
+    var shardCap = shardCapMap[m.mission_id] || null;
+    var shardsLeft = shardCap ? Math.max(0, shardCap.max - shardCap.used) : null;
 
     var missionType;
     if (!costTok || costAmt === 0)                        missionType = 'free';
@@ -1271,6 +1289,9 @@ function parseMission(m) {
         rwAmt:        rwAmt,
         rwTok:        rwTok,
         rwChests:     rwChests,
+        rwShards:     rwShards,
+        shardCap:     shardCap,
+        shardsLeft:   shardsLeft,
         rwNftTemplates: rwNftTemplates,
         chestFloorWax: 0,  // filled by fetchChestPrices()
         cooldownSec:  m.cooldown_base_sec,
@@ -1308,10 +1329,20 @@ function fmtCost(m) {
     return fmtDisplayVal(m.costAmt, m.costTok);
 }
 
+function fmtShards(m) {
+    if (!m.rwShards) return '';
+    var gone = m.shardsLeft === 0;
+    return '<span class="tok tok-shard' + (gone ? ' shard-gone' : '') + '"' +
+        (m.shardCap ? ' title="' + m.shardCap.used.toLocaleString() + ' of ' + m.shardCap.max.toLocaleString() + ' shard joins used"' : '') + '>' +
+        '+' + fmtN(m.rwShards, 1) + ' shards</span>' +
+        (m.shardCap ? '<span class="shard-cap' + (gone ? ' gone' : '') + '">' + (gone ? 'shard cap reached' : m.shardsLeft.toLocaleString() + ' shard joins left') + '</span>' : '');
+}
+
 function fmtReward(m) {
-    if (m.rwChests > 0) return '<span class="tok tok-chest">&#128230;&thinsp;&times;' + m.rwChests + '</span>';
-    if (!m.rwTok || m.rwAmt === 0) return '—';
-    return fmtDisplayVal(m.rwAmt, m.rwTok);
+    var sh = fmtShards(m);
+    if (m.rwChests > 0) return '<span class="tok tok-chest">&#128230;&thinsp;&times;' + m.rwChests + '</span>' + sh;
+    if (!m.rwTok || m.rwAmt === 0) return sh || '—';
+    return fmtDisplayVal(m.rwAmt, m.rwTok) + sh;
 }
 
 // reward per unit of entry cost, as Ratio / Run shows it; free runs rank above every paid one
@@ -1334,6 +1365,8 @@ function fmtRatio(m) {
 }
 
 function fmtPerHr(m) {
+    if (m.rwShards && !m.rwChests && !m.rwAmt)
+        return '<span class="tok tok-shard' + (m.shardsLeft === 0 ? ' shard-gone' : '') + '">' + fmtN(m.rwShards / m.cooldownHrs, 1) + ' shards/hr</span>';
     if (m.rwChests > 0) return '<span class="tok tok-chest">' + fmtN(m.rwPerHr, 2) + ' /hr</span>';
     if (!m.rwTok || m.rwAmt === 0) return '—';
     var nativeCls = m.rwTok === 'TLM' ? 'tok-tlm' : m.rwTok === 'DEF' ? 'tok-def' : '';
@@ -1864,6 +1897,6 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchPrices();
 });
 </script>
-<script src="pd_divisions.js?v=1.2.53"></script>
+<script src="pd_divisions.js?v=1.2.54"></script>
 </body>
 </html>
