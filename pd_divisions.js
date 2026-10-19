@@ -571,8 +571,10 @@
         return { m: by(1), c: by(4), w: by(2), s: by(3), l: by(5), caps: caps };
     }
     // every free card it can fit, strongest first: if this can't reach a target, nothing can
-    function fillAll(L, P) {
-        var units = P.m.slice(0, L.room).map(function (m) { return { m: m }; });
+    function fillAll(L, P) { return equip(P.m.slice(0, L.room), P); }
+    // the best gear of each kind onto the given mercenaries, in order, within the wallet's gear slots
+    function equip(mercs, P) {
+        var units = mercs.map(function (m) { return { m: m }; });
         BGEAR.forEach(function (g) {
             var k = g[0], list = P[k].slice(0, Math.min(P[k].length, P.caps[k], units.length));
             list.forEach(function (c, i) { units[i][k] = c; });
@@ -580,6 +582,30 @@
         return units;
     }
     function meets(t, need) { return t.atk >= need.atk && t.def >= need.def; }
+    /* Gear first: with the best gear on, the fewest mercenaries that reach the target
+       (fewer units, less move, shorter lock); then each is swapped for the weakest spare
+       mercenary that still keeps the target, so strong ones stay free. */
+    function fitGeared(L, P, need) {
+        var total = function (u) { return deckTotals(L.lead, L.base.concat(u)); };
+        if (meets(total([]), need)) return [];
+        var mercs = P.m, units = null, k;
+        for (k = 1; k <= Math.min(L.room, mercs.length); k++) {
+            var u = equip(mercs.slice(0, k), P);
+            if (meets(total(u), need)) { units = u; break; }
+        }
+        if (!units) return null;
+        var spare = mercs.slice(k).slice().reverse();                  // weakest first
+        for (var i = 0; i < units.length; i++) {
+            var cur = units[i].m;
+            for (var j = 0; j < spare.length; j++) {
+                if (strength(spare[j]) >= strength(cur)) break;
+                units[i] = Object.assign({}, units[i], { m: spare[j] });
+                if (meets(total(units), need)) { spare.splice(j, 1, cur); spare.sort(function (a, b) { return strength(a) - strength(b); }); break; }
+                units[i] = Object.assign({}, units[i], { m: cur });
+            }
+        }
+        return units;
+    }
     // then take back what isn't needed, strongest first, so the best cards stay free
     function trim(L, units, need) {
         units = units.map(function (u) { return Object.assign({}, u); });
@@ -612,7 +638,7 @@
                     out.push({ key: kx, m: m, need: need, units: all, t: max, ev: evx, short: { atk: Math.max(0, need.atk - max.atk), def: Math.max(0, need.def - max.def) } });
                     return;
                 }
-                var units = trim(L, all, need);
+                var units = fitGeared(L, P, need) || trim(L, all, need);
                 if (L.div && !units.length) return;                  // it already qualifies as it is
                 var t = deckTotals(L.lead, L.base.concat(units));
                 var ev = evaluate(m, { atk_cached: t.atk, def_cached: t.def, movecost_cached: t.move }, d);
