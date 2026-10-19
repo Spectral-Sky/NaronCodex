@@ -638,7 +638,7 @@
             var miss = o.short ? [o.short.atk ? n(o.short.atk) + ' ATK' : '', o.short.def ? n(o.short.def) + ' DEF' : ''].filter(Boolean).join(' + ') : '';
             return '<option value="' + o.key + '"' + (o.short ? ' class="pdd-opt-short"' : '') + (B.target === o.key ? ' selected' : '') + '>' +
                 esc((o.short ? '✗ ' : '') + '#' + o.m.mission_id + ' ' + (o.m._meta.title || '') + ' · needs ATK ' + n(o.need.atk) + ' / DEF ' + n(o.need.def) +
-                    (o.short ? ' · short ' + miss : '') + ' · ' + o.ev.reward.label + ' · ' + perH(o.ev) + '/h' +
+                    (o.short ? ' · short ' + miss : '') + ' · ' + o.ev.reward.label + ' · ' + perH(o.ev) + '/h · locks ' + dur(o.ev.secs) +
                     (o.short ? '' : ' · ' + o.units.length + ' unit' + (o.units.length === 1 ? '' : 's'))) + '</option>';
         };
         var reach = B.targets.filter(function (o) { return !o.short; }), out = B.targets.filter(function (o) { return o.short; });
