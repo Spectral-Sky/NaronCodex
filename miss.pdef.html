@@ -491,6 +491,7 @@
         .pdd-sech b { color:#fff; letter-spacing:0.5px; }
         .pdd-sech small { color:#a9bdd8; }
         .pdd-sech .pdd-go, .pdd-sech .pdd-btn { margin-left:auto; }
+        .pdd-sech :is(.pdd-go, .pdd-btn) ~ :is(.pdd-go, .pdd-btn) { margin-left:0; }
         .pdd-grid { display:flex; flex-wrap:wrap; gap:10px; }
         .pdd-sm { padding:6px 12px; font-size:0.74em; }
         .pdd-form { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
@@ -499,7 +500,25 @@
         #lore-divs { margin-top:16px; }
         #lore-divs .pdd-deck { margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border); }
         .pdd-lore-h { font-size:0.78em; color:var(--accent); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:10px; }
+        .pdc-pick { cursor:pointer; transition:border-color .12s, box-shadow .12s; }
+        .pdc-pick:hover { border-color:var(--accent); }
+        .pdc-pick.on { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); }
+        .pdc-nopick { opacity:0.55; }
+        .pdc-stack { margin:0 8px 8px 0; box-shadow:4px 4px 0 -1px var(--bg2), 4px 4px 0 0 var(--border), 8px 8px 0 -1px var(--bg2), 8px 8px 0 0 var(--border); }
+        .pdc-stack.on { box-shadow:0 0 0 2px var(--accent), 5px 5px 0 -1px var(--bg2), 5px 5px 0 1px var(--accent), 9px 9px 0 -1px var(--bg2), 9px 9px 0 1px var(--accent); }
+        .pdc-count { position:absolute; top:5px; right:5px; z-index:2; background:rgba(0,0,0,0.78); color:#fff; font-size:0.72em; font-weight:bold;
+            padding:2px 7px; border-radius:9px; }
+        .pdc-tick { position:absolute; top:5px; left:5px; z-index:2; width:20px; height:20px; line-height:20px; border-radius:50%;
+            background:var(--accent); color:#06101e; font-size:0.78em; font-weight:bold; }
+        .pdc-step { display:flex; align-items:center; justify-content:center; gap:8px; padding:0 6px 8px; font-size:0.76em; color:#c8d8f0; }
+        .pdc-step b { color:#fff; }
+        .pdc-step button { width:24px; height:24px; border-radius:50%; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff;
+            font-family:inherit; font-size:1em; line-height:1; cursor:pointer; padding:0; }
+        .pdc-step button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+        .pdc-step button:disabled { opacity:0.35; cursor:default; }
         html.day .pdc { background:#fff; }
+        html.day .pdc-step, html.day .pdc-step b, html.day .pdc-step button { color:#1a2850; }
+        html.day .pdc-step button { background:#eef3fc; }
         html.day .pdc-name, html.day .pdd-sech b, html.day .pdd-face-stats b { color:#1a2850; }
         html.day .pdc-stats, html.day .pdc-meta, html.day .pdd-face-stats, html.day .pdd-sech small,
         html.day .pdd-form label, html.day .pdd-tab { color:#3b4866; }

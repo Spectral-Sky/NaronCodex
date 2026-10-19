@@ -37,7 +37,7 @@
     var GEAR = [['creature', 4], ['weapon', 2], ['supply', 3], ['lavalux', 5]];   // divunits field, category
 
     var S = { wallet: '', own: false, loading: false, data: null, pick: {}, idleToBest: true, msg: '',
-              mode: 'same', tab: 'divs', open: {}, sel: {}, catFilter: -1, form: {} };
+              mode: 'same', tab: 'divs', open: {}, qty: {}, catFilter: -1, form: {} };
 
     function esc(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -158,7 +158,7 @@
     }
 
     async function load(wallet) {
-        S.loading = true; S.wallet = wallet; S.own = !!wallet && wallet === me(); S.msg = ''; S.sel = {};
+        S.loading = true; S.wallet = wallet; S.own = !!wallet && wallet === me(); S.msg = ''; S.qty = {};
         render();
         try {
             var got = await Promise.all([
@@ -333,15 +333,42 @@
         if (c.move) stats.push('MOVE ' + n(c.move));
         if (c.cat === 0 && c.slots) stats.push(c.slots + ' slots');
         var size = opts.size || 'm';
-        return '<div class="pdc pdc-' + size + (opts.cls ? ' ' + opts.cls : '') + '" title="' +
-            esc(c.name + (c.cat != null ? ' · ' + CAT[c.cat] : '') + ' · #' + c.id) + '">' +
-            (opts.check ? '<label class="pdc-chk"><input type="checkbox" data-sel="' + c.id + '"' + (S.sel[c.id] ? ' checked' : '') + (opts.disabled ? ' disabled' : '') + '></label>' : '') +
+        var many = opts.count > 1, picked = opts.pick ? S.qty[opts.pick] || 0 : 0;
+        var cls = (opts.cls ? ' ' + opts.cls : '') + (many ? ' pdc-stack' : '') +
+            (opts.pick ? (opts.disabled ? ' pdc-nopick' : ' pdc-pick') + (picked ? ' on' : '') : '');
+        return '<div class="pdc pdc-' + size + cls + '"' + (opts.pick && !opts.disabled ? ' data-pick="' + opts.pick + '|' + (opts.count || 1) + '"' : '') + ' title="' +
+            esc(c.name + (c.cat != null ? ' · ' + CAT[c.cat] : '') + (many ? ' · ' + opts.count + ' copies' : ' · #' + c.id)) + '">' +
+            (many ? '<span class="pdc-count">×' + opts.count + '</span>' : '') +
+            (picked ? '<span class="pdc-tick">✓</span>' : '') +
             '<div class="pdc-img">' + (c.img ? imgTag(c.img, size === 'l' ? 380 : size === 'xs' ? 100 : 220) : '<span>' + esc(c.name) + '</span>') + '</div>' +
             '<div class="pdc-name">' + esc(c.name) + '</div>' +
             (stats.length && size !== 'xs' ? '<div class="pdc-stats">' + stats.join(' · ') + '</div>' : '') +
             (size !== 'xs' && (c.price || c.forge) ? '<div class="pdc-meta">' + (c.price ? '≈ ' + n(c.price, c.price < 10 ? 2 : 0) + ' WAX' : '') +
                 (c.forge ? ' <span class="pdc-forge' + (S.data.forge != null && c.forge > S.data.forge ? ' locked' : '') + '">forge ' + c.forge + '</span>' : '') + '</div>' : '') +
+            (opts.pick && many && !opts.disabled ? '<div class="pdc-step"><button data-step="' + opts.pick + '|-1|' + opts.count + '"' + (picked ? '' : ' disabled') + '>−</button>' +
+                '<span><b>' + picked + '</b> / ' + opts.count + '</span><button data-step="' + opts.pick + '|1|' + opts.count + '"' + (picked < opts.count ? '' : ' disabled') + '>+</button></div>' : '') +
             (opts.extra || '') + '</div>';
+    }
+
+    // identical cards (same template) shown as one stack; sec keeps wallet and staked picks apart
+    function stacks(list, sec) {
+        var by = {}, out = [];
+        list.forEach(function (c) {
+            var k = sec + ':' + (c.tpl || c.id);
+            if (!by[k]) { by[k] = { key: k, top: c, ids: [] }; out.push(by[k]); }
+            by[k].ids.push(c.id);
+        });
+        return out;
+    }
+    // selected staked warlords: none of them leads a division yet, so each can head a new one
+    function pickedLeaders() {
+        var free = inventory().free, ids = pickedIds(free, 'f');
+        return ids.filter(function (id) { var c = free.find(function (x) { return x.id === id; }); return c && c.cat === 0; });
+    }
+    function pickedIds(list, sec) {
+        var ids = [];
+        stacks(list, sec).forEach(function (s) { ids = ids.concat(s.ids.slice(0, S.qty[s.key] || 0)); });
+        return ids;
     }
 
     // a division as a deck: the warlord large, every unit below with its gear
@@ -475,7 +502,7 @@
     function stakeView() {
         var d = S.data, inv = inventory(), can = signable(), f = S.catFilter;
         var match = function (c) { return f < 0 || c.cat === f; };
-        var selIn = function (list) { return list.filter(function (c) { return S.sel[c.id]; }); };
+        var nW = pickedIds(inv.wallet, 'w').length, nF = pickedIds(inv.free, 'f').length, nL = pickedLeaders().length;
         var lockedW = function (c) { return d.forge != null && c.forge > d.forge; };
         var pills = '<div class="pdd-cats">' + [-1, 0, 1, 2, 3, 4, 5].map(function (k) {
             return '<button class="pdd-segb' + (f === k ? ' on' : '') + '" data-cat="' + k + '">' + (k < 0 ? 'All' : CAT[k]) + '</button>';
@@ -484,15 +511,22 @@
 
         var h = pills +
             '<div class="pdd-sec"><div class="pdd-sech"><b>In your wallet</b> <small>' + inv.wallet.length + ' Planetary Defense cards, not staked</small>' +
-            '<button class="pdd-go pdd-sm" id="pdd-stake"' + (can && selIn(inv.wallet).length ? '' : ' disabled') + '>Stake selected (' + selIn(inv.wallet).length + ')</button></div>' +
-            (w.length ? '<div class="pdd-grid">' + w.map(function (c) { return cardHtml(c, { check: can, disabled: lockedW(c) }); }).join('') + '</div>'
+            (nW ? '<button class="pdd-btn pdd-sm" data-clear="w">Clear</button>' : '') +
+            '<button class="pdd-go pdd-sm" id="pdd-stake"' + (can && nW ? '' : ' disabled') + '>Stake selected (' + nW + ')</button></div>' +
+            (w.length ? '<div class="pdd-grid">' + stacks(w, 'w').map(function (s) {
+                return cardHtml(s.top, { pick: can ? s.key : '', count: s.ids.length, disabled: lockedW(s.top) });
+            }).join('') + '</div>'
                       : '<div class="pdd-empty">Nothing here.</div>') +
             (inv.wallet.some(lockedW) ? '<p class="pdd-note">Cards with a red forge tag need a higher forge level before they can be staked: see Forge &amp; shop.</p>' : '') + '</div>';
 
         h += '<div class="pdd-sec"><div class="pdd-sech"><b>Staked, not in a division</b> <small>' + inv.free.length + '</small>' +
-            '<button class="pdd-btn" id="pdd-unstake"' + (can && selIn(inv.free).length ? '' : ' disabled') + '>Unstake selected (' + selIn(inv.free).length + ')</button></div>' +
-            (free.length ? '<div class="pdd-grid">' + free.map(function (c) {
-                return cardHtml(c, { check: can, extra: can && c.cat === 0 ? '<button class="pdc-rm" data-creatediv="' + c.id + '">Create division</button>' : '' });
+            (nF ? '<button class="pdd-btn pdd-sm" data-clear="f">Clear</button>' : '') +
+            '<button class="pdd-go pdd-sm" id="pdd-mkdivs"' + (can && nL ? '' : ' disabled') + ' title="One division per selected warlord, in one signature">Create divisions (' + nL + ')</button>' +
+            '<button class="pdd-btn" id="pdd-unstake"' + (can && nF ? '' : ' disabled') + '>Unstake selected (' + nF + ')</button></div>' +
+            (free.length ? '<div class="pdd-grid">' + stacks(free, 'f').map(function (s) {
+                var c = s.top;
+                return cardHtml(c, { pick: can ? s.key : '', count: s.ids.length,
+                    extra: can && c.cat === 0 ? '<button class="pdc-rm" data-creatediv="' + c.id + '">Create division</button>' : '' });
             }).join('') + '</div>' : '<div class="pdd-empty">Nothing staked and free.</div>') + '</div>';
 
         var freeOf = function (cat) { return inv.free.filter(function (c) { return c.cat === cat; }); };
@@ -590,7 +624,27 @@
             s.onchange = function () { S.pick[s.getAttribute('data-div')] = s.value; render(); };
         });
         el.querySelectorAll('.pdd-sel[data-form]').forEach(function (s) { s.onchange = function () { S.form[s.getAttribute('data-form')] = s.value; }; });
-        el.querySelectorAll('[data-sel]').forEach(function (c) { c.onchange = function () { S.sel[c.getAttribute('data-sel')] = c.checked; render(); }; });
+        // a card's frame toggles it (a stack: all or none); − / + set how many of a stack
+        el.querySelectorAll('[data-pick]').forEach(function (f) {
+            f.onclick = function (e) {
+                if (e.target.closest('button, a, select, input')) return;
+                var p = f.getAttribute('data-pick').split('|');
+                S.qty[p[0]] = S.qty[p[0]] ? 0 : Number(p[1]); render();
+            };
+        });
+        el.querySelectorAll('[data-step]').forEach(function (b) {
+            b.onclick = function (e) {
+                e.stopPropagation();
+                var p = b.getAttribute('data-step').split('|');
+                S.qty[p[0]] = Math.max(0, Math.min(Number(p[2]), (S.qty[p[0]] || 0) + Number(p[1]))); render();
+            };
+        });
+        el.querySelectorAll('[data-clear]').forEach(function (b) {
+            b.onclick = function () {
+                var pre = b.getAttribute('data-clear') + ':';
+                Object.keys(S.qty).forEach(function (k) { if (k.indexOf(pre) === 0) delete S.qty[k]; }); render();
+            };
+        });
         el.querySelectorAll('tr.pdd-row').forEach(function (tr) {
             tr.onclick = function (e) {
                 if (e.target.closest('button, select, input, a')) return;
@@ -613,7 +667,7 @@
         var w = S.wallet;
         var stake = el.querySelector('#pdd-stake');
         if (stake) stake.onclick = function () {
-            var ids = inventory().wallet.filter(function (c) { return S.sel[c.id]; }).map(function (c) { return c.id; });
+            var ids = pickedIds(inventory().wallet, 'w');
             // the game sends at most 50 cards per transfer, several transfers in one signature
             var acts = [];
             for (var i = 0; i < ids.length; i += 50)
@@ -622,8 +676,14 @@
         };
         var uns = el.querySelector('#pdd-unstake');
         if (uns) uns.onclick = function () {
-            var ids = inventory().free.filter(function (c) { return S.sel[c.id]; }).map(function (c) { return c.id; });
+            var ids = pickedIds(inventory().free, 'f');
             run(ids.map(function (id) { return act('core.pdef', 'unstake', { owner: w, asset_id: id }); }), 'unstaked ' + ids.length + ' card' + (ids.length === 1 ? '' : 's'));
+        };
+        var mk = el.querySelector('#pdd-mkdivs');
+        if (mk) mk.onclick = function () {
+            var ids = pickedLeaders();
+            run(ids.map(function (id) { return act('core.pdef', 'creatediv', { owner: w, leader_asset_id: id }); }),
+                ids.length + ' division' + (ids.length === 1 ? '' : 's') + ' created');
         };
         el.querySelectorAll('[data-creatediv]').forEach(function (b) {
             b.onclick = function () { run([act('core.pdef', 'creatediv', { owner: w, leader_asset_id: b.getAttribute('data-creatediv') })], 'division created'); };
