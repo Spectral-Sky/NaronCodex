@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Mission Control Adventures</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="NCico.png">
+    <script src="waxjs.js"></script>
+    <script type="module">
+        import { SessionKit } from 'https://esm.sh/@wharfkit/session@1';
+        import { WebRenderer } from 'https://esm.sh/@wharfkit/web-renderer@1';
+        import { WalletPluginAnchor } from 'https://esm.sh/@wharfkit/wallet-plugin-anchor@1';
+        const kit = new SessionKit({
+            appName: 'naroncodex',
+            chains: [{ id: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4', url: 'https://wax.greymass.com' }],
+            ui: new WebRenderer(),
+            walletPlugins: [new WalletPluginAnchor()],
+        });
+        window.walletKit = kit;
+        try { const s = await kit.restore(); if (s) { window.walletSession = s; localStorage.setItem('naron_wallet', String(s.actor)); window.mcWalletChanged && window.mcWalletChanged(); } } catch (e) {}
+    </script>
+    <style>
+        :root {
+            --accent: #5badff;
+            --bg: #050510;
+            --bg2: #080b18;
+            --surface: #0b101f;
+            --border: #1a2a45;
+            --text: #c8d8f0;
+            --muted: #8ea4c4;
+            --good: #3ed97a;
+            --bad: #ff8a8a;
+            --warn: #f5b84a;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; background: var(--bg); color: var(--text); }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif; font-size: 15px; line-height: 1.5; }
+        a { color: var(--accent); }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px 48px; }
+        header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 18px 0 14px; border-bottom: 1px solid var(--border); }
+        header h1 { margin: 0; font-size: 1.35em; letter-spacing: 1px; color: #fff; text-wrap: balance; }
+        header .home { margin-left: auto; font-size: 0.85em; text-decoration: none; color: var(--muted); }
+        header .home:hover { color: var(--accent); }
+        .intro { color: var(--muted); max-width: 70ch; margin: 14px 0 18px; font-size: 0.92em; }
+        .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+        input[type=text] { background: var(--bg2); border: 1px solid var(--border); color: #fff; font: inherit; padding: 8px 12px;
+            border-radius: 8px; width: 220px; outline: none; }
+        input[type=text]:focus { border-color: var(--accent); }
+        button { font: inherit; cursor: pointer; border-radius: 8px; padding: 8px 14px; border: 1px solid var(--border);
+            background: var(--surface); color: var(--text); }
+        button:hover:not(:disabled) { border-color: var(--accent); color: #fff; }
+        button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        button:disabled { opacity: 0.4; cursor: default; }
+        button.go { background: var(--accent); border-color: var(--accent); color: #06101e; font-weight: 600; }
+        button.go:hover:not(:disabled) { color: #06101e; filter: brightness(1.1); }
+        .who { margin-left: auto; font-size: 0.85em; color: var(--muted); }
+        .who b { color: #fff; }
+        .msg { padding: 9px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.9em; background: rgba(91,173,255,0.08); border: 1px solid var(--border); }
+        .msg.bad { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.4); color: var(--bad); }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+        .chip { border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; background: var(--bg2); font-size: 0.85em; color: var(--muted); }
+        .chip b { color: #fff; margin-left: 6px; font-variant-numeric: tabular-nums; }
+        .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th { text-align: left; font-weight: 600; font-size: 0.75em; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+            background: var(--bg2); padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; font-variant-numeric: tabular-nums; }
+        tr:last-child td { border-bottom: none; }
+        tr.ready td { background: rgba(62,217,122,0.05); }
+        .num { text-align: right; }
+        .adv b { color: #fff; }
+        .adv small, td small { color: var(--muted); display: block; }
+        .nfts { display: flex; gap: 8px; }
+        .nft { width: 74px; text-align: center; }
+        .nft .img { width: 74px; height: 100px; border-radius: 6px; background: #060912; border: 1px solid var(--border); overflow: hidden;
+            display: flex; align-items: center; justify-content: center; }
+        .nft img { width: 100%; height: 100%; object-fit: cover; }
+        .nft span { display: block; font-size: 0.7em; color: var(--muted); line-height: 1.25; margin-top: 3px; }
+        .nft.moved .img { border-color: rgba(255,107,107,0.6); }
+        .none { color: var(--muted); font-size: 0.85em; }
+        .st-ready { color: var(--good); font-weight: 600; }
+        .st-wait { color: var(--warn); }
+        .note { color: var(--muted); font-size: 0.82em; margin-top: 14px; max-width: 80ch; }
+        .empty { padding: 30px 12px; text-align: center; color: var(--muted); }
+        @media (max-width: 640px) { .who { margin-left: 0; flex-basis: 100%; } input[type=text] { flex: 1; } }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <h1>&#9672; Mission Control Adventures</h1>
+        <a class="home" href="index.html">&larr; Naron Codex</a>
+    </header>
+    <p class="intro">Every Mission Control adventure a wallet has sent NFTs on and not yet claimed, read straight from the
+        <code>adventure.mc</code> contract. The NFTs wait there until the wallet that sent them claims the adventure.</p>
+
+    <div class="bar">
+        <input type="text" id="wallet" placeholder="wallet, e.g. abcde.wam" spellcheck="false" autocomplete="off">
+        <button class="go" id="look">Look up</button>
+        <button id="login-anchor">Sign in with Anchor</button>
+        <button id="login-wcw">Cloud Wallet</button>
+        <span class="who" id="who"></span>
+    </div>
+    <div id="out"></div>
+    <p class="note">Claiming signs <code>adventure.mc::claimadv</code> as the wallet that sent the NFTs; the contract sends them back to
+        that same wallet once the adventure's return time has passed. Only that wallet can claim. For a wallet that lived in Wombat,
+        import its private key into Anchor and sign in with Anchor here.</p>
+</div>
+
+<script>
+(function () {
+    var RPC = ['https://wax.greymass.com', 'https://api.wax.alohaeos.com', 'https://wax.eosusa.io'];
+    var AA = ['https://wax-aa.eu.eosamsterdam.net', 'https://wax-atomic-api.eosphere.io', 'https://wax.api.atomicassets.io'];
+    var S = { wallet: '', rows: [], advs: {}, assets: {}, msg: '', bad: false, loading: false };
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function utc(s) { return new Date(/Z$/.test(s) ? s : s + 'Z').getTime(); }
+    function fmtDate(t) { return new Date(t).toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    function dur(sec) {
+        sec = Math.max(0, Math.round(sec));
+        var d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+        return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm';
+    }
+    function me() {
+        return (window.walletSession ? String(window.walletSession.actor) : '') || (window._mcWcw && window._mcWcw.userAccount) || '';
+    }
+
+    async function rpc(body) {
+        var last;
+        for (var i = 0; i < RPC.length; i++) {
+            try {
+                var r = await fetch(RPC[i] + '/v1/chain/get_table_rows', { method: 'POST', body: JSON.stringify(Object.assign({ json: true, code: 'adventure.mc', scope: 'adventure.mc' }, body)), signal: AbortSignal.timeout(10000) });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return await r.json();
+            } catch (e) { last = e; }
+        }
+        throw last;
+    }
+    // participants is indexed by wallet on its third index
+    async function participants(wallet) {
+        var rows = [], lb = wallet;
+        for (var guard = 0; guard < 20; guard++) {
+            var j = await rpc({ table: 'participants', index_position: 3, key_type: 'name', lower_bound: lb, upper_bound: wallet, limit: 500 });
+            rows = rows.concat(j.rows.filter(function (r) { return r.wallet === wallet; }));
+            if (!j.more || !j.next_key) break;
+            lb = j.next_key;
+        }
+        return rows;
+    }
+    async function adventure(id) {
+        var j = await rpc({ table: 'adventures', lower_bound: String(id), upper_bound: String(id), limit: 1 });
+        return j.rows[0] || null;
+    }
+    async function assets(ids) {
+        var out = {};
+        for (var i = 0; i < ids.length; i += 100) {
+            var chunk = ids.slice(i, i + 100).join(',');
+            for (var n = 0; n < AA.length; n++) {
+                try {
+                    var r = await fetch(AA[n] + '/atomicassets/v1/assets?ids=' + chunk + '&limit=100', { signal: AbortSignal.timeout(10000) });
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    var j = await r.json();
+                    (j.data || []).forEach(function (a) { out[a.asset_id] = a; });
+                    break;
+                } catch (e) {}
+            }
+        }
+        return out;
+    }
+
+    async function load(wallet) {
+        wallet = (wallet || '').trim().toLowerCase();
+        if (!wallet) return;
+        S.wallet = wallet; S.loading = true; S.msg = ''; S.bad = false;
+        document.getElementById('wallet').value = wallet;
+        render();
+        try {
+            var rows = await participants(wallet);
+            var advIds = rows.map(function (r) { return r.adventureid; }).filter(function (v, i, a) { return a.indexOf(v) === i && !S.advs[v]; });
+            var got = await Promise.all(advIds.map(function (id) { return adventure(id).catch(function () { return null; }); }));
+            advIds.forEach(function (id, i) { S.advs[id] = got[i] || {}; });
+            var ids = [];
+            rows.forEach(function (r) { (r.asset_ids || []).forEach(function (a) { if (!S.assets[a]) ids.push(a); }); });
+            var a = await assets(ids);
+            Object.keys(a).forEach(function (k) { S.assets[k] = a[k]; });
+            S.rows = rows.sort(function (x, y) { return utc(x.return_date) - utc(y.return_date); });
+        } catch (e) {
+            S.rows = []; S.msg = 'Could not read adventure.mc: ' + e.message; S.bad = true;
+        }
+        S.loading = false;
+        render();
+    }
+
+    function nftHtml(id) {
+        var a = S.assets[id], d = a ? (a.data || {}) : {}, img = d.img || d.image || '';
+        var moved = a && a.owner && a.owner !== 'adventure.mc';
+        var name = a ? (a.name || d.name || '#' + id) : '#' + id;
+        return '<div class="nft' + (moved ? ' moved' : '') + '" title="' + esc(name + ' · #' + id + (a ? ' · held by ' + a.owner : '')) + '">' +
+            '<div class="img">' + (img ? '<img loading="lazy" alt="" src="https://wsrv.nl/?url=ipfs.alienworlds.io/ipfs/' + esc(img) + '&w=150&output=webp" ' +
+            'onerror="this.onerror=null;this.src=\'https://ipfs.alienworlds.io/ipfs/' + esc(img) + '\'">' : '<span>#' + esc(id) + '</span>') + '</div>' +
+            '<span>' + esc(name) + '</span></div>';
+    }
+
+    function render() {
+        var who = me();
+        document.getElementById('who').innerHTML = who ? 'Signed in as <b>' + esc(who) + '</b>' : 'Not signed in: you can still look any wallet up';
+        var out = document.getElementById('out'), h = '';
+        if (S.msg) h += '<div class="msg' + (S.bad ? ' bad' : '') + '">' + esc(S.msg) + '</div>';
+        if (S.loading) { out.innerHTML = h + '<div class="empty">Reading adventures for ' + esc(S.wallet) + '…</div>'; return; }
+        if (!S.wallet) { out.innerHTML = h + '<div class="empty">Type a wallet above.</div>'; return; }
+
+        var now = Date.now(), rows = S.rows;
+        var withNfts = rows.filter(function (r) { return (r.asset_ids || []).length; });
+        var ready = rows.filter(function (r) { return utc(r.return_date) <= now; });
+        var nNfts = 0; withNfts.forEach(function (r) { nNfts += r.asset_ids.length; });
+        var canClaim = who === S.wallet;
+        h += '<div class="chips"><div class="chip">Unclaimed adventures<b>' + rows.length + '</b></div>' +
+            '<div class="chip">NFTs waiting<b>' + nNfts + '</b></div><div class="chip">Ready to claim<b>' + ready.length + '</b></div></div>';
+        if (rows.length) h += '<div class="bar"><button class="go" id="claim-all"' + (canClaim && ready.length ? '' : ' disabled') + '>Claim all ready (' + ready.length + ')</button>' +
+            '<span class="who" style="margin-left:0">' + (canClaim ? 'One signature for every ready adventure.' : 'Sign in as ' + esc(S.wallet) + ' to claim.') + '</span></div>';
+        if (!rows.length) { out.innerHTML = h + '<div class="empty">No unclaimed adventures for ' + esc(S.wallet) + '.</div>'; bind(); return; }
+
+        h += '<div class="tablewrap"><table><thead><tr><th>Adventure</th><th>NFTs sent</th><th>Launched</th><th>Returns</th><th class="num">Score</th><th></th></tr></thead><tbody>' +
+            rows.map(function (r) {
+                var adv = S.advs[r.adventureid] || {}, back = utc(r.return_date), isReady = back <= now;
+                var nfts = (r.asset_ids || []).length ? '<div class="nfts">' + r.asset_ids.map(nftHtml).join('') + '</div>' : '<span class="none">no NFTs sent</span>';
+                return '<tr class="' + (isReady ? 'ready' : '') + '"><td class="adv"><b>#' + r.adventureid + ' ' + esc(adv.title || '') + '</b>' +
+                    (adv.duration_hours ? '<small>' + adv.duration_hours + ' h adventure</small>' : '') + '</td>' +
+                    '<td>' + nfts + '</td><td>' + fmtDate(utc(r.launch_date)) + '</td>' +
+                    '<td>' + fmtDate(back) + '<small class="' + (isReady ? 'st-ready' : 'st-wait') + '">' + (isReady ? 'returned' : 'in ' + dur((back - now) / 1000)) + '</small></td>' +
+                    '<td class="num">' + Number(r.score || 0).toLocaleString() + '</td>' +
+                    '<td>' + (isReady ? '<button class="go" data-claim="' + r.adventureid + '"' + (canClaim ? '' : ' disabled title="Sign in as ' + esc(S.wallet) + ' to claim"') + '>Claim</button>' : '') + '</td></tr>';
+            }).join('') + '</tbody></table></div>';
+        out.innerHTML = h;
+        bind();
+    }
+
+    async function sign(actions) {
+        if (window.walletSession) return window.walletSession.transact({ actions: actions });
+        if (window._mcWcw && window._mcWcw.api) return window._mcWcw.api.transact({ actions: actions }, { blocksBehind: 3, expireSeconds: 60 });
+        throw new Error('Sign in first.');
+    }
+    async function claim(ids) {
+        var w = S.wallet;
+        S.msg = 'Waiting for your wallet… claiming ' + ids.length + ' adventure' + (ids.length === 1 ? '' : 's'); S.bad = false; render();
+        try {
+            await sign(ids.map(function (id) {
+                return { account: 'adventure.mc', name: 'claimadv', authorization: [{ actor: w, permission: 'active' }], data: { wallet: w, adventureid: id } };
+            }));
+            S.msg = '✓ Claimed ' + ids.length + ' adventure' + (ids.length === 1 ? '' : 's') + '. The NFTs are on their way back to ' + w + '.';
+            render();
+            setTimeout(function () { var m = S.msg; load(w).then(function () { S.msg = m; render(); }); }, 2500);
+        } catch (e) {
+            var raw = (e && e.message) || String(e), m = raw.match(/assertion failure with message: ([^\n"]+)/i);
+            S.msg = '✗ ' + (m ? m[1] : raw.slice(0, 200)); S.bad = true; render();
+        }
+    }
+
+    function bind() {
+        document.querySelectorAll('[data-claim]').forEach(function (b) { b.onclick = function () { claim([b.getAttribute('data-claim')]); }; });
+        var all = document.getElementById('claim-all');
+        if (all) all.onclick = function () {
+            var now = Date.now();
+            claim(S.rows.filter(function (r) { return utc(r.return_date) <= now; }).map(function (r) { return String(r.adventureid); }));
+        };
+    }
+
+    window.mcWalletChanged = function () { var w = me(); if (w && !S.wallet) load(w); else render(); };
+    document.getElementById('look').onclick = function () { load(document.getElementById('wallet').value); };
+    document.getElementById('wallet').onkeydown = function (e) { if (e.key === 'Enter') load(this.value); };
+    document.getElementById('login-anchor').onclick = async function () {
+        if (!window.walletKit) return;
+        try {
+            var r = await window.walletKit.login();
+            if (r && r.session) { window.walletSession = r.session; localStorage.setItem('naron_wallet', String(r.session.actor)); load(String(r.session.actor)); }
+        } catch (e) {}
+    };
+    document.getElementById('login-wcw').onclick = async function () {
+        try {
+            window._mcWcw = window._mcWcw || new waxjs.WaxJS({ rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false });
+            var acct = await window._mcWcw.login();
+            load(acct);
+        } catch (e) { S.msg = 'Cloud Wallet sign-in failed: ' + ((e && e.message) || e); S.bad = true; render(); }
+    };
+    setInterval(function () { if (S.rows.length && !S.loading) render(); }, 60000);
+
+    var q = new URLSearchParams(location.search).get('wallet');
+    var start = q || localStorage.getItem('naron_wallet') || '';
+    if (start) load(start); else render();
+})();
+</script>
+</body>
+</html>
