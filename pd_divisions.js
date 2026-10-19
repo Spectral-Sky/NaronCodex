@@ -724,12 +724,20 @@
         var L = builderLeaders().find(function (x) { return x.key === key; });
         if (L) { S.b.targets = builderTargets(L); var first = S.b.targets.find(function (o) { return !o.short; }); if (first) { S.b.target = first.key; S.b.units = first.units; } }
     }
+    /* As the game does it: addunit puts each mercenary in the division (assign fails
+       with "Unit not found" before that), then one assign per piece of gear with the
+       other gear fields 0. All in one signature. */
     function assignActs(divId, units) {
-        return units.map(function (u) {
-            var id = function (k) { return u[k] ? u[k].id : '0'; };
-            return act('core.pdef', 'assign', { owner: S.wallet, division_id: divId, unit_asset_id: u.m.id, creature_asset_id: id('c'),
-                weapon_asset_id: id('w'), supply_asset_id: id('s'), lavalux_asset_id: id('l') });
+        var acts = units.map(function (u) { return act('core.pdef', 'addunit', { owner: S.wallet, division_id: divId, unit_asset_id: u.m.id }); });
+        units.forEach(function (u) {
+            BGEAR.forEach(function (g) {
+                if (!u[g[0]]) return;
+                var data = { owner: S.wallet, division_id: divId, unit_asset_id: u.m.id, creature_asset_id: '0', weapon_asset_id: '0', supply_asset_id: '0', lavalux_asset_id: '0' };
+                data[g[1] + '_asset_id'] = u[g[0]].id;
+                acts.push(act('core.pdef', 'assign', data));
+            });
         });
+        return acts;
     }
 
     function stakeView() {
