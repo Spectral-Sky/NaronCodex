@@ -37,7 +37,7 @@
     var GEAR = [['creature', 4], ['weapon', 2], ['supply', 3], ['lavalux', 5]];   // divunits field, category
 
     var S = { wallet: '', own: false, loading: false, data: null, pick: {}, idleToBest: true, msg: '',
-              mode: 'same', tab: 'divs', open: {}, qty: {}, catFilter: -1, form: {} };
+              mode: 'same', tab: 'divs', open: {}, qty: {}, catFilter: -1, form: {}, b: null, pending: null };
 
     function esc(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -158,7 +158,7 @@
     }
 
     async function load(wallet) {
-        S.loading = true; S.wallet = wallet; S.own = !!wallet && wallet === me(); S.msg = ''; S.qty = {};
+        S.loading = true; S.wallet = wallet; S.own = !!wallet && wallet === me(); S.msg = ''; S.qty = {}; if (S.b) S.b.targets = null;
         render();
         try {
             var got = await Promise.all([
@@ -216,7 +216,8 @@
             id: String(id), tpl: tpl, name: data.name || a.name || ('#' + id), img: data.img || data.image || '',
             cat: st.category != null ? Number(st.category) : null, atk: Number(st.attack || 0), def: Number(st.defense || 0),
             move: Number(st.movecost || 0), slots: Number(st.slots_max || 0), forge: Number(st.min_forge_level || 0),
-            price: d.prices[tpl] || null, known: st.category != null
+            red: Number(st.movecost_reduction || 0), am: Number(st.attack_mult_bp || 0), dm: Number(st.defense_mult_bp || 0),
+            mm: Number(st.movecost_mult_bp || 0), price: d.prices[tpl] || null, known: st.category != null
         };
     }
 
@@ -499,6 +500,189 @@
         return { wallet: wallet, free: free, used: used };
     }
 
+    /* ── division builder ───────────────────────────────────────────────────────
+       How core.pdef totals a division (matches atk/def/movecost_cached on every
+       division checked): per unit, ATK and DEF are the mercenary + creature +
+       equipment + supplies, times the Lava Lux multiplier, rounded down; its move
+       is the mercenary's minus the gear's reductions, times Lava Lux's move
+       multiplier. The division's move is the units' total minus the warlord's
+       reduction, never below 0. Equipment, supplies and Lava Lux are capped per
+       wallet by the slots bought in the forge shop. */
+    var BGEAR = [['c', 'creature', 4, null], ['w', 'weapon', 2, 'eqpslot'], ['s', 'supply', 3, 'supslot'], ['l', 'lavalux', 5, 'lavaslot']];
+    function unitTotals(u) {
+        var a = u.m.atk, df = u.m.def, mv = u.m.move, red = 0;
+        ['c', 'w', 's'].forEach(function (k) { if (u[k]) { a += u[k].atk; df += u[k].def; mv += u[k].move; red += u[k].red; } });
+        mv = Math.max(0, mv - red);
+        if (u.l) {
+            a = Math.floor(a * (u.l.am || 10000) / 10000); df = Math.floor(df * (u.l.dm || 10000) / 10000);
+            mv = Math.floor(mv * (u.l.mm || 10000) / 10000);
+        }
+        return { atk: a, def: df, move: mv };
+    }
+    function deckTotals(leader, units) {
+        var t = { atk: 0, def: 0, move: 0 };
+        units.forEach(function (u) { var x = unitTotals(u); t.atk += x.atk; t.def += x.def; t.move += x.move; });
+        t.move = Math.max(0, t.move - (leader ? leader.red : 0));
+        return t;
+    }
+    function strength(c) { return c ? c.atk + c.def + (c.am + c.dm) / 100 : 0; }
+    // a warlord on the builder: a free staked one (new division) or an existing division with room
+    function builderLeaders() {
+        var d = S.data, out = [];
+        inventory().free.filter(function (c) { return c.cat === 0; }).forEach(function (c) {
+            out.push({ key: 'n:' + c.id, lead: c, div: null, base: [], room: c.slots });
+        });
+        d.divs.forEach(function (x) {
+            var base = d.units.filter(function (u) { return String(u.division_id) === String(x.division_id); }).map(function (u) {
+                var g = function (k) { var id = u[k + '_asset_id']; return id && id !== '0' ? card(id) : null; };
+                return { m: card(u.unit_asset_id), c: g('creature'), w: g('weapon'), s: g('supply'), l: g('lavalux') };
+            });
+            var room = Number(x.slots_max) - base.length;
+            if (room > 0) out.push({ key: 'd:' + x.division_id, lead: card(x.leader_asset_id), div: x, base: base, room: room });
+        });
+        return out;
+    }
+    // free cards of each kind, and how many more of each gear type the wallet may fit
+    function builderPools() {
+        var d = S.data, free = inventory().free, used = { weapon: 0, supply: 0, lavalux: 0 };
+        d.units.forEach(function (u) { ['weapon', 'supply', 'lavalux'].forEach(function (k) { if (u[k + '_asset_id'] && u[k + '_asset_id'] !== '0') used[k]++; }); });
+        var by = function (cat) { return free.filter(function (c) { return c.cat === cat; }).sort(function (a, b) { return strength(b) - strength(a); }); };
+        var caps = {};
+        BGEAR.forEach(function (g) { caps[g[0]] = g[3] ? Math.max(0, (d.owned[g[3]] || 0) - used[g[1]]) : Infinity; });
+        return { m: by(1), c: by(4), w: by(2), s: by(3), l: by(5), caps: caps };
+    }
+    // every free card it can fit, strongest first: if this can't reach a target, nothing can
+    function fillAll(L, P) {
+        var units = P.m.slice(0, L.room).map(function (m) { return { m: m }; });
+        BGEAR.forEach(function (g) {
+            var k = g[0], list = P[k].slice(0, Math.min(P[k].length, P.caps[k], units.length));
+            list.forEach(function (c, i) { units[i][k] = c; });
+        });
+        return units;
+    }
+    function meets(t, need) { return t.atk >= need.atk && t.def >= need.def; }
+    // then take back what isn't needed, strongest first, so the best cards stay free
+    function trim(L, units, need) {
+        units = units.map(function (u) { return Object.assign({}, u); });
+        var total = function () { return deckTotals(L.lead, L.base.concat(units)); };
+        var gear = [];
+        units.forEach(function (u) { BGEAR.forEach(function (g) { if (u[g[0]]) gear.push([u, g[0]]); }); });
+        gear.sort(function (a, b) { return strength(b[0][b[1]]) - strength(a[0][a[1]]); });
+        gear.forEach(function (x) { var c = x[0][x[1]]; delete x[0][x[1]]; if (!meets(total(), need)) x[0][x[1]] = c; });
+        units.slice().sort(function (a, b) { return strength(b.m) - strength(a.m); }).forEach(function (u) {
+            var i = units.indexOf(u); units.splice(i, 1);
+            if (!meets(total(), need)) units.splice(i, 0, u);
+        });
+        return units;
+    }
+    // targets: each live mission, and each reward tier of it, this warlord can reach
+    function builderTargets(L) {
+        var d = S.data, P = builderPools(), all = fillAll(L, P), max = deckTotals(L.lead, L.base.concat(all)), out = [], seen = {};
+        Object.keys(d.missions).forEach(function (k) {
+            var m = d.missions[k], cfg = d.cfgs[m.reward_config_id];
+            var mins = { atk: Number(m.min_div_attack || 0), def: Number(m.min_div_defense || 0) };
+            var needs = (cfg && cfg.tiers && cfg.tiers.length && !(cfg.nft_reward_count > 0))
+                ? cfg.tiers.map(function (t) { return { atk: Math.max(mins.atk, Number(t.min_atk || 0)), def: mins.def }; }) : [mins];
+            needs.forEach(function (need) {
+                if (!meets(max, need)) return;
+                var units = trim(L, all, need);
+                if (L.div && !units.length) return;                  // it already qualifies as it is
+                var t = deckTotals(L.lead, L.base.concat(units));
+                var ev = evaluate(m, { atk_cached: t.atk, def_cached: t.def, movecost_cached: t.move }, d);
+                var key = m.mission_id + '|' + ev.reward.label;
+                if (!ev.ok || seen[key]) return;
+                seen[key] = 1;
+                out.push({ key: key, m: m, need: need, units: units, t: t, ev: ev });
+            });
+        });
+        return out.sort(function (a, b) { return b.ev.perHour - a.ev.perHour; }).slice(0, 30);
+    }
+    function builderView() {
+        var d = S.data, can = signable(), B = S.b, leaders = builderLeaders();
+        var h = '<div class="pdd-sec pdd-build"><div class="pdd-sech"><b>Build a division</b> <small>pick a warlord, then a target: it fills the slots with the weakest free cards that reach it</small></div>';
+        if (S.pending) {
+            var nd = d.divs.find(function (x) { return String(x.leader_asset_id) === S.pending.leader; });
+            h += '<div class="pdd-bundle">' + (nd
+                ? '<button class="pdd-go" id="pdd-step2"' + (can ? '' : ' disabled') + '>Step 2 of 2 · assign ' + S.pending.units.length + ' unit' + (S.pending.units.length === 1 ? '' : 's') + ' to division #' + nd.division_id + '</button>'
+                : '<span class="pdd-hint">Waiting for the new division to show on chain… <button class="pdd-btn pdd-sm" id="pdd-reload">Check again</button></span>') +
+                '<button class="pdd-btn pdd-sm" id="pdd-cancel2">Cancel</button></div></div>';
+            return h;
+        }
+        if (!leaders.length) return h + '<div class="pdd-empty">No free warlord and no division with room. Stake a warlord below.</div></div>';
+        h += '<div class="pdd-grid pdd-leads">' + leaders.map(function (L) {
+            var on = B && B.leader === L.key;
+            return '<div class="pdc pdc-s pdc-pick' + (on ? ' on' : '') + '" data-lead="' + L.key + '" title="' + esc(L.lead.name) + '">' +
+                (on ? '<span class="pdc-tick">✓</span>' : '') +
+                '<div class="pdc-img">' + (L.lead.img ? imgTag(L.lead.img, 220) : '<span>' + esc(L.lead.name) + '</span>') + '</div>' +
+                '<div class="pdc-name">' + esc(L.lead.name) + '</div><div class="pdc-meta">' +
+                (L.div ? 'Division #' + L.div.division_id + ' · ' + L.base.length + '/' + L.div.slots_max : 'new · ' + L.room + ' slots') +
+                (L.lead.red ? '<br>−' + L.lead.red + ' move' : '') + '</div></div>';
+        }).join('') + '</div>';
+        var L = B && leaders.find(function (x) { return x.key === B.leader; });
+        if (!L) return h + '</div>';
+
+        if (!B.targets) B.targets = builderTargets(L);
+        var opts = '<option value="">— by hand, no target —</option>' + B.targets.map(function (o) {
+            return '<option value="' + o.key + '"' + (B.target === o.key ? ' selected' : '') + '>' +
+                esc('#' + o.m.mission_id + ' ' + (o.m._meta.title || '') + ' · needs ATK ' + n(o.need.atk) + ' / DEF ' + n(o.need.def) +
+                    ' · ' + o.ev.reward.label + ' · ' + show(o.ev.perHour) + '/h · ' + o.units.length + ' unit' + (o.units.length === 1 ? '' : 's')) + '</option>';
+        }).join('');
+        var tgt = B.targets.find(function (o) { return o.key === B.target; });
+        h += '<div class="pdd-form"><label>Target ' + '<select class="pdd-sel pdd-wide" id="pdd-target">' + opts + '</select></label></div>' +
+            (B.targets.length ? '' : '<p class="pdd-note">No live mission is reachable with this warlord and your free cards.</p>');
+
+        // the deck being built
+        var units = B.units, P = builderPools(), t = deckTotals(L.lead, L.base.concat(units));
+        var inUse = {};
+        units.forEach(function (u) { ['m', 'c', 'w', 's', 'l'].forEach(function (k) { if (u[k]) inUse[u[k].id] = 1; }); });
+        var spare = function (k) { return P[k].filter(function (c) { return !inUse[c.id]; }); };
+        var gearLeft = {};
+        BGEAR.forEach(function (g) { gearLeft[g[0]] = P.caps[g[0]] - units.filter(function (u) { return u[g[0]]; }).length; });
+        var ev = tgt ? evaluate(tgt.m, { atk_cached: t.atk, def_cached: t.def, movecost_cached: t.move }, d) : null;
+        var ok = tgt ? meets(t, tgt.need) : true;
+        h += '<div class="pdd-chips">' + chip('ATK', n(t.atk) + (tgt ? ' <small>/ ' + n(tgt.need.atk) + '</small>' : '')) +
+            chip('DEF', n(t.def) + (tgt ? ' <small>/ ' + n(tgt.need.def) + '</small>' : '')) + chip('Move', n(t.move)) +
+            chip('Units', (L.base.length + units.length) + ' <small>/ ' + (L.div ? L.div.slots_max : L.room) + '</small>') +
+            (ev ? chip('Lock', dur(ev.secs)) + chip('Earns', (ev.ok ? show(ev.perHour) + '/h' : '<span class="pdd-bad">doesn’t qualify</span>')) : '') + '</div>';
+        h += '<div class="pdd-deck"><div class="pdd-face">' + cardHtml(L.lead, { size: 'l' }) + '</div><div class="pdd-units">' +
+            (L.base.length ? '<div class="pdd-hint pdd-full">' + L.base.length + ' unit' + (L.base.length === 1 ? '' : 's') + ' already in this division stay as they are.</div>' : '') +
+            units.map(function (u, i) {
+                var gear = BGEAR.map(function (g) {
+                    var k = g[0];
+                    if (u[k]) return cardHtml(u[k], { size: 'xs', extra: '<button class="pdc-x" data-bgear="' + i + '|' + k + '" title="Take it off">×</button>' });
+                    var sp = spare(k);
+                    return sp.length && gearLeft[k] > 0 ? '<select class="pdd-sel pdd-mini" data-baddgear="' + i + '|' + k + '" title="Add ' + CAT[g[2]] + '">' +
+                        '<option value="">+' + CAT[g[2]].slice(0, 3) + '</option>' + sp.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name + ' · ' + c.atk + '/' + c.def) + '</option>'; }).join('') + '</select>' : '';
+                }).join('');
+                var ut = unitTotals(u);
+                return '<div class="pdd-unit">' + cardHtml(u.m, { size: 's', extra: '<div class="pdc-meta">unit ' + ut.atk + ' / ' + ut.def + '</div><button class="pdc-rm" data-bunit="' + i + '">Remove</button>' }) +
+                    '<div class="pdd-gear">' + gear + '</div></div>';
+            }).join('') +
+            (spare('m').length && L.base.length + units.length < (L.div ? Number(L.div.slots_max) : L.room)
+                ? '<label class="pdd-addu">Add a mercenary <select class="pdd-sel" id="pdd-baddunit"><option value="">choose…</option>' +
+                  spare('m').map(function (c) { return '<option value="' + c.id + '">' + esc(c.name + ' · ATK ' + c.atk + ' DEF ' + c.def + ' · move ' + c.move) + '</option>'; }).join('') + '</select></label>' : '') +
+            '</div></div>';
+        var steps = L.div ? '' : ' (2 signatures: create, then assign)';
+        h += '<div class="pdd-bundle"><button class="pdd-go" id="pdd-build"' + (can && (units.length || !L.div) && ok ? '' : ' disabled') + '>' +
+            (L.div ? 'Add ' + units.length + ' unit' + (units.length === 1 ? '' : 's') + ' to division #' + L.div.division_id : 'Create division' + (units.length ? ' with ' + units.length + ' unit' + (units.length === 1 ? '' : 's') : '')) + '</button>' +
+            '<span class="pdd-hint">' + (!ok ? 'Below the target: add cards or pick a lower one.' : steps) +
+            ' Gear left to fit: equipment ' + fmtCap(gearLeft.w) + ', supplies ' + fmtCap(gearLeft.s) + ', Lava Lux ' + fmtCap(gearLeft.l) + '.</span></div>';
+        return h + '</div>';
+    }
+    function fmtCap(x) { return x === Infinity ? 'any' : Math.max(0, x); }
+    function builderPick(key) {
+        S.b = { leader: key, target: '', targets: null, units: [] };
+        var L = builderLeaders().find(function (x) { return x.key === key; });
+        if (L) { S.b.targets = builderTargets(L); if (S.b.targets[0]) { S.b.target = S.b.targets[0].key; S.b.units = S.b.targets[0].units; } }
+    }
+    function assignActs(divId, units) {
+        return units.map(function (u) {
+            var id = function (k) { return u[k] ? u[k].id : '0'; };
+            return act('core.pdef', 'assign', { owner: S.wallet, division_id: divId, unit_asset_id: u.m.id, creature_asset_id: id('c'),
+                weapon_asset_id: id('w'), supply_asset_id: id('s'), lavalux_asset_id: id('l') });
+        });
+    }
+
     function stakeView() {
         var d = S.data, inv = inventory(), can = signable(), f = S.catFilter;
         var match = function (c) { return f < 0 || c.cat === f; };
@@ -509,7 +693,7 @@
         }).join('') + '</div>';
         var w = inv.wallet.filter(match), free = inv.free.filter(match);
 
-        var h = pills +
+        var h = builderView() + pills +
             '<div class="pdd-sec"><div class="pdd-sech"><b>In your wallet</b> <small>' + inv.wallet.length + ' Planetary Defense cards, not staked</small>' +
             (nW ? '<button class="pdd-btn pdd-sm" data-clear="w">Clear</button>' : '') +
             '<button class="pdd-go pdd-sm" id="pdd-stake"' + (can && nW ? '' : ' disabled') + '>Stake selected (' + nW + ')</button></div>' +
@@ -528,22 +712,6 @@
                 return cardHtml(c, { pick: can ? s.key : '', count: s.ids.length,
                     extra: can && c.cat === 0 ? '<button class="pdc-rm" data-creatediv="' + c.id + '">Create division</button>' : '' });
             }).join('') + '</div>' : '<div class="pdd-empty">Nothing staked and free.</div>') + '</div>';
-
-        var freeOf = function (cat) { return inv.free.filter(function (c) { return c.cat === cat; }); };
-        var opt = function (list, key, none) {
-            return '<select class="pdd-sel" data-form="' + key + '">' + (none ? '<option value="0">— none —</option>' : '') +
-                list.map(function (c) { return '<option value="' + c.id + '"' + (S.form[key] === c.id ? ' selected' : '') + '>' + esc(c.name + ' · #' + c.id) + '</option>'; }).join('') + '</select>';
-        };
-        var divOpts = '<select class="pdd-sel" data-form="div">' + d.divs.map(function (x) {
-            return '<option value="' + x.division_id + '"' + (String(S.form.div) === String(x.division_id) ? ' selected' : '') + '>#' + x.division_id + ' ' + esc(card(x.leader_asset_id).name) + '</option>';
-        }).join('') + '</select>';
-        h += '<div class="pdd-sec"><div class="pdd-sech"><b>Add a unit to a division</b> <small>uses staked cards that aren’t in a division</small></div>' +
-            (d.divs.length && freeOf(1).length ?
-                '<div class="pdd-form"><label>Division ' + divOpts + '</label><label>Mercenary ' + opt(freeOf(1), 'unit') + '</label>' +
-                '<label>Creature ' + opt(freeOf(4), 'creature', true) + '</label><label>Equipment ' + opt(freeOf(2), 'weapon', true) + '</label>' +
-                '<label>Supplies ' + opt(freeOf(3), 'supply', true) + '</label><label>Lava Lux ' + opt(freeOf(5), 'lavalux', true) + '</label>' +
-                '<button class="pdd-go pdd-sm" id="pdd-assign"' + (can ? '' : ' disabled') + '>Add unit</button></div>'
-                : '<div class="pdd-empty">' + (!d.divs.length ? 'Create a division from a staked warlord first.' : 'Stake a mercenary first.') + '</div>') + '</div>';
 
         var used = inv.used.filter(match);
         h += '<div class="pdd-sec"><div class="pdd-sech"><b>In a division</b> <small>' + inv.used.length + ': remove units and gear from a division’s deck on the Divisions tab</small></div>' +
@@ -688,14 +856,46 @@
         el.querySelectorAll('[data-creatediv]').forEach(function (b) {
             b.onclick = function () { run([act('core.pdef', 'creatediv', { owner: w, leader_asset_id: b.getAttribute('data-creatediv') })], 'division created'); };
         });
-        var asg = el.querySelector('#pdd-assign');
-        if (asg) asg.onclick = function () {
-            var get = function (k) { var s = el.querySelector('.pdd-sel[data-form="' + k + '"]'); return s ? s.value : '0'; };
-            run([act('core.pdef', 'assign', {
-                owner: w, division_id: get('div'), unit_asset_id: get('unit'), creature_asset_id: get('creature'),
-                weapon_asset_id: get('weapon'), supply_asset_id: get('supply'), lavalux_asset_id: get('lavalux')
-            })], 'unit added to division #' + get('div'));
+        el.querySelectorAll('[data-lead]').forEach(function (f) {
+            f.onclick = function () { var k = f.getAttribute('data-lead'); if (S.b && S.b.leader === k) S.b = null; else builderPick(k); render(); };
+        });
+        var tg = el.querySelector('#pdd-target');
+        if (tg) tg.onchange = function () {
+            var o = S.b.targets.find(function (x) { return x.key === tg.value; });
+            S.b.target = tg.value; S.b.units = o ? o.units.map(function (u) { return Object.assign({}, u); }) : []; render();
         };
+        var findFree = function (id) { return inventory().free.find(function (c) { return c.id === id; }); };
+        el.querySelectorAll('[data-bunit]').forEach(function (b) { b.onclick = function () { S.b.units.splice(Number(b.getAttribute('data-bunit')), 1); render(); }; });
+        el.querySelectorAll('[data-bgear]').forEach(function (b) {
+            b.onclick = function () { var p = b.getAttribute('data-bgear').split('|'); S.b.units[p[0]] = Object.assign({}, S.b.units[p[0]]); delete S.b.units[p[0]][p[1]]; render(); };
+        });
+        el.querySelectorAll('[data-baddgear]').forEach(function (sel) {
+            sel.onchange = function () {
+                var p = sel.getAttribute('data-baddgear').split('|'), c = findFree(sel.value);
+                if (c) { S.b.units[p[0]] = Object.assign({}, S.b.units[p[0]]); S.b.units[p[0]][p[1]] = c; } render();
+            };
+        });
+        var au = el.querySelector('#pdd-baddunit');
+        if (au) au.onchange = function () { var c = findFree(au.value); if (c) S.b.units.push({ m: c }); render(); };
+        var bd = el.querySelector('#pdd-build');
+        if (bd) bd.onclick = function () {
+            var L = builderLeaders().find(function (x) { return x.key === S.b.leader; }), units = S.b.units.slice();
+            if (!L) return;
+            if (L.div) { run(assignActs(L.div.division_id, units), units.length + ' unit' + (units.length === 1 ? '' : 's') + ' added to division #' + L.div.division_id); S.b = null; return; }
+            // a new division's id only exists once it's created, so its units go in a second signature
+            if (units.length) S.pending = { leader: L.lead.id, units: units };
+            S.b = null;
+            run([act('core.pdef', 'creatediv', { owner: w, leader_asset_id: L.lead.id })], 'division created' + (units.length ? ': now sign step 2 to add its units' : ''))
+                .then(function () { if (/^✗/.test(S.msg)) { S.pending = null; render(); } });
+        };
+        var s2 = el.querySelector('#pdd-step2');
+        if (s2) s2.onclick = function () {
+            var nd = S.data.divs.find(function (x) { return String(x.leader_asset_id) === S.pending.leader; }), units = S.pending.units;
+            S.pending = null;
+            run(assignActs(nd.division_id, units), units.length + ' unit' + (units.length === 1 ? '' : 's') + ' added to division #' + nd.division_id);
+        };
+        var rl = el.querySelector('#pdd-reload'); if (rl) rl.onclick = function () { load(S.wallet); };
+        var c2 = el.querySelector('#pdd-cancel2'); if (c2) c2.onclick = function () { S.pending = null; render(); };
         el.querySelectorAll('[data-removeunit]').forEach(function (b) {
             b.onclick = function () { run([act('core.pdef', 'removeunit', { owner: w, unit_asset_id: b.getAttribute('data-removeunit') })], 'unit removed'); };
         });

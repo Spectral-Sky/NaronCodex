@@ -430,7 +430,7 @@
         .pdd-table .num { text-align:right; } .pdd-table th.num { text-align:right; }
         .pdd-table small { color:#a9bdd8; }
         .pdd-table tr.pdd-ready td { background:rgba(62,217,122,0.06); }
-        .pdd-ready { color:#3ed97a; font-weight:bold; letter-spacing:1px; }
+        span.pdd-ready { color:#3ed97a; font-weight:bold; letter-spacing:1px; }
         .pdd-run { color:var(--warn); }
         .pdd-idle, .pdd-dim { color:#a9bdd8; }
         .pdd-sel { background:var(--bg2); color:var(--text); border:1px solid var(--border); font-family:inherit;
@@ -516,6 +516,14 @@
             font-family:inherit; font-size:1em; line-height:1; cursor:pointer; padding:0; }
         .pdc-step button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
         .pdc-step button:disabled { opacity:0.35; cursor:default; }
+        .pdd-build { padding:14px; border:1px solid var(--border); border-radius:12px; background:rgba(91,173,255,0.035); }
+        .pdd-leads { margin-bottom:14px; }
+        .pdd-wide { min-width:min(640px, 100%); max-width:100%; }
+        .pdd-mini { font-size:0.7em; padding:2px 4px; max-width:58px; }
+        .pdd-addu { display:flex; flex-direction:column; gap:4px; font-size:0.72em; color:#a9bdd8; align-self:center; }
+        .pdd-full { flex-basis:100%; }
+        .pdd-bad { color:#ff8a8a; }
+        .pdd-build .pdd-deck { margin:12px 0; }
         html.day .pdc { background:#fff; }
         html.day .pdc-step, html.day .pdc-step b, html.day .pdc-step button { color:#1a2850; }
         html.day .pdc-step button { background:#eef3fc; }
@@ -1286,6 +1294,12 @@ function fmtReward(m) {
     return fmtDisplayVal(m.rwAmt, m.rwTok);
 }
 
+// reward per unit of entry cost, as Ratio / Run shows it; free runs rank above every paid one
+function calcRatio(m) {
+    if (m.missionType === 'free') return 1e12;
+    return m.costAmt > 0 && m.rwAmt > 0 ? m.rwAmt / m.costAmt : null;
+}
+
 function fmtRatio(m) {
     if (m.missionType === 'def-tlm' && m.costAmt > 0) {
         var r = m.rwAmt / m.costAmt;
@@ -1401,7 +1415,7 @@ var COLS = [
 // Column order: Planet, Mission, Earn/hr, WAX/hr, Cost/Run, Reward/Run, Cooldown, Ratio/Run, Break-even, [Profit/hr], Min ATK, Min DEF, Divs In, Expires
 var COL_KEYS   = ['planet','title','rwPerHr','_waxhr','costAmt','rwAmt','cooldownSec','_ratio','breakEvenDef','minAtk','minDef','divsJoined','daysLeft'];
 var COL_LABELS = ['Planet','Mission','Earn / hr','WAX / hr','Cost / Run','Reward / Run','Cooldown','Ratio / Run','Break-even DEF','Min ATK','Min DEF','Divs In','Expires'];
-var COL_SORT   = ['planet','title','rwPerHr','_waxhr','costAmt','rwAmt','cooldownSec','breakEvenDef','breakEvenDef','minAtk','minDef','divsJoined','daysLeft'];
+var COL_SORT   = ['planet','title','rwPerHr','_waxhr','costAmt','rwAmt','cooldownSec','_ratio','breakEvenDef','minAtk','minDef','divsJoined','daysLeft'];
 var COL_TITLE  = ['','','Reward earned per hour (native token)','Estimated WAX value of reward per hour','Token cost per mission run','Token reward per mission run','Mission cooldown time','Token ratio per run','DEF price (TLM) at which this mission breaks even','Minimum division attack required','Minimum division defense required','',''];
 
 function buildHeader() {
@@ -1413,11 +1427,12 @@ function buildHeader() {
         var cls = sortKey === sk ? 'sorted' : '';
         var tip = COL_TITLE[i] ? ' title="' + COL_TITLE[i] + '"' : '';
         ths += '<th class="' + cls + '"' + tip + ' onclick="setSort(\'' + sk + '\')">' + COL_LABELS[i] + '<span class="sort-arrow">' + arrow + '</span></th>';
-    }
-    if (showProfit) {
-        var profArr = sortKey === '_profit' ? (sortDir === 1 ? ' ↑' : ' ↓') : ' ·';
-        var profCls = sortKey === '_profit' ? 'sorted' : '';
-        ths += '<th class="' + profCls + '" onclick="setSort(\'_profit\')" title="Profit per hour in selected display currency at your DEF price">Profit / hr<span class="sort-arrow">' + profArr + '</span></th>';
+        // Profit / hr sits right after Break-even DEF, where the rows put its cell
+        if (showProfit && COL_KEYS[i] === 'breakEvenDef') {
+            var profArr = sortKey === '_profit' ? (sortDir === 1 ? ' ↑' : ' ↓') : ' ·';
+            var profCls = sortKey === '_profit' ? 'sorted' : '';
+            ths += '<th class="' + profCls + '" onclick="setSort(\'_profit\')" title="Profit per hour in selected display currency at your DEF price">Profit / hr<span class="sort-arrow">' + profArr + '</span></th>';
+        }
     }
     document.getElementById('thead-row').innerHTML = '<tr>' + ths + '</tr>';
 }
@@ -1437,6 +1452,7 @@ function getFilteredSorted() {
         var av, bv;
         if (sortKey === '_profit') { av = calcProfitHr(a); bv = calcProfitHr(b); }
         else if (sortKey === '_waxhr') { av = calcWaxHr(a); bv = calcWaxHr(b); }
+        else if (sortKey === '_ratio') { av = calcRatio(a); bv = calcRatio(b); }
         else { av = a[sortKey]; bv = b[sortKey]; }
 
         if (av === null || av === undefined) av = sortDir > 0 ? Infinity : -Infinity;
