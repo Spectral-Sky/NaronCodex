@@ -614,7 +614,11 @@
         var stake = el.querySelector('#pdd-stake');
         if (stake) stake.onclick = function () {
             var ids = inventory().wallet.filter(function (c) { return S.sel[c.id]; }).map(function (c) { return c.id; });
-            run([act('atomicassets', 'transfer', { from: w, to: 'core.pdef', asset_ids: ids, memo: 'stake' })], 'staked ' + ids.length + ' card' + (ids.length === 1 ? '' : 's'));
+            // the game sends at most 50 cards per transfer, several transfers in one signature
+            var acts = [];
+            for (var i = 0; i < ids.length; i += 50)
+                acts.push(act('atomicassets', 'transfer', { from: w, to: 'core.pdef', asset_ids: ids.slice(i, i + 50), memo: 'stake' }));
+            run(acts, 'staked ' + ids.length + ' card' + (ids.length === 1 ? '' : 's'));
         };
         var uns = el.querySelector('#pdd-unstake');
         if (uns) uns.onclick = function () {
