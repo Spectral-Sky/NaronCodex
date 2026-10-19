@@ -584,7 +584,15 @@
             var needs = (cfg && cfg.tiers && cfg.tiers.length && !(cfg.nft_reward_count > 0))
                 ? cfg.tiers.map(function (t) { return { atk: Math.max(mins.atk, Number(t.min_atk || 0)), def: mins.def }; }) : [mins];
             needs.forEach(function (need) {
-                if (!meets(max, need)) return;
+                if (!meets(max, need)) {
+                    // out of reach: priced as if it got there, with what's missing
+                    var evx = evaluate(m, { atk_cached: need.atk, def_cached: need.def, movecost_cached: max.move }, d);
+                    var kx = m.mission_id + '|' + evx.reward.label;
+                    if (!evx.ok || seen[kx]) return;
+                    seen[kx] = 1;
+                    out.push({ key: kx, m: m, need: need, units: all, t: max, ev: evx, short: { atk: Math.max(0, need.atk - max.atk), def: Math.max(0, need.def - max.def) } });
+                    return;
+                }
                 var units = trim(L, all, need);
                 if (L.div && !units.length) return;                  // it already qualifies as it is
                 var t = deckTotals(L.lead, L.base.concat(units));
@@ -595,7 +603,9 @@
                 out.push({ key: key, m: m, need: need, units: units, t: t, ev: ev });
             });
         });
-        return out.sort(function (a, b) { return b.ev.perHour - a.ev.perHour; }).slice(0, 30);
+        var byHour = function (a, b) { return b.ev.perHour - a.ev.perHour; };
+        return out.filter(function (o) { return !o.short; }).sort(byHour).slice(0, 30)
+            .concat(out.filter(function (o) { return o.short; }).sort(byHour).slice(0, 20));
     }
     function builderView() {
         var d = S.data, can = signable(), B = S.b, leaders = builderLeaders();
@@ -622,14 +632,19 @@
         if (!L) return h + '</div>';
 
         if (!B.targets) B.targets = builderTargets(L);
-        var opts = '<option value="">— by hand, no target —</option>' + B.targets.map(function (o) {
-            return '<option value="' + o.key + '"' + (B.target === o.key ? ' selected' : '') + '>' +
-                esc('#' + o.m.mission_id + ' ' + (o.m._meta.title || '') + ' · needs ATK ' + n(o.need.atk) + ' / DEF ' + n(o.need.def) +
-                    ' · ' + o.ev.reward.label + ' · ' + show(o.ev.perHour) + '/h · ' + o.units.length + ' unit' + (o.units.length === 1 ? '' : 's')) + '</option>';
-        }).join('');
+        var opt = function (o) {
+            var miss = o.short ? [o.short.atk ? n(o.short.atk) + ' ATK' : '', o.short.def ? n(o.short.def) + ' DEF' : ''].filter(Boolean).join(' + ') : '';
+            return '<option value="' + o.key + '"' + (o.short ? ' class="pdd-opt-short"' : '') + (B.target === o.key ? ' selected' : '') + '>' +
+                esc((o.short ? '✗ ' : '') + '#' + o.m.mission_id + ' ' + (o.m._meta.title || '') + ' · needs ATK ' + n(o.need.atk) + ' / DEF ' + n(o.need.def) +
+                    (o.short ? ' · short ' + miss : '') + ' · ' + o.ev.reward.label + ' · ' + show(o.ev.perHour) + '/h' +
+                    (o.short ? '' : ' · ' + o.units.length + ' unit' + (o.units.length === 1 ? '' : 's'))) + '</option>';
+        };
+        var reach = B.targets.filter(function (o) { return !o.short; }), out = B.targets.filter(function (o) { return o.short; });
+        var opts = '<option value="">— by hand, no target —</option>' + reach.map(opt).join('') +
+            (out.length ? '<optgroup label="Not enough ATK / DEF with your free cards">' + out.map(opt).join('') + '</optgroup>' : '');
         var tgt = B.targets.find(function (o) { return o.key === B.target; });
-        h += '<div class="pdd-form"><label>Target ' + '<select class="pdd-sel pdd-wide" id="pdd-target">' + opts + '</select></label></div>' +
-            (B.targets.length ? '' : '<p class="pdd-note">No live mission is reachable with this warlord and your free cards.</p>');
+        h += '<div class="pdd-form"><label>Target ' + '<select class="pdd-sel pdd-wide' + (tgt && tgt.short ? ' pdd-sel-short' : '') + '" id="pdd-target">' + opts + '</select></label></div>' +
+            (reach.length ? '' : '<p class="pdd-note">No live mission is reachable with this warlord and your free cards.</p>');
 
         // the deck being built
         var units = B.units, P = builderPools(), t = deckTotals(L.lead, L.base.concat(units));
@@ -665,7 +680,7 @@
         var steps = L.div ? '' : ' (2 signatures: create, then assign)';
         h += '<div class="pdd-bundle"><button class="pdd-go" id="pdd-build"' + (can && (units.length || !L.div) && ok ? '' : ' disabled') + '>' +
             (L.div ? 'Add ' + units.length + ' unit' + (units.length === 1 ? '' : 's') + ' to division #' + L.div.division_id : 'Create division' + (units.length ? ' with ' + units.length + ' unit' + (units.length === 1 ? '' : 's') : '')) + '</button>' +
-            '<span class="pdd-hint">' + (!ok ? 'Below the target: add cards or pick a lower one.' : steps) +
+            '<span class="pdd-hint">' + (!ok ? '<span class="pdd-bad">Short ' + [t.atk < tgt.need.atk ? n(tgt.need.atk - t.atk) + ' ATK' : '', t.def < tgt.need.def ? n(tgt.need.def - t.def) + ' DEF' : ''].filter(Boolean).join(' + ') + '</span>: stake stronger cards or more gear, or pick a lower target.' : steps) +
             ' Gear left to fit: equipment ' + fmtCap(gearLeft.w) + ', supplies ' + fmtCap(gearLeft.s) + ', Lava Lux ' + fmtCap(gearLeft.l) + '.</span></div>';
         return h + '</div>';
     }
@@ -673,7 +688,7 @@
     function builderPick(key) {
         S.b = { leader: key, target: '', targets: null, units: [] };
         var L = builderLeaders().find(function (x) { return x.key === key; });
-        if (L) { S.b.targets = builderTargets(L); if (S.b.targets[0]) { S.b.target = S.b.targets[0].key; S.b.units = S.b.targets[0].units; } }
+        if (L) { S.b.targets = builderTargets(L); var first = S.b.targets.find(function (o) { return !o.short; }); if (first) { S.b.target = first.key; S.b.units = first.units; } }
     }
     function assignActs(divId, units) {
         return units.map(function (u) {
