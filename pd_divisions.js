@@ -527,6 +527,8 @@
                 : p ? '<button class="pdd-btn pdd-one" data-div="' + x.division_id + '" title="' + esc('Entry fee ' + (p.fee.n ? n(p.fee.n, 4) + ' ' + p.fee.sym : 'free') + depositLabel(shortfall([p]))) + '">' +
                     (st.status === 'ready' ? 'Claim &amp; resend' : 'Send') + (Object.keys(shortfall([p])).length ? ' <small>+ deposit</small>' : '') + '</button>' : '';
             if (signable() && st.status === 'ready') actBtn += ' <button class="pdd-btn pdd-claim1" data-div="' + x.division_id + '" title="Claim the reward without sending it again">Claim</button>';
+            if (signable() && st.status !== 'running') actBtn += ' <button class="pdd-btn pdd-danger pdd-unall" data-div="' + x.division_id + '" title="' +
+                esc((st.status === 'ready' ? 'Claim, then t' : 'T') + 'ake the division apart and send every card in it back to your wallet') + '">Unstake all</button>';
             var better = st.best && (!st.cur || st.best.perHour > st.cur.perHour + 0.01);
             var lead = card(x.leader_asset_id);
             h += '<tr class="pdd-row pdd-' + st.status + (S.open[x.division_id] ? ' open' : '') + '" data-open="' + x.division_id + '">' +
@@ -542,7 +544,7 @@
                     st.best.m.mission_id + ' ' + perH(st.best) + '/h</span>' +
                     (st.cur && better && String(st.best.m.mission_id) !== String(st.lock.mission_id) ? ' <small>+' + (st.best.reward.est || st.cur.reward.est ? '~' : '') + show(st.best.perHour - st.cur.perHour) + '</small>' : '')
                     : '<span class="pdd-dim">none</span>') + '</td>' +
-                '<td class="txt">' + sel + '</td><td class="txt">' + actBtn + '</td></tr>';
+                '<td class="txt">' + sel + '</td><td class="txt"><span class="pdd-acts">' + actBtn + '</span></td></tr>';
             if (S.open[x.division_id]) h += '<tr class="pdd-deckrow"><td colspan="11">' + deckHtml(st, true) + '</td></tr>';
         });
         return h + '</tbody></table></div>' +
@@ -964,6 +966,30 @@
                 var st = states().find(function (s) { return String(s.div.division_id) === b.getAttribute('data-div'); });
                 if (st && st.lock) run([act('miss.pdef', 'claim', { owner: S.wallet, mission_id: Number(st.lock.mission_id), division_id: Number(st.div.division_id) })],
                     'division #' + st.div.division_id + ' claimed');
+            };
+        });
+        /* Unstake all, as the game takes a division apart: claim if it's back, take each
+           piece of gear off its unit, remove the units, delete the division (deldvasset,
+           which only frees the warlord), then unstake every card. One signature. */
+        el.querySelectorAll('.pdd-unall').forEach(function (b) {
+            b.onclick = function (e) {
+                e.stopPropagation();
+                var st = states().find(function (s) { return String(s.div.division_id) === b.getAttribute('data-div'); });
+                if (!st || st.status === 'running') return;
+                var x = st.div, w = S.wallet, acts = [], ids = [x.leader_asset_id];
+                if (st.status === 'ready') acts.push(act('miss.pdef', 'claim', { owner: w, mission_id: Number(st.lock.mission_id), division_id: Number(x.division_id) }));
+                st.units.forEach(function (u) {
+                    GEAR.forEach(function (g) {
+                        var gid = u[g[0] + '_asset_id'];
+                        if (gid && gid !== '0') { acts.push(act('core.pdef', 'unassign', { owner: w, division_id: x.division_id, unit_asset_id: u.unit_asset_id, gear_asset_id: gid })); ids.push(gid); }
+                    });
+                });
+                st.units.forEach(function (u) { acts.push(act('core.pdef', 'removeunit', { owner: w, unit_asset_id: u.unit_asset_id })); ids.push(u.unit_asset_id); });
+                acts.push(act('core.pdef', 'deldvasset', { owner: w, leader_asset_id: x.leader_asset_id }));
+                ids.forEach(function (id) { acts.push(act('core.pdef', 'unstake', { owner: w, asset_id: id })); });
+                if (!confirm('Take division #' + x.division_id + ' apart and send all ' + ids.length + ' cards back to ' + w + '?' +
+                    (st.status === 'ready' ? ' Its mission reward is claimed first.' : ''))) return;
+                run(acts, 'division #' + x.division_id + ' unstaked: ' + ids.length + ' card' + (ids.length === 1 ? '' : 's') + ' back in your wallet');
             };
         });
         var ca = el.querySelector('#pdd-claimall');
