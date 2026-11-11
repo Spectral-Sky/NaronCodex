@@ -433,21 +433,34 @@
             (noProfile ? ' ' + fmtN(noProfile) + ' owner' + (noProfile === 1 ? ' has' : 's have') + ' no player profile, so no setting, and ' + (noProfile === 1 ? 'is' : 'are') + ' left out.' : '') + '</p></section>';
 
         // 3. by land type, and by building type, for those boosted buildings
+        // by building / land type, measured by boost: total and average x, the owners' settings
+        // weighted by boost, and how the buildings spread over 1x bands up to 10x
         var group = function (keyFn, title) {
             var g = {};
             boosted.forEach(function (r) {
                 var v = _share[r.owner]; if (v == null) return;
-                var k = keyFn(r), x = g[k] = g[k] || { cnt: {}, n: 0, boost: 0, tlmW: 0, tlm: 0, shards: 0 };
-                var b = bucketOf(v);
-                x.cnt[b] = (x.cnt[b] || 0) + 1; x.n++; x.boost += r.boost; x.tlmW += r.boost * v / 100; x.tlm += r.tlm; x.shards += r.shards;
+                var k = keyFn(r), x = g[k] = g[k] || { wb: {}, n: 0, boost: 0, tlmW: 0, tlm: 0, shards: 0, bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+                var b = bucketOf(v), bx = r.boost / BOOST_X;
+                x.wb[b] = (x.wb[b] || 0) + r.boost; x.n++; x.boost += r.boost; x.tlmW += r.boost * v / 100; x.tlm += r.tlm; x.shards += r.shards;
+                x.bands[Math.min(9, Math.floor(bx))]++;
             });
-            var keys = Object.keys(g).sort(function (a, b) { return g[b].n - g[a].n; });
+            var keys = Object.keys(g).sort(function (a, b) { return g[b].boost - g[a].boost; });
+            var bandMax = 1;
+            keys.forEach(function (k) { g[k].bands.forEach(function (c) { if (c > bandMax) bandMax = c; }); });
+            var spread = function (bands) {
+                return '<div class="sp-bands">' + bands.map(function (c, i) {
+                    return '<i title="' + i + '\u2013' + (i + 1) + 'x: ' + c + ' building' + (c === 1 ? '' : 's') + '" style="height:' + (c ? Math.max(8, c / bandMax * 100) : 0).toFixed(0) + '%"></i>';
+                }).join('') + '</div><div class="sp-bands-ax"><span>0x</span><span>5x</span><span>10x</span></div>';
+            };
             return '<section class="sp-sec"><h3>' + title + '</h3><div class="bld-wrap"><table class="bld-table sp-table"><thead><tr><th class="txt">' +
-                (title.indexOf('land') >= 0 ? 'Land type' : 'Building') + '</th><th class="num">Buildings</th><th class="txt">Owners\u2019 settings</th><th class="num">Boost set to TLM</th>' +
+                (title.indexOf('land') >= 0 ? 'Land type' : 'Building') + '</th><th class="num">Total boost</th><th class="num">Average</th><th class="txt">Boost spread</th>' +
+                '<th class="txt">Owners\u2019 settings, by boost</th><th class="num">Boost set to TLM</th>' +
                 '<th class="num">TLM to claim</th><th class="num">Shards since last claim</th></tr></thead><tbody>' +
                 keys.map(function (k) {
                     var x = g[k];
-                    return '<tr><td class="txt">' + esc(k) + '</td><td class="num">' + fmtN(x.n) + '</td><td class="txt sp-cell">' + splitBar(x.cnt, x.n, 'buildings') + '</td>' +
+                    return '<tr><td class="txt">' + esc(k) + ' <small>' + fmtN(x.n) + '</small></td><td class="num">' + num(x.boost / BOOST_X, 1) + 'x</td>' +
+                        '<td class="num">' + num(x.boost / BOOST_X / x.n, 2) + 'x</td><td class="txt sp-spread">' + spread(x.bands) + '</td>' +
+                        '<td class="txt sp-cell">' + splitBar(x.wb, x.boost, 'boost') + '</td>' +
                         '<td class="num">' + pct(x.tlmW, x.boost).toFixed(0) + '%</td><td class="num">' + fmtN(x.tlm) + '</td><td class="num">' + fmtN(x.shards) + '</td></tr>';
                 }).join('') + '</tbody></table></div></section>';
         };
