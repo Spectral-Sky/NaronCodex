@@ -19,8 +19,10 @@
 (function () {
     var NODES = ['https://wax-history.eosdac.io', 'https://hyperion.wax.detroitledger.tech', 'https://history.waxsweden.org'];
     var AA = ['https://wax.api.atomicassets.io', 'https://wax-aa.eu.eosamsterdam.net', 'https://wax-atomic-api.eosphere.io'];
-    var KEY = 'pd_stats_v2:';
-    var T = { wallet: '', busy: false, step: '', done: 0, todo: 0, err: '', data: null, tpl: {}, sold: {}, started: false };
+    var KEY = 'pd_stats_v3:';
+    var MONTH = 30.44 * 86400000, SEC_PER_TX = 0.55;
+    // log: the progress box, one line per step ('run' | 'ok' | 'stop' | 'err')
+    var T = { wallet: '', busy: false, stop: false, done: 0, todo: 0, err: '', data: null, tpl: {}, sold: {}, started: false, log: [], next: null };
 
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function n(x, d) { return Number(x).toLocaleString('en', { maximumFractionDigits: d == null ? 0 : d }); }
@@ -63,18 +65,25 @@
         }
         return null;
     }
-    // every action of one kind for a wallet, newest first, stopping at what's known
-    async function listActs(wallet, filter, known) {
-        var out = [];
-        for (var skip = 0; skip < 10000; skip += 100) {
-            var j = await hist('/v2/history/get_actions?account=' + wallet + '&filter=' + filter + '&limit=100&skip=' + skip + '&sort=desc');
-            var a = j.actions || [];
-            var fresh = a.filter(function (x) { return !known || !known[x.trx_id]; });
-            out = out.concat(fresh);
-            if (a.length < 100 || (known && fresh.length < a.length)) break;
+    // every action of one kind for a wallet between two times, newest first; the page
+    // cursor is the last timestamp seen, so it isn't capped by the node's 10,000-row skip
+    async function listActs(wallet, filter, after, before, onPage) {
+        var out = [], seen = {}, cur = before;
+        for (var guard = 0; guard < 400 && !T.stop; guard++) {
+            var j = await hist('/v2/history/get_actions?account=' + wallet + '&filter=' + filter + '&limit=100&sort=desc' +
+                (after ? '&after=' + new Date(after).toISOString() : '') + (cur ? '&before=' + new Date(cur).toISOString() : ''));
+            var a = (j.actions || []).filter(function (x) { if (seen[x.global_sequence]) return false; seen[x.global_sequence] = 1; return true; });
+            out = out.concat(a);
+            if (onPage) onPage(out.length);
+            if ((j.actions || []).length < 100 || !a.length) break;
+            cur = utc(a[a.length - 1]['@timestamp']) + 1;      // inclusive of the same second; duplicates are dropped
         }
         return out;
     }
+    function logStep(text, state) { T.log.push({ text: text, state: state || 'run' }); paintLog(); return T.log.length - 1; }
+    function logSet(i, text, state) { if (T.log[i]) { T.log[i].text = text; if (state) T.log[i].state = state; } paintLog(); }
+    function fmtD(t) { return new Date(t).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' }); }
+    function eta(n2) { var sec = n2 * SEC_PER_TX; return sec < 90 ? 'under 2 min' : 'about ' + Math.round(sec / 60) + ' min'; }
 
     function load(wallet) {
         try { return JSON.parse(localStorage.getItem(KEY + wallet)) || null; } catch (e) { return null; }
@@ -82,7 +91,7 @@
     function save() {
         try { localStorage.setItem(KEY + T.wallet, JSON.stringify(T.data)); } catch (e) {}
     }
-    function blank() { return { txs: {}, rec: [], chests: [], wd: {}, at: 0 }; }
+    function blank() { return { txs: {}, rec: [], mint: {}, wd: {}, at: 0, from: 0, all: false }; }
 
     // rec: [time, kind ('fee'|'reward'|'deposit'|'claim'), sym, amount, mission, 'w' paid by/to the wallet | 'b' the in-game balance]
     function parseTx(t, wallet, d) {
@@ -117,61 +126,95 @@
         });
     }
 
-    async function readAll() {
-        if (T.busy || !T.wallet) return;
+    async function readAll(mode) {
+        if (!T.wallet) return;
+        if (T.busy) { T.stop = true; T.next = mode || 'update'; return; }   // a new request stops the running one first
         var wallet = T.wallet;
-        T.busy = true; T.err = ''; T.done = 0; T.todo = 0;
+        T.busy = true; T.stop = false; T.err = ''; T.done = 0; T.todo = 0; T.log = [];
         T.data = load(wallet) || blank();
+        if (!T.data.mint) T.data.mint = {};
+        var now = Date.now(), d = T.data, after, before, newFrom;
+        if (mode === 'all') { after = 0; before = d.from || now; newFrom = 0; }
+        else if (mode === 'older') { before = d.from || now; after = Math.max(0, before - 6 * MONTH); newFrom = after; }
+        else { after = d.all ? 0 : (d.from || now - 6 * MONTH); before = 0; newFrom = after; }
         paint();
+        var span = (after ? fmtD(after) : 'the start') + ' → ' + (before ? fmtD(before) : 'now');
         try {
-            T.step = 'Listing your claims and joins…'; paint();
-            var acts = (await listActs(wallet, 'miss.pdef:claim', T.data.txs)).concat(await listActs(wallet, 'miss.pdef:join', T.data.txs));
+            var L = logStep('Listing claims and joins, ' + span + '…');
+            var acts = (await listActs(wallet, 'miss.pdef:claim', after, before, function (k) { logSet(L, 'Listing claims, ' + span + '… ' + k); }))
+                .concat(await listActs(wallet, 'miss.pdef:join', after, before, function (k) { logSet(L, 'Listing joins, ' + span + '… ' + k); }));
             var ids = {};
-            acts.forEach(function (a) { if (!T.data.txs[a.trx_id]) ids[a.trx_id] = 1; });
+            acts.forEach(function (x) { if (!d.txs[x.trx_id]) ids[x.trx_id] = 1; });
             var todo = Object.keys(ids);
             T.todo = todo.length;
-            T.step = 'Reading ' + todo.length + ' transaction' + (todo.length === 1 ? '' : 's') + ' for fees and rewards…'; paint();
+            logSet(L, 'Found ' + acts.length + ' claims and joins, ' + todo.length + ' transaction' + (todo.length === 1 ? '' : 's') + ' to read', 'ok');
+            if (T.stop) throw 'stop';
+            var R = logStep('Reading transactions for fees and rewards… 0 / ' + todo.length + (todo.length > 150 ? ' (' + eta(todo.length) + '; you can stop and continue later)' : ''));
             var next = 0;
             var worker = async function () {
-                while (next < todo.length && wallet === T.wallet) {
+                while (next < todo.length && !T.stop) {
                     var id = todo[next++];
                     try {
                         var t = await hist('/v2/history/get_transaction?id=' + id);
-                        if (t && t.actions) { parseTx(t, wallet, T.data); T.data.txs[id] = 1; }
+                        if (t && t.actions) { parseTx(t, wallet, d); d.txs[id] = 1; }
                     } catch (e) {}
                     T.done++;
-                    if (T.done % 10 === 0) { save(); paint(); }
+                    if (T.done % 10 === 0 || T.done === todo.length) {
+                        save();
+                        logSet(R, 'Reading transactions for fees and rewards… ' + T.done + ' / ' + todo.length + (todo.length - T.done > 150 ? ' (' + eta(todo.length - T.done) + ' left)' : ''));
+                    }
                 }
             };
             await Promise.all([worker(), worker(), worker()]);
             save();
+            if (T.stop) { logSet(R, 'Stopped at ' + T.done + ' / ' + todo.length + ' transactions. Update carries on from here.', 'stop'); throw 'stop'; }
+            logSet(R, 'Read ' + todo.length + ' transaction' + (todo.length === 1 ? '' : 's') + ' for fees and rewards', 'ok');
 
-            T.step = 'Reading withdrawals and chests…'; paint();
-            var wds = await listActs(wallet, 'core.pdef:withdrawbal', null);
-            T.data.wd = {};
-            wds.forEach(function (a) {
-                var q = amt(a.act.data.quantity), f = q.sym === 'TLM' ? q.n * 0.05 : 0;
-                T.data.wd[a.global_sequence] = [utc(a['@timestamp']), q.sym, q.n, f];
+            var W = logStep('Listing withdrawals…');
+            var wds = await listActs(wallet, 'core.pdef:withdrawbal', after, before);
+            wds.forEach(function (x) {
+                var q = amt(x.act.data.quantity), f = q.sym === 'TLM' ? q.n * 0.05 : 0;
+                d.wd[x.global_sequence] = [utc(x['@timestamp']), q.sym, q.n, f];
             });
-            var mints = await listActs(wallet, 'atomicassets:logmint', null).catch(function () { return []; });
-            T.data.chests = mints.filter(function (a) { return a.act.data.authorized_minter === 'miss.pdef' && a.act.data.new_asset_owner === wallet; })
-                .map(function (a) { return [utc(a['@timestamp']), Number(a.act.data.template_id), a.act.data.schema_name]; });
+            logSet(W, wds.length + ' withdrawal' + (wds.length === 1 ? '' : 's'), 'ok');
+            var M = logStep('Listing chest and key mints…');
+            var mints = await listActs(wallet, 'atomicassets:logmint', after, before).catch(function () { return []; });
+            var found = 0;
+            mints.forEach(function (x) {
+                var dt = x.act.data;
+                if (dt.authorized_minter === 'miss.pdef' && dt.new_asset_owner === wallet) { d.mint[dt.asset_id] = [utc(x['@timestamp']), Number(dt.template_id), dt.schema_name]; found++; }
+            });
+            logSet(M, found + ' chest/key mint' + (found === 1 ? '' : 's') + ' from missions', 'ok');
+            if (T.stop) throw 'stop';
+            var B2 = logStep('Reading the in-game balance…');
             try {
                 var br = await fetch('https://wax.greymass.com/v1/chain/get_table_rows', { method: 'POST',
                     body: JSON.stringify({ json: true, code: 'core.pdef', scope: wallet, table: 'balances', limit: 10 }) });
-                T.data.bal = ((await br.json()).rows || []).map(function (b) { return b.balance; });
-            } catch (e) {}
-            T.data.at = Date.now();
+                d.bal = ((await br.json()).rows || []).map(function (x) { return x.balance; });
+                logSet(B2, 'In-game balance read', 'ok');
+            } catch (e) { logSet(B2, 'In-game balance unavailable', 'err'); }
+            // the covered span only grows once a range has been read in full
+            if (mode === 'all') { d.all = true; d.from = 0; }
+            else if (!d.from || newFrom < d.from) d.from = newFrom;
+            d.at = Date.now();
             save();
+            var P = logStep('Checking chest prices on AtomicHub…');
             await chestInfo();
-        } catch (e) { T.err = 'Could not read the history: ' + e.message; }
-        T.busy = false; T.step = '';
+            logSet(P, 'Chest prices checked', 'ok');
+            logStep('Done. Covers ' + (d.all ? 'all time' : fmtD(d.from) + ' → now'), 'done');
+        } catch (e) {
+            if (e !== 'stop') { T.err = 'Could not read the history: ' + ((e && e.message) || e); logStep(T.err, 'err'); }
+            else if (!T.log.some(function (l) { return l.state === 'stop'; })) logStep('Stopped. Update carries on from here.', 'stop');
+        }
+        T.busy = false; T.stop = false;
         paint();
+        if (T.next) { var m = T.next; T.next = null; readAll(m === 'switch' ? 'update' : m); }
     }
+    function chestList() { var d = T.data; return d && d.mint ? Object.keys(d.mint).map(function (k) { return d.mint[k]; }) : []; }
     // template names and the last AtomicHub sale for each chest/key template
     async function chestInfo() {
         var tpls = {};
-        T.data.chests.forEach(function (c) { tpls[c[1]] = 1; });
+        chestList().forEach(function (c) { tpls[c[1]] = 1; });
         var ids = Object.keys(tpls).filter(function (id) { return !T.tpl[id]; });
         if (ids.length) {
             var j = await aaGet('/atomicassets/v1/templates?collection_name=planetdefnft&ids=' + ids.join(',') + '&limit=100');
@@ -189,7 +232,7 @@
     /* ── summary ── */
     function sum() {
         var d = T.data, s = { fee: {}, reward: {}, deposit: {}, wdfee: { TLM: 0 }, withdraw: {}, runs: 0, byMission: {}, byDay: {},
-                              toWallet: {}, toBal: {}, feeWallet: {}, feeBal: {}, firstBal: 0 };
+                              toWallet: {}, toBal: {}, feeWallet: {}, feeBal: {}, firstBal: 0, byMonth: {} };
         if (!d) return s;
         d.rec.forEach(function (r) {
             var kind = r[1], sym = r[2], x = r[3];
@@ -204,6 +247,9 @@
                 if (kind === 'fee' && r[4]) { var bm = s.byMission[r[4]] = s.byMission[r[4]] || { runs: 0, fee: {} }; bm.fee[sym] = (bm.fee[sym] || 0) + x; }
             }
             if (kind === 'fee' || kind === 'reward' || kind === 'claim') {
+                var mon = new Date(r[0]).toISOString().slice(0, 7);
+                var bmo = s.byMonth[mon] = s.byMonth[mon] || { runs: 0, fee: {}, reward: {} };
+                if (kind === 'claim') bmo.runs++; else bmo[kind][sym] = (bmo[kind][sym] || 0) + x;
                 var day = new Date(r[0]).toISOString().slice(0, 10);
                 var bd = s.byDay[day] = s.byDay[day] || { runs: 0, fee: {}, reward: {} };
                 if (kind === 'claim') bd.runs++; else bd[kind][sym] = (bd[kind][sym] || 0) + x;
@@ -227,14 +273,21 @@
         if (!root) return;
         var h = '<div class="panel-h"><h2>Stats</h2><p>What a wallet has paid into Planetary Defense missions and what came back, read from its chain history.</p></div><div class="st-body">' +
             '<div class="pdd-head"><input id="st-wallet" type="text" placeholder="wallet" value="' + esc(T.wallet) + '" spellcheck="false">' +
-            '<button class="pdd-btn" id="st-go"' + (T.busy ? ' disabled' : '') + '>' + (T.data && T.data.at ? 'Update' : 'Read history') + '</button>' +
+            '<button class="pdd-btn" id="st-go">' + (T.data && T.data.at ? 'Update' : 'Read history') + '</button>' +
+            (T.busy ? '<button class="pdd-btn pdd-danger" id="st-stop">Stop</button>' : '') +
             (T.data && T.data.at ? '<span class="pdd-hint">Last read ' + new Date(T.data.at).toLocaleString() + '</span>' : '') + '</div>';
+        if (T.data && T.data.at) h += '<div class="st-cover"><span>Covers <b>' + (T.data.all ? 'all time' : fmtD(T.data.from) + ' → now') + '</b>' +
+            ' · ' + n(Object.keys(T.data.txs).length) + ' transactions read</span>' +
+            (T.data.all ? '' : '<button class="pdd-btn pdd-sm" id="st-older"' + (T.busy ? ' disabled' : '') + '>Scan 6 more months</button>' +
+                '<button class="pdd-btn pdd-sm" id="st-all"' + (T.busy ? ' disabled' : '') + '>Scan all time</button>') + '</div>';
+        h += '<div id="st-log"></div>';
         if (T.err) h += '<div class="pdd-msg bad">' + esc(T.err) + '</div>';
-        if (T.busy) h += '<p class="pdd-hint">' + esc(T.step) + (T.todo ? ' ' + T.done + ' / ' + T.todo : '') + '</p>';
+
         if (!T.wallet) { root.innerHTML = h + '<div class="pdd-empty">Connect a wallet or type one above.</div></div>'; bind(); return; }
         if (!T.data || (!T.data.rec.length && !T.busy)) {
-            root.innerHTML = h + (T.busy ? '' : '<div class="pdd-empty">Nothing read yet for ' + esc(T.wallet) + '. Read history goes through every mission claim and join once (a minute or two the first time; later visits only read new ones).</div>') + '</div>';
-            bind(); return;
+            root.innerHTML = h + (T.busy ? '' : '<div class="pdd-empty">Nothing read yet for ' + esc(T.wallet) + '. Read history goes through the last 6 months of mission claims and joins once; ' +
+                'busy wallets can take several minutes, and you can stop and carry on later. Older months can be added after.</div>') + '</div>';
+            bind(); paintLog(); return;
         }
         var p = prices(), s = sum();
         var mine = (window.walletSession ? String(window.walletSession.actor) : '') || localStorage.getItem('naron_wallet') || '';
@@ -242,13 +295,13 @@
         var spentWax = wax(s.fee, p) + s.wdfee.TLM * p.TLM, gotWax = wax(s.reward, p), diff = gotWax - spentWax;
         var cls = diff >= 0 ? 'st-pos' : 'st-neg';
         var chestEst = 0;
-        (T.data.chests || []).forEach(function (c) { var so = T.sold[c[1]]; if (so && so.wax && so.sym === 'WAX') chestEst += so.wax; });
+        chestList().forEach(function (c) { var so = T.sold[c[1]]; if (so && so.wax && so.sym === 'WAX') chestEst += so.wax; });
         h += '<p class="pdd-hint">Values in WAX at today\'s prices: 1 DEF ≈ ' + n(p.DEF, 4) + ' WAX, 1 TLM ≈ ' + n(p.TLM, 4) + ' WAX. Chests, keys and shards are counted separately and left out of these values.</p>';
         h += '<div class="st-grid">' +
             '<div class="st-card"><span>' + (own ? 'You spent' : 'Spent') + '</span><b>' + n(spentWax, 2) + ' WAX</b><small>entry fees ' + esc(toks(s.fee)) + (s.wdfee.TLM ? '<br>withdrawal fees ' + n(s.wdfee.TLM, 2) + ' TLM' : '') + '</small></div>' +
             '<div class="st-card"><span>' + (own ? 'You received' : 'Received') + '</span><b>' + n(gotWax, 2) + ' WAX</b><small>rewards ' + esc(toks(s.reward)) + '</small></div>' +
             '<div class="st-card ' + cls + '"><span>Difference</span><b>' + (diff >= 0 ? '+' : '') + n(diff, 2) + ' WAX</b><small>' + (spentWax ? (gotWax / spentWax * 100).toFixed(0) + '% back in tokens on what you spent' : '') +
-                (chestEst ? '<br>plus ' + n((T.data.chests || []).length) + ' chests/keys, ~est. ' + n(chestEst, 0) + ' WAX at last sale (not counted)' : '') + '</small></div>' +
+                (chestEst ? '<br>plus ' + n(chestList().length) + ' chests/keys, ~est. ' + n(chestEst, 0) + ' WAX at last sale (not counted)' : '') + '</small></div>' +
             '<div class="st-card"><span>Missions claimed</span><b>' + n(s.runs) + '</b><small>' + (own ? 'by you' : 'by ' + esc(T.wallet)) + '</small></div></div>';
         // where the rewards went: older missions paid the wallet, newer ones the in-game balance
         var balNow = {};
@@ -274,7 +327,7 @@
 
         // drops, not in the values
         var ch = {}, shards = 0;
-        (T.data.chests || []).forEach(function (c) { ch[c[1]] = (ch[c[1]] || 0) + 1; });
+        chestList().forEach(function (c) { ch[c[1]] = (ch[c[1]] || 0) + 1; });
         var shardMap = window.shardMap || {}, cfgOf = {};
         try { (allMissions || []).forEach(function (m) { cfgOf[m.id] = m.rwShards || 0; }); } catch (e) {}
         Object.keys(s.byMission).forEach(function (mid) { shards += (cfgOf[mid] || 0) * s.byMission[mid].runs; });
@@ -283,7 +336,8 @@
             (Object.keys(ch).length ? Object.keys(ch).map(function (id) {
                 var t = T.tpl[id] || {}, so = T.sold[id] || {};
                 if (so.wax && so.sym === 'WAX') estTotal += so.wax * ch[id];
-                return '<div class="st-drop">' + (t.img ? '<img src="https://wsrv.nl/?url=ipfs.alienworlds.io/ipfs/' + esc(t.img) + '&w=96&output=webp" alt="" loading="lazy">' : '') +
+                var art = /quantum chest/i.test(t.name || '') ? 'https://i.imgur.com/DeM8L6i.png' : /quantum key/i.test(t.name || '') ? 'https://i.imgur.com/6l8NHuf.png' : '';
+                return '<div class="st-drop">' + (art ? '<img src="' + art + '" referrerpolicy="no-referrer" alt="" loading="lazy">' : t.img ? '<img src="https://wsrv.nl/?url=ipfs.alienworlds.io/ipfs/' + esc(t.img) + '&w=96&output=webp" alt="" loading="lazy">' : '') +
                     '<div><b>' + n(ch[id]) + '× ' + esc(t.name || '#' + id) + '</b><small>' +
                     (so.wax ? '~est. ' + n(so.wax, 2) + ' ' + esc(so.sym) + ' each (last sold ' + new Date(so.at).toLocaleDateString() + ')' : so.none ? 'no sales found' : 'checking last sale…') + '</small></div></div>';
             }).join('') : '<div class="pdd-empty">No chests or keys from missions yet.</div>') +
@@ -298,6 +352,15 @@
             mids.map(function (mid) { var m = s.byMission[mid]; return '<tr><td class="txt">#' + mid + ' ' + esc(title[mid] || '') + '</td><td class="num">' + n(m.runs) + '</td><td class="num">' + esc(toks(m.fee)) + '</td></tr>'; }).join('') +
             '</tbody></table></div>';
 
+        // per month
+        var months = Object.keys(s.byMonth).sort().reverse();
+        h += '<h3 class="bas-h">By month</h3><div class="pdd-wrap"><table class="pdd-table"><thead><tr><th class="txt">Month</th><th class="num">Claims</th><th class="num">Spent</th><th class="num">Earned</th><th class="num">Net in WAX</th></tr></thead><tbody>' +
+            months.map(function (mo) {
+                var x = s.byMonth[mo], net = wax(x.reward, p) - wax(x.fee, p);
+                return '<tr><td class="txt">' + new Date(mo + '-01T00:00:00Z').toLocaleDateString('en', { month: 'long', year: 'numeric', timeZone: 'UTC' }) + '</td><td class="num">' + n(x.runs) + '</td>' +
+                    '<td class="num">' + esc(toks(x.fee)) + '</td><td class="num">' + esc(toks(x.reward)) + '</td>' +
+                    '<td class="num ' + (net >= 0 ? 'st-pos' : 'st-neg') + '">' + (net >= 0 ? '+' : '') + n(net, 2) + '</td></tr>';
+            }).join('') + '</tbody></table></div>';
         // per day
         var days = Object.keys(s.byDay).sort().reverse().slice(0, 30);
         h += '<h3 class="bas-h">By day <small>UTC, last 30 days with activity</small></h3><div class="pdd-wrap"><table class="pdd-table"><thead><tr><th class="txt">Day</th><th class="num">Claims</th><th class="num">Spent</th><th class="num">Earned</th><th class="num">Net in WAX</th></tr></thead><tbody>' +
@@ -310,11 +373,37 @@
             'Values use today\'s prices, not the price on the day.</p></div>';
         root.innerHTML = h;
         bind();
+        paintLog();
+    }
+    // the progress box: a small console, orange while working, green with a tick once done
+    function paintLog() {
+        var el = document.getElementById('st-log');
+        if (!el) return;
+        if (!T.log.length) { el.innerHTML = ''; return; }
+        var last = T.log[T.log.length - 1].state;
+        var state = T.busy ? 'run' : last === 'done' ? 'done' : last === 'err' ? 'err' : last === 'stop' ? 'stop' : 'done';
+        el.innerHTML = '<div class="st-console st-' + state + '" role="status" aria-live="polite">' + T.log.map(function (l) {
+            var mark = l.state === 'ok' || l.state === 'done' ? '✓' : l.state === 'err' ? '✗' : l.state === 'stop' ? '■' : '›';
+            return '<div class="st-line st-l-' + l.state + '"><span>' + mark + '</span>' + esc(l.text) + '</div>';
+        }).join('') + '</div>';
     }
     function bind() {
         var go = document.getElementById('st-go'), inp = document.getElementById('st-wallet');
-        var start = function () { var w = (inp.value || '').trim().toLowerCase(); if (!w) return; if (w !== T.wallet) { T.wallet = w; T.data = load(w); } readAll(); };
+        var start = function () {
+            var w = (inp.value || '').trim().toLowerCase(); if (!w) return;
+            if (w !== T.wallet) {
+                if (T.busy) { T.stop = true; T.next = 'switch'; }          // stop this wallet, then read the new one
+                T.wallet = w; T.data = load(w); T.log = []; paint();
+                if (T.busy) return;
+            }
+            readAll();
+        };
         if (go) go.onclick = start;
+        var sp = document.getElementById('st-stop'); if (sp) sp.onclick = function () { T.stop = true; sp.disabled = true; sp.textContent = 'Stopping…'; };
+        var ol = document.getElementById('st-older'); if (ol) ol.onclick = function () { readAll('older'); };
+        var al = document.getElementById('st-all'); if (al) al.onclick = function () {
+            if (confirm('Scan this wallet\'s whole history? Busy wallets can have thousands of transactions; this can take a long time, and you can stop it any time.')) readAll('all');
+        };
         if (inp) inp.onkeydown = function (e) { if (e.key === 'Enter') start(); };
     }
 
@@ -324,7 +413,7 @@
             T.started = true;
             if (w) { T.wallet = w; T.data = load(w); }
             paint();
-            if (T.data && T.data.chests && T.data.chests.length) chestInfo().then(paint);
+            if (chestList().length) chestInfo().then(paint);
             if (T.wallet && !T.busy) readAll();
         } else paint();
     };

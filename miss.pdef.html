@@ -374,6 +374,19 @@
         .st-card.st-neg { border-color: color-mix(in srgb, var(--loss) 50%, var(--border)); }
         .st-card.st-pos b, td.st-pos { color: var(--profit); }
         .st-card.st-neg b, td.st-neg { color: var(--loss); }
+        .st-cover { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.9em; color: var(--text-muted); }
+        .st-cover b { color: var(--strong); }
+        .st-cover span { margin-right: 6px; }
+        .st-console { background: #05070c; border: 1px solid #f2a13c; border-radius: 10px; padding: 10px 14px; max-width: 900px;
+            font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace; font-size: 0.82em; line-height: 1.7; color: #f2a13c; }
+        .st-console.st-done { border-color: #3fcf8e; color: #3fcf8e; }
+        .st-console.st-err { border-color: #f06a6a; color: #f06a6a; }
+        .st-console.st-stop { border-color: #c9a227; color: #e0c45a; }
+        .st-line { display: flex; gap: 10px; white-space: pre-wrap; }
+        .st-line span { flex: 0 0 1em; text-align: center; }
+        .st-console.st-run .st-l-ok, .st-console.st-run .st-l-done { color: #9fdcb9; }
+        .st-console.st-run .st-l-run span { animation: stBlink 1s steps(2) infinite; }
+        @keyframes stBlink { 50% { opacity: 0.2; } }
         .st-flow { border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; background: var(--bg2); }
         .st-flow dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0 0 8px; font-size: 0.93em; }
         .st-flow dt { color: var(--text-muted); }
@@ -1961,7 +1974,7 @@ document.addEventListener('DOMContentLoaded', function() {
 (function () {
     var TABS = ['missions', 'stats', 'bastion'];
     // the scripts behind the Stats and Bastion tabs load the first time each opens
-    var LAZY = { stats: ['pd-stats-js', 'pd_stats.js?v=1.2.67', 'pdStatsOpen'], bastion: ['bastion-js', 'bastion.js?v=1.2.67', 'bastionOpen'] };
+    var LAZY = { stats: ['pd-stats-js', 'pd_stats.js?v=1.2.69', 'pdStatsOpen'], bastion: ['bastion-js', 'bastion.js?v=1.2.69', 'bastionOpen'] };
     function setHub(t, push) {
         if (t === 'mypd') t = 'missions';
         if (TABS.indexOf(t) < 0) t = 'missions';
@@ -1989,6 +2002,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setHub(TABS.indexOf(h) >= 0 || h === 'mypd' ? h : saved || 'missions');
 })();
 </script>
-<script src="pd_divisions.js?v=1.2.68"></script>
+<script src="pd_divisions.js?v=1.2.69"></script>
 </body>
 </html>
