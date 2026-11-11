@@ -363,6 +363,22 @@
         .hub-tab:hover { color: var(--strong); background: var(--accent-dim); }
         .hub-tab.on { color: var(--accent); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
         [data-hubpanel][hidden] { display: none !important; }
+        .st-body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .st-body #st-wallet { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 13px; border-radius: 10px; font-size: 0.95em; width: 210px; }
+        .st-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+        .st-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+        .st-card span { font-size: 0.82em; color: var(--text-muted); }
+        .st-card b { font-size: 1.45em; color: var(--strong); font-variant-numeric: tabular-nums; }
+        .st-card small { font-size: 0.8em; color: var(--text-muted); line-height: 1.5; }
+        .st-card.st-pos { border-color: color-mix(in srgb, var(--profit) 50%, var(--border)); }
+        .st-card.st-neg { border-color: color-mix(in srgb, var(--loss) 50%, var(--border)); }
+        .st-card.st-pos b, td.st-pos { color: var(--profit); }
+        .st-card.st-neg b, td.st-neg { color: var(--loss); }
+        .st-drops { display: flex; flex-wrap: wrap; gap: 10px; }
+        .st-drop { display: flex; gap: 10px; align-items: center; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; }
+        .st-drop img { width: 44px; height: 58px; object-fit: cover; border-radius: 6px; }
+        .st-drop b { display: block; color: var(--strong); font-size: 0.95em; }
+        .st-drop small { color: var(--text-muted); font-size: 0.8em; }
         .bas-body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 22px; }
         .bas-h { margin: 0 0 12px; font-size: 1.02em; color: var(--strong); }
         .bas-h small { color: var(--text-muted); font-weight: 500; }
@@ -381,6 +397,33 @@
             border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 0.8em; color: var(--text-muted); box-shadow: var(--shadow); }
         .bas-tip b { color: var(--strong); }
         .bas-name { white-space: normal; }
+        .bas-anc { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; margin-bottom: 14px; }
+        .bas-ac { display: flex; gap: 12px; text-align: left; background: var(--bg2); border: 1px solid var(--border); border-left: 4px solid var(--ac);
+            border-radius: 12px; padding: 10px; cursor: pointer; color: var(--text); font: inherit; }
+        .bas-ac:hover { border-color: var(--accent); border-left-color: var(--ac); }
+        .bas-ac.on { box-shadow: 0 0 0 2px var(--accent); }
+        .bas-ac img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; flex-shrink: 0; }
+        .bas-ac-b { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+        .bas-ac-t { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+        .bas-ac-t b { color: var(--strong); }
+        .bas-ac small { color: var(--text-muted); font-size: 0.8em; line-height: 1.4; }
+        .bas-bounty { font-size: 0.72em; font-weight: 700; color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); border-radius: 999px; padding: 1px 7px; }
+        .bas-sealed { font-size: 0.84em; color: var(--text-dim); font-weight: 600; }
+        .bas-hp { position: relative; height: 8px; border-radius: 999px; background: var(--surface2); overflow: hidden; }
+        .bas-hp span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--loss); border-radius: 999px; }
+        .bas-hp i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--surface); }
+        .bas-parts { display: flex; gap: 4px; }
+        .bas-part { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .bas-part small { font-size: 0.72em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bas-ab { border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+        .bas-feed { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 2px; max-width: 900px; }
+        .bas-feed li { display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+        .bas-feed b { display: block; color: var(--text); font-weight: 600; font-size: 0.92em; }
+        .bas-feed small { color: var(--text-muted); font-size: 0.82em; }
+        .bas-when { flex: 0 0 72px; color: var(--text-dim); font-size: 0.8em; padding-top: 2px; }
+        .bas-thumb { width: 28px; height: 28px; object-fit: cover; border-radius: 6px; vertical-align: middle; margin-right: 8px; }
+        .bas-wrap { white-space: normal; min-width: 260px; max-width: 420px; font-size: 0.92em; color: var(--text-muted); }
+        .bas-sub { margin: 10px 0 6px; color: var(--strong); font-size: 0.95em; }
         .bas-emoji { width: 18px; height: 18px; vertical-align: -0.25em; }
         .pdd-swap-t { font-weight: 700; color: var(--strong); font-size: 1em; margin-right: 4px; }
         .pdd-swap input { width: 120px; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 11px; border-radius: 10px; font-size: 0.95em; }
@@ -566,13 +609,14 @@
 </div>
 
 <nav class="hub-tabs" role="tablist" aria-label="Planetary Defense hub">
-    <button class="hub-tab" role="tab" data-hub="mypd" aria-controls="pd-divs">My PD</button>
     <button class="hub-tab" role="tab" data-hub="missions" aria-controls="board">Missions</button>
+    <button class="hub-tab" role="tab" data-hub="stats" aria-controls="pd-stats">Stats</button>
     <button class="hub-tab" role="tab" data-hub="bastion" aria-controls="bastion">Bastion</button>
 </nav>
 
 <main class="page">
-<section class="panel" id="pd-divs" data-hubpanel="mypd"></section>
+<section class="panel" id="pd-divs" data-hubpanel="missions"></section>
+<section class="panel" id="pd-stats" data-hubpanel="stats" hidden></section>
 <section class="panel" id="bastion" data-hubpanel="bastion" hidden></section>
 
 <section class="panel board" id="board" data-hubpanel="missions">
@@ -1886,9 +1930,12 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script>
 (function () {
-    var TABS = ['mypd', 'missions', 'bastion'];
+    var TABS = ['missions', 'stats', 'bastion'];
+    // the scripts behind the Stats and Bastion tabs load the first time each opens
+    var LAZY = { stats: ['pd-stats-js', 'pd_stats.js?v=1.2.66', 'pdStatsOpen'], bastion: ['bastion-js', 'bastion.js?v=1.2.66', 'bastionOpen'] };
     function setHub(t, push) {
-        if (TABS.indexOf(t) < 0) t = 'mypd';
+        if (t === 'mypd') t = 'missions';
+        if (TABS.indexOf(t) < 0) t = 'missions';
         document.querySelectorAll('[data-hubpanel]').forEach(function (el) { el.hidden = el.getAttribute('data-hubpanel') !== t; });
         document.querySelectorAll('.hub-tab').forEach(function (b) {
             var on = b.getAttribute('data-hub') === t;
@@ -1896,22 +1943,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         try { localStorage.setItem('pd_hub', t); } catch (e) {}
         if (push && location.hash !== '#' + t) history.replaceState(null, '', '#' + t);
-        if (t === 'bastion') {
-            if (window.bastionOpen) window.bastionOpen();
-            else if (!document.getElementById('bastion-js')) {
-                var sc = document.createElement('script'); sc.id = 'bastion-js'; sc.src = 'bastion.js?v=1.2.64';
-                sc.onload = function () { window.bastionOpen(); }; document.body.appendChild(sc);
+        var L = LAZY[t];
+        if (L) {
+            if (window[L[2]]) window[L[2]]();
+            else if (!document.getElementById(L[0])) {
+                var sc = document.createElement('script'); sc.id = L[0]; sc.src = L[1];
+                sc.onload = function () { window[L[2]](); }; document.body.appendChild(sc);
             }
         }
     }
     window.setHub = setHub;
     document.querySelectorAll('.hub-tab').forEach(function (b) { b.onclick = function () { setHub(b.getAttribute('data-hub'), true); }; });
-    window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (TABS.indexOf(h) >= 0) setHub(h); });
+    window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (TABS.indexOf(h) >= 0 || h === 'mypd') setHub(h); });
     var h = location.hash.slice(1), saved = '';
     try { saved = localStorage.getItem('pd_hub') || ''; } catch (e) {}
-    setHub(TABS.indexOf(h) >= 0 ? h : saved || 'mypd');
+    setHub(TABS.indexOf(h) >= 0 || h === 'mypd' ? h : saved || 'missions');
 })();
 </script>
-<script src="pd_divisions.js?v=1.2.65"></script>
+<script src="pd_divisions.js?v=1.2.66"></script>
 </body>
 </html>

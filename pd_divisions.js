@@ -167,7 +167,7 @@
     }
 
     async function load(wallet) {
-        S.loading = true; S.wallet = wallet; S.own = !!wallet && wallet === me(); S.msg = ''; S.qty = {}; if (S.b) S.b.targets = null; SWAP.quote = null; SWAP.amt = ''; SWAP.err = '';
+        S.loading = true; S.wallet = wallet; window.pdWallet = wallet; S.own = !!wallet && wallet === me(); S.msg = ''; S.qty = {}; if (S.b) S.b.targets = null; SWAP.quote = null; SWAP.amt = ''; SWAP.err = '';
         render();
         try {
             var got = await Promise.all([

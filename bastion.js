@@ -230,6 +230,158 @@
         el.querySelectorAll('[data-bboard]').forEach(function (b) { b.onclick = function () { showBoard(b.getAttribute('data-bboard')); }; });
     }
 
+    /* ── world bosses (Ancients) ── */
+    var A = { list: null, featured: '', reset: 0, open: '', scope: 'current', kind: 'damage', boards: {}, err: '' };
+    function ago(ms) {
+        var s = Math.max(0, Math.round(ms / 1000)), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+        return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm';
+    }
+    async function loadAncients() {
+        try {
+            var j = await get('/ancients');
+            A.list = j.ancients || []; A.featured = j.featuredId; A.reset = j.weekResetAt;
+            if (!A.open) A.open = A.featured || (A.list[0] && A.list[0].id);
+        } catch (e) { A.err = e.message; }
+        paintAncients();
+        if (A.open) showAncientBoard();
+    }
+    async function showAncientBoard() {
+        var k = A.open + '|' + A.scope + '|' + A.kind, c = A.boards[k];
+        paintAncients();
+        if (c && Date.now() - c.at < 30000) return;
+        try {
+            var j = await get('/ancients/' + encodeURIComponent(A.open) + '/board?scope=' + A.scope + '&kind=' + A.kind);
+            A.boards[k] = { at: Date.now(), rows: j.rows || [] };
+        } catch (e) { A.boards[k] = { at: Date.now(), rows: [], err: e.message }; }
+        paintAncients();
+    }
+    function paintAncients() {
+        var el = document.getElementById('bas-ancients');
+        if (!el) return;
+        if (A.err) { el.innerHTML = '<div class="pdd-msg bad">' + esc(A.err) + '</div>'; return; }
+        if (!A.list) { el.innerHTML = '<p class="pdd-hint">Loading…</p>'; return; }
+        var h = '<p class="pdd-hint">The week resets in ' + ago(A.reset - Date.now()) + '. Click a boss for its top strikers.</p><div class="bas-anc">' +
+            A.list.map(function (a) {
+                // siege bosses report health per phase, weak-point bosses per limb; the rest as one pool
+                var parts = a.phases || a.limbs || null;
+                var hpNow = a.hp != null ? a.hp : parts ? parts.reduce(function (t, x) { return t + (x.hp || 0); }, 0) : null;
+                var hp = a.maxHp && hpNow != null ? Math.max(0, Math.min(1, hpNow / a.maxHp)) : null;
+                var marks = (a.thresholds || []).map(function (t) { return '<i style="left:' + (t * 100) + '%"></i>'; }).join('');
+                var bar = parts ? '<div class="bas-parts">' + parts.map(function (x) {
+                        return '<div class="bas-part" style="flex:' + x.max + '" title="' + esc(x.name + ': ' + n(x.hp) + ' / ' + n(x.max) + ' HP') + '"><div class="bas-hp"><span style="width:' + (x.max ? x.hp / x.max * 100 : 0).toFixed(1) + '%"></span></div>' +
+                            '<small>' + esc((x.icon || '') + ' ' + x.name) + (x.hp ? '' : ' ✓') + '</small></div>';
+                    }).join('') + '</div>'
+                    : hp != null ? '<div class="bas-hp" title="' + n(hpNow) + ' / ' + n(a.maxHp) + ' HP"><span style="width:' + (hp * 100).toFixed(1) + '%"></span>' + marks + '</div>' : '';
+                return '<button class="bas-ac' + (a.id === A.open ? ' on' : '') + '" data-anc="' + esc(a.id) + '" style="--ac:' + esc(a.color || '#5badff') + '">' +
+                    '<img src="' + esc(a.imageUrl) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' +
+                    '<div class="bas-ac-b"><div class="bas-ac-t"><b>' + esc(a.name) + '</b>' + (a.id === A.featured ? '<span class="bas-bounty">This week\'s bounty</span>' : '') + '</div>' +
+                    '<small>' + esc(a.icon || '') + ' ' + esc(a.modeLabel || a.mode) + ' · ' + esc(a.planet) + ' · ' + esc(a.championTitle || '') + '</small>' +
+                    (a.status === 'sealed' ? '<div class="bas-sealed">Sealed' + (a.resurfacesAt ? ', back in ' + ago(a.resurfacesAt - Date.now()) : '') + '</div>'
+                        : hp != null ? bar +
+                          '<small>' + n(hpNow) + ' / ' + n(a.maxHp) + ' HP · ' + n(a.totalDamage || 0) + ' damage dealt' + (a.spores != null ? ' · ' + n(a.spores) + ' spores' : '') +
+                          (a.enrageAt ? ' · enrages in ' + ago(a.enrageAt - Date.now()) : '') + '</small>' : '<small>' + esc(a.status) + '</small>') +
+                    '<small>' + (a.wrath ? 'Wrath ' + a.wrath + (a.wrathEffect ? ' (×' + a.wrathEffect.mult + ' ' + esc(a.wrathEffect.stat) + ')' : '') + ' · ' : '') +
+                    (a.relic ? 'Relic: ' + esc(a.relic.name) + (a.relic.effect ? ' (' + esc(a.relic.effect) + ')' : '') : '') + '</small></div></button>';
+            }).join('') + '</div>';
+        var a = A.list.find(function (x) { return x.id === A.open; });
+        if (a) {
+            var k = A.open + '|' + A.scope + '|' + A.kind, c = A.boards[k];
+            var seg = function (key, val, label) { return '<button class="pdd-segb' + (A[key] === val ? ' on' : '') + '" data-aset="' + key + '|' + val + '">' + label + '</button>'; };
+            h += '<div class="bas-ab"><div class="pdd-sech"><b>' + esc(a.name) + '</b>' +
+                '<span class="pdd-seg">' + seg('scope', 'current', 'This battle') + seg('scope', 'alltime', 'All time') + '</span>' +
+                (a.mode === 'affliction' ? '<span class="pdd-seg">' + seg('kind', 'damage', 'Damage') + seg('kind', 'cleanse', 'Cleanse') + '</span>' : '') + '</div>';
+            if (!c) h += '<p class="pdd-hint">Loading…</p>';
+            else if (c.err) h += '<div class="pdd-msg bad">' + esc(c.err) + '</div>';
+            else h += '<div class="pdd-wrap"><table class="pdd-table"><thead><tr><th class="num">#</th><th class="txt">Player</th>' +
+                (A.kind === 'cleanse' ? '<th class="num">Cleanses</th><th class="num">Contribution</th>' : '<th class="num">Damage</th><th class="num">Strikes</th><th class="num">Cleanses</th>') +
+                '</tr></thead><tbody>' + (c.rows.length ? c.rows.map(function (r) {
+                    return '<tr><td class="num">' + r.rank + '</td><td class="txt bas-name">' + nameHtml(r.name) + '</td>' +
+                        (A.kind === 'cleanse' ? '<td class="num">' + n(r.cleanses || 0) + '</td><td class="num">' + n(r.cleanseContribution || 0) + '</td>'
+                            : '<td class="num">' + n(r.damage || 0) + '</td><td class="num">' + n(r.strikes || 0) + '</td><td class="num">' + n(r.cleanses || 0) + '</td>') + '</tr>';
+                }).join('') : '<tr><td colspan="5" class="pdd-empty">No strikes yet.</td></tr>') + '</tbody></table></div>';
+            if (a.champions && a.champions.length) h += '<p class="pdd-hint">Champions: ' + a.champions.map(function (c2) { return nameHtml(c2.name); }).join(', ') + '</p>';
+            h += '</div>';
+        }
+        el.innerHTML = h;
+        el.querySelectorAll('[data-anc]').forEach(function (b) { b.onclick = function () { A.open = b.getAttribute('data-anc'); A.kind = 'damage'; showAncientBoard(); }; });
+        el.querySelectorAll('[data-aset]').forEach(function (b) { b.onclick = function () { var p = b.getAttribute('data-aset').split('|'); A[p[0]] = p[1]; showAncientBoard(); }; });
+    }
+
+    /* ── recent feed ── */
+    var F = { rows: null, err: '' };
+    async function loadRecent() {
+        try { var j = await get('/feed?limit=15'); F.rows = j.events || []; } catch (e) { F.err = e.message; }
+        paintRecent();
+    }
+    function paintRecent() {
+        var el = document.getElementById('bas-recent');
+        if (!el) return;
+        if (F.err) { el.innerHTML = '<div class="pdd-msg bad">' + esc(F.err) + '</div>'; return; }
+        if (!F.rows) { el.innerHTML = '<p class="pdd-hint">Loading…</p>'; return; }
+        el.innerHTML = '<ul class="bas-feed">' + F.rows.map(function (e) {
+            return '<li><span class="bas-when">' + ago(Date.now() - e.createdAt) + ' ago</span><div><b>' + nameHtml(e.title) + '</b>' +
+                (e.body ? '<small>' + nameHtml(e.body) + '</small>' : '') + '</div></li>';
+        }).join('') + '</ul><button class="pdd-btn pdd-sm" id="bas-recent-r">Refresh</button>';
+        var r = document.getElementById('bas-recent-r'); if (r) r.onclick = function () { F.rows = null; paintRecent(); loadRecent(); };
+    }
+
+    /* ── game reference ── */
+    var G = { c: null, err: '', tab: 'missions' };
+    async function loadContent() {
+        try { G.c = await get('/content'); } catch (e) { G.err = e.message; }
+        paintRef();
+    }
+    function pct(x, d) { return n(x, d == null ? 2 : d) + '%'; }
+    function paintRef() {
+        var el = document.getElementById('bas-ref');
+        if (!el) return;
+        if (G.err) { el.innerHTML = '<div class="pdd-msg bad">' + esc(G.err) + '</div>'; return; }
+        if (!G.c) { el.innerHTML = '<p class="pdd-hint">Loading…</p>'; return; }
+        var c = G.c, tabs = [['missions', 'Missions'], ['equipment', 'Equipment'], ['relics', 'Relics'], ['zones', 'Zones'], ['grades', 'Grades']];
+        var zone = {}; (c.zones || []).forEach(function (z) { zone[z.id] = z; });
+        var h = '<div class="pdd-cats">' + tabs.map(function (t) { return '<button class="pdd-segb' + (G.tab === t[0] ? ' on' : '') + '" data-gref="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+        var table = function (head, rows) {
+            return '<div class="pdd-wrap"><table class="pdd-table"><thead><tr>' + head.map(function (x) { return '<th class="' + x[1] + '">' + x[0] + '</th>'; }).join('') +
+                '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+        };
+        var img = function (u) { return u ? '<img class="bas-thumb" src="' + esc(u) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' : ''; };
+        if (G.tab === 'missions') h += table([['Mission', 'txt'], ['Area', 'txt'], ['Time', 'num'], ['Difficulty', 'num'], ['Reward', 'num'], ['Success', 'num'], ['Chest', 'num'], ['Key', 'num'], ['Fragment', 'num']],
+            (c.missions || []).map(function (m) {
+                return '<tr><td class="txt bas-name">' + img(m.imageUrl) + esc(m.name) + '</td><td class="txt">' + esc((zone[m.zone] || {}).subtitle || m.zone) + '</td>' +
+                    '<td class="num">' + n(m.durationMinutes) + ' min</td><td class="num">' + n(m.difficulty) + '</td><td class="num">' + n(m.reward) + '</td>' +
+                    '<td class="num">' + pct(m.baseSuccessRate, 1) + '</td><td class="num">' + pct(m.chestDropRate * 100, 3) + '</td><td class="num">' + pct(m.keyDropRate * 100, 3) + '</td><td class="num">' + pct(m.fragmentDropRate * 100, 3) + '</td></tr>';
+            }));
+        if (G.tab === 'equipment') {
+            var slot = {}; ((c.equipment || {}).slots || []).forEach(function (s2) { slot[s2.id] = s2; });
+            var tier = {}; ((c.equipment || {}).tiers || []).forEach(function (t) { tier[t.tier] = t; });
+            h += table([['Item', 'txt'], ['Slot', 'txt'], ['Tier', 'txt'], ['Cost', 'num'], ['Durability', 'num'], ['Success bonus', 'num']],
+                ((c.equipment || {}).items || []).map(function (it) {
+                    return '<tr><td class="txt bas-name">' + img(it.imageUrl) + esc(it.name) + '</td><td class="txt">' + esc(((slot[it.slot] || {}).icon || '') + ' ' + ((slot[it.slot] || {}).label || it.slot)) + '</td>' +
+                        '<td class="txt">' + esc((tier[it.tier] || {}).label || it.tier) + '</td><td class="num">' + n(it.cost) + '</td><td class="num">' + n(it.durability) + '</td>' +
+                        '<td class="num">' + (it.successBonus != null ? '+' + n(it.successBonus) + '%' : '–') + '</td></tr>';
+                }));
+            h += '<p class="pdd-hint">Full sets: ' + ((c.equipment || {}).tiers || []).filter(function (t) { return t.setBonus; }).map(function (t) { return esc(t.label) + ' +' + t.setBonus + '%'; }).join(' · ') + '</p>';
+        }
+        if (G.tab === 'relics') h += table([['Relic', 'txt'], ['Type', 'txt'], ['Effect', 'txt'], ['Charges', 'num'], ['Cost', 'num'], ['Stock', 'num']],
+            (c.relics || []).map(function (r) {
+                var t = (c.relicTypes || {})[r.type] || {};
+                return '<tr><td class="txt bas-name">' + img(r.imageUrl) + esc(r.name) + '</td><td class="txt">' + esc((t.icon || '') + ' ' + (t.label || r.type)) + '</td>' +
+                    '<td class="txt bas-wrap">' + esc(r.description || '') + '</td><td class="num">' + n(r.charges) + ' ' + esc(t.chargeUnit || '') + '</td>' +
+                    '<td class="num">' + n(r.cost) + '</td><td class="num">' + n(r.maxStock) + '</td></tr>';
+            }));
+        if (G.tab === 'zones') h += table([['Area', 'txt'], ['Unlocks at', 'txt']], (c.zones || []).map(function (z) {
+            return '<tr><td class="txt bas-name">' + img(z.imageUrl) + esc(z.name) + ' <small>' + esc(z.subtitle || '') + '</small></td><td class="txt">' +
+                (z.unlock && (z.unlock.minGrade || z.unlock.minWins) ? 'grade ' + n(z.unlock.minGrade) + ' and ' + n(z.unlock.minWins) + ' wins' : 'from the start') + '</td></tr>';
+        }));
+        if (G.tab === 'grades') h += (c.grades || []).map(function (g) {
+            return '<h4 class="bas-sub">' + esc(g.label) + '</h4>' + table([['Level', 'num'], ['Grade', 'txt'], ['From', 'num']], (g.grades || []).map(function (x) {
+                return '<tr><td class="num">' + x.level + '</td><td class="txt">' + esc(x.name) + '</td><td class="num">' + n(x.threshold) + '</td></tr>';
+            }));
+        }).join('');
+        el.innerHTML = h;
+        el.querySelectorAll('[data-gref]').forEach(function (b) { b.onclick = function () { G.tab = b.getAttribute('data-gref'); paintRef(); }; });
+    }
+
     window.bastionOpen = function () {
         var root = document.getElementById('bastion');
         if (!root) return;
@@ -238,11 +390,14 @@
             root.innerHTML = '<div class="panel-h"><h2>Bastion</h2><p>The Planetary Defense Discord bot. Data from the public ' +
                 '<a href="https://bastion.planetarydefense.io/developers" target="_blank" rel="noopener">Bastion API</a>; Naron Codex is a community tool, not an official Bastion one.</p></div>' +
                 '<div class="bas-body"><section><h3 class="bas-h">Activity</h3><div id="bas-activity"></div></section>' +
-                '<section><h3 class="bas-h">Leaderboards <small>top 15</small></h3><div id="bas-boards"></div></section></div>';
+                '<section><h3 class="bas-h">Leaderboards <small>top 15</small></h3><div id="bas-boards"></div></section>' +
+                '<section><h3 class="bas-h">World bosses <small>the Ancients</small></h3><div id="bas-ancients"></div></section>' +
+                '<section><h3 class="bas-h">Recent feed</h3><div id="bas-recent"></div></section>' +
+                '<section><h3 class="bas-h">Game reference</h3><div id="bas-ref"></div></section></div>';
             B.events = loadCache();
-            paintActivity();
-            paintBoards();
-            loadBoards().then(readFeed);
+            paintActivity(); paintBoards(); paintAncients(); paintRecent(); paintRef();
+            // the small calls first, then the long feed read
+            loadBoards().then(loadAncients).then(loadRecent).then(loadContent).then(readFeed);
         }
     };
 })();
