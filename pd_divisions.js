@@ -409,9 +409,12 @@
        the router hands back. Pools 10447 (TLM) and 10448 (WAX). */
     var PAY = { TLM: { contract: 'alien.worlds', dp: 4, id: 'tlm-alien.worlds', alcor: 'TLM-alien.worlds' },
                 WAX: { contract: 'eosio.token', dp: 8, id: 'wax-eosio.token', alcor: 'WAX-eosio.token' } };
-    var SWAP = { amt: '', pay: 'TLM', slip: 1, quote: null, err: '', seq: 0, timer: null, open: false };
+    var SWAP = { amt: '', pay: 'TLM', slip: 1, quote: null, err: '', seq: 0, timer: null, open: false, sell: false };
     var SWAP_WARN = 'I understand this section handles Alcor swap contracts directly! Use at your own risk!';
-    function alcorLink() { return 'https://wax.alcor.exchange/swap?input=' + PAY[SWAP.pay].alcor + '&output=DEF-defensetoken'; }
+    function alcorLink() {
+        return SWAP.sell ? 'https://wax.alcor.exchange/swap?input=DEF-defensetoken&output=' + PAY[SWAP.pay].alcor
+                         : 'https://wax.alcor.exchange/swap?input=' + PAY[SWAP.pay].alcor + '&output=DEF-defensetoken';
+    }
     // DEF the wallet is short for the ready-and-idle bundle, so the box can start there
     function defNeeded() {
         try {
@@ -425,6 +428,21 @@
         SWAP.quote = null; SWAP.err = '';
         if (!(x > 0)) { swapPaint(); return; }
         swapPaint('Getting a quote from Alcor…');
+        if (SWAP.sell) {
+            // selling: exactly x DEF in, the router's guaranteed minimum out
+            try {
+                var rs = await fetch('https://wax.alcor.exchange/api/v2/swapRouter/getRoute?trade_type=EXACT_INPUT&input=def-defensetoken&output=' + PAY[SWAP.pay].id +
+                    '&amount=' + x.toFixed(8) + '&slippage=' + SWAP.slip.toFixed(2) + '&receiver=' + S.wallet + '&maxHops=2', { signal: AbortSignal.timeout(15000) });
+                if (!rs.ok) throw new Error('Alcor ' + rs.status);
+                var qs = await rs.json();
+                if (seq !== SWAP.seq) return;
+                if (!qs.memo || !/^swapexactin#/.test(qs.memo)) throw new Error('no route for that amount');
+                qs.pay = x.toFixed(8); qs.sell = true;
+                SWAP.quote = qs;
+            } catch (e) { if (seq === SWAP.seq) SWAP.err = 'No quote: ' + e.message; }
+            if (seq === SWAP.seq) swapPaint();
+            return;
+        }
         try {
             var route = async function (type, amount) {
                 var r = await fetch('https://wax.alcor.exchange/api/v2/swapRouter/getRoute?trade_type=' + type + '&input=' + PAY[SWAP.pay].id +
@@ -449,9 +467,13 @@
     function swapPaint(busy) {
         var el = document.getElementById('pdd-swapq'), btn = document.getElementById('pdd-swapgo');
         if (!el) return;
-        var q = SWAP.quote, sym = SWAP.pay, have = walletBal(sym);
+        var q = SWAP.quote, sym = SWAP.pay, have = walletBal(SWAP.sell ? 'DEF' : sym);
         var max = q ? parseFloat(q.pay) : 0, short = q && have != null && have < max;
-        el.innerHTML = busy ? esc(busy) : SWAP.err ? '<span class="pdd-bad">' + esc(SWAP.err) + '</span>' : !q ? 'Type how much DEF you need.' :
+        el.innerHTML = busy ? esc(busy) : SWAP.err ? '<span class="pdd-bad">' + esc(SWAP.err) + '</span>' : !q ? (SWAP.sell ? 'Type how much DEF to sell.' : 'Type how much DEF you need.') :
+            q.sell ? 'Sells <b>' + n(max, 4) + ' DEF</b> → about <b>' + n(parseFloat(q.output), PAY[sym].dp === 4 ? 2 : 4) + ' ' + sym + '</b>' +
+                ', at least ' + n(parseFloat(q.minReceived), PAY[sym].dp === 4 ? 2 : 4) + ' ' + sym + ' if the price moves up to ' + SWAP.slip + '%' +
+                ' · price impact ' + esc(q.priceImpact) + '%' + (Number(q.priceImpact) >= 5 ? ' <span class="pdd-bad">high: the pool is small</span>' : '') +
+                (short ? ' · <span class="pdd-bad">you have ' + n(have, 4) + ' DEF</span>' : '') :
             'Pays <b>' + n(max, PAY[sym].dp === 4 ? 2 : 4) + ' ' + sym + '</b> → about <b>' + n(parseFloat(q.output), 4) + ' DEF</b>' +
             ', at least ' + n(parseFloat(q.minReceived), 4) + ' DEF if the price moves up to ' + SWAP.slip + '%' +
             ' · price impact ' + esc(q.priceImpact) + '%' + (Number(q.priceImpact) >= 5 ? ' <span class="pdd-bad">high: the pool is small</span>' : '') +
@@ -467,7 +489,7 @@
         bg.innerHTML = '<div class="pdd-modal" role="dialog" aria-modal="true" aria-labelledby="pdd-confirm-h">' +
             '<h3 id="pdd-confirm-h">Confirm swap on Alcor</h3>' +
             '<dl><dt>You send</dt><dd><b>' + esc(d.send) + '</b> to <code>swap.alcor</code></dd>' +
-            '<dt>You receive</dt><dd>about <b>' + esc(d.about) + ' DEF</b>, at least <b>' + esc(d.min) + ' DEF</b> or the swap fails</dd>' +
+            '<dt>You receive</dt><dd>about <b>' + esc(d.about) + '</b>, at least <b>' + esc(d.min) + '</b> or the swap fails</dd>' +
             '<dt>Price impact</dt><dd>' + esc(d.impact) + '%</dd><dt>Wallet</dt><dd>' + esc(S.wallet) + '</dd></dl>' +
             '<p class="pdd-disc">Naron Codex is a fan-made tool, not Alcor or Alien Worlds. This signs a transfer straight to Alcor\'s swap contract. ' +
             'Once signed it can\'t be undone. Prices move, and these pools are small: the swap gives you at least the minimum above or fails ' +
@@ -488,15 +510,18 @@
     }
     function swapHtml() {
         if (!SWAP.open) return '<button class="pdd-swapwarn" id="pdd-swapopen" aria-expanded="false"><span class="pdd-swapcaret">▸</span>' +
-            '<b>Get DEF on Alcor</b><span>' + esc(SWAP_WARN) + '</span></button>';
-        if (SWAP.amt === '' && S.data) { var need = defNeeded(); if (need) SWAP.amt = String(need); }
+            '<b>Swap DEF on Alcor</b><span>' + esc(SWAP_WARN) + '</span></button>';
+        if (SWAP.amt === '' && S.data && !SWAP.sell) { var need = defNeeded(); if (need) SWAP.amt = String(need); }
         return '<div class="pdd-swap pdd-swap-risk"><button class="pdd-swapwarn on" id="pdd-swapopen" aria-expanded="true"><span class="pdd-swapcaret">▾</span>' +
-            '<b>Get DEF on Alcor</b><span>' + esc(SWAP_WARN) + '</span></button>' +
-            '<input type="number" id="pdd-swapamt" min="0" step="any" placeholder="DEF needed" value="' + esc(SWAP.amt) + '"> <span class="pdd-hint">' + tokIc('DEF') + 'DEF, paying with</span>' +
+            '<b>Swap DEF on Alcor</b><span>' + esc(SWAP_WARN) + '</span></button>' +
+            (SWAP.sell ? '<span class="pdd-hint">Sell</span>' : '') +
+            '<input type="number" id="pdd-swapamt" min="0" step="any" placeholder="' + (SWAP.sell ? 'DEF to sell' : 'DEF needed') + '" value="' + esc(SWAP.amt) + '"> <span class="pdd-hint">' + tokIc('DEF') + 'DEF</span>' +
+            '<button class="pdd-rev' + (SWAP.sell ? ' on' : '') + '" id="pdd-swaprev" title="' + (SWAP.sell ? 'Back to buying DEF' : 'Reverse: sell DEF for TLM or WAX') + '" aria-pressed="' + SWAP.sell + '">⇄</button>' +
+            '<span class="pdd-hint">' + (SWAP.sell ? 'for' : 'paying with') + '</span>' +
             '<span class="pdd-seg">' + Object.keys(PAY).map(function (k) { return '<button class="pdd-segb' + (SWAP.pay === k ? ' on' : '') + '" data-swappay="' + k + '">' + tokIc(k) + k + '</button>'; }).join('') + '</span>' +
             '<select class="pdd-sel" id="pdd-swapslip" title="Slippage: the most the price may move before the swap fails">' + [0.5, 1, 3].map(function (v) {
                 return '<option value="' + v + '"' + (SWAP.slip === v ? ' selected' : '') + '>' + v + '% slippage</option>'; }).join('') + '</select>' +
-            '<button class="pdd-go pdd-sm" id="pdd-swapgo" disabled>Swap for DEF</button>' +
+            '<button class="pdd-go pdd-sm" id="pdd-swapgo" disabled>' + (SWAP.sell ? 'Sell DEF' : 'Swap for DEF') + '</button>' +
             '<a class="pdd-btn pdd-sm" id="pdd-swapalc" href="' + alcorLink() + '" target="_blank" rel="noopener">Open on Alcor ↗</a>' +
             '<div class="pdd-swapq" id="pdd-swapq"></div></div>';
     }
@@ -657,7 +682,7 @@
         h += '<div class="pdd-wrap"><table class="pdd-table"><thead><tr>' +
             '<th class="txt">Division</th><th class="num">Units</th><th class="num">' + atkLabel() + '</th><th class="num">' + defLabel() + '</th><th class="num">Move</th>' +
             '<th class="txt">On mission</th><th class="txt">Status</th><th class="txt">Next mission (best / h first)</th><th class="txt"></th>' +
-            '<th class="num">That mission / h</th><th class="txt">Best for it</th></tr></thead><tbody>';
+            '<th class="num" title="What the mission it is on now earns per hour">Earning now</th><th class="txt" title="The live mission that pays this division the most per hour">Best mission for it</th></tr></thead><tbody>';
         all.forEach(function (st) {
             var x = st.div, to = target(st), p = plan(st);
             var curM = st.lock ? d.missions[st.lock.mission_id] : null;
@@ -669,7 +694,7 @@
                     return '<option value="' + o.m.mission_id + '"' + (Number(o.m.mission_id) === to ? ' selected' : '') + '>' +
                         esc('#' + o.m.mission_id + ' ' + (o.m._meta.title || '') + ' · ' + perH(o) + '/h · ' + dur(o.secs)) + '</option>';
                 }).join('') : '<option>no mission it qualifies for</option>') + '</select>';
-            var actBtn = !signable() ? '' : st.status === 'running' ? '<button class="pdd-btn" disabled>busy</button>'
+            var actBtn = !signable() ? '' : st.status === 'running' ? ''
                 : p ? '<button class="pdd-btn pdd-one" data-div="' + x.division_id + '" title="' + esc('Entry fee ' + (p.fee.n ? n(p.fee.n, 4) + ' ' + p.fee.sym : 'free') + depositLabel(shortfall([p]))) + '">' +
                     (st.status === 'ready' ? 'Claim &amp; resend' : 'Send') + (Object.keys(shortfall([p])).length ? ' <small>+ deposit</small>' : '') + '</button>' : '';
             if (signable() && st.status === 'ready') actBtn += ' <button class="pdd-btn pdd-claim1" data-div="' + x.division_id + '" title="Claim the reward without sending it again">Claim</button>';
@@ -685,12 +710,14 @@
                 '<td class="num">' + n(x.def_cached) + '</td><td class="num">' + n(x.movecost_cached) + '</td>' +
                 '<td class="txt pdd-onm">' + (curM ? esc('#' + curM.mission_id + ' ' + (curM._meta.title || '')) + ' <small>' + esc(curM._meta.planet || '') + '</small>' : '<span class="pdd-dim">–</span>') + '</td>' +
                 '<td class="txt">' + status + '</td><td class="txt">' + sel + '</td><td class="txt"><span class="pdd-acts">' + actBtn + '</span></td>' +
-                '<td class="num">' + (st.cur ? perH(st.cur) : '–') + '</td>' +
-                '<td class="txt">' + (st.best ? '<span class="' + (better ? 'pdd-better' : 'pdd-same') + '" title="' +
-                    esc((st.best.m._meta.title || '') + ' · reward ' + st.best.reward.label + ' · entry ' + (st.best.cost.n ? n(st.best.cost.n, 4) + ' ' + st.best.cost.sym : 'free') + ' · locks ' + dur(st.best.secs)) + '">#' +
-                    st.best.m.mission_id + ' ' + perH(st.best) + '/h</span>' +
-                    (st.cur && better && String(st.best.m.mission_id) !== String(st.lock.mission_id) ? ' <small>+' + (st.best.reward.est || st.cur.reward.est ? '~' : '') + show(st.best.perHour - st.cur.perHour) + '</small>' : '')
-                    : '<span class="pdd-dim">none</span>') + '</td></tr>';
+                '<td class="num">' + (st.cur ? perH(st.cur) + '/h' : '<span class="pdd-dim">not on one</span>') + '</td>' +
+                '<td class="txt pdd-best">' + (st.best ? '<span title="' +
+                    esc('Reward ' + st.best.reward.label + ' · entry ' + (st.best.cost.n ? n(st.best.cost.n, 4) + ' ' + st.best.cost.sym : 'free') + ' · locks ' + dur(st.best.secs)) + '">' +
+                    '<b class="' + (better ? 'pdd-better' : 'pdd-same') + '">#' + st.best.m.mission_id + ' ' + esc(st.best.m._meta.title || '') + '</b>' +
+                    '<small>' + perH(st.best) + '/h · locks ' + dur(st.best.secs) +
+                    (st.cur && better && String(st.best.m.mission_id) !== String(st.lock.mission_id) ? ' · <span class="pdd-better">+' + (st.best.reward.est || st.cur.reward.est ? '~' : '') + show(st.best.perHour - st.cur.perHour) + '/h more</span>'
+                        : st.cur && String(st.best.m.mission_id) === String(st.lock.mission_id) ? ' · already on it' : '') + '</small></span>'
+                    : '<span class="pdd-dim">none it qualifies for</span>') + '</td></tr>';
             if (S.open[x.division_id]) h += '<tr class="pdd-deckrow"><td colspan="11">' + deckHtml(st, true) + '</td></tr>';
         });
         return h + '</tbody></table></div>' +
@@ -1185,15 +1212,19 @@
         var sg = el.querySelector('#pdd-swapgo');
         if (sg) sg.onclick = function () {
             var q = SWAP.quote; if (!q) return;
-            var t = PAY[SWAP.pay];
-            var quantity = q.pay + ' ' + SWAP.pay;
-            swapConfirm({ send: n(parseFloat(q.pay), t.dp === 4 ? 4 : 8) + ' ' + SWAP.pay, about: n(parseFloat(q.output), 4),
-                          min: n(parseFloat(q.minReceived), 4), impact: q.priceImpact }, function () {
+            var t = PAY[SWAP.pay], sell = !!q.sell;
+            var inSym = sell ? 'DEF' : SWAP.pay, outSym = sell ? SWAP.pay : 'DEF';
+            var contract = sell ? 'defensetoken' : t.contract;
+            var quantity = q.pay + ' ' + inSym;
+            swapConfirm({ send: n(parseFloat(q.pay), 4) + ' ' + inSym, about: n(parseFloat(q.output), 4) + ' ' + outSym,
+                          min: n(parseFloat(q.minReceived), 4) + ' ' + outSym, impact: q.priceImpact }, function () {
                 SWAP.quote = null; SWAP.amt = '';
-                run([act(t.contract, 'transfer', { from: S.wallet, to: 'swap.alcor', quantity: quantity, memo: q.memo })],
-                    'swapped ' + quantity + ' for at least ' + n(parseFloat(q.minReceived), 4) + ' DEF on Alcor');
+                run([act(contract, 'transfer', { from: S.wallet, to: 'swap.alcor', quantity: quantity, memo: q.memo })],
+                    'swapped ' + quantity + ' for at least ' + n(parseFloat(q.minReceived), 4) + ' ' + outSym + ' on Alcor');
             });
         };
+        var sr = el.querySelector('#pdd-swaprev');
+        if (sr) sr.onclick = function () { SWAP.sell = !SWAP.sell; SWAP.amt = ''; SWAP.quote = null; SWAP.err = ''; render(); };
         var so = el.querySelector('#pdd-swapopen');
         if (so) so.onclick = function () { SWAP.open = !SWAP.open; render(); };
         var all = el.querySelector('#pdd-all');

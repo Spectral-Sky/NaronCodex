@@ -477,7 +477,14 @@
         .pdd-better { color: var(--profit); font-weight: 700; }
         .pdd-same { color: var(--text); }
         .pdd-note { font-size: 0.9em; color: var(--text-muted); line-height: 1.6; margin: 12px 0 2px; max-width: 110ch; }
-        .pdd-acts { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 200px; max-width: 300px; white-space: normal; }
+        .pdd-acts { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: 300px; white-space: normal; }
+        .pdd-table td.pdd-best { white-space: normal; min-width: 200px; max-width: 280px; }
+        .pdd-best b { display: block; font-weight: 600; }
+        .pdd-best small { display: block; color: var(--text-muted); font-size: 0.86em; margin-top: 1px; }
+        .pdd-rev { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+            font-size: 1.15em; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform .2s, color .15s, border-color .15s; }
+        .pdd-rev:hover { color: var(--accent); border-color: var(--accent); }
+        .pdd-rev.on { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); transform: rotate(180deg); }
 
         .pdd-tabs { display: flex; gap: 2px; margin: 0 0 14px; border-bottom: 1px solid var(--border); }
         .pdd-tab { background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; color: var(--text-muted);
@@ -1982,6 +1989,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setHub(TABS.indexOf(h) >= 0 || h === 'mypd' ? h : saved || 'missions');
 })();
 </script>
-<script src="pd_divisions.js?v=1.2.67"></script>
+<script src="pd_divisions.js?v=1.2.68"></script>
 </body>
 </html>
