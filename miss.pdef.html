@@ -374,6 +374,12 @@
         .st-card.st-neg { border-color: color-mix(in srgb, var(--loss) 50%, var(--border)); }
         .st-card.st-pos b, td.st-pos { color: var(--profit); }
         .st-card.st-neg b, td.st-neg { color: var(--loss); }
+        .st-flow { border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; background: var(--bg2); }
+        .st-flow dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0 0 8px; font-size: 0.93em; }
+        .st-flow dt { color: var(--text-muted); }
+        .st-flow dd { margin: 0; color: var(--strong); font-variant-numeric: tabular-nums; }
+        .st-flow dd small { color: var(--text-muted); font-weight: normal; margin-left: 6px; }
+        @media (max-width: 640px) { .st-flow dl { grid-template-columns: 1fr; } .st-flow dd { margin-bottom: 6px; } }
         .st-drops { display: flex; flex-wrap: wrap; gap: 10px; }
         .st-drop { display: flex; gap: 10px; align-items: center; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; }
         .st-drop img { width: 44px; height: 58px; object-fit: cover; border-radius: 6px; }
@@ -416,11 +422,27 @@
         .bas-part { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
         .bas-part small { font-size: 0.72em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .bas-ab { border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
-        .bas-feed { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 2px; max-width: 900px; }
-        .bas-feed li { display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
-        .bas-feed b { display: block; color: var(--text); font-weight: 600; font-size: 0.92em; }
-        .bas-feed small { color: var(--text-muted); font-size: 0.82em; }
-        .bas-when { flex: 0 0 72px; color: var(--text-dim); font-size: 0.8em; padding-top: 2px; }
+        .bas-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+        .bas-aside { position: sticky; top: 70px; max-height: calc(100vh - 86px); overflow-y: auto; margin: 14px 18px 18px 0;
+            border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); padding: 0 0 10px; }
+        .bas-fh { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: var(--bg2);
+            border-bottom: 1px solid var(--border); }
+        .bas-fh b { color: var(--strong); }
+        .bas-fh small { margin-left: auto; color: var(--text-dim); font-size: 0.76em; }
+        .bas-live { width: 8px; height: 8px; border-radius: 50%; background: var(--profit); box-shadow: 0 0 0 0 color-mix(in srgb, var(--profit) 60%, transparent);
+            animation: basPulse 2s infinite; }
+        @keyframes basPulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--profit) 55%, transparent); } 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+        .bas-feed { list-style: none; margin: 0; padding: 0; }
+        .bas-fe { display: flex; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+        .bas-fe.new { animation: basIn .6s ease-out; background: var(--accent-dim); }
+        @keyframes basIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+        .bas-fi { flex: 0 0 30px; height: 30px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; font-size: 0.95em; }
+        .bas-fe b { display: block; color: var(--text); font-weight: 600; font-size: 0.88em; line-height: 1.35; }
+        .bas-fe small { display: block; color: var(--text-muted); font-size: 0.8em; line-height: 1.4; margin-top: 2px; }
+        .bas-fe time { display: block; color: var(--text-dim); font-size: 0.74em; margin-top: 3px; }
+        .bas-more { margin: 10px 14px 0; }
+        @media (max-width: 1100px) { .bas-layout { grid-template-columns: 1fr; } .bas-aside { position: static; max-height: 520px; margin: 0 18px 18px; } }
         .bas-thumb { width: 28px; height: 28px; object-fit: cover; border-radius: 6px; vertical-align: middle; margin-right: 8px; }
         .bas-wrap { white-space: normal; min-width: 260px; max-width: 420px; font-size: 0.92em; color: var(--text-muted); }
         .bas-sub { margin: 10px 0 6px; color: var(--strong); font-size: 0.95em; }
@@ -1932,7 +1954,7 @@ document.addEventListener('DOMContentLoaded', function() {
 (function () {
     var TABS = ['missions', 'stats', 'bastion'];
     // the scripts behind the Stats and Bastion tabs load the first time each opens
-    var LAZY = { stats: ['pd-stats-js', 'pd_stats.js?v=1.2.66', 'pdStatsOpen'], bastion: ['bastion-js', 'bastion.js?v=1.2.66', 'bastionOpen'] };
+    var LAZY = { stats: ['pd-stats-js', 'pd_stats.js?v=1.2.67', 'pdStatsOpen'], bastion: ['bastion-js', 'bastion.js?v=1.2.67', 'bastionOpen'] };
     function setHub(t, push) {
         if (t === 'mypd') t = 'missions';
         if (TABS.indexOf(t) < 0) t = 'missions';
@@ -1960,6 +1982,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setHub(TABS.indexOf(h) >= 0 || h === 'mypd' ? h : saved || 'missions');
 })();
 </script>
-<script src="pd_divisions.js?v=1.2.66"></script>
+<script src="pd_divisions.js?v=1.2.67"></script>
 </body>
 </html>

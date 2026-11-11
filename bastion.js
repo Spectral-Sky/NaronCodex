@@ -307,23 +307,57 @@
         el.querySelectorAll('[data-aset]').forEach(function (b) { b.onclick = function () { var p = b.getAttribute('data-aset').split('|'); A[p[0]] = p[1]; showAncientBoard(); }; });
     }
 
-    /* ── recent feed ── */
-    var F = { rows: null, err: '' };
+    /* ── live feed, in a side pane: polls every 30 s while the tab is open ── */
+    var F = { rows: [], err: '', fresh: {}, timer: null, older: false, end: false };
+    var KIND_ICON = { loot: '📦', altar_purchase: '🛒', altar_promo: '🏷️', altar_rotation: '🔄', achievement: '🏆', grade: '⭐',
+                      wb_event: '⚔️', wb_step: '⚔️', wb_reset: '🌑', reward: '🎁' };
     async function loadRecent() {
-        try { var j = await get('/feed?limit=15'); F.rows = j.events || []; } catch (e) { F.err = e.message; }
+        try {
+            var j = await get('/feed?limit=20'), top = F.rows.length ? F.rows[0].id : 0;
+            var add = (j.events || []).filter(function (e) { return e.id > top; });
+            add.forEach(function (e) { if (top) F.fresh[e.id] = 1; });
+            F.rows = add.concat(F.rows).slice(0, 120);
+            F.err = '';
+        } catch (e) { F.err = e.message; }
         paintRecent();
+    }
+    async function loadOlder() {
+        if (F.older || F.end || !F.rows.length) return;
+        F.older = true; paintRecent();
+        try {
+            var j = await get('/feed?limit=20&before=' + F.rows[F.rows.length - 1].id);
+            if (!(j.events || []).length) F.end = true;
+            F.rows = F.rows.concat(j.events || []);
+        } catch (e) { F.err = e.message; }
+        F.older = false; paintRecent();
+    }
+    function feedLoop() {
+        clearInterval(F.timer);
+        F.timer = setInterval(function () {
+            var root = document.getElementById('bastion');
+            if (!root || root.hidden || document.hidden) return;
+            loadRecent();
+        }, 30000);
     }
     function paintRecent() {
         var el = document.getElementById('bas-recent');
         if (!el) return;
-        if (F.err) { el.innerHTML = '<div class="pdd-msg bad">' + esc(F.err) + '</div>'; return; }
-        if (!F.rows) { el.innerHTML = '<p class="pdd-hint">Loading…</p>'; return; }
-        el.innerHTML = '<ul class="bas-feed">' + F.rows.map(function (e) {
-            return '<li><span class="bas-when">' + ago(Date.now() - e.createdAt) + ' ago</span><div><b>' + nameHtml(e.title) + '</b>' +
-                (e.body ? '<small>' + nameHtml(e.body) + '</small>' : '') + '</div></li>';
-        }).join('') + '</ul><button class="pdd-btn pdd-sm" id="bas-recent-r">Refresh</button>';
-        var r = document.getElementById('bas-recent-r'); if (r) r.onclick = function () { F.rows = null; paintRecent(); loadRecent(); };
+        var h = '<div class="bas-fh"><b>Live feed</b><span class="bas-live"></span><small>updates every 30 s</small></div>';
+        if (F.err) h += '<div class="pdd-msg bad">' + esc(F.err) + '</div>';
+        if (!F.rows.length) h += '<p class="pdd-hint">Loading…</p>';
+        else h += '<ul class="bas-feed">' + F.rows.map(function (e) {
+            return '<li class="bas-fe' + (F.fresh[e.id] ? ' new' : '') + '"><span class="bas-fi" aria-hidden="true">' + (KIND_ICON[e.kind] || '•') + '</span>' +
+                '<div><b>' + nameHtml(e.title) + '</b>' + (e.body ? '<small>' + nameHtml(e.body) + '</small>' : '') +
+                '<time datetime="' + new Date(e.createdAt).toISOString() + '" data-at="' + e.createdAt + '">' + ago(Date.now() - e.createdAt) + ' ago</time></div></li>';
+        }).join('') + '</ul>' + (F.end ? '<p class="pdd-hint">That\'s the start of the feed.</p>' :
+            '<button class="pdd-btn pdd-sm bas-more" id="bas-older"' + (F.older ? ' disabled' : '') + '>' + (F.older ? 'Loading…' : 'Load older') + '</button>');
+        el.innerHTML = h;
+        F.fresh = {};
+        var o = document.getElementById('bas-older'); if (o) o.onclick = loadOlder;
     }
+    setInterval(function () {
+        document.querySelectorAll('#bas-recent time[data-at]').forEach(function (t) { t.textContent = ago(Date.now() - Number(t.getAttribute('data-at'))) + ' ago'; });
+    }, 30000);
 
     /* ── game reference ── */
     var G = { c: null, err: '', tab: 'missions' };
@@ -389,15 +423,16 @@
             B.started = true;
             root.innerHTML = '<div class="panel-h"><h2>Bastion</h2><p>The Planetary Defense Discord bot. Data from the public ' +
                 '<a href="https://bastion.planetarydefense.io/developers" target="_blank" rel="noopener">Bastion API</a>; Naron Codex is a community tool, not an official Bastion one.</p></div>' +
-                '<div class="bas-body"><section><h3 class="bas-h">Activity</h3><div id="bas-activity"></div></section>' +
+                '<div class="bas-layout"><div class="bas-body"><section><h3 class="bas-h">Activity</h3><div id="bas-activity"></div></section>' +
                 '<section><h3 class="bas-h">Leaderboards <small>top 15</small></h3><div id="bas-boards"></div></section>' +
                 '<section><h3 class="bas-h">World bosses <small>the Ancients</small></h3><div id="bas-ancients"></div></section>' +
-                '<section><h3 class="bas-h">Recent feed</h3><div id="bas-recent"></div></section>' +
-                '<section><h3 class="bas-h">Game reference</h3><div id="bas-ref"></div></section></div>';
+                '<section><h3 class="bas-h">Game reference</h3><div id="bas-ref"></div></section></div>' +
+                '<aside class="bas-aside" id="bas-recent" aria-label="Live Bastion feed"></aside></div>';
             B.events = loadCache();
             paintActivity(); paintBoards(); paintAncients(); paintRecent(); paintRef();
             // the small calls first, then the long feed read
-            loadBoards().then(loadAncients).then(loadRecent).then(loadContent).then(readFeed);
+            loadRecent().then(feedLoop);
+            loadBoards().then(loadAncients).then(loadContent).then(readFeed);
         }
     };
 })();

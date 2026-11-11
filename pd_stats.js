@@ -1,19 +1,25 @@
 /* Stats tab of the PD hub (miss.pdef.html): what a wallet has put into Planetary
    Defense missions and what it got back, read from its chain history.
 
-   How PD records it (checked on chain, Nov 2026):
+   How PD records it (checked on chain, Nov 2026). Since about October 2026:
      entry fee   core.pdef::spendbal(owner, quantity, …, "Mission N entry")   from the in-game balance
      reward      miss.pdef → core.pdef transfer, memo "credit:<owner>"        into the in-game balance
+   Before that, straight between the wallet and miss.pdef:
+     entry fee   wallet → miss.pdef transfer, memo "entry:N"
+     reward      miss.pdef → wallet transfer, memo "Mission division reward"
+   In both eras:
      chest/key   atomicassets mint by miss.pdef, schema "loot", to the owner
      withdrawal  core.pdef::withdrawbal; TLM pays 5% to pdef as "Withdrawal fee"
-     shards      ptpxy.worlds::addpoints by magordefense, not findable per wallet,
-                 so shards are estimated from claims on shard missions.
+     shards      ptpxy.worlds::addpoints by magordefense into Alien Worlds user points
+                 (uspts.worlds::userpoints), which also hold points from the rest of
+                 Alien Worlds, so a PD-only total isn't on chain: shards are estimated
+                 from claims on shard missions.
    Fees and rewards are inline transfers the history nodes don't index by wallet, so
    each claim/join transaction is opened once and remembered in this browser. */
 (function () {
     var NODES = ['https://wax-history.eosdac.io', 'https://hyperion.wax.detroitledger.tech', 'https://history.waxsweden.org'];
     var AA = ['https://wax.api.atomicassets.io', 'https://wax-aa.eu.eosamsterdam.net', 'https://wax-atomic-api.eosphere.io'];
-    var KEY = 'pd_stats_v1:';
+    var KEY = 'pd_stats_v2:';
     var T = { wallet: '', busy: false, step: '', done: 0, todo: 0, err: '', data: null, tpl: {}, sold: {}, started: false };
 
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -78,7 +84,7 @@
     }
     function blank() { return { txs: {}, rec: [], chests: [], wd: {}, at: 0 }; }
 
-    // rec: [time, kind ('fee'|'reward'|'deposit'|'wdfee'|'withdraw'), sym, amount, mission]
+    // rec: [time, kind ('fee'|'reward'|'deposit'|'claim'), sym, amount, mission, 'w' paid by/to the wallet | 'b' the in-game balance]
     function parseTx(t, wallet, d) {
         var seen = {}, time = utc(t.actions && t.actions[0] ? t.actions[0]['@timestamp'] : new Date().toISOString());
         (t.actions || []).forEach(function (x) {
@@ -87,10 +93,16 @@
             var a = x.act, dt = a.data || {};
             if (a.account === 'core.pdef' && a.name === 'spendbal' && dt.owner === wallet) {
                 var q = amt(dt.quantity), m = /Mission (\d+)/.exec(dt.memo || '');
-                d.rec.push([time, 'fee', q.sym, q.n, m ? Number(m[1]) : 0]);
+                d.rec.push([time, 'fee', q.sym, q.n, m ? Number(m[1]) : 0, 'b']);
             } else if (a.name === 'transfer' && dt.from === 'miss.pdef' && dt.to === 'core.pdef' && dt.memo === 'credit:' + wallet) {
                 var r = amt(dt.quantity);
-                d.rec.push([time, 'reward', r.sym, r.n, 0]);
+                d.rec.push([time, 'reward', r.sym, r.n, 0, 'b']);
+            } else if (a.name === 'transfer' && dt.from === wallet && dt.to === 'miss.pdef' && /^entry:\d+/.test(dt.memo || '')) {
+                var oq = amt(dt.quantity);
+                d.rec.push([time, 'fee', oq.sym, oq.n, Number(dt.memo.split(':')[1]), 'w']);
+            } else if (a.name === 'transfer' && dt.from === 'miss.pdef' && dt.to === wallet && dt.memo === 'Mission division reward') {
+                var orw = amt(dt.quantity);
+                d.rec.push([time, 'reward', orw.sym, orw.n, 0, 'w']);
             } else if (a.name === 'transfer' && dt.from === wallet && dt.to === 'core.pdef' && dt.memo === 'deposit') {
                 var p = amt(dt.quantity);
                 d.rec.push([time, 'deposit', p.sym, p.n, 0]);
@@ -144,6 +156,11 @@
             var mints = await listActs(wallet, 'atomicassets:logmint', null).catch(function () { return []; });
             T.data.chests = mints.filter(function (a) { return a.act.data.authorized_minter === 'miss.pdef' && a.act.data.new_asset_owner === wallet; })
                 .map(function (a) { return [utc(a['@timestamp']), Number(a.act.data.template_id), a.act.data.schema_name]; });
+            try {
+                var br = await fetch('https://wax.greymass.com/v1/chain/get_table_rows', { method: 'POST',
+                    body: JSON.stringify({ json: true, code: 'core.pdef', scope: wallet, table: 'balances', limit: 10 }) });
+                T.data.bal = ((await br.json()).rows || []).map(function (b) { return b.balance; });
+            } catch (e) {}
             T.data.at = Date.now();
             save();
             await chestInfo();
@@ -171,7 +188,8 @@
 
     /* ── summary ── */
     function sum() {
-        var d = T.data, s = { fee: {}, reward: {}, deposit: {}, wdfee: { TLM: 0 }, withdraw: {}, runs: 0, byMission: {}, byDay: {} };
+        var d = T.data, s = { fee: {}, reward: {}, deposit: {}, wdfee: { TLM: 0 }, withdraw: {}, runs: 0, byMission: {}, byDay: {},
+                              toWallet: {}, toBal: {}, feeWallet: {}, feeBal: {}, firstBal: 0 };
         if (!d) return s;
         d.rec.forEach(function (r) {
             var kind = r[1], sym = r[2], x = r[3];
@@ -180,6 +198,9 @@
                 (s.byMission[r[4]] = s.byMission[r[4]] || { runs: 0, fee: {} }).runs++;
             } else {
                 s[kind][sym] = (s[kind][sym] || 0) + x;
+                var via = r[5] === 'w' ? (kind === 'reward' ? 'toWallet' : 'feeWallet') : (kind === 'reward' ? 'toBal' : kind === 'fee' ? 'feeBal' : '');
+                if (via) s[via][sym] = (s[via][sym] || 0) + x;
+                if (r[5] === 'b' && (!s.firstBal || r[0] < s.firstBal)) s.firstBal = r[0];
                 if (kind === 'fee' && r[4]) { var bm = s.byMission[r[4]] = s.byMission[r[4]] || { runs: 0, fee: {} }; bm.fee[sym] = (bm.fee[sym] || 0) + x; }
             }
             if (kind === 'fee' || kind === 'reward' || kind === 'claim') {
@@ -204,7 +225,7 @@
     function paint() {
         var root = document.getElementById('pd-stats');
         if (!root) return;
-        var h = '<div class="panel-h"><h2>Stats</h2><p>What a wallet has paid into Planetary Defense missions and what came back, from its chain history.</p></div><div class="st-body">' +
+        var h = '<div class="panel-h"><h2>Stats</h2><p>What a wallet has paid into Planetary Defense missions and what came back, read from its chain history.</p></div><div class="st-body">' +
             '<div class="pdd-head"><input id="st-wallet" type="text" placeholder="wallet" value="' + esc(T.wallet) + '" spellcheck="false">' +
             '<button class="pdd-btn" id="st-go"' + (T.busy ? ' disabled' : '') + '>' + (T.data && T.data.at ? 'Update' : 'Read history') + '</button>' +
             (T.data && T.data.at ? '<span class="pdd-hint">Last read ' + new Date(T.data.at).toLocaleString() + '</span>' : '') + '</div>';
@@ -216,17 +237,30 @@
             bind(); return;
         }
         var p = prices(), s = sum();
+        var mine = (window.walletSession ? String(window.walletSession.actor) : '') || localStorage.getItem('naron_wallet') || '';
+        var own = mine && mine === T.wallet, who = own ? 'You' : esc(T.wallet);
         var spentWax = wax(s.fee, p) + s.wdfee.TLM * p.TLM, gotWax = wax(s.reward, p), diff = gotWax - spentWax;
         var cls = diff >= 0 ? 'st-pos' : 'st-neg';
         var chestEst = 0;
         (T.data.chests || []).forEach(function (c) { var so = T.sold[c[1]]; if (so && so.wax && so.sym === 'WAX') chestEst += so.wax; });
         h += '<p class="pdd-hint">Values in WAX at today\'s prices: 1 DEF ≈ ' + n(p.DEF, 4) + ' WAX, 1 TLM ≈ ' + n(p.TLM, 4) + ' WAX. Chests, keys and shards are counted separately and left out of these values.</p>';
         h += '<div class="st-grid">' +
-            '<div class="st-card"><span>You spent</span><b>' + n(spentWax, 2) + ' WAX</b><small>entry fees ' + esc(toks(s.fee)) + (s.wdfee.TLM ? '<br>withdrawal fees ' + n(s.wdfee.TLM, 2) + ' TLM' : '') + '</small></div>' +
-            '<div class="st-card"><span>You received</span><b>' + n(gotWax, 2) + ' WAX</b><small>rewards ' + esc(toks(s.reward)) + '</small></div>' +
+            '<div class="st-card"><span>' + (own ? 'You spent' : 'Spent') + '</span><b>' + n(spentWax, 2) + ' WAX</b><small>entry fees ' + esc(toks(s.fee)) + (s.wdfee.TLM ? '<br>withdrawal fees ' + n(s.wdfee.TLM, 2) + ' TLM' : '') + '</small></div>' +
+            '<div class="st-card"><span>' + (own ? 'You received' : 'Received') + '</span><b>' + n(gotWax, 2) + ' WAX</b><small>rewards ' + esc(toks(s.reward)) + '</small></div>' +
             '<div class="st-card ' + cls + '"><span>Difference</span><b>' + (diff >= 0 ? '+' : '') + n(diff, 2) + ' WAX</b><small>' + (spentWax ? (gotWax / spentWax * 100).toFixed(0) + '% back in tokens on what you spent' : '') +
                 (chestEst ? '<br>plus ' + n((T.data.chests || []).length) + ' chests/keys, ~est. ' + n(chestEst, 0) + ' WAX at last sale (not counted)' : '') + '</small></div>' +
-            '<div class="st-card"><span>Missions claimed</span><b>' + n(s.runs) + '</b><small>deposited ' + esc(toks(s.deposit)) + '<br>withdrawn ' + esc(toks(s.withdraw)) + '</small></div></div>';
+            '<div class="st-card"><span>Missions claimed</span><b>' + n(s.runs) + '</b><small>' + (own ? 'by you' : 'by ' + esc(T.wallet)) + '</small></div></div>';
+        // where the rewards went: older missions paid the wallet, newer ones the in-game balance
+        var balNow = {};
+        (T.data.bal || []).forEach(function (b) { var a = amt(b); if (a.n) balNow[a.sym] = (balNow[a.sym] || 0) + a.n; });
+        h += '<div class="st-flow"><h3 class="bas-h">Where the rewards went</h3><dl>' +
+            '<dt>Paid straight to the wallet</dt><dd>' + esc(toks(s.toWallet)) + ' <small>missions before ' + (s.firstBal ? new Date(s.firstBal).toLocaleDateString() : 'the in-game balance') + ' paid out directly</small></dd>' +
+            '<dt>Credited to the PD in-game balance</dt><dd>' + esc(toks(s.toBal)) + ' <small>missions since then pay into it</small></dd>' +
+            '<dt>Entry fees from the wallet / from the balance</dt><dd>' + esc(toks(s.feeWallet)) + ' / ' + esc(toks(s.feeBal)) + '</dd>' +
+            '<dt>Deposited into the balance</dt><dd>' + esc(toks(s.deposit)) + '</dd>' +
+            '<dt>Withdrawn from the balance</dt><dd>' + esc(toks(s.withdraw)) + (s.wdfee.TLM ? ' <small>incl. ' + n(s.wdfee.TLM, 2) + ' TLM withdrawal fee</small>' : '') + '</dd>' +
+            '<dt>In the balance right now</dt><dd>' + (T.data.bal ? esc(toks(balNow)) : '–') + '</dd></dl>' +
+            '<p class="pdd-hint">' + who + (own ? ' get' : ' gets') + ' credit for a reward when it is earned, whether it was paid to the wallet or into the in-game balance, and whether or not it has been withdrawn since.</p></div>';
 
         // per token
         var syms = ['DEF', 'TLM'];
@@ -253,7 +287,7 @@
                     '<div><b>' + n(ch[id]) + '× ' + esc(t.name || '#' + id) + '</b><small>' +
                     (so.wax ? '~est. ' + n(so.wax, 2) + ' ' + esc(so.sym) + ' each (last sold ' + new Date(so.at).toLocaleDateString() + ')' : so.none ? 'no sales found' : 'checking last sale…') + '</small></div></div>';
             }).join('') : '<div class="pdd-empty">No chests or keys from missions yet.</div>') +
-            '<div class="st-drop"><div><b>' + (shards ? '~' + n(shards) : '0') + ' shards</b><small>estimated from claims on shard missions at today\'s shard rewards</small></div></div></div>' +
+            '<div class="st-drop"><div><b>' + (shards ? '~' + n(shards) : '0') + ' shards</b><small>estimated from claims on shard missions at today\'s shard rewards. Shards land in Alien Worlds user points (uspts.worlds), mixed with points from the rest of the game, so the chain has no PD-only total.</small></div></div></div>' +
             (estTotal ? '<p class="pdd-hint">Chests and keys at their last sale: ~est. ' + n(estTotal, 2) + ' WAX in total (not counted above).</p>' : '');
 
         // per mission
@@ -273,7 +307,7 @@
                     '<td class="num ' + (net >= 0 ? 'st-pos' : 'st-neg') + '">' + (net >= 0 ? '+' : '') + n(net, 2) + '</td></tr>';
             }).join('') + '</tbody></table></div>';
         h += '<p class="pdd-note">Entry fees and rewards come from each claim and join transaction; withdrawal fees are counted at the 5% seen on chain for TLM. ' +
-            'Rewards land in your in-game balance, so they count here when earned, not when withdrawn. Values use today\'s prices, not the price on the day.</p></div>';
+            'Values use today\'s prices, not the price on the day.</p></div>';
         root.innerHTML = h;
         bind();
     }
