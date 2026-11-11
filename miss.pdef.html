@@ -531,6 +531,8 @@
         .pdd-sel.pdd-sel-short { color:#ff8a8a; border-color:rgba(255,107,107,0.6); }
         .pdd-sel.pdd-sel-short option:not(.pdd-opt-short) { color:var(--text); }
         .pdd-build .pdd-deck { margin:12px 0; }
+        .pdd-deposit { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:-4px 0 12px; }
+        .pdd-deposit input { width:120px; background:var(--bg2); border:1px solid var(--border); color:#fff; font-family:inherit; padding:6px 10px; border-radius:6px; }
         .pdd-autos { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:12px; }
         .pdd-autos small { opacity:0.75; }
         .pdd-bunits { gap:10px; }
@@ -1897,6 +1899,6 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchPrices();
 });
 </script>
-<script src="pd_divisions.js?v=1.2.56"></script>
+<script src="pd_divisions.js?v=1.2.58"></script>
 </body>
 </html>

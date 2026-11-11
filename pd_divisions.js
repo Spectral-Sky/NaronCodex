@@ -338,10 +338,51 @@
             render();
         }
     }
+    /* Entry fees come out of the in-game balance (core.pdef::balances). When it's short,
+       the game tops it up in the same transaction: a transfer to core.pdef with memo
+       "deposit" after the claims and before the joins. It sends nothing when the balance
+       already covers the fees, and so does this. */
+    var TOKENS = { DEF: { contract: 'defensetoken', dp: 8 }, TLM: { contract: 'alien.worlds', dp: 4 } };
+    function inGameBal(sym) {
+        var have = 0;
+        S.data.inGame.forEach(function (b) { var a = amt(b); if (a.sym === sym) have += a.n; });
+        return have;
+    }
+    function feesOf(plans) {
+        var fees = {};
+        plans.forEach(function (p) { if (p.fee.n) fees[p.fee.sym] = (fees[p.fee.sym] || 0) + p.fee.n; });
+        return fees;
+    }
+    function shortfall(plans) {
+        var fees = feesOf(plans), out = {};
+        Object.keys(fees).forEach(function (sym) {
+            var t = TOKENS[sym]; if (!t) return;
+            var f = Math.pow(10, t.dp), need = Math.ceil((fees[sym] - inGameBal(sym)) * f - 1e-6) / f;
+            if (need > 0) out[sym] = need;
+        });
+        return out;
+    }
+    function depositAct(sym, x) {
+        var t = TOKENS[sym];
+        return act(t.contract, 'transfer', { from: S.wallet, to: 'core.pdef', quantity: x.toFixed(t.dp) + ' ' + sym, memo: 'deposit' });
+    }
+    function walletBal(sym) { return sym === 'DEF' ? S.data.defBal : sym === 'TLM' ? S.data.tlmBal : null; }
+    function depositLabel(dep) {
+        var k = Object.keys(dep);
+        return k.length ? ' + deposit ' + k.map(function (sym) { return n(dep[sym], TOKENS[sym].dp) + ' ' + sym; }).join(' + ') : '';
+    }
     function runPlans(plans, label) {
-        var acts = [], fees = {};
-        plans.forEach(function (p) { acts = acts.concat(p.acts); if (p.fee.n) fees[p.fee.sym] = (fees[p.fee.sym] || 0) + p.fee.n; });
-        run(acts, label, fees);
+        var claims = [], joins = [], dep = shortfall(plans);
+        plans.forEach(function (p) { p.acts.forEach(function (a) { (a.name === 'join' ? joins : claims).push(a); }); });
+        var lacking = Object.keys(dep).filter(function (sym) { var w = walletBal(sym); return w != null && w < dep[sym]; });
+        if (lacking.length) {
+            S.msg = '✗ Not enough in your wallet to cover the entry fees: needs ' + lacking.map(function (sym) {
+                return n(dep[sym], TOKENS[sym].dp) + ' ' + sym + ' (you have ' + n(walletBal(sym), TOKENS[sym].dp) + ')';
+            }).join(', ');
+            render(); return;
+        }
+        var acts = claims.concat(Object.keys(dep).map(function (sym) { return depositAct(sym, dep[sym]); }), joins);
+        run(acts, label + depositLabel(dep), feesOf(plans));
     }
 
     /* ── cards ──────────────────────────────────────────────────────────────── */
@@ -449,13 +490,18 @@
             chip('Total ATK', n(tAtk)) + chip('Total DEF', n(tDef)) +
             chip('Ready now', ready.length + (idle.length ? ' <small>+' + idle.length + ' idle</small>' : '')) +
             chip('Wallet DEF', d.defBal == null ? '–' : n(d.defBal, 3)) + chip('Wallet TLM', d.tlmBal == null ? '–' : n(d.tlmBal, 2)) +
-            chip('In-game balance', d.inGame.length ? d.inGame.join(' · ') : 'none') + '</div>';
+            chip('In-game balance', d.inGame.length ? d.inGame.join(' · ') : 'none') + '</div>' +
+            (signable() ? '<div class="pdd-deposit"><span class="pdd-hint">Top up the in-game balance (entry fees come out of it):</span>' +
+                '<input type="number" id="pdd-depamt" min="0" step="any" placeholder="amount" value="' + esc(S.depAmt || '') + '">' +
+                '<select class="pdd-sel" id="pdd-depsym">' + Object.keys(TOKENS).map(function (k) { return '<option' + (S.depSym === k ? ' selected' : '') + '>' + k + '</option>'; }).join('') + '</select>' +
+                '<button class="pdd-btn" id="pdd-dep">Deposit to core.pdef</button></div>' : '');
         if (!d.divs.length)
             return h + '<div class="pdd-empty">No divisions yet' + (d.forge != null ? ' (forge level ' + d.forge + ')' : '') +
                 '. Use <b>Stake &amp; build</b> to stake a warlord and create one.</div>';
 
         h += '<div class="pdd-bundle">' +
-            '<button class="pdd-go" id="pdd-all"' + (signable() && bundle.length ? '' : ' disabled') + '>&#10227; Claim &amp; resend all ready (' + bundle.length + ')</button>' +
+            '<button class="pdd-go" id="pdd-all"' + (signable() && bundle.length ? '' : ' disabled') + '>&#10227; Claim &amp; resend all ready (' + bundle.length + ')' + (bundle.length ? esc(depositLabel(shortfall(bundle))) : '') + '</button>' +
+            '<button class="pdd-btn" id="pdd-claimall"' + (signable() && ready.length ? '' : ' disabled') + ' title="Claim every ready division without resending">Claim all ready (' + ready.length + ')</button>' +
             '<span class="pdd-seg"><span>Resend to</span>' +
                 '<button class="pdd-segb' + (S.mode === 'same' ? ' on' : '') + '" data-mode="same">same mission</button>' +
                 '<button class="pdd-segb' + (S.mode === 'best' ? ' on' : '') + '" data-mode="best">best mission</button></span>' +
@@ -478,7 +524,9 @@
                         esc('#' + o.m.mission_id + ' ' + (o.m._meta.title || '') + ' · ' + perH(o) + '/h · ' + dur(o.secs)) + '</option>';
                 }).join('') : '<option>no mission it qualifies for</option>') + '</select>';
             var actBtn = !signable() ? '' : st.status === 'running' ? '<button class="pdd-btn" disabled>busy</button>'
-                : p ? '<button class="pdd-btn pdd-one" data-div="' + x.division_id + '">' + (st.status === 'ready' ? 'Claim &amp; resend' : 'Send') + '</button>' : '';
+                : p ? '<button class="pdd-btn pdd-one" data-div="' + x.division_id + '" title="' + esc('Entry fee ' + (p.fee.n ? n(p.fee.n, 4) + ' ' + p.fee.sym : 'free') + depositLabel(shortfall([p]))) + '">' +
+                    (st.status === 'ready' ? 'Claim &amp; resend' : 'Send') + (Object.keys(shortfall([p])).length ? ' <small>+ deposit</small>' : '') + '</button>' : '';
+            if (signable() && st.status === 'ready') actBtn += ' <button class="pdd-btn pdd-claim1" data-div="' + x.division_id + '" title="Claim the reward without sending it again">Claim</button>';
             var better = st.best && (!st.cur || st.best.perHour > st.cur.perHour + 0.01);
             var lead = card(x.leader_asset_id);
             h += '<tr class="pdd-row pdd-' + st.status + (S.open[x.division_id] ? ' open' : '') + '" data-open="' + x.division_id + '">' +
@@ -910,6 +958,31 @@
                 if (p) runPlans([p], 'division #' + st.div.division_id + ' → mission #' + p.to);
             };
         });
+        el.querySelectorAll('.pdd-claim1').forEach(function (b) {
+            b.onclick = function (e) {
+                e.stopPropagation();
+                var st = states().find(function (s) { return String(s.div.division_id) === b.getAttribute('data-div'); });
+                if (st && st.lock) run([act('miss.pdef', 'claim', { owner: S.wallet, mission_id: Number(st.lock.mission_id), division_id: Number(st.div.division_id) })],
+                    'division #' + st.div.division_id + ' claimed');
+            };
+        });
+        var ca = el.querySelector('#pdd-claimall');
+        if (ca) ca.onclick = function () {
+            var list = states().filter(function (s) { return s.status === 'ready'; });
+            run(list.map(function (st) { return act('miss.pdef', 'claim', { owner: S.wallet, mission_id: Number(st.lock.mission_id), division_id: Number(st.div.division_id) }); }),
+                list.length + ' division' + (list.length === 1 ? '' : 's') + ' claimed');
+        };
+        var da = el.querySelector('#pdd-depamt'), ds = el.querySelector('#pdd-depsym'), db = el.querySelector('#pdd-dep');
+        if (da) da.oninput = function () { S.depAmt = da.value; };
+        if (ds) ds.onchange = function () { S.depSym = ds.value; };
+        if (db) db.onclick = function () {
+            var x = parseFloat(da.value), sym = ds.value;
+            if (!(x > 0)) { S.msg = '✗ Enter an amount to deposit.'; render(); return; }
+            var w = walletBal(sym);
+            if (w != null && w < x) { S.msg = '✗ You only have ' + n(w, TOKENS[sym].dp) + ' ' + sym + ' in your wallet.'; render(); return; }
+            S.depAmt = '';
+            run([depositAct(sym, x)], 'deposited ' + n(x, TOKENS[sym].dp) + ' ' + sym + ' to your in-game balance');
+        };
         var all = el.querySelector('#pdd-all');
         if (all) all.onclick = function () {
             var list = states().filter(function (s) { return s.status === 'ready' || (S.idleToBest && s.status === 'idle' && s.best); }).map(plan).filter(Boolean);
