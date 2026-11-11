@@ -30,7 +30,8 @@
     'use strict';
 
     var RPC = ['https://wax.greymass.com', 'https://api.wax.alohaeos.com', 'https://wax.eosusa.io'];
-    var AA = 'https://wax.api.atomicassets.io';
+    // AtomicAssets API servers, tried in turn; the one that answered last goes first
+    var AA = ['https://wax.api.atomicassets.io', 'https://wax-aa.eu.eosamsterdam.net', 'https://wax-atomic-api.eosphere.io'];
     var COLLECTION = 'planetdefnft';
     var MOVE_S_PER_POINT = 10;
     var CAT = ['Warlord', 'Mercenary', 'Equipment', 'Supplies', 'Creature', 'Lava Lux'];
@@ -119,9 +120,17 @@
         catch (e) { return null; }
     }
     async function aaGet(path) {
-        var r = await fetch(AA + path, { signal: AbortSignal.timeout(15000) });
-        if (!r.ok) throw new Error('AtomicAssets ' + r.status);
-        return r.json();
+        var last;
+        for (var i = 0; i < AA.length; i++) {
+            try {
+                var r = await fetch(AA[i] + path, { signal: AbortSignal.timeout(12000) });
+                if (!r.ok) throw new Error('AtomicAssets ' + r.status);
+                var j = await r.json();
+                if (i) AA.unshift(AA.splice(i, 1)[0]);
+                return j;
+            } catch (e) { last = e; }
+        }
+        throw last;
     }
     // staked assets are held by core.pdef, so their details are fetched by id
     async function assetsById(ids) {
@@ -461,8 +470,8 @@
         if (SWAP.amt === '' && S.data) { var need = defNeeded(); if (need) SWAP.amt = String(need); }
         return '<div class="pdd-swap pdd-swap-risk"><button class="pdd-swapwarn on" id="pdd-swapopen" aria-expanded="true"><span class="pdd-swapcaret">▾</span>' +
             '<b>Get DEF on Alcor</b><span>' + esc(SWAP_WARN) + '</span></button>' +
-            '<input type="number" id="pdd-swapamt" min="0" step="any" placeholder="DEF needed" value="' + esc(SWAP.amt) + '"> <span class="pdd-hint">DEF, paying with</span>' +
-            '<span class="pdd-seg">' + Object.keys(PAY).map(function (k) { return '<button class="pdd-segb' + (SWAP.pay === k ? ' on' : '') + '" data-swappay="' + k + '">' + k + '</button>'; }).join('') + '</span>' +
+            '<input type="number" id="pdd-swapamt" min="0" step="any" placeholder="DEF needed" value="' + esc(SWAP.amt) + '"> <span class="pdd-hint">' + tokIc('DEF') + 'DEF, paying with</span>' +
+            '<span class="pdd-seg">' + Object.keys(PAY).map(function (k) { return '<button class="pdd-segb' + (SWAP.pay === k ? ' on' : '') + '" data-swappay="' + k + '">' + tokIc(k) + k + '</button>'; }).join('') + '</span>' +
             '<select class="pdd-sel" id="pdd-swapslip" title="Slippage: the most the price may move before the swap fails">' + [0.5, 1, 3].map(function (v) {
                 return '<option value="' + v + '"' + (SWAP.slip === v ? ' selected' : '') + '>' + v + '% slippage</option>'; }).join('') + '</select>' +
             '<button class="pdd-go pdd-sm" id="pdd-swapgo" disabled>Swap for DEF</button>' +
@@ -577,7 +586,19 @@
         bind(el);
     }
 
-    function chip(k, v) { return '<div class="pdd-chip"><span>' + k + '</span><b>' + v + '</b></div>'; }
+    function chip(k, v, cls) { return '<div class="pdd-chip' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + v + '</b></div>'; }
+    /* Attack and defence are spelled out with a sword and a shield, so "DEF" only ever
+       means the token. Token logos come from Alcor. */
+    var ICON = {
+        atk: '<svg class="pdd-ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14.5 2.5 21.5 2.5 21.5 9.5 10.8 20.2 12.2 21.6 10.8 23 7.9 20.1 4.3 23.7 2.9 22.3 6.5 18.7 3.6 15.8 5 14.4 6.4 15.8Z"/></svg>',
+        def: '<svg class="pdd-ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1.5 21 5v6.2c0 5.4-3.8 10-9 11.3C6.8 21.2 3 16.6 3 11.2V5Z"/></svg>'
+    };
+    function tokIc(sym) {
+        var id = { DEF: 'def-defensetoken', TLM: 'tlm-alien.worlds', WAX: 'wax-eosio.token' }[sym];
+        return id ? '<img class="pdd-tok" src="https://wax.alcor.exchange/api/v2/tokens/' + id + '/logo" alt="" loading="lazy">' : '';
+    }
+    function atkLabel(t) { return '<span class="pdd-atk">' + ICON.atk + (t || 'Attack') + '</span>'; }
+    function defLabel(t) { return '<span class="pdd-def">' + ICON.def + (t || 'Defence') + '</span>'; }
 
     function divsView() {
         var d = S.data;
@@ -589,10 +610,10 @@
         var bundle = ready.concat(S.idleToBest ? idle : []).map(plan).filter(Boolean);
 
         var h = '<div class="pdd-chips">' +
-            chip('Forge level', d.forge == null ? '–' : d.forge) + chip('Divisions', d.divs.length) +
-            chip('Total ATK', n(tAtk)) + chip('Total DEF', n(tDef)) +
+            chip(atkLabel(), n(tAtk), 'pdd-chip-atk') + chip(defLabel(), n(tDef), 'pdd-chip-def') +
             chip('Ready now', ready.length + (idle.length ? ' <small>+' + idle.length + ' idle</small>' : '')) +
-            chip('Wallet DEF', d.defBal == null ? '–' : n(d.defBal, 3)) + chip('Wallet TLM', d.tlmBal == null ? '–' : n(d.tlmBal, 2)) +
+            chip(tokIc('DEF') + 'Wallet DEF', d.defBal == null ? '–' : n(d.defBal, 3)) + chip(tokIc('TLM') + 'Wallet TLM', d.tlmBal == null ? '–' : n(d.tlmBal, 2)) +
+            chip(tokIc('WAX') + 'Wallet WAX', d.waxBal == null ? '–' : n(d.waxBal, 2)) +
             chip('In-game balance', d.inGame.length ? d.inGame.join(' · ') : 'none') + '</div>' +
             (signable() ? '<div class="pdd-deposit"><span class="pdd-hint">Top up the in-game balance (entry fees come out of it):</span>' +
                 '<input type="number" id="pdd-depamt" min="0" step="any" placeholder="amount" value="' + esc(S.depAmt || '') + '">' +
@@ -612,7 +633,7 @@
             '<span class="pdd-hint">' + (signable() ? 'One signature for every division listed.' : (S.own ? 'Connect a wallet to sign.' : 'Viewing someone else’s wallet: buttons are off.')) + '</span></div>';
 
         h += '<div class="pdd-wrap"><table class="pdd-table"><thead><tr>' +
-            '<th class="txt">Division</th><th class="num">Units</th><th class="num">ATK</th><th class="num">DEF</th><th class="num">Move</th>' +
+            '<th class="txt">Division</th><th class="num">Units</th><th class="num">' + atkLabel() + '</th><th class="num">' + defLabel() + '</th><th class="num">Move</th>' +
             '<th class="txt">On mission</th><th class="txt">Status</th><th class="txt">Next mission (best / h first)</th><th class="txt"></th>' +
             '<th class="num">That mission / h</th><th class="txt">Best for it</th></tr></thead><tbody>';
         all.forEach(function (st) {
@@ -853,8 +874,8 @@
         BGEAR.forEach(function (g) { gearLeft[g[0]] = P.caps[g[0]] - units.filter(function (u) { return u[g[0]]; }).length; });
         var ev = tgt ? evaluate(tgt.m, { atk_cached: t.atk, def_cached: t.def, movecost_cached: t.move }, d) : null;
         var ok = tgt ? meets(t, tgt.need) : true;
-        h += '<div class="pdd-chips">' + chip('ATK', n(t.atk) + (tgt ? ' <small>/ ' + n(tgt.need.atk) + '</small>' : '')) +
-            chip('DEF', n(t.def) + (tgt ? ' <small>/ ' + n(tgt.need.def) + '</small>' : '')) + chip('Move', n(t.move)) +
+        h += '<div class="pdd-chips">' + chip(atkLabel(), n(t.atk) + (tgt ? ' <small>/ ' + n(tgt.need.atk) + '</small>' : ''), 'pdd-chip-atk') +
+            chip(defLabel(), n(t.def) + (tgt ? ' <small>/ ' + n(tgt.need.def) + '</small>' : ''), 'pdd-chip-def') + chip('Move', n(t.move)) +
             chip('Units', (L.base.length + units.length) + ' <small>/ ' + (L.div ? L.div.slots_max : L.room) + '</small>') +
             (ev ? chip('Lock', dur(ev.secs)) + chip('Earns', (ev.ok ? perH(ev) + '/h' : '<span class="pdd-bad">doesn’t qualify</span>')) : '') + '</div>';
         // one Auto per gear type: the best spare cards onto the strongest units without one
@@ -970,9 +991,12 @@
             if (Number(l.nft_count)) parts.push(l.nft_count + ' NFT' + (l.nft_count > 1 ? 's' : ''));
             return parts.join(' + ') || 'free';
         };
+        // one division comes free; each division slot bought in the shop adds one
+        var divCap = (d.owned.divslot || 0) + 1;
         var h = '<div class="pdd-chips">' + chip('Forge level', d.forge == null ? 'not registered' : lvl) +
+            chip('Divisions', d.divs.length + ' <small>of ' + divCap + ' allowed</small>') +
             chip('Next level', next ? (lvl + 1) + ' · ' + cost(next) : 'maxed') +
-            chip('Wallet TLM', d.tlmBal == null ? '–' : n(d.tlmBal, 2)) + chip('Wallet DEF', d.defBal == null ? '–' : n(d.defBal, 3)) + '</div>';
+            chip(tokIc('TLM') + 'Wallet TLM', d.tlmBal == null ? '–' : n(d.tlmBal, 2)) + chip(tokIc('DEF') + 'Wallet DEF', d.defBal == null ? '–' : n(d.defBal, 3)) + '</div>';
         if (next) {
             var simple = !Number(next.nft_count) && !amt(next.def_cost).n;
             h += '<div class="pdd-bundle"><button class="pdd-go" id="pdd-forge"' + (can && simple ? '' : ' disabled') + '>Upgrade forge to level ' + (lvl + 1) + ' · ' + cost(next) + '</button>' +

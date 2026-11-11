@@ -343,6 +343,20 @@
         .pdd-slide::-webkit-slider-thumb { -webkit-appearance: none; width: 40px; height: 40px; border-radius: 50%; background: var(--loss); border: 3px solid var(--surface); }
         .pdd-slide::-moz-range-thumb { width: 36px; height: 36px; border-radius: 50%; background: var(--loss); border: 3px solid var(--surface); }
         .pdd-modal-b { display: flex; justify-content: flex-end; margin-top: 14px; }
+        .pdd-ic { width: 1.05em; height: 1.05em; vertical-align: -0.16em; margin-right: 5px; flex-shrink: 0; }
+        .pdd-atk { color: #ff6b6b; font-weight: 700; white-space: nowrap; }
+        .pdd-def { color: #5badff; font-weight: 700; white-space: nowrap; }
+        html.day .pdd-atk { color: #c62f2f; }
+        html.day .pdd-def { color: #1f6fd1; }
+        .pdd-chip-atk { border-color: color-mix(in srgb, #ff6b6b 45%, var(--border)); }
+        .pdd-chip-atk b { color: #ff8a8a; }
+        .pdd-chip-def { border-color: color-mix(in srgb, #5badff 45%, var(--border)); }
+        .pdd-chip-def b { color: #8cc6ff; }
+        html.day .pdd-chip-atk b { color: #c62f2f; }
+        html.day .pdd-chip-def b { color: #1f6fd1; }
+        .pdd-tok { width: 1.15em; height: 1.15em; border-radius: 50%; vertical-align: -0.22em; margin-right: 5px; object-fit: contain; }
+        .pdd-segb .pdd-tok { margin-right: 4px; }
+        .price-ticker .pdd-tok { width: 16px; height: 16px; }
         .pdd-swap-t { font-weight: 700; color: var(--strong); font-size: 1em; margin-right: 4px; }
         .pdd-swap input { width: 120px; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 11px; border-radius: 10px; font-size: 0.95em; }
         .pdd-swap a.pdd-btn { text-decoration: none; }
@@ -508,12 +522,12 @@
 <!-- ── LORE MODAL ── -->
 <!-- ── PRICE TICKER ── -->
 <div class="price-ticker" id="price-ticker">
-    <span class="ptick-label">1 DEF</span>
+    <span class="ptick-label"><img class="pdd-tok" src="https://wax.alcor.exchange/api/v2/tokens/def-defensetoken/logo" alt="">1 DEF</span>
     <span class="ptick-sep">=</span>
     <span id="ptick-tlm" class="tok-tlm ptick-stale">…</span>
-    <span class="ptick-sep">TLM</span>
+    <span class="ptick-sep"><img class="pdd-tok" src="https://wax.alcor.exchange/api/v2/tokens/tlm-alien.worlds/logo" alt="">TLM</span>
     <span id="ptick-wax" class="tok-wax ptick-stale">…</span>
-    <span class="ptick-sep">WAX</span>
+    <span class="ptick-sep"><img class="pdd-tok" src="https://wax.alcor.exchange/api/v2/tokens/wax-eosio.token/logo" alt="">WAX</span>
     <span id="ptick-usd" class="tok-usd ptick-stale">…</span>
     <span class="ptick-sep">USD</span>
     <span id="ptick-status" class="ptick-stale">fetching live prices…</span>
@@ -1838,6 +1852,6 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchPrices();
 });
 </script>
-<script src="pd_divisions.js?v=1.2.61"></script>
+<script src="pd_divisions.js?v=1.2.62"></script>
 </body>
 </html>
