@@ -149,6 +149,19 @@
         .price-ticker .ptick-stale { color: var(--text-dim); font-style: italic; }
         .price-ticker .ptick-err { color: var(--loss); }
         .price-ticker .ptick-live { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--profit); margin-right: 4px; vertical-align: middle; }
+        .def-spark { position: relative; display: inline-flex; align-items: center; gap: 6px; padding-left: 10px; border-left: 1px solid var(--line); }
+        .ds-days { display: inline-flex; gap: 1px; }
+        .ds-days button { background: transparent; border: none; color: var(--text-dim); font-size: 0.92em; padding: 1px 4px; border-radius: 4px; cursor: pointer; }
+        .ds-days button.on { color: var(--strong); background: var(--surface2); }
+        .ds-plot { display: inline-flex; align-items: center; gap: 5px; }
+        .ds-plot svg { display: block; cursor: crosshair; }
+        .ds-line { fill: none; stroke: var(--def); stroke-width: 1.6; stroke-linejoin: round; }
+        .ds-area { fill: color-mix(in srgb, var(--def) 16%, transparent); }
+        .ds-dot { fill: var(--def); stroke: var(--bg); stroke-width: 1; }
+        .ds-hov { fill: var(--strong); }
+        .ds-up { color: var(--profit); font-weight: 600; } .ds-down { color: var(--loss); font-weight: 600; }
+        .ds-tip { position: absolute; top: 100%; left: 40px; margin-top: 4px; z-index: 60; white-space: nowrap; background: var(--surface); border: 1px solid var(--border);
+            border-radius: 6px; padding: 3px 8px; font-size: 0.95em; color: var(--text); box-shadow: var(--shadow); }
         .ptick-manual-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
         .ptick-manual-wrap label { color: var(--text-dim); }
         #def-price-input { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 6px;
@@ -674,6 +687,10 @@
     <span id="ptick-usd" class="tok-usd ptick-stale">…</span>
     <span class="ptick-sep">USD</span>
     <span id="ptick-status" class="ptick-stale">fetching live prices…</span>
+    <span class="def-spark" id="def-spark" title="DEF in WAX, daily close on Alcor">
+        <span class="ds-days"><button data-dsd="7">7d</button><button data-dsd="30" class="on">30d</button><button data-dsd="90">90d</button></span>
+        <span class="ds-plot" id="ds-plot"></span><span class="ds-tip" id="ds-tip" hidden></span>
+    </span>
     <!-- Manual DEF price override (for break-even colouring) -->
     <div class="ptick-manual-wrap" title="Override DEF price for break-even/profit column">
         <label for="def-price-input">Override 1 DEF =</label>
@@ -682,6 +699,49 @@
         <button class="ptick-live-btn" onclick="resetDefPrice()" title="Reset to live price">↺ live</button>
     </div>
 </div>
+
+<script>
+/* DEF price history: a small line of Alcor's daily DEF/WAX close beside the prices */
+(function () {
+    var cache = {}, days = 30;
+    function draw(c) {
+        var el = document.getElementById('ds-plot'); if (!el) return;
+        if (!c || c.length < 2) { el.innerHTML = '<small>no history</small>'; return; }
+        var W = 120, H = 26, P = 3, v = c.map(function (x) { return x.p; });
+        var lo = Math.min.apply(null, v), hi = Math.max.apply(null, v), span = hi - lo || 1;
+        var X = function (i) { return P + i * (W - 2 * P) / (c.length - 1); }, Y = function (p) { return H - P - (p - lo) / span * (H - 2 * P); };
+        var line = c.map(function (x, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(x.p).toFixed(1); }).join('');
+        var area = line + 'L' + X(c.length - 1).toFixed(1) + ',' + (H - 1) + 'L' + X(0).toFixed(1) + ',' + (H - 1) + 'Z';
+        var last = c[c.length - 1], first = c[0], ch = (last.p / first.p - 1) * 100;
+        el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" aria-label="DEF in WAX over ' + days + ' days">' +
+            '<path class="ds-area" d="' + area + '"/><path class="ds-line" d="' + line + '"/><circle class="ds-dot" cx="' + X(c.length - 1) + '" cy="' + Y(last.p) + '" r="2.5"/>' +
+            '<circle class="ds-hov" r="2.5" cx="-9" cy="-9"/></svg>' +
+            '<small class="' + (ch >= 0 ? 'ds-up' : 'ds-down') + '">' + (ch >= 0 ? '+' : '') + ch.toFixed(0) + '%</small>';
+        var svg = el.querySelector('svg'), tip = document.getElementById('ds-tip'), hov = el.querySelector('.ds-hov');
+        svg.onmousemove = function (e) {
+            var r = svg.getBoundingClientRect(), i = Math.round((e.clientX - r.left) / r.width * (W) / ((W - 2 * P) / (c.length - 1)) - P / ((W - 2 * P) / (c.length - 1)));
+            i = Math.max(0, Math.min(c.length - 1, i));
+            hov.setAttribute('cx', X(i)); hov.setAttribute('cy', Y(c[i].p));
+            tip.textContent = new Date(c[i].t).toLocaleDateString('en', { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ': ' + c[i].p.toFixed(3) + ' WAX';
+            tip.hidden = false;
+        };
+        svg.onmouseleave = function () { tip.hidden = true; hov.setAttribute('cx', -9); };
+    }
+    async function load(d) {
+        days = d;
+        document.querySelectorAll('[data-dsd]').forEach(function (b) { b.classList.toggle('on', Number(b.getAttribute('data-dsd')) === d); });
+        if (cache[d]) return draw(cache[d]);
+        try {
+            var now = Date.now(), r = await fetch('https://wax.alcor.exchange/api/v2/swap/candles?tokenA=def-defensetoken&tokenB=wax-eosio.token&resolution=1D&from=' +
+                (now - d * 86400000) + '&to=' + now);
+            var j = await r.json(), c = (Array.isArray(j) ? j : j.candles || []).map(function (x) { return { t: x.time, p: parseFloat(x.close) }; }).filter(function (x) { return x.p > 0; });
+            cache[d] = c; if (days === d) draw(c);
+        } catch (e) { var el = document.getElementById('ds-plot'); if (el) el.innerHTML = '<small>history unavailable</small>'; }
+    }
+    document.querySelectorAll('[data-dsd]').forEach(function (b) { b.onclick = function () { load(Number(b.getAttribute('data-dsd'))); }; });
+    load(30);
+})();
+</script>
 
 <nav class="hub-tabs" role="tablist" aria-label="Planetary Defense hub">
     <button class="hub-tab" role="tab" data-hub="missions" aria-controls="board">Missions</button>
