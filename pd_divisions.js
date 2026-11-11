@@ -377,6 +377,28 @@
         var t = TOKENS[sym];
         return act(t.contract, 'transfer', { from: S.wallet, to: 'core.pdef', quantity: x.toFixed(t.dp) + ' ' + sym, memo: 'deposit' });
     }
+    /* Withdraw: core.pdef::withdrawbal(owner, quantity) pays the in-game balance back to
+       the wallet. On chain (checked Nov 2026) TLM withdrawals send 5% to pdef with memo
+       "Withdrawal fee" (2,000 → 1,900 + 100; 3,260 → 3,097 + 163; 3,610 → 3,429.5 + 180.5)
+       and DEF withdrawals arrived whole. No fee setting is published in a table, so this
+       shows what the chain has done, and the result line says so. */
+    var WD_FEE = { TLM: 0.05, DEF: 0 };
+    function withdrawHtml() {
+        var syms = S.data.inGame.map(function (b) { return amt(b); }).filter(function (a) { return a.n > 0 && TOKENS[a.sym]; });
+        if (!syms.length) return '';
+        if (!S.wdSym || !syms.some(function (a) { return a.sym === S.wdSym; })) S.wdSym = syms[0].sym;
+        return '<div class="pdd-deposit"><span class="pdd-hint">Withdraw from the in-game balance to your wallet:</span>' +
+            '<input type="number" id="pdd-wdamt" min="0" step="any" placeholder="amount" value="' + esc(S.wdAmt || '') + '">' +
+            '<select class="pdd-sel" id="pdd-wdsym">' + syms.map(function (a) { return '<option value="' + a.sym + '"' + (S.wdSym === a.sym ? ' selected' : '') + '>' + a.sym + '</option>'; }).join('') + '</select>' +
+            '<button class="pdd-btn pdd-sm" id="pdd-wdmax">Max</button><button class="pdd-btn" id="pdd-wd">Withdraw</button>' +
+            '<span class="pdd-hint" id="pdd-wdnote"></span></div>';
+    }
+    function wdNote() {
+        var el = document.getElementById('pdd-wdnote'); if (!el) return;
+        var x = parseFloat(S.wdAmt), sym = S.wdSym, f = WD_FEE[sym] || 0;
+        el.innerHTML = !(x > 0) ? (f ? 'TLM withdrawals have carried a 5% fee on chain; DEF has had none.' : 'DEF withdrawals have arrived without a fee on chain.') :
+            'You receive about <b>' + n(x * (1 - f), TOKENS[sym].dp) + ' ' + sym + '</b>' + (f ? ' after the 5% fee seen on chain (' + n(x * f, TOKENS[sym].dp) + ' ' + sym + ')' : ' (no fee seen on chain for DEF)');
+    }
     function walletBal(sym) { return sym === 'DEF' ? S.data.defBal : sym === 'TLM' ? S.data.tlmBal : sym === 'WAX' ? S.data.waxBal : null; }
 
     /* ── Get DEF on Alcor ─────────────────────────────────────────────────────
@@ -618,7 +640,7 @@
             (signable() ? '<div class="pdd-deposit"><span class="pdd-hint">Top up the in-game balance (entry fees come out of it):</span>' +
                 '<input type="number" id="pdd-depamt" min="0" step="any" placeholder="amount" value="' + esc(S.depAmt || '') + '">' +
                 '<select class="pdd-sel" id="pdd-depsym">' + Object.keys(TOKENS).map(function (k) { return '<option' + (S.depSym === k ? ' selected' : '') + '>' + k + '</option>'; }).join('') + '</select>' +
-                '<button class="pdd-btn" id="pdd-dep">Deposit to core.pdef</button></div>' : '') + swapHtml();
+                '<button class="pdd-btn" id="pdd-dep">Deposit to core.pdef</button></div>' + withdrawHtml() : '') + swapHtml();
         if (!d.divs.length)
             return h + '<div class="pdd-empty">No divisions yet' + (d.forge != null ? ' (forge level ' + d.forge + ')' : '') +
                 '. Use <b>Stake &amp; build</b> to stake a warlord and create one.</div>';
@@ -1128,6 +1150,21 @@
         var da = el.querySelector('#pdd-depamt'), ds = el.querySelector('#pdd-depsym'), db = el.querySelector('#pdd-dep');
         if (da) da.oninput = function () { S.depAmt = da.value; };
         if (ds) ds.onchange = function () { S.depSym = ds.value; };
+        var wa = el.querySelector('#pdd-wdamt'), ws = el.querySelector('#pdd-wdsym');
+        if (wa) { wa.oninput = function () { S.wdAmt = wa.value; wdNote(); }; wdNote(); }
+        if (ws) ws.onchange = function () { S.wdSym = ws.value; wdNote(); };
+        var wm = el.querySelector('#pdd-wdmax');
+        if (wm) wm.onclick = function () { S.wdAmt = String(inGameBal(S.wdSym)); wa.value = S.wdAmt; wdNote(); };
+        var wb = el.querySelector('#pdd-wd');
+        if (wb) wb.onclick = function () {
+            var x = parseFloat(S.wdAmt), sym = S.wdSym, t = TOKENS[sym], have = inGameBal(sym), f = WD_FEE[sym] || 0;
+            if (!(x > 0)) { S.msg = '✗ Enter an amount to withdraw.'; render(); return; }
+            if (x > have + 1e-9) { S.msg = '✗ Your in-game balance is ' + n(have, t.dp) + ' ' + sym + '.'; render(); return; }
+            if (!confirm('Withdraw ' + n(x, t.dp) + ' ' + sym + ' from your Planetary Defense balance?' +
+                (f ? ' TLM withdrawals have had a 5% fee on chain, so expect about ' + n(x * (1 - f), t.dp) + ' TLM in your wallet.' : ''))) return;
+            S.wdAmt = '';
+            run([act('core.pdef', 'withdrawbal', { owner: S.wallet, quantity: x.toFixed(t.dp) + ' ' + sym })], 'withdrew ' + n(x, t.dp) + ' ' + sym + ' to your wallet');
+        };
         if (db) db.onclick = function () {
             var x = parseFloat(da.value), sym = ds.value;
             if (!(x > 0)) { S.msg = '✗ Enter an amount to deposit.'; render(); return; }
