@@ -316,7 +316,7 @@
         .pdd-deposit input { width: 130px; background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 11px; border-radius: 10px; font-size: 0.95em; }
         .pdd-swap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 14px; padding: 10px 12px;
             border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); }
-        .logo-section h1 .h-sep { color: var(--text-dim); font-weight: 500; margin: 0 2px; }
+        .logo-section h1 .h-sep, .pdd-title .h-sep { color: var(--text-dim); font-weight: 500; margin: 0 2px; }
         .pdd-swapwarn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; text-align: left; margin: 0 0 14px;
             background: color-mix(in srgb, var(--loss) 6%, transparent); border: 1px solid color-mix(in srgb, var(--loss) 45%, transparent);
             color: var(--loss); border-radius: 10px; padding: 10px 14px; font-size: 0.92em; cursor: pointer; }
@@ -502,7 +502,7 @@
 <header class="global-header">
     <div class="logo-section">
         <div>
-            <h1><span class="mark">◈</span>NCodex <span class="h-sep">//</span> Planetary Defense Mission Tools</h1>
+            <h1><span class="mark">◈</span>Naron Codex</h1>
             <div class="logo-sub">Planetary Defense V3 · Live Board</div>
         </div>
     </div>
@@ -1852,6 +1852,6 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchPrices();
 });
 </script>
-<script src="pd_divisions.js?v=1.2.62"></script>
+<script src="pd_divisions.js?v=1.2.63"></script>
 </body>
 </html>

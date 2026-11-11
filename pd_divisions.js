@@ -568,7 +568,7 @@
         var el = document.getElementById('pd-divs');
         if (!el) return;
         var mine = me();
-        var h = '<div class="pdd-head"><span class="pdd-title">&#9672; My Planetary Defense</span>' +
+        var h = '<div class="pdd-head"><span class="pdd-title">NCodex <span class="h-sep">//</span> Planetary Defense Mission Tools</span>' +
             '<input id="pdd-wallet" type="text" placeholder="View any wallet…" value="' + esc(S.wallet) + '" spellcheck="false">' +
             '<button class="pdd-btn" id="pdd-view">View</button>' +
             (mine && mine !== S.wallet ? '<button class="pdd-btn" id="pdd-mine">My wallet</button>' : '') +
