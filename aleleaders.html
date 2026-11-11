@@ -511,7 +511,7 @@ window.lbSetView = function (v) {
     if (v !== 'buildings') return;
     if (window.aleBuildingsOpen) { window.aleBuildingsOpen(); return; }
     var s = document.createElement('script');
-    s.src = 'ale_buildings.js';
+    s.src = 'ale_buildings.js?v=1.2.70';
     s.onload = function () { window.aleBuildingsOpen(); };
     document.body.appendChild(s);
 };
@@ -2025,6 +2025,29 @@ window.lbSetView = function (v) {
     .bld-dungeon { background:rgba(96,165,250,0.16); color:#8ec0ff; }
     .bld-arena { background:rgba(255,110,90,0.16); color:#ff9b88; }
     .bld-tavern { background:rgba(232,160,32,0.16); color:#ffc45a; }
+    /* TLM / shard split: shards (teal) through the 50% default (grey) to TLM (amber) */
+    #bld-view { --sp-b0: #1f9e93; --sp-b1: #7fcfc6; --sp-b2: #8b93a3; --sp-b3: #f0c27a; --sp-b4: #e0901c; }
+    .sp-sec { margin: 6px 0 22px; max-width: 1100px; }
+    .sp-sec h3 { margin: 0 0 10px; font-size: 0.9em; letter-spacing: 1px; color: #e6d3a8; }
+    .sp-sec h3 small { color: #a9b4c4; font-weight: normal; letter-spacing: 0; margin-left: 6px; }
+    .sp-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.72em; color: #c8d0dc; margin-bottom: 8px; }
+    .sp-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+    .sp-bar { display: flex; gap: 2px; height: 26px; border-radius: 6px; overflow: hidden; min-width: 220px; }
+    .sp-bar span { display: flex; align-items: center; justify-content: center; font-size: 0.7em; font-weight: bold; color: #0b0d12; min-width: 2px; }
+    .sp-bar.sp-empty { align-items: center; color: #7f8a9a; font-size: 0.72em; }
+    .sp-b0 { background: var(--sp-b0); } .sp-b1 { background: var(--sp-b1); } .sp-b2 { background: var(--sp-b2); }
+    .sp-b3 { background: var(--sp-b3); } .sp-b4 { background: var(--sp-b4); }
+    .sp-counts { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.74em; color: #a9b4c4; margin-top: 8px; }
+    .sp-counts b { color: #fff; }
+    .sp-row { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: center; margin-bottom: 8px; }
+    .sp-lab { font-size: 0.74em; color: #a9b4c4; letter-spacing: 1px; text-transform: uppercase; }
+    .sp-key { font-size: 0.8em; color: #c8d0dc; line-height: 1.6; }
+    .sp-tlm { color: #f0b04a; } .sp-shd { color: #4fd1c5; }
+    .sp-table .sp-cell { min-width: 260px; }
+    .sp-table .sp-bar { height: 18px; }
+    html.day .sp-sec h3 { color: #1a2850; }
+    html.day .sp-counts b { color: #1a2850; }
+    html.day .sp-key, html.day .sp-legend { color: #3b4866; }
     html.day .lb-view, html.day .bld-pill { color:#6b4a00; border-color:rgba(154,104,0,0.4); }
     html.day .lb-view.on, html.day .bld-pill.on { color:#fff; background:#9a6800; border-color:#9a6800; }
     html.day .bld-table th { background:#e4ecf8; color:#3b4866; }

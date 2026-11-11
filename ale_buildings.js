@@ -28,6 +28,7 @@
 
     var _rows = null, _sort = 'busy', _dir = -1, _type = 'all', _planet = 'all', _q = '';
     var _hours = 24, _fightsFor = null, _status = '', _busy = false;
+    var _view = 'table', _players = [], _share = {};
 
     function esc(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -154,8 +155,11 @@
         }
         var players = await allRows('players.ale', 'players.ale', 'players');
         var tags = {}, tavernUsers = {};
+        _players = players; _share = {};
         players.forEach(function (p) {
             if (p.playertag) tags[p.wallet] = p.playertag;
+            // landowner_tlm_share: the % of land rewards an owner takes as TLM; the rest comes as shards
+            if (p.landowner_tlm_share != null) _share[p.wallet] = Number(p.landowner_tlm_share);
             (p.active_taverns || []).forEach(function (t) {
                 var k = t.planet + '|' + t.x + '|' + t.y;
                 tavernUsers[k] = (tavernUsers[k] || 0) + 1;
@@ -169,7 +173,7 @@
                 var hours = isNaN(upd) ? 0 : Math.max(0, (Date.now() - upd) / HOUR);
                 out.push({
                     type: b.building_name, planet: l._planet, x: Number(l.x), y: Number(l.y), landId: l.land_id,
-                    land: [l.land_type, l.rarity].filter(Boolean).join(' · '), assetId: String(l.asset_id || ''),
+                    land: [l.land_type, l.rarity].filter(Boolean).join(' · '), landType: l.land_type || 'Unknown', assetId: String(l.asset_id || ''),
                     level: Number(b.level) || 0,
                     boost: Math.max(0, Number(b.boost_score || 0) - hours * DECAY_PER_HOUR),
                     tlm: Number(b.tlm || 0) / 1e4, shards: Number(b.shards || 0) / 10,
@@ -322,6 +326,88 @@
         });
     }
 
+
+    /* ── TLM / shard split ────────────────────────────────────────────────────
+       Each player's landowner_tlm_share (players.ale) is the % of their land
+       rewards taken as TLM; the rest is paid as shards. 50 is the default.
+       Boost is shown in-game as a multiplier; boost score ÷ 100,000 matches it
+       (a new building starts at 350,000 = 3.5x), so 0.1x is 10,000. */
+    var BOOST_X = 100000, MIN_BOOST = 0.1 * BOOST_X;
+    var BUCKETS = [
+        { k: 'b0', label: 'All shards', test: function (v) { return v === 0; } },
+        { k: 'b1', label: 'Mostly shards', test: function (v) { return v > 0 && v < 50; } },
+        { k: 'b2', label: 'Even split (default 50%)', test: function (v) { return v === 50; } },
+        { k: 'b3', label: 'Mostly TLM', test: function (v) { return v > 50 && v < 100; } },
+        { k: 'b4', label: 'All TLM', test: function (v) { return v === 100; } }
+    ];
+    function bucketOf(v) { for (var i = 0; i < BUCKETS.length; i++) if (BUCKETS[i].test(v)) return BUCKETS[i].k; return null; }
+    function pct(x, t) { return t ? (x / t * 100) : 0; }
+    // one 100% bar: counts per bucket; hover names the bucket and its share
+    function splitBar(cnt, total, unit) {
+        if (!total) return '<div class="sp-bar sp-empty">none</div>';
+        return '<div class="sp-bar">' + BUCKETS.map(function (b) {
+            var v = cnt[b.k] || 0, w = pct(v, total);
+            return v ? '<span class="sp-' + b.k + '" style="flex:' + v + '" title="' + esc(b.label + ': ' + fmtN(v) + ' ' + unit + ' (' + w.toFixed(1) + '%)') + '">' +
+                (w >= 7 ? w.toFixed(0) + '%' : '') + '</span>' : '';
+        }).join('') + '</div>';
+    }
+    function fmtN(x) { return Number(x).toLocaleString('en', { maximumFractionDigits: 0 }); }
+    function renderSplit() {
+        var h = '';
+        var legend = '<div class="sp-legend">' + BUCKETS.map(function (b) { return '<span><i class="sp-' + b.k + '"></i>' + b.label + '</span>'; }).join('') + '</div>';
+        // 1. every player
+        var all = {}, nAll = 0;
+        _players.forEach(function (p) { var k = bucketOf(Number(p.landowner_tlm_share)); if (k) { all[k] = (all[k] || 0) + 1; nAll++; } });
+        h += '<section class="sp-sec"><h3>All players <small>' + fmtN(nAll) + ' signed up</small></h3>' + legend + splitBar(all, nAll, 'players') +
+            '<div class="sp-counts">' + BUCKETS.map(function (b) { return '<span>' + b.label + ': <b>' + fmtN(all[b.k] || 0) + '</b></span>'; }).join('') + '</div></section>';
+
+        // 2. owners with at least one building boosted 0.1x or more
+        // follows the planet / building / search filters above
+        var boosted = visible().filter(function (r) { return r.boost >= MIN_BOOST && r.owner; });
+        var owners = {}, byOwner = {}, byBoost = {}, totBoost = 0, noProfile = 0, tlmW = 0;
+        boosted.forEach(function (r) { (owners[r.owner] = owners[r.owner] || []).push(r); });
+        Object.keys(owners).forEach(function (w) {
+            var v = _share[w];
+            if (v == null) { noProfile++; return; }
+            var k = bucketOf(v);
+            byOwner[k] = (byOwner[k] || 0) + 1;
+            owners[w].forEach(function (r) { byBoost[k] = (byBoost[k] || 0) + r.boost; totBoost += r.boost; tlmW += r.boost * v / 100; });
+        });
+        var nOwn = Object.keys(owners).length - noProfile;
+        h += '<section class="sp-sec"><h3>Land owners with a building boosted 0.1x or more <small>' + fmtN(nOwn) + ' owners, ' + fmtN(boosted.length) + ' buildings</small></h3>' +
+            '<div class="sp-row"><span class="sp-lab">By owner</span>' + splitBar(byOwner, nOwn, 'owners') + '</div>' +
+            '<div class="sp-row"><span class="sp-lab">By boost</span>' + splitBar(byBoost, totBoost, 'boost') + '</div>' +
+            '<p class="sp-key">Of all that boost, <b class="sp-tlm">' + pct(tlmW, totBoost).toFixed(1) + '%</b> is set to earn TLM and <b class="sp-shd">' +
+            (100 - pct(tlmW, totBoost)).toFixed(1) + '%</b> shards (each owner\u2019s buildings weighted by boost and split by their setting).' +
+            (noProfile ? ' ' + fmtN(noProfile) + ' owner' + (noProfile === 1 ? ' has' : 's have') + ' no player profile, so no setting, and ' + (noProfile === 1 ? 'is' : 'are') + ' left out.' : '') + '</p></section>';
+
+        // 3. by land type, and by building type, for those boosted buildings
+        var group = function (keyFn, title) {
+            var g = {};
+            boosted.forEach(function (r) {
+                var v = _share[r.owner]; if (v == null) return;
+                var k = keyFn(r), x = g[k] = g[k] || { cnt: {}, n: 0, boost: 0, tlmW: 0, tlm: 0, shards: 0 };
+                var b = bucketOf(v);
+                x.cnt[b] = (x.cnt[b] || 0) + 1; x.n++; x.boost += r.boost; x.tlmW += r.boost * v / 100; x.tlm += r.tlm; x.shards += r.shards;
+            });
+            var keys = Object.keys(g).sort(function (a, b) { return g[b].n - g[a].n; });
+            return '<section class="sp-sec"><h3>' + title + '</h3><div class="bld-wrap"><table class="bld-table sp-table"><thead><tr><th class="txt">' +
+                (title.indexOf('land') >= 0 ? 'Land type' : 'Building') + '</th><th class="num">Buildings</th><th class="txt">Owners\u2019 settings</th><th class="num">Boost set to TLM</th>' +
+                '<th class="num">Unclaimed TLM</th><th class="num">Unclaimed shards</th></tr></thead><tbody>' +
+                keys.map(function (k) {
+                    var x = g[k];
+                    return '<tr><td class="txt">' + esc(k) + '</td><td class="num">' + fmtN(x.n) + '</td><td class="txt sp-cell">' + splitBar(x.cnt, x.n, 'buildings') + '</td>' +
+                        '<td class="num">' + pct(x.tlmW, x.boost).toFixed(0) + '%</td><td class="num">' + fmtN(x.tlm) + '</td><td class="num">' + fmtN(x.shards) + '</td></tr>';
+                }).join('') + '</tbody></table></div></section>';
+        };
+        h += group(function (r) { return r.landType; }, 'By land type <small>buildings boosted 0.1x or more</small>');
+        h += group(function (r) { return r.type.charAt(0).toUpperCase() + r.type.slice(1); }, 'By building <small>buildings boosted 0.1x or more</small>');
+        h += '<p class="bld-note">The split setting comes from each player\u2019s profile (players.ale: landowner_tlm_share, the % taken as TLM). ' +
+            'Boost multipliers are boost score \u00f7 100,000 (a new building starts at 3.5x). Unclaimed TLM and shards are what those buildings have earned since their last claim, ' +
+            'so they show where the payouts are actually landing.</p>';
+        return h;
+    }
+
     function render() {
         var el = document.getElementById('bld-view');
         if (!el) return;
@@ -332,6 +418,7 @@
         (_rows || []).forEach(function (r) { counts[r.type] = (counts[r.type] || 0) + 1; });
 
         var h = '<div class="bld-bar">' +
+            btn('view', 'table', 'Buildings', _view) + btn('view', 'split', 'TLM / shard split', _view) + '<span class="bld-sep"></span>' +
             btn('type', 'all', 'All ' + (_rows ? _rows.length : ''), _type) +
             btn('type', 'dungeon', 'Dungeons ' + counts.dungeon, _type) +
             btn('type', 'arena', 'Arenas ' + counts.arena, _type) +
@@ -357,6 +444,7 @@
             bind(el);
             return;
         }
+        if (_view === 'split') { el.innerHTML = h + renderSplit(); bind(el); return; }
         var list = visible();
         h += '<div class="bld-wrap"><table class="bld-table"><thead><tr>' +
             COLS.map(function (c) {
@@ -371,6 +459,7 @@
 
     function bind(el) {
         el.querySelectorAll('[data-type]').forEach(function (b) { b.onclick = function () { _type = b.getAttribute('data-type'); render(); }; });
+        el.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { _view = b.getAttribute('data-view'); render(); }; });
         el.querySelectorAll('[data-h]').forEach(function (b) {
             b.onclick = function () { var h = Number(b.getAttribute('data-h')); if (h !== _hours) reloadFights(h); };
         });
