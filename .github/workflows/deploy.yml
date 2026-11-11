@@ -10,9 +10,11 @@ permissions:
   pages: write
   id-token: write
 
+# A new push supersedes a deploy still running: each deploy publishes the latest
+# code, and a hung run (Nov 2026: one stuck after a failed upload) can't block the rest.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: "pages-deploy"
+  cancel-in-progress: true
 
 jobs:
   deploy:
