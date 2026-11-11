@@ -460,6 +460,76 @@
         return h;
     }
 
+    /* ── Lands for sale (hidden: Buildings clicked 5 times) ─────────────────────
+       Lands whose buildings hold TLM to claim, with any active AtomicHub listing
+       of the land NFT. Listings come from atomicmarket sales, state 1 (listed). */
+    var FS = { sales: null, busy: false, onlyListed: false, err: '' };
+    var MARKET = ['https://wax.api.atomicassets.io', 'https://wax-aa.eu.eosamsterdam.net', 'https://wax-atomic-api.eosphere.io'];
+    async function loadSales(ids) {
+        FS.busy = true; FS.err = '';
+        var out = {};
+        for (var i = 0; i < ids.length; i += 100) {
+            var chunk = ids.slice(i, i + 100).join(','), ok = false;
+            for (var k = 0; k < MARKET.length && !ok; k++) {
+                try {
+                    var r = await fetch(MARKET[k] + '/atomicmarket/v2/sales?state=1&asset_id=' + chunk + '&limit=100', { signal: AbortSignal.timeout(15000) });
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    var j = await r.json();
+                    (j.data || []).forEach(function (x) {
+                        var price = Number(x.price.amount) / Math.pow(10, x.price.token_precision);
+                        (x.assets || []).forEach(function (a) {
+                            out[a.asset_id] = { id: x.sale_id, price: price, sym: x.price.token_symbol, seller: x.seller, bundle: (x.assets || []).length };
+                        });
+                    });
+                    ok = true;
+                } catch (e) {}
+            }
+            if (!ok) FS.err = 'Some listings could not be checked (the AtomicHub API did not answer).';
+        }
+        FS.sales = out; FS.busy = false;
+        if (_view === 'forsale') render();
+    }
+    function renderForSale() {
+        var lands = {}, list = [];
+        visible().forEach(function (r) {
+            if (!r.assetId || r.assetId === '0') return;
+            var l = lands[r.assetId] = lands[r.assetId] || { assetId: r.assetId, planet: r.planet, x: r.x, y: r.y, landId: r.landId, land: r.land,
+                owner: r.owner, tag: r.tag, tlm: 0, types: [] };
+            l.tlm += r.tlm || 0; l.types.push(r.type);
+        });
+        Object.keys(lands).forEach(function (k) { if (lands[k].tlm > 0) list.push(lands[k]); });
+        if (!FS.sales && !FS.busy) loadSales(list.map(function (l) { return l.assetId; }));
+        var listed = list.filter(function (l) { return FS.sales && FS.sales[l.assetId]; });
+        list.sort(function (a, b) {
+            var sa = FS.sales && FS.sales[a.assetId] ? 1 : 0, sb = FS.sales && FS.sales[b.assetId] ? 1 : 0;
+            return sb - sa || b.tlm - a.tlm;
+        });
+        if (FS.onlyListed) list = list.filter(function (l) { return FS.sales && FS.sales[l.assetId]; });
+        var h = '<section class="sp-sec fs-sec"><h3>Lands for sale with TLM waiting <small>' + (FS.busy ? 'checking AtomicHub listings…' :
+                fmtN(listed.length) + ' listed of ' + fmtN(Object.keys(lands).filter(function (k) { return lands[k].tlm > 0; }).length) + ' lands holding TLM') + '</small></h3>' +
+            '<div class="sp-floor"><button class="bld-pill' + (FS.onlyListed ? '' : ' on') + '" data-fsl="0">All lands with TLM</button>' +
+            '<button class="bld-pill' + (FS.onlyListed ? ' on' : '') + '" data-fsl="1">Only listed</button>' +
+            '<button class="bld-pill" data-fsr="1"' + (FS.busy ? ' disabled' : '') + '>Recheck listings</button></div>' +
+            (FS.err ? '<p class="sp-key" style="color:#ff9b88">' + esc(FS.err) + '</p>' : '') +
+            '<div class="bld-wrap"><table class="bld-table"><thead><tr><th class="txt">Land</th><th class="txt">Type</th><th class="txt">Buildings</th><th class="txt">Owner</th>' +
+            '<th class="num">TLM to claim</th><th class="num">Listed for</th><th class="txt"></th></tr></thead><tbody>' +
+            (list.length ? list.map(function (l) {
+                var sale = FS.sales && FS.sales[l.assetId];
+                return '<tr' + (sale ? ' class="fs-listed"' : '') + '><td class="txt">' + esc(l.planet) + ' ' + l.x + ',' + l.y + ' <small>' + esc(l.landId) + '</small></td>' +
+                    '<td class="txt">' + esc(l.land) + '</td><td class="txt">' + esc(l.types.join(', ')) + '</td>' +
+                    '<td class="txt">' + (l.tag ? esc(l.tag) + ' <small>' + esc(l.owner) + '</small>' : esc(l.owner) || '–') + '</td>' +
+                    '<td class="num">' + num(l.tlm, 2) + '</td>' +
+                    '<td class="num">' + (sale ? '<b>' + num(sale.price, 2) + ' ' + esc(sale.sym) + '</b>' + (sale.bundle > 1 ? ' <small>bundle of ' + sale.bundle + '</small>' : '')
+                        : FS.sales ? '<span class="bld-dim">not listed</span>' : '…') + '</td>' +
+                    '<td class="txt">' + (sale ? '<a class="fs-link" href="https://atomichub.io/market/sale/wax-mainnet/' + encodeURIComponent(sale.id) + '" target="_blank" rel="noopener">View on AtomicHub &#8599;</a>' : '') + '</td></tr>';
+            }).join('') : '<tr><td colspan="7" class="bld-empty">No lands with TLM waiting match these filters.</td></tr>') +
+            '</tbody></table></div>' +
+            '<p class="bld-note">TLM to claim is what the buildings on that land hold for their owner. Land rewards appear to be claimed by whoever owns the land ' +
+            'when they are claimed, so a buyer would likely receive it, but that is not confirmed on chain: check before you buy. Listings are live AtomicHub sales of the land NFT.</p></section>';
+        return h;
+    }
+    window.aleBuildingsSecret = function () { _view = _view === 'forsale' ? 'table' : 'forsale'; FS.sales = null; render(); };
+
     function render() {
         var el = document.getElementById('bld-view');
         if (!el) return;
@@ -498,6 +568,7 @@
             return;
         }
         if (_view === 'split') { el.innerHTML = h + renderSplit(); bind(el); return; }
+        if (_view === 'forsale') { el.innerHTML = h + renderForSale(); bind(el); return; }
         var list = visible();
         h += '<div class="bld-wrap"><table class="bld-table"><thead><tr>' +
             COLS.map(function (c) {
@@ -514,6 +585,8 @@
         el.querySelectorAll('[data-type]').forEach(function (b) { b.onclick = function () { _type = b.getAttribute('data-type'); render(); }; });
         el.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { _view = b.getAttribute('data-view'); render(); }; });
         el.querySelectorAll('[data-minx]').forEach(function (b) { b.onclick = function () { _minX = Number(b.getAttribute('data-minx')); render(); }; });
+        el.querySelectorAll('[data-fsl]').forEach(function (b) { b.onclick = function () { FS.onlyListed = b.getAttribute('data-fsl') === '1'; render(); }; });
+        el.querySelectorAll('[data-fsr]').forEach(function (b) { b.onclick = function () { FS.sales = null; render(); }; });
         el.querySelectorAll('[data-h]').forEach(function (b) {
             b.onclick = function () { var h = Number(b.getAttribute('data-h')); if (h !== _hours) reloadFights(h); };
         });

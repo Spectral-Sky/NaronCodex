@@ -499,7 +499,17 @@
 <script>
 /* Players / Buildings. The buildings code only loads the first time its tab opens,
    so the player leaderboard pays nothing for it. */
+// Buildings clicked 5 times within 4 s opens the hidden lands-for-sale list
+var _bldClicks = [];
 window.lbSetView = function (v) {
+    if (v === 'buildings') {
+        var now = Date.now();
+        _bldClicks = _bldClicks.filter(function (t) { return now - t < 4000; }).concat(now);
+        if (_bldClicks.length >= 5) {
+            _bldClicks = [];
+            if (window.aleBuildingsSecret) setTimeout(window.aleBuildingsSecret, 0);
+        }
+    }
     document.body.classList.toggle('bld-mode', v === 'buildings');
     document.querySelectorAll('.lb-view').forEach(function (b) {
         b.classList.toggle('on', b.getAttribute('data-view') === v);
@@ -511,7 +521,7 @@ window.lbSetView = function (v) {
     if (v !== 'buildings') return;
     if (window.aleBuildingsOpen) { window.aleBuildingsOpen(); return; }
     var s = document.createElement('script');
-    s.src = 'ale_buildings.js?v=1.2.75';
+    s.src = 'ale_buildings.js?v=1.2.76';
     s.onload = function () { window.aleBuildingsOpen(); };
     document.body.appendChild(s);
 };
@@ -2044,6 +2054,13 @@ window.lbSetView = function (v) {
     .sp-key { font-size: 0.8em; color: #c8d0dc; line-height: 1.6; }
     .sp-tlm { color: #f0b04a; } .sp-shd { color: #4fd1c5; }
     .sp-table .sp-cell { min-width: 260px; }
+    .fs-sec { max-width: none; }
+    .fs-sec h3 { color: #ffd27a; }
+    .bld-table tr.fs-listed td { background: rgba(232,160,32,0.07); }
+    .fs-link { color: #ffc45a; text-decoration: none; border: 1px solid rgba(232,160,32,0.45); border-radius: 8px; padding: 4px 10px; white-space: nowrap; }
+    .fs-link:hover { background: rgba(232,160,32,0.12); }
+    html.day .fs-sec h3 { color: #8a5c00; }
+    html.day .fs-link { color: #8a5c00; }
     .sp-floor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 18px; }
     .sp-floor .sp-lab { margin-right: 4px; }
     .sp-floor small { color: #a9b4c4; font-size: 0.74em; margin-left: 6px; }
