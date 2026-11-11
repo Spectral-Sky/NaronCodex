@@ -333,7 +333,7 @@
        rewards taken as TLM; the rest is paid as shards. 50 is the default.
        Boost is shown in-game as a multiplier; boost score ÷ 100,000 matches it
        (a new building starts at 350,000 = 3.5x), so 0.1x is 10,000. */
-    var BOOST_X = 100000, BOOST_STEPS = [0.1, 1, 2, 3, 4, 5, 6], _minX = 0.1;
+    var BOOST_X = 100000, BOOST_STEPS = [0.1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], _minX = 0.1;
     /* Building rewards: when a building pays out, pools.ale::claimbreward draws on
        that building type's pools (logged as tlmlndowner / shrdlndowner). The same
        pools also pay the players fighting there. Shard amounts are stored in tenths. */
