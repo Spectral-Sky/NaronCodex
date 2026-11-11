@@ -316,6 +316,33 @@
         .pdd-deposit input { width: 130px; background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 11px; border-radius: 10px; font-size: 0.95em; }
         .pdd-swap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 14px; padding: 10px 12px;
             border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); }
+        .logo-section h1 .h-sep { color: var(--text-dim); font-weight: 500; margin: 0 2px; }
+        .pdd-swapwarn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; text-align: left; margin: 0 0 14px;
+            background: color-mix(in srgb, var(--loss) 6%, transparent); border: 1px solid color-mix(in srgb, var(--loss) 45%, transparent);
+            color: var(--loss); border-radius: 10px; padding: 10px 14px; font-size: 0.92em; cursor: pointer; }
+        .pdd-swapwarn b { color: var(--strong); }
+        .pdd-swapwarn:hover { border-color: var(--loss); }
+        .pdd-swapcaret { width: 12px; color: var(--loss); }
+        .pdd-swap-risk { border: 2px solid var(--loss); }
+        .pdd-swap-risk .pdd-swapwarn { margin: 0 0 4px; border: none; padding: 0 0 8px; border-bottom: 1px solid color-mix(in srgb, var(--loss) 35%, transparent);
+            border-radius: 0; background: transparent; }
+        .pdd-modal-bg { position: fixed; inset: 0; z-index: 9500; background: rgba(4,8,18,0.72); backdrop-filter: blur(3px);
+            display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .pdd-modal { background: var(--surface); border: 2px solid var(--loss); border-radius: 16px; width: 100%; max-width: 480px;
+            padding: 22px 24px; box-shadow: 0 24px 60px rgba(0,0,0,0.45); }
+        .pdd-modal h3 { margin: 0 0 12px; color: var(--strong); font-size: 1.15em; }
+        .pdd-modal dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 14px; font-size: 0.95em; }
+        .pdd-modal dt { color: var(--text-muted); }
+        .pdd-modal dd { margin: 0; color: var(--text); }
+        .pdd-modal b { color: var(--strong); }
+        .pdd-disc { font-size: 0.86em; line-height: 1.55; color: var(--text-muted); background: var(--bg2); border-radius: 10px; padding: 10px 12px; margin: 0 0 16px; }
+        .pdd-slide-l { display: block; font-size: 0.86em; font-weight: 600; color: var(--loss); margin-bottom: 8px; }
+        .pdd-slide { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; border-radius: 999px; cursor: grab;
+            background: linear-gradient(90deg, color-mix(in srgb, var(--loss) 35%, transparent) var(--fill, 0%), var(--bg2) var(--fill, 0%));
+            border: 1px solid var(--border); }
+        .pdd-slide::-webkit-slider-thumb { -webkit-appearance: none; width: 40px; height: 40px; border-radius: 50%; background: var(--loss); border: 3px solid var(--surface); }
+        .pdd-slide::-moz-range-thumb { width: 36px; height: 36px; border-radius: 50%; background: var(--loss); border: 3px solid var(--surface); }
+        .pdd-modal-b { display: flex; justify-content: flex-end; margin-top: 14px; }
         .pdd-swap-t { font-weight: 700; color: var(--strong); font-size: 1em; margin-right: 4px; }
         .pdd-swap input { width: 120px; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 11px; border-radius: 10px; font-size: 0.95em; }
         .pdd-swap a.pdd-btn { text-decoration: none; }
@@ -461,7 +488,7 @@
 <header class="global-header">
     <div class="logo-section">
         <div>
-            <h1><span class="mark">◈</span>PD Missions</h1>
+            <h1><span class="mark">◈</span>NCodex <span class="h-sep">//</span> Planetary Defense Mission Tools</h1>
             <div class="logo-sub">Planetary Defense V3 · Live Board</div>
         </div>
     </div>
@@ -1811,6 +1838,6 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchPrices();
 });
 </script>
-<script src="pd_divisions.js?v=1.2.60"></script>
+<script src="pd_divisions.js?v=1.2.61"></script>
 </body>
 </html>

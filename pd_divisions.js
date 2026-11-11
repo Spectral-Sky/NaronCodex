@@ -378,7 +378,8 @@
        the router hands back. Pools 10447 (TLM) and 10448 (WAX). */
     var PAY = { TLM: { contract: 'alien.worlds', dp: 4, id: 'tlm-alien.worlds', alcor: 'TLM-alien.worlds' },
                 WAX: { contract: 'eosio.token', dp: 8, id: 'wax-eosio.token', alcor: 'WAX-eosio.token' } };
-    var SWAP = { amt: '', pay: 'TLM', slip: 1, quote: null, err: '', seq: 0, timer: null };
+    var SWAP = { amt: '', pay: 'TLM', slip: 1, quote: null, err: '', seq: 0, timer: null, open: false };
+    var SWAP_WARN = 'I understand this section handles Alcor swap contracts directly! Use at your own risk!';
     function alcorLink() { return 'https://wax.alcor.exchange/swap?input=' + PAY[SWAP.pay].alcor + '&output=DEF-defensetoken'; }
     // DEF the wallet is short for the ready-and-idle bundle, so the box can start there
     function defNeeded() {
@@ -427,9 +428,39 @@
         if (btn) btn.disabled = !(q && signable() && !short);
         var a = document.getElementById('pdd-swapalc'); if (a) a.href = alcorLink();
     }
+    // closed until the player opens it through the warning
+    function swapConfirm(d, onOk) {
+        var old = document.getElementById('pdd-confirm'); if (old) old.remove();
+        var bg = document.createElement('div');
+        bg.id = 'pdd-confirm'; bg.className = 'pdd-modal-bg';
+        bg.innerHTML = '<div class="pdd-modal" role="dialog" aria-modal="true" aria-labelledby="pdd-confirm-h">' +
+            '<h3 id="pdd-confirm-h">Confirm swap on Alcor</h3>' +
+            '<dl><dt>You send</dt><dd><b>' + esc(d.send) + '</b> to <code>swap.alcor</code></dd>' +
+            '<dt>You receive</dt><dd>about <b>' + esc(d.about) + ' DEF</b>, at least <b>' + esc(d.min) + ' DEF</b> or the swap fails</dd>' +
+            '<dt>Price impact</dt><dd>' + esc(d.impact) + '%</dd><dt>Wallet</dt><dd>' + esc(S.wallet) + '</dd></dl>' +
+            '<p class="pdd-disc">Naron Codex is a fan-made tool, not Alcor or Alien Worlds. This signs a transfer straight to Alcor\'s swap contract. ' +
+            'Once signed it can\'t be undone. Prices move, and these pools are small: the swap gives you at least the minimum above or fails ' +
+            'and returns your tokens. Use at your own risk.</p>' +
+            '<label class="pdd-slide-l" for="pdd-slide">Slide all the way to swap</label>' +
+            '<input type="range" id="pdd-slide" class="pdd-slide" min="0" max="100" value="0">' +
+            '<div class="pdd-modal-b"><button class="pdd-btn" id="pdd-confirm-x">Cancel</button></div></div>';
+        document.body.appendChild(bg);
+        var close = function () { bg.remove(); document.removeEventListener('keydown', esc_); };
+        var esc_ = function (e) { if (e.key === 'Escape') close(); };
+        document.addEventListener('keydown', esc_);
+        bg.onclick = function (e) { if (e.target === bg) close(); };
+        document.getElementById('pdd-confirm-x').onclick = close;
+        var sl = document.getElementById('pdd-slide');
+        sl.oninput = function () { sl.style.setProperty('--fill', sl.value + '%'); if (Number(sl.value) >= 100) { close(); onOk(); } };
+        sl.onchange = function () { if (Number(sl.value) < 100) { sl.value = 0; sl.style.setProperty('--fill', '0%'); } };
+        sl.focus();
+    }
     function swapHtml() {
+        if (!SWAP.open) return '<button class="pdd-swapwarn" id="pdd-swapopen" aria-expanded="false"><span class="pdd-swapcaret">▸</span>' +
+            '<b>Get DEF on Alcor</b><span>' + esc(SWAP_WARN) + '</span></button>';
         if (SWAP.amt === '' && S.data) { var need = defNeeded(); if (need) SWAP.amt = String(need); }
-        return '<div class="pdd-swap"><span class="pdd-swap-t">Get DEF</span>' +
+        return '<div class="pdd-swap pdd-swap-risk"><button class="pdd-swapwarn on" id="pdd-swapopen" aria-expanded="true"><span class="pdd-swapcaret">▾</span>' +
+            '<b>Get DEF on Alcor</b><span>' + esc(SWAP_WARN) + '</span></button>' +
             '<input type="number" id="pdd-swapamt" min="0" step="any" placeholder="DEF needed" value="' + esc(SWAP.amt) + '"> <span class="pdd-hint">DEF, paying with</span>' +
             '<span class="pdd-seg">' + Object.keys(PAY).map(function (k) { return '<button class="pdd-segb' + (SWAP.pay === k ? ' on' : '') + '" data-swappay="' + k + '">' + k + '</button>'; }).join('') + '</span>' +
             '<select class="pdd-sel" id="pdd-swapslip" title="Slippage: the most the price may move before the swap fails">' + [0.5, 1, 3].map(function (v) {
@@ -449,7 +480,7 @@
         if (lacking.length) {
             S.msg = '✗ Not enough in your wallet to cover the entry fees: needs ' + lacking.map(function (sym) {
                 return n(dep[sym], TOKENS[sym].dp) + ' ' + sym + ' (you have ' + n(walletBal(sym), TOKENS[sym].dp) + ')';
-            }).join(', ') + (lacking.indexOf('DEF') >= 0 ? '. Use Get DEF below to swap TLM or WAX for it.' : '');
+            }).join(', ') + (lacking.indexOf('DEF') >= 0 ? '. Get DEF on Alcor below can swap TLM or WAX for it.' : '');
             if (lacking.indexOf('DEF') >= 0) { SWAP.amt = String(Math.ceil((dep.DEF - (S.data.defBal || 0)) * 100) / 100); SWAP.quote = null; }
             render(); return;
         }
@@ -1095,10 +1126,15 @@
             var q = SWAP.quote; if (!q) return;
             var t = PAY[SWAP.pay];
             var quantity = q.pay + ' ' + SWAP.pay;
-            SWAP.quote = null; SWAP.amt = '';
-            run([act(t.contract, 'transfer', { from: S.wallet, to: 'swap.alcor', quantity: quantity, memo: q.memo })],
-                'swapped ' + quantity + ' for at least ' + n(parseFloat(q.minReceived), 4) + ' DEF on Alcor');
+            swapConfirm({ send: n(parseFloat(q.pay), t.dp === 4 ? 4 : 8) + ' ' + SWAP.pay, about: n(parseFloat(q.output), 4),
+                          min: n(parseFloat(q.minReceived), 4), impact: q.priceImpact }, function () {
+                SWAP.quote = null; SWAP.amt = '';
+                run([act(t.contract, 'transfer', { from: S.wallet, to: 'swap.alcor', quantity: quantity, memo: q.memo })],
+                    'swapped ' + quantity + ' for at least ' + n(parseFloat(q.minReceived), 4) + ' DEF on Alcor');
+            });
         };
+        var so = el.querySelector('#pdd-swapopen');
+        if (so) so.onclick = function () { SWAP.open = !SWAP.open; render(); };
         var all = el.querySelector('#pdd-all');
         if (all) all.onclick = function () {
             var list = states().filter(function (s) { return s.status === 'ready' || (S.idleToBest && s.status === 'idle' && s.best); }).map(plan).filter(Boolean);
