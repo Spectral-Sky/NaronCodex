@@ -521,7 +521,7 @@ window.lbSetView = function (v) {
     if (v !== 'buildings') return;
     if (window.aleBuildingsOpen) { window.aleBuildingsOpen(); return; }
     var s = document.createElement('script');
-    s.src = 'ale_buildings.js?v=1.2.77';
+    s.src = 'ale_buildings.js?v=1.2.78';
     s.onload = function () { window.aleBuildingsOpen(); };
     document.body.appendChild(s);
 };

@@ -295,9 +295,10 @@
         if (k === 'land') return '<span title="' + esc(r.landId) + '">' + esc(r.land || r.landId) + '</span>';
         if (k === 'tag') return esc(r.tag) || '<span class="bld-dim">–</span>';
         if (k === 'owner') return esc(r.owner) || '<span class="bld-dim">–</span>';
-        if (k === 'boost') return num(r.boost);
+        // boost as the in-game multiplier (score ÷ 100,000); the raw score is in the tooltip
+        if (k === 'boost') return '<span title="boost score ' + num(r.boost) + '">' + (r.boost / 100000).toFixed(1) + 'x</span>';
         if (k === 'lastBoost') return r.lastBoost
-            ? '<span title="to ' + num(r.lastBoost.target) + ' for ' + num(r.lastBoost.credits) + ' credits' +
+            ? '<span title="to ' + (Number(r.lastBoost.target) / 100000).toFixed(1) + 'x for ' + num(r.lastBoost.credits) + ' credits' +
               (r.lastBoost.gems ? ' + ' + num(r.lastBoost.gems) + ' gems' : '') + ' · ' + iso(r.lastBoost.t).replace('T', ' ') + ' UTC">' +
               ago(r.lastBoost.t) + ' <small>by ' + esc(r.lastBoost.by) + '</small></span>'
             : '<span class="bld-dim">not since 1 Sep</span>';
@@ -568,8 +569,8 @@
             '<button class="dl-btn" id="bld-csv"' + (_rows ? '' : ' disabled') + '>&#8659; CSV</button>' +
             '</div>' +
             '<div class="bld-status">' + esc(_status) + '</div>' +
-            '<p class="bld-note">Owner is whoever holds the land NFT the building stands on. Boost now is an estimate: it ' +
-            'decays ' + DECAY_PER_HOUR + ' an hour and also as the building earns. Fights per day and unique visitors cover the ' +
+            '<p class="bld-note">Owner is whoever holds the land NFT the building stands on. Boost is shown as the in-game multiplier ' +
+            '(boost score ÷ 100,000). Boost now is an estimate: it decays about ' + (DECAY_PER_HOUR * 24 / 100000).toFixed(3) + 'x a day and also as the building earns. Fights per day and unique visitors cover the ' +
             (_fightsFor === 168 ? 'last 7 days' : 'last 24 hours') + '. Hires and reveals don&rsquo;t record which tavern they ' +
             'were at, so taverns show how many players have them as an active tavern instead. TLM, credits and gems wait in the ' +
             'building until the owner claims them; shards are paid to the owner on every visit, so the shards figure is what it has ' +
@@ -631,13 +632,13 @@
     }
 
     function csv() {
-        var head = ['building', 'planet', 'x', 'y', 'land_id', 'land', 'owner_tag', 'owner_wallet', 'boost_now_est',
-                    'last_boost_utc', 'last_boost_by', 'last_boost_target', 'fights_per_day', 'unique_visitors', 'window_hours',
+        var head = ['building', 'planet', 'x', 'y', 'land_id', 'land', 'owner_tag', 'owner_wallet', 'boost_x_now_est',
+                    'last_boost_utc', 'last_boost_by', 'last_boost_target_x', 'fights_per_day', 'unique_visitors', 'window_hours',
                     'tavern_users', 'tlm', 'shards', 'credits', 'gems', 'unclaimed_since_utc'];
         var q = function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
         var lines = [head.join(',')].concat(visible().map(function (r) {
-            return [r.type, r.planet, r.x, r.y, r.landId, r.land, r.tag, r.owner, Math.round(r.boost),
-                    r.lastBoost ? iso(r.lastBoost.t) : '', r.lastBoost ? r.lastBoost.by : '', r.lastBoost ? r.lastBoost.target : '',
+            return [r.type, r.planet, r.x, r.y, r.landId, r.land, r.tag, r.owner, (r.boost / 100000).toFixed(2),
+                    r.lastBoost ? iso(r.lastBoost.t) : '', r.lastBoost ? r.lastBoost.by : '', r.lastBoost ? (Number(r.lastBoost.target) / 100000).toFixed(2) : '',
                     r.fights == null ? '' : r.fights.toFixed(2), r.visitors == null ? '' : r.visitors, _fightsFor || '',
                     r.users == null ? '' : r.users, r.tlm.toFixed(4), r.shards.toFixed(1), r.credits, r.gems,
                     isNaN(r.since) ? '' : iso(r.since)].map(q).join(',');
