@@ -332,7 +332,7 @@
        rewards taken as TLM; the rest is paid as shards. 50 is the default.
        Boost is shown in-game as a multiplier; boost score ÷ 100,000 matches it
        (a new building starts at 350,000 = 3.5x), so 0.1x is 10,000. */
-    var BOOST_X = 100000, MIN_BOOST = 0.1 * BOOST_X;
+    var BOOST_X = 100000, BOOST_STEPS = [0.1, 1, 2, 3, 4, 5, 6], _minX = 0.1;
     /* Building rewards: when a building pays out, pools.ale::claimbreward draws on
        that building type's pools (logged as tlmlndowner / shrdlndowner). The same
        pools also pay the players fighting there. Shard amounts are stored in tenths. */
@@ -407,9 +407,14 @@
         h += '<section class="sp-sec"><h3>All players <small>' + fmtN(nAll) + ' signed up</small></h3>' + legend + splitBar(all, nAll, 'players') +
             '<div class="sp-counts">' + BUCKETS.map(function (b) { return '<span>' + b.label + ': <b>' + fmtN(all[b.k] || 0) + '</b></span>'; }).join('') + '</div></section>';
 
-        // 2. owners with at least one building boosted 0.1x or more
+        // the boost floor the rest of this view uses
+        var mx = _minX + 'x', minBoost = _minX * BOOST_X;
+        h += '<div class="sp-floor"><span class="sp-lab">Min boost</span>' + BOOST_STEPS.map(function (x) {
+            return '<button class="bld-pill' + (x === _minX ? ' on' : '') + '" data-minx="' + x + '">' + x + 'x</button>';
+        }).join('') + '<small>everything below uses buildings boosted ' + mx + ' or more</small></div>';
+        // 2. owners with at least one building boosted that much
         // follows the planet / building / search filters above
-        var boosted = visible().filter(function (r) { return r.boost >= MIN_BOOST && r.owner; });
+        var boosted = visible().filter(function (r) { return r.boost >= minBoost && r.owner; });
         var owners = {}, byOwner = {}, byBoost = {}, totBoost = 0, noProfile = 0, tlmW = 0;
         boosted.forEach(function (r) { (owners[r.owner] = owners[r.owner] || []).push(r); });
         Object.keys(owners).forEach(function (w) {
@@ -420,7 +425,7 @@
             owners[w].forEach(function (r) { byBoost[k] = (byBoost[k] || 0) + r.boost; totBoost += r.boost; tlmW += r.boost * v / 100; });
         });
         var nOwn = Object.keys(owners).length - noProfile;
-        h += '<section class="sp-sec"><h3>Land owners with a building boosted 0.1x or more <small>' + fmtN(nOwn) + ' owners, ' + fmtN(boosted.length) + ' buildings</small></h3>' +
+        h += '<section class="sp-sec"><h3>Land owners with a building boosted ' + mx + ' or more <small>' + fmtN(nOwn) + ' owners, ' + fmtN(boosted.length) + ' buildings</small></h3>' +
             '<div class="sp-row"><span class="sp-lab">By owner</span>' + splitBar(byOwner, nOwn, 'owners') + '</div>' +
             '<div class="sp-row"><span class="sp-lab">By boost</span>' + splitBar(byBoost, totBoost, 'boost') + '</div>' +
             '<p class="sp-key">Of all that boost, <b class="sp-tlm">' + pct(tlmW, totBoost).toFixed(1) + '%</b> is set to earn TLM and <b class="sp-shd">' +
@@ -447,8 +452,8 @@
                 }).join('') + '</tbody></table></div></section>';
         };
         h += renderPools();
-        h += group(function (r) { return r.type.charAt(0).toUpperCase() + r.type.slice(1); }, 'By building <small>buildings boosted 0.1x or more</small>');
-        h += group(function (r) { return r.landType; }, 'By land type <small>buildings boosted 0.1x or more</small>');
+        h += group(function (r) { return r.type.charAt(0).toUpperCase() + r.type.slice(1); }, 'By building <small>buildings boosted ' + mx + ' or more</small>');
+        h += group(function (r) { return r.landType; }, 'By land type <small>buildings boosted ' + mx + ' or more</small>');
         h += '<p class="bld-note">The split setting comes from each player\u2019s profile (players.ale: landowner_tlm_share, the % taken as TLM). ' +
             'Boost multipliers are boost score \u00f7 100,000 (a new building starts at 3.5x). TLM to claim is what waits in those buildings for their owners; ' +
             'shards are paid to the owner on every visit, so that column is what they have earned since their last claim. Together they show where payouts are landing.</p>';
@@ -508,6 +513,7 @@
     function bind(el) {
         el.querySelectorAll('[data-type]').forEach(function (b) { b.onclick = function () { _type = b.getAttribute('data-type'); render(); }; });
         el.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { _view = b.getAttribute('data-view'); render(); }; });
+        el.querySelectorAll('[data-minx]').forEach(function (b) { b.onclick = function () { _minX = Number(b.getAttribute('data-minx')); render(); }; });
         el.querySelectorAll('[data-h]').forEach(function (b) {
             b.onclick = function () { var h = Number(b.getAttribute('data-h')); if (h !== _hours) reloadFights(h); };
         });

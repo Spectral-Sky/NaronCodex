@@ -511,7 +511,7 @@ window.lbSetView = function (v) {
     if (v !== 'buildings') return;
     if (window.aleBuildingsOpen) { window.aleBuildingsOpen(); return; }
     var s = document.createElement('script');
-    s.src = 'ale_buildings.js?v=1.2.72';
+    s.src = 'ale_buildings.js?v=1.2.75';
     s.onload = function () { window.aleBuildingsOpen(); };
     document.body.appendChild(s);
 };
@@ -2044,6 +2044,9 @@ window.lbSetView = function (v) {
     .sp-key { font-size: 0.8em; color: #c8d0dc; line-height: 1.6; }
     .sp-tlm { color: #f0b04a; } .sp-shd { color: #4fd1c5; }
     .sp-table .sp-cell { min-width: 260px; }
+    .sp-floor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 18px; }
+    .sp-floor .sp-lab { margin-right: 4px; }
+    .sp-floor small { color: #a9b4c4; font-size: 0.74em; margin-left: 6px; }
     .sp-pools { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; }
     .sp-mini { flex: 1 1 300px; max-width: 520px; border: 1px solid rgba(232,160,32,0.25); padding: 10px 12px; background: rgba(3,6,15,0.6); }
     .sp-mini-h { font-size: 0.72em; color: #a9b4c4; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
@@ -2066,6 +2069,41 @@ window.lbSetView = function (v) {
     html.day .bld-table td small, html.day .bld-note, html.day .bld-lbl, html.day .bld-dim { color:#3b4866; }
     html.day .bld-status { color:#8a5c00; }
     html.day #bld-planet, html.day #bld-search { background:#f0f4ff; color:#1a2850; border-color:rgba(154,104,0,0.4); }
+
+    /* ── SIZE AND SHAPE (Nov 2026): bigger type, rounded controls ───────────── */
+    .title-bar .sub { font-size: 0.72em; }
+    .lb-views { gap: 8px; margin-top: 16px; }
+    .lb-view { font-size: 0.95em; padding: 11px 26px; border-radius: 10px; letter-spacing: 2px; }
+    .ctrl-btn, .dl-btn, .font-picker-btn { font-size: 0.84em; padding: 8px 16px; border-radius: 8px; }
+    .mode-toggle-btn { border-radius: 8px; }
+    .col-toggle { font-size: 0.74em; padding: 5px 11px; border-radius: 8px; }
+    .cols-seg .col-toggle { border-radius: 0; }
+    .cols-seg .col-toggle:first-child { border-radius: 8px 0 0 8px; }
+    .cols-seg .col-toggle:last-child { border-radius: 0 8px 8px 0; }
+    .cols-edit, .lb-sv-tier-btn, .lb-sv-apply-btn { font-size: 0.72em; border-radius: 8px; }
+    #player-search { font-size: 0.86em; padding: 8px 13px; border-radius: 8px; width: 220px; }
+    .lb-table { font-size: 0.88em; }
+    .lb-sv-table { font-size: 0.8em; }
+    .lb-sv-avg-bar { border-radius: 8px; font-size: 0.8em; }
+    .ale-stat-label { font-size: 0.62em; }
+    .ale-stat-sub { font-size: 0.62em; }
+    .bld-pill { font-size: 0.84em; padding: 7px 14px; border-radius: 8px; }
+    #bld-planet, #bld-search { font-size: 0.86em; padding: 7px 12px; border-radius: 8px; }
+    #bld-search { width: 240px; }
+    .bld-lbl { font-size: 0.78em; }
+    .bld-status { font-size: 0.82em; }
+    .bld-note { font-size: 0.8em; }
+    .bld-table { font-size: 0.88em; }
+    .bld-type { border-radius: 6px; }
+    .sp-sec h3 { font-size: 1em; }
+    .sp-legend, .sp-counts { font-size: 0.82em; }
+    .sp-lab { font-size: 0.82em; }
+    .sp-key { font-size: 0.9em; }
+    .sp-bar { height: 30px; border-radius: 8px; }
+    .sp-bar span { font-size: 0.78em; }
+    .sp-mini { border-radius: 10px; }
+    .sp-mini-h { font-size: 0.8em; }
+    .sp-mini-r { font-size: 0.84em; }
 </style>
 <div id="tip-pop">
     <button onclick="toggleTipPop()" style="position:absolute;top:5px;right:8px;background:transparent;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:1.1em;padding:2px 5px;line-height:1;">✕</button>
