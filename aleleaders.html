@@ -511,7 +511,7 @@ window.lbSetView = function (v) {
     if (v !== 'buildings') return;
     if (window.aleBuildingsOpen) { window.aleBuildingsOpen(); return; }
     var s = document.createElement('script');
-    s.src = 'ale_buildings.js?v=1.2.70';
+    s.src = 'ale_buildings.js?v=1.2.72';
     s.onload = function () { window.aleBuildingsOpen(); };
     document.body.appendChild(s);
 };
@@ -2044,6 +2044,17 @@ window.lbSetView = function (v) {
     .sp-key { font-size: 0.8em; color: #c8d0dc; line-height: 1.6; }
     .sp-tlm { color: #f0b04a; } .sp-shd { color: #4fd1c5; }
     .sp-table .sp-cell { min-width: 260px; }
+    .sp-pools { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; }
+    .sp-mini { flex: 1 1 300px; max-width: 520px; border: 1px solid rgba(232,160,32,0.25); padding: 10px 12px; background: rgba(3,6,15,0.6); }
+    .sp-mini-h { font-size: 0.72em; color: #a9b4c4; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+    .sp-mini-r { display: grid; grid-template-columns: 70px 1fr 70px; gap: 8px; align-items: center; font-size: 0.76em; color: #c8d0dc; margin: 5px 0; }
+    .sp-mini-r b { text-align: right; color: #fff; font-variant-numeric: tabular-nums; }
+    .sp-mini-t { height: 12px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+    .sp-mini-t i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+    .sp-ptlm { background: var(--sp-b4); } .sp-pshd { background: var(--sp-b0); }
+    html.day .sp-mini { background: #f4f8ff; border-color: rgba(154,104,0,0.3); }
+    html.day .sp-mini-r, html.day .sp-mini-h { color: #3b4866; }
+    html.day .sp-mini-r b { color: #1a2850; }
     .sp-table .sp-bar { height: 18px; }
     html.day .sp-sec h3 { color: #1a2850; }
     html.day .sp-counts b { color: #1a2850; }

@@ -277,8 +277,8 @@
         ['type', 'Building', 'txt'], ['planet', 'Planet', 'txt'], ['xy', 'X, Y', 'txt'], ['land', 'Land', 'txt'],
         ['tag', 'Owner', 'txt'], ['owner', 'Wallet', 'txt'], ['boost', 'Boost now', 'num'],
         ['lastBoost', 'Last boosted', 'txt'], ['busy', 'Fights / day', 'num'], ['visitors', 'Unique visitors', 'num'],
-        ['users', 'Tavern users', 'num'], ['tlm', 'TLM', 'num'], ['shards', 'Shards', 'num'],
-        ['credits', 'Credits', 'num'], ['gems', 'Gems', 'num'], ['since', 'Unclaimed since', 'txt']
+        ['users', 'Tavern users', 'num'], ['tlm', 'TLM to claim', 'num'], ['shards', 'Shards since claim', 'num'],
+        ['credits', 'Credits', 'num'], ['gems', 'Gems', 'num'], ['since', 'Last claimed', 'txt']
     ];
     var KEY = {
         xy: function (r) { return r.x * 1000 + r.y; },
@@ -333,6 +333,52 @@
        Boost is shown in-game as a multiplier; boost score ÷ 100,000 matches it
        (a new building starts at 350,000 = 3.5x), so 0.1x is 10,000. */
     var BOOST_X = 100000, MIN_BOOST = 0.1 * BOOST_X;
+    /* Building rewards: when a building pays out, pools.ale::claimbreward draws on
+       that building type's pools (logged as tlmlndowner / shrdlndowner). The same
+       pools also pay the players fighting there. Shard amounts are stored in tenths. */
+    var BPOOLS = [['Arena', 'tlmarena', 'shrdarena'], ['Dungeon', 'tlmdung', 'shrddung'], ['Tavern', 'tlmtavern', 'shrdtavern']];
+    var _pools = null, _poolsBusy = false;
+    async function loadPools() {
+        if (_pools || _poolsBusy) return;
+        _poolsBusy = true;
+        try {
+            var t = await allRows('pools.ale', 'pools.ale', 'tlmpools'), sh = await allRows('pools.ale', 'pools.ale', 'shardpools');
+            var tm = {}, sm = {};
+            t.forEach(function (r) { tm[r.pool] = r; });
+            sh.forEach(function (r) { sm[r.pool] = r; });
+            _pools = BPOOLS.map(function (b) {
+                var tp = tm[b[1]] || {}, sp = sm[b[2]] || {};
+                return { name: b[0], tlmNow: parseFloat(tp.tlm_current) || 0, tlmHr: parseFloat(tp.fillrate) || 0,
+                         shNow: (Number(sp.shard_current) || 0) / 10, shHr: (Number(sp.fillrate_per_hour) || 0) / 10, tp: b[1], sp: b[2] };
+            });
+        } catch (e) { _pools = []; }
+        _poolsBusy = false;
+        if (_view === 'split') render();
+    }
+    // two small single-series bar charts: what each building pool gains per hour
+    function poolChart(key, unit, cls) {
+        var max = Math.max.apply(null, _pools.map(function (p) { return p[key]; }).concat([1e-9]));
+        return '<div class="sp-mini"><div class="sp-mini-h">' + unit + ' added per hour</div>' + _pools.map(function (p) {
+            var w = p[key] / max * 100;
+            return '<div class="sp-mini-r" title="' + esc(p.name + ': ' + fmtN2(p[key]) + ' ' + unit + ' an hour') + '"><span>' + p.name + '</span>' +
+                '<div class="sp-mini-t"><i class="' + cls + '" style="width:' + w.toFixed(1) + '%"></i></div><b>' + fmtN2(p[key]) + '</b></div>';
+        }).join('') + '</div>';
+    }
+    function fmtN2(x) { return Number(x).toLocaleString('en', { maximumFractionDigits: x < 100 ? 2 : 0 }); }
+    function renderPools() {
+        if (!_pools) { loadPools(); return '<section class="sp-sec"><h3>Pools that pay buildings</h3><p class="sp-key">Reading pools.ale…</p></section>'; }
+        if (!_pools.length) return '';
+        return '<section class="sp-sec"><h3>Pools that pay buildings <small>pools.ale, live</small></h3>' +
+            '<div class="sp-pools">' + poolChart('tlmHr', 'TLM', 'sp-ptlm') + poolChart('shHr', 'Shards', 'sp-pshd') + '</div>' +
+            '<div class="bld-wrap"><table class="bld-table sp-table"><thead><tr><th class="txt">Building</th><th class="txt">TLM pool</th><th class="num">In it now</th><th class="num">Added / hour</th>' +
+            '<th class="txt">Shard pool</th><th class="num">In it now</th><th class="num">Added / hour</th></tr></thead><tbody>' +
+            _pools.map(function (p) {
+                return '<tr><td class="txt">' + p.name + '</td><td class="txt">' + p.tp + '</td><td class="num">' + fmtN2(p.tlmNow) + '</td><td class="num">' + fmtN2(p.tlmHr) + '</td>' +
+                    '<td class="txt">' + p.sp + '</td><td class="num">' + fmtN2(p.shNow) + '</td><td class="num">' + fmtN2(p.shHr) + '</td></tr>';
+            }).join('') + '</tbody></table></div>' +
+            '<p class="sp-key">A building\u2019s owner is paid from its type\u2019s pools (in the chain\u2019s reward log as tlmlndowner and shrdlndowner); ' +
+            'the same pools also pay the players fighting or hiring there.</p></section>';
+    }
     var BUCKETS = [
         { k: 'b0', label: 'All shards', test: function (v) { return v === 0; } },
         { k: 'b1', label: 'Mostly shards', test: function (v) { return v > 0 && v < 50; } },
@@ -393,18 +439,19 @@
             var keys = Object.keys(g).sort(function (a, b) { return g[b].n - g[a].n; });
             return '<section class="sp-sec"><h3>' + title + '</h3><div class="bld-wrap"><table class="bld-table sp-table"><thead><tr><th class="txt">' +
                 (title.indexOf('land') >= 0 ? 'Land type' : 'Building') + '</th><th class="num">Buildings</th><th class="txt">Owners\u2019 settings</th><th class="num">Boost set to TLM</th>' +
-                '<th class="num">Unclaimed TLM</th><th class="num">Unclaimed shards</th></tr></thead><tbody>' +
+                '<th class="num">TLM to claim</th><th class="num">Shards since last claim</th></tr></thead><tbody>' +
                 keys.map(function (k) {
                     var x = g[k];
                     return '<tr><td class="txt">' + esc(k) + '</td><td class="num">' + fmtN(x.n) + '</td><td class="txt sp-cell">' + splitBar(x.cnt, x.n, 'buildings') + '</td>' +
                         '<td class="num">' + pct(x.tlmW, x.boost).toFixed(0) + '%</td><td class="num">' + fmtN(x.tlm) + '</td><td class="num">' + fmtN(x.shards) + '</td></tr>';
                 }).join('') + '</tbody></table></div></section>';
         };
-        h += group(function (r) { return r.landType; }, 'By land type <small>buildings boosted 0.1x or more</small>');
+        h += renderPools();
         h += group(function (r) { return r.type.charAt(0).toUpperCase() + r.type.slice(1); }, 'By building <small>buildings boosted 0.1x or more</small>');
+        h += group(function (r) { return r.landType; }, 'By land type <small>buildings boosted 0.1x or more</small>');
         h += '<p class="bld-note">The split setting comes from each player\u2019s profile (players.ale: landowner_tlm_share, the % taken as TLM). ' +
-            'Boost multipliers are boost score \u00f7 100,000 (a new building starts at 3.5x). Unclaimed TLM and shards are what those buildings have earned since their last claim, ' +
-            'so they show where the payouts are actually landing.</p>';
+            'Boost multipliers are boost score \u00f7 100,000 (a new building starts at 3.5x). TLM to claim is what waits in those buildings for their owners; ' +
+            'shards are paid to the owner on every visit, so that column is what they have earned since their last claim. Together they show where payouts are landing.</p>';
         return h;
     }
 
@@ -436,8 +483,9 @@
             '<p class="bld-note">Owner is whoever holds the land NFT the building stands on. Boost now is an estimate: it ' +
             'decays ' + DECAY_PER_HOUR + ' an hour and also as the building earns. Fights per day and unique visitors cover the ' +
             (_fightsFor === 168 ? 'last 7 days' : 'last 24 hours') + '. Hires and reveals don&rsquo;t record which tavern they ' +
-            'were at, so taverns show how many players have them as an active tavern instead. TLM, shards, credits and gems ' +
-            'are what the building has earned since it was last claimed.</p>';
+            'were at, so taverns show how many players have them as an active tavern instead. TLM, credits and gems wait in the ' +
+            'building until the owner claims them; shards are paid to the owner on every visit, so the shards figure is what it has ' +
+            'earned since the last claim.</p>';
 
         if (!_rows) {
             el.innerHTML = h + '<div class="bld-empty">Loading…</div>';
