@@ -107,6 +107,17 @@
         .phase-subheader { color: var(--theme-color); font-size: 0.9em; margin-bottom: 20px; font-family: monospace; letter-spacing: 1px; }
         
         .module-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 50px; }
+        /* PD: the missions hub leads; the pre-V3 pages sit underneath, quieter */
+        .pd-hub-card { min-height: 120px; border-width: 2px; border-color: #2b5f93; }
+        .pd-hub-card .card-title { font-size: 1.25em; }
+        .legacy-label { margin: 8px 0 -4px; color: #4a5f78; font-family: monospace; font-size: 0.78em; letter-spacing: 3px; }
+        .legacy-label span { letter-spacing: 1px; margin-left: 8px; color: #3a4a5c; }
+        .module-card.legacy-card { border: 1px dashed #26324a; background: rgba(0,0,0,0.35); padding: 12px 16px; opacity: 0.72; }
+        .module-card.legacy-card:hover { opacity: 1; }
+        .module-card.legacy-card .card-title { font-size: 0.95em; }
+        .module-card.legacy-card .card-fan, .module-card.legacy-card .fan-pd-mats { transform: scale(0.8); }
+        .card-status.legacy-status { background: transparent; color: #6a7c94; border: 1px solid #33425a; }
+        .legacy-item { opacity: 0.6; }
         
         /* --- CARD FAN UI --- */
         .module-card {
@@ -517,9 +528,10 @@
             <div class="nav-dropdown-wrap dd-pd">
                 <button class="nav-btn nav-dropdown-btn"><img src="https://cdn.discordapp.com/icons/1187353785136320592/a_c13a45b66308d8ab5c08d02af58bf6d7.webp?size=64&animated=true" onerror="this.onerror=null;this.style.display='none'" style="height:13px;vertical-align:middle;margin-right:3px;">PD &#9660;</button>
                 <div class="nav-dropdown-menu">
-                    <a href="pd.units.html" class="nav-dropdown-item">PD UNITS</a>
-                    <a href="pd.materials.html" class="nav-dropdown-item">PD MATS</a>
-                    <a href="army.html" class="nav-dropdown-item">ARMY BUILDER</a>
+                    <a href="miss.pdef.html" class="nav-dropdown-item">PD MISSIONS HUB</a>
+                    <a href="pd.units.html" class="nav-dropdown-item legacy-item">PD UNITS · LEGACY</a>
+                    <a href="pd.materials.html" class="nav-dropdown-item legacy-item">PD MATS · LEGACY</a>
+                    <a href="army.html" class="nav-dropdown-item legacy-item">ARMY BUILDER · LEGACY</a>
                 </div>
             </div>
             <div class="nav-dropdown-wrap dd-ale">
@@ -570,9 +582,10 @@
     <a href="tools.worlds.html" class="nav-btn">TOOLS</a>
     <a href="faces.worlds.html" class="nav-btn">FACES</a>
     <a href="land.worlds.html" class="nav-btn">LAND</a>
-    <a href="pd.units.html" class="nav-btn">PD UNITS</a>
-    <a href="pd.materials.html" class="nav-btn">PD MATS</a>
-    <a href="army.html" class="nav-btn">ARMY BUILDER</a>
+    <a href="miss.pdef.html" class="nav-btn">PD MISSIONS HUB</a>
+    <a href="pd.units.html" class="nav-btn legacy-item">PD UNITS · LEGACY</a>
+    <a href="pd.materials.html" class="nav-btn legacy-item">PD MATS · LEGACY</a>
+    <a href="army.html" class="nav-btn legacy-item">ARMY BUILDER · LEGACY</a>
     <a href="ale.html" class="nav-btn">&#9876; ALE STATS</a>
     <a href="alewiki.html" class="nav-btn">&#9672; ALE WIKI</a>
     <a href="alements.html" class="nav-btn">&#11041; STAT EXPLORER</a>
@@ -771,16 +784,24 @@
     <div class="phase-header" style="border-color: #1a3a5c; color: #5badff; text-shadow: 0 0 8px rgba(91,173,255,0.4);">
         PLANETARY DEFENSE
     </div>
-    <div class="phase-subheader" style="color: #3a6a8a;">Browse planetdefnft templates and crafting materials</div>
+    <div class="phase-subheader" style="color: #3a6a8a;">Missions, divisions, stats and the Bastion bot</div>
     <a href="https://www.planetarydefense.io/" target="_blank" style="display:block; margin-bottom:15px;">
         <img src="PDsplash.png" alt="Planetary Defense" style="width:100%; max-height:160px; object-fit:cover; object-position:center; display:block; border:1px solid #1a3a5c; filter:brightness(0.9); transition:filter 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='brightness(0.9)'">
     </a>
     <div class="module-grid">
-        <a href="pd.units.html" class="module-card pd-module-card">
+        <a href="miss.pdef.html" class="module-card pd-module-card pd-hub-card">
+            <div class="card-text-wrapper">
+                <div class="card-title">PD MISSIONS HUB</div>
+                <span class="card-schema">Missions board · your divisions · claim &amp; resend · stake &amp; build · forge · stats · Bastion bot</span>
+                <div class="card-status status-live">SYSTEM LIVE</div>
+            </div>
+        </a>
+        <div class="legacy-label">LEGACY <span>older pages, from before PD V3</span></div>
+        <a href="pd.units.html" class="module-card pd-module-card legacy-card">
             <div class="card-text-wrapper">
                 <div class="card-title">PD UNITS</div>
                 <span class="card-schema">Equipment · Creatures · Mercenaries · Warlords · Supplies</span>
-                <div class="card-status status-live">SYSTEM LIVE</div>
+                <div class="card-status legacy-status">LEGACY</div>
             </div>
             <div class="card-fan fan-pd">
                 <img src="https://wsrv.nl/?url=ipfs.io/ipfs/QmS1Bj3aEHvLu36S46uJbSTnNDrLtmpvT9Qa2GpJcdFJ1c&w=120&output=webp" class="fan-img">
@@ -790,11 +811,11 @@
                 <img src="https://wsrv.nl/?url=ipfs.io/ipfs/QmXRLbuoo2MDTjmMpU7mpBG6v3VHRGiuPu8fPv1gVLp8F9&w=120&output=webp" class="fan-img">
             </div>
         </a>
-        <a href="pd.materials.html" class="module-card pd-module-card">
+        <a href="pd.materials.html" class="module-card pd-module-card legacy-card">
             <div class="card-text-wrapper">
                 <div class="card-title">PD MATERIALS</div>
                 <span class="card-schema">Crafting &amp; Upgrade Materials</span>
-                <div class="card-status status-live">SYSTEM LIVE</div>
+                <div class="card-status legacy-status">LEGACY</div>
             </div>
             <div class="fan-pd-mats">
                 <img src="https://i.imgur.com/tuYOBXw.png" class="fan-img">
@@ -804,19 +825,11 @@
                 <img src="https://i.imgur.com/4gxqdHH.png" class="fan-img">
             </div>
         </a>
-        <a href="miss.pdef.html" class="module-card pd-module-card">
-            <div class="card-text-wrapper">
-                <div class="card-title">PD MISSIONS</div>
-                <span class="card-schema">V3 mission values — WAX/hr, rewards &amp; entry costs</span>
-                <div class="card-status status-live">SYSTEM LIVE</div>
-            </div>
-        </a>
-        <a href="army.html" class="module-card pd-module-card" id="army-card">
+        <a href="army.html" class="module-card pd-module-card legacy-card" id="army-card">
             <div class="card-text-wrapper">
                 <div class="card-title">PD ARMY BUILDER</div>
                 <span class="card-schema">Utility: Strategic Builder</span>
-                <div class="card-status status-live">SYSTEM LIVE</div>
-                <div class="card-status" style="background:#001a0d;color:#00ffaa;border:1px solid #00ffaa;margin-top:4px;">✦ NEW: DIVISIONS VIEW</div>
+                <div class="card-status legacy-status">LEGACY</div>
             </div>
             <div class="card-fan fan-warlords" id="army-fan">
                 <img src="https://wsrv.nl/?url=ipfs.io/ipfs/QmSb6Zt8upZK5CxQhzuZmjBR4RytrnYsKzWG6nHFfibeps&w=120&output=webp" class="fan-img">
@@ -1016,7 +1029,7 @@
 
         </div>
         <div style="text-align:center; padding: 12px 0 4px; font-family:'Courier New',monospace; font-size:0.72em; color:#252535; letter-spacing:2px; display:flex; justify-content:center; align-items:center; gap:14px;">
-            <span>v 1.2.70</span>
+            <span>v 1.2.71</span>
             <a href="ep.html" style="color:#252535; text-decoration:none; border:1px solid #1a1a2a; padding:2px 10px; letter-spacing:2px; transition:all 0.2s;" onmouseover="this.style.color='var(--theme-color)';this.style.borderColor='var(--theme-color)'" onmouseout="this.style.color='#252535';this.style.borderColor='#1a1a2a'">ENDPOINTS</a>
         </div>
     </footer>

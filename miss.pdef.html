@@ -110,7 +110,11 @@
         .logo-section h1 { color: var(--strong); margin: 0; font-size: 1.12em; font-weight: 700; letter-spacing: 0.2px; white-space: nowrap; }
         .logo-section h1 .mark { color: var(--accent); margin-right: 6px; }
         .logo-section .logo-sub { color: var(--text-dim); font-size: 0.72em; margin-top: 1px; white-space: nowrap; }
-        .nav-links { display: flex; gap: 2px; align-items: center; overflow-x: auto; }
+        .nav-links { display: flex; gap: 2px; align-items: center; flex-wrap: wrap; }
+        .global-header { overflow: visible; }
+        .nav-dropdown-wrap .nav-dropdown-btn { color: var(--text-muted); font-size: 0.86em; font-weight: 600; padding: 7px 12px; border: none; background: transparent; }
+        .nav-dropdown-wrap .nav-dropdown-btn:hover { color: var(--strong); background: var(--accent-dim); }
+        .nav-dropdown-menu { left: 0; right: auto; }
         .nav-btn { color: var(--text-muted); padding: 7px 12px; font-size: 0.86em; font-weight: 600; text-decoration: none;
             border-radius: var(--radius-sm); transition: background .15s, color .15s; white-space: nowrap; }
         .nav-btn:hover { color: var(--strong); background: var(--accent-dim); }
@@ -616,12 +620,41 @@
             <div class="logo-sub">Planetary Defense V3 · Live Board</div>
         </div>
     </div>
-    <nav class="nav-links">
-        <a href="index.html" class="nav-btn">Home</a>
-        <a href="pd.units.html" class="nav-btn">PD Units</a>
-        <a href="pd.materials.html" class="nav-btn">Materials</a>
-        <a href="army.html" class="nav-btn">Army Builder</a>
-        <a href="miss.pdef.html" class="nav-btn active">Missions</a>
+    <nav class="nav-links" aria-label="Naron Codex">
+        <a href="index.html" class="nav-btn">Hub</a>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">AW &#9662;</button>
+            <div class="nav-dropdown-menu">
+                <a href="crew.worlds.html" class="nav-dropdown-item">Crew</a>
+                <a href="arms.worlds.html" class="nav-dropdown-item">Arms</a>
+                <a href="tools.worlds.html" class="nav-dropdown-item">Tools</a>
+                <a href="faces.worlds.html" class="nav-dropdown-item">Faces</a>
+                <a href="land.worlds.html" class="nav-dropdown-item">Land</a>
+            </div>
+        </div>
+        <a href="miss.pdef.html" class="nav-btn active" aria-current="page">PD</a>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">ALE &#9662;</button>
+            <div class="nav-dropdown-menu">
+                <a href="ale.html" class="nav-dropdown-item">ALE Stats</a>
+                <a href="alewiki.html" class="nav-dropdown-item">ALE Wiki</a>
+                <a href="alements.html" class="nav-dropdown-item">Stat Explorer</a>
+                <a href="aleleaders.html" class="nav-dropdown-item">Leaderboard</a>
+                <a href="fighters.html" class="nav-dropdown-item">My Fighters</a>
+                <a href="market.html" class="nav-dropdown-item">Fighter Market</a>
+                <a href="wax.html" class="nav-dropdown-item">Candle Calculator</a>
+                <a href="pools.html" class="nav-dropdown-item">Reward Pools</a>
+            </div>
+        </div>
+        <div class="nav-dropdown-wrap">
+            <button class="nav-btn nav-dropdown-btn">Utility &#9662;</button>
+            <div class="nav-dropdown-menu">
+                <a href="stash.html" class="nav-dropdown-item">Stash</a>
+                <a href="outpost.html" class="nav-dropdown-item">Outpost</a>
+                <a href="mc.html" class="nav-dropdown-item">Mission Control</a>
+                <a href="ep.html" class="nav-dropdown-item">Endpoints</a>
+            </div>
+        </div>
     </nav>
     <div class="wallet-section" id="wallet-section">
         <button class="wallet-btn" id="wallet-btn" onclick="walletAction()">[ CONNECT ]</button>
