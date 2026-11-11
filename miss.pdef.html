@@ -357,6 +357,31 @@
         .pdd-tok { width: 1.15em; height: 1.15em; border-radius: 50%; vertical-align: -0.22em; margin-right: 5px; object-fit: contain; }
         .pdd-segb .pdd-tok { margin-right: 4px; }
         .price-ticker .pdd-tok { width: 16px; height: 16px; }
+        .hub-tabs { display: flex; gap: 4px; max-width: 1480px; margin: 0 auto; padding: 14px 20px 0; flex-wrap: wrap; }
+        .hub-tab { background: transparent; border: 1px solid transparent; color: var(--text-muted); font-size: 1em; font-weight: 700;
+            padding: 9px 18px; border-radius: 999px; cursor: pointer; }
+        .hub-tab:hover { color: var(--strong); background: var(--accent-dim); }
+        .hub-tab.on { color: var(--accent); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+        [data-hubpanel][hidden] { display: none !important; }
+        .bas-body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 22px; }
+        .bas-h { margin: 0 0 12px; font-size: 1.02em; color: var(--strong); }
+        .bas-h small { color: var(--text-muted); font-weight: 500; }
+        .bas-chartwrap { position: relative; border: 1px solid var(--border); border-radius: 10px; padding: 12px 12px 6px; margin-bottom: 12px; background: var(--bg2); max-width: 820px; }
+        .bas-charth { font-size: 0.9em; font-weight: 600; color: var(--strong); margin-bottom: 6px; }
+        .bas-charth small { color: var(--text-muted); font-weight: 500; margin-left: 6px; }
+        .bas-chart { width: 100%; height: auto; display: block; }
+        .bas-grid { stroke: var(--line); stroke-width: 1; }
+        .bas-ax { fill: var(--text-dim); font-size: 11px; }
+        .bas-val { fill: var(--text); font-size: 12px; font-weight: 700; }
+        .bas-bar path { fill: var(--accent); }
+        .bas-bar.bas-part path { fill: color-mix(in srgb, var(--accent) 45%, var(--bg2)); }
+        .bas-bar.on path { fill: color-mix(in srgb, var(--accent) 80%, #fff); }
+        .bas-hit { fill: transparent; }
+        .bas-tip { position: absolute; z-index: 5; width: 170px; pointer-events: none; transform: translateY(-100%); background: var(--surface);
+            border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 0.8em; color: var(--text-muted); box-shadow: var(--shadow); }
+        .bas-tip b { color: var(--strong); }
+        .bas-name { white-space: normal; }
+        .bas-emoji { width: 18px; height: 18px; vertical-align: -0.25em; }
         .pdd-swap-t { font-weight: 700; color: var(--strong); font-size: 1em; margin-right: 4px; }
         .pdd-swap input { width: 120px; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 11px; border-radius: 10px; font-size: 0.95em; }
         .pdd-swap a.pdd-btn { text-decoration: none; }
@@ -540,10 +565,17 @@
     </div>
 </div>
 
-<main class="page">
-<section class="panel" id="pd-divs"></section>
+<nav class="hub-tabs" role="tablist" aria-label="Planetary Defense hub">
+    <button class="hub-tab" role="tab" data-hub="mypd" aria-controls="pd-divs">My PD</button>
+    <button class="hub-tab" role="tab" data-hub="missions" aria-controls="board">Missions</button>
+    <button class="hub-tab" role="tab" data-hub="bastion" aria-controls="bastion">Bastion</button>
+</nav>
 
-<section class="panel board" id="board">
+<main class="page">
+<section class="panel" id="pd-divs" data-hubpanel="mypd"></section>
+<section class="panel" id="bastion" data-hubpanel="bastion" hidden></section>
+
+<section class="panel board" id="board" data-hubpanel="missions">
     <div class="panel-h"><h2>Missions board</h2><p>Every live Planetary Defense mission. Click a mission for its story and your divisions on it.</p></div>
 <!-- ── FILTER BAR ── -->
 <div class="filter-bar">
@@ -1852,6 +1884,34 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchPrices();
 });
 </script>
-<script src="pd_divisions.js?v=1.2.63"></script>
+<script>
+(function () {
+    var TABS = ['mypd', 'missions', 'bastion'];
+    function setHub(t, push) {
+        if (TABS.indexOf(t) < 0) t = 'mypd';
+        document.querySelectorAll('[data-hubpanel]').forEach(function (el) { el.hidden = el.getAttribute('data-hubpanel') !== t; });
+        document.querySelectorAll('.hub-tab').forEach(function (b) {
+            var on = b.getAttribute('data-hub') === t;
+            b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        try { localStorage.setItem('pd_hub', t); } catch (e) {}
+        if (push && location.hash !== '#' + t) history.replaceState(null, '', '#' + t);
+        if (t === 'bastion') {
+            if (window.bastionOpen) window.bastionOpen();
+            else if (!document.getElementById('bastion-js')) {
+                var sc = document.createElement('script'); sc.id = 'bastion-js'; sc.src = 'bastion.js?v=1.2.64';
+                sc.onload = function () { window.bastionOpen(); }; document.body.appendChild(sc);
+            }
+        }
+    }
+    window.setHub = setHub;
+    document.querySelectorAll('.hub-tab').forEach(function (b) { b.onclick = function () { setHub(b.getAttribute('data-hub'), true); }; });
+    window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (TABS.indexOf(h) >= 0) setHub(h); });
+    var h = location.hash.slice(1), saved = '';
+    try { saved = localStorage.getItem('pd_hub') || ''; } catch (e) {}
+    setHub(TABS.indexOf(h) >= 0 ? h : saved || 'mypd');
+})();
+</script>
+<script src="pd_divisions.js?v=1.2.64"></script>
 </body>
 </html>
