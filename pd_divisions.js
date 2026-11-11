@@ -158,7 +158,7 @@
     }
 
     async function load(wallet) {
-        S.loading = true; S.wallet = wallet; S.own = !!wallet && wallet === me(); S.msg = ''; S.qty = {}; if (S.b) S.b.targets = null;
+        S.loading = true; S.wallet = wallet; S.own = !!wallet && wallet === me(); S.msg = ''; S.qty = {}; if (S.b) S.b.targets = null; SWAP.quote = null; SWAP.amt = ''; SWAP.err = '';
         render();
         try {
             var got = await Promise.all([
@@ -174,7 +174,8 @@
                 table('forge.pdef', 'forge.pdef', 'shopcats'), table('forge.pdef', 'forge.pdef', 'itemcats'),
                 table('forge.pdef', wallet, 'powerups'),
                 table('miss.pdef', 'miss.pdef', 'shardrews').catch(function () { return []; }),
-                table('miss.pdef', 'miss.pdef', 'shardcaps').catch(function () { return []; })
+                table('miss.pdef', 'miss.pdef', 'shardcaps').catch(function () { return []; }),
+                bal('eosio.token', wallet, 'WAX')
             ]);
             var d = {
                 divs: got[0], units: got[1], locks: got[2], inGame: got[3].map(function (b) { return b.balance; }),
@@ -187,6 +188,7 @@
             d.shards = {}; d.shardLeft = {};
             got[20].forEach(function (r) { d.shards[r.reward_config_id] = Number(r.shard_reward) / 10; });   // stored in tenths
             got[21].forEach(function (c) { d.shardLeft[c.mission_id] = Math.max(0, Number(c.max_joins) - Number(c.joins_consumed)); });
+            d.waxBal = got[22];
             got[5].forEach(function (m) { var meta = {}; try { meta = JSON.parse(m.meta || '{}'); } catch (e) {} m._meta = meta; d.missions[m.mission_id] = m; });
             got[6].forEach(function (c) { d.costs[c.mission_id] = amt(c.cost); });
             got[7].forEach(function (c) { d.cfgs[c.reward_config_id] = c; });
@@ -366,7 +368,76 @@
         var t = TOKENS[sym];
         return act(t.contract, 'transfer', { from: S.wallet, to: 'core.pdef', quantity: x.toFixed(t.dp) + ' ' + sym, memo: 'deposit' });
     }
-    function walletBal(sym) { return sym === 'DEF' ? S.data.defBal : sym === 'TLM' ? S.data.tlmBal : null; }
+    function walletBal(sym) { return sym === 'DEF' ? S.data.defBal : sym === 'TLM' ? S.data.tlmBal : sym === 'WAX' ? S.data.waxBal : null; }
+
+    /* ── Get DEF on Alcor ─────────────────────────────────────────────────────
+       Alcor's router prices "N DEF out"; its most-it-may-cost (maxSent, with slippage)
+       is then swapped as an exact input, whose guaranteed minimum is at least N DEF.
+       So the wallet gets the DEF it needs (a little more if the price holds) without
+       relying on Alcor refunding a remainder. One transfer to swap.alcor with the memo
+       the router hands back. Pools 10447 (TLM) and 10448 (WAX). */
+    var PAY = { TLM: { contract: 'alien.worlds', dp: 4, id: 'tlm-alien.worlds', alcor: 'TLM-alien.worlds' },
+                WAX: { contract: 'eosio.token', dp: 8, id: 'wax-eosio.token', alcor: 'WAX-eosio.token' } };
+    var SWAP = { amt: '', pay: 'TLM', slip: 1, quote: null, err: '', seq: 0, timer: null };
+    function alcorLink() { return 'https://wax.alcor.exchange/swap?input=' + PAY[SWAP.pay].alcor + '&output=DEF-defensetoken'; }
+    // DEF the wallet is short for the ready-and-idle bundle, so the box can start there
+    function defNeeded() {
+        try {
+            var list = states().filter(function (s) { return s.status === 'ready' || (S.idleToBest && s.status === 'idle' && s.best); }).map(plan).filter(Boolean);
+            var dep = shortfall(list).DEF || 0, have = S.data.defBal || 0;
+            return dep > have ? Math.ceil((dep - have) * 100) / 100 : 0;
+        } catch (e) { return 0; }
+    }
+    async function swapQuote() {
+        var x = parseFloat(SWAP.amt), seq = ++SWAP.seq;
+        SWAP.quote = null; SWAP.err = '';
+        if (!(x > 0)) { swapPaint(); return; }
+        swapPaint('Getting a quote from Alcor…');
+        try {
+            var route = async function (type, amount) {
+                var r = await fetch('https://wax.alcor.exchange/api/v2/swapRouter/getRoute?trade_type=' + type + '&input=' + PAY[SWAP.pay].id +
+                    '&output=def-defensetoken&amount=' + amount + '&slippage=' + SWAP.slip.toFixed(2) + '&receiver=' + S.wallet + '&maxHops=2',
+                    { signal: AbortSignal.timeout(15000) });
+                if (!r.ok) throw new Error('Alcor ' + r.status);
+                var q = await r.json();
+                if (!q.memo) throw new Error('no route for that amount');
+                return q;
+            };
+            var out = await route('EXACT_OUTPUT', x);
+            var pay = parseFloat(out.maxSent).toFixed(PAY[SWAP.pay].dp);
+            var q = await route('EXACT_INPUT', pay);
+            if (seq !== SWAP.seq) return;
+            if (!/^swapexactin#/.test(q.memo)) throw new Error('unexpected route from Alcor');
+            q.pay = pay; q.need = x;
+            SWAP.quote = q;
+        } catch (e) { if (seq === SWAP.seq) SWAP.err = 'No quote: ' + e.message; }
+        if (seq === SWAP.seq) swapPaint();
+    }
+    // repaint only the quote line and button, so typing in the box isn't interrupted
+    function swapPaint(busy) {
+        var el = document.getElementById('pdd-swapq'), btn = document.getElementById('pdd-swapgo');
+        if (!el) return;
+        var q = SWAP.quote, sym = SWAP.pay, have = walletBal(sym);
+        var max = q ? parseFloat(q.pay) : 0, short = q && have != null && have < max;
+        el.innerHTML = busy ? esc(busy) : SWAP.err ? '<span class="pdd-bad">' + esc(SWAP.err) + '</span>' : !q ? 'Type how much DEF you need.' :
+            'Pays <b>' + n(max, PAY[sym].dp === 4 ? 2 : 4) + ' ' + sym + '</b> → about <b>' + n(parseFloat(q.output), 4) + ' DEF</b>' +
+            ', at least ' + n(parseFloat(q.minReceived), 4) + ' DEF if the price moves up to ' + SWAP.slip + '%' +
+            ' · price impact ' + esc(q.priceImpact) + '%' + (Number(q.priceImpact) >= 5 ? ' <span class="pdd-bad">high: the pool is small</span>' : '') +
+            (short ? ' · <span class="pdd-bad">you have ' + n(have, 4) + ' ' + sym + '</span>' : '');
+        if (btn) btn.disabled = !(q && signable() && !short);
+        var a = document.getElementById('pdd-swapalc'); if (a) a.href = alcorLink();
+    }
+    function swapHtml() {
+        if (SWAP.amt === '' && S.data) { var need = defNeeded(); if (need) SWAP.amt = String(need); }
+        return '<div class="pdd-swap"><span class="pdd-swap-t">Get DEF</span>' +
+            '<input type="number" id="pdd-swapamt" min="0" step="any" placeholder="DEF needed" value="' + esc(SWAP.amt) + '"> <span class="pdd-hint">DEF, paying with</span>' +
+            '<span class="pdd-seg">' + Object.keys(PAY).map(function (k) { return '<button class="pdd-segb' + (SWAP.pay === k ? ' on' : '') + '" data-swappay="' + k + '">' + k + '</button>'; }).join('') + '</span>' +
+            '<select class="pdd-sel" id="pdd-swapslip" title="Slippage: the most the price may move before the swap fails">' + [0.5, 1, 3].map(function (v) {
+                return '<option value="' + v + '"' + (SWAP.slip === v ? ' selected' : '') + '>' + v + '% slippage</option>'; }).join('') + '</select>' +
+            '<button class="pdd-go pdd-sm" id="pdd-swapgo" disabled>Swap for DEF</button>' +
+            '<a class="pdd-btn pdd-sm" id="pdd-swapalc" href="' + alcorLink() + '" target="_blank" rel="noopener">Open on Alcor ↗</a>' +
+            '<div class="pdd-swapq" id="pdd-swapq"></div></div>';
+    }
     function depositLabel(dep) {
         var k = Object.keys(dep);
         return k.length ? ' + deposit ' + k.map(function (sym) { return n(dep[sym], TOKENS[sym].dp) + ' ' + sym; }).join(' + ') : '';
@@ -378,7 +449,8 @@
         if (lacking.length) {
             S.msg = '✗ Not enough in your wallet to cover the entry fees: needs ' + lacking.map(function (sym) {
                 return n(dep[sym], TOKENS[sym].dp) + ' ' + sym + ' (you have ' + n(walletBal(sym), TOKENS[sym].dp) + ')';
-            }).join(', ');
+            }).join(', ') + (lacking.indexOf('DEF') >= 0 ? '. Use Get DEF below to swap TLM or WAX for it.' : '');
+            if (lacking.indexOf('DEF') >= 0) { SWAP.amt = String(Math.ceil((dep.DEF - (S.data.defBal || 0)) * 100) / 100); SWAP.quote = null; }
             render(); return;
         }
         var acts = claims.concat(Object.keys(dep).map(function (sym) { return depositAct(sym, dep[sym]); }), joins);
@@ -494,7 +566,7 @@
             (signable() ? '<div class="pdd-deposit"><span class="pdd-hint">Top up the in-game balance (entry fees come out of it):</span>' +
                 '<input type="number" id="pdd-depamt" min="0" step="any" placeholder="amount" value="' + esc(S.depAmt || '') + '">' +
                 '<select class="pdd-sel" id="pdd-depsym">' + Object.keys(TOKENS).map(function (k) { return '<option' + (S.depSym === k ? ' selected' : '') + '>' + k + '</option>'; }).join('') + '</select>' +
-                '<button class="pdd-btn" id="pdd-dep">Deposit to core.pdef</button></div>' : '');
+                '<button class="pdd-btn" id="pdd-dep">Deposit to core.pdef</button></div>' : '') + swapHtml();
         if (!d.divs.length)
             return h + '<div class="pdd-empty">No divisions yet' + (d.forge != null ? ' (forge level ' + d.forge + ')' : '') +
                 '. Use <b>Stake &amp; build</b> to stake a warlord and create one.</div>';
@@ -510,8 +582,8 @@
 
         h += '<div class="pdd-wrap"><table class="pdd-table"><thead><tr>' +
             '<th class="txt">Division</th><th class="num">Units</th><th class="num">ATK</th><th class="num">DEF</th><th class="num">Move</th>' +
-            '<th class="txt">On mission</th><th class="txt">Status</th><th class="num">That mission / h</th><th class="txt">Best for it</th>' +
-            '<th class="txt">Next mission (best / h first)</th><th class="txt"></th></tr></thead><tbody>';
+            '<th class="txt">On mission</th><th class="txt">Status</th><th class="txt">Next mission (best / h first)</th><th class="txt"></th>' +
+            '<th class="num">That mission / h</th><th class="txt">Best for it</th></tr></thead><tbody>';
         all.forEach(function (st) {
             var x = st.div, to = target(st), p = plan(st);
             var curM = st.lock ? d.missions[st.lock.mission_id] : null;
@@ -537,14 +609,14 @@
                 '<b>#' + x.division_id + '</b> <small>' + esc(lead.name) + '</small></td>' +
                 '<td class="num">' + st.units.length + '<small>/' + x.slots_max + '</small></td><td class="num">' + n(x.atk_cached) + '</td>' +
                 '<td class="num">' + n(x.def_cached) + '</td><td class="num">' + n(x.movecost_cached) + '</td>' +
-                '<td class="txt">' + (curM ? esc('#' + curM.mission_id + ' ' + (curM._meta.title || '')) + ' <small>' + esc(curM._meta.planet || '') + '</small>' : '<span class="pdd-dim">–</span>') + '</td>' +
-                '<td class="txt">' + status + '</td><td class="num">' + (st.cur ? perH(st.cur) : '–') + '</td>' +
+                '<td class="txt pdd-onm">' + (curM ? esc('#' + curM.mission_id + ' ' + (curM._meta.title || '')) + ' <small>' + esc(curM._meta.planet || '') + '</small>' : '<span class="pdd-dim">–</span>') + '</td>' +
+                '<td class="txt">' + status + '</td><td class="txt">' + sel + '</td><td class="txt"><span class="pdd-acts">' + actBtn + '</span></td>' +
+                '<td class="num">' + (st.cur ? perH(st.cur) : '–') + '</td>' +
                 '<td class="txt">' + (st.best ? '<span class="' + (better ? 'pdd-better' : 'pdd-same') + '" title="' +
                     esc((st.best.m._meta.title || '') + ' · reward ' + st.best.reward.label + ' · entry ' + (st.best.cost.n ? n(st.best.cost.n, 4) + ' ' + st.best.cost.sym : 'free') + ' · locks ' + dur(st.best.secs)) + '">#' +
                     st.best.m.mission_id + ' ' + perH(st.best) + '/h</span>' +
                     (st.cur && better && String(st.best.m.mission_id) !== String(st.lock.mission_id) ? ' <small>+' + (st.best.reward.est || st.cur.reward.est ? '~' : '') + show(st.best.perHour - st.cur.perHour) + '</small>' : '')
-                    : '<span class="pdd-dim">none</span>') + '</td>' +
-                '<td class="txt">' + sel + '</td><td class="txt"><span class="pdd-acts">' + actBtn + '</span></td></tr>';
+                    : '<span class="pdd-dim">none</span>') + '</td></tr>';
             if (S.open[x.division_id]) h += '<tr class="pdd-deckrow"><td colspan="11">' + deckHtml(st, true) + '</td></tr>';
         });
         return h + '</tbody></table></div>' +
@@ -1008,6 +1080,24 @@
             if (w != null && w < x) { S.msg = '✗ You only have ' + n(w, TOKENS[sym].dp) + ' ' + sym + ' in your wallet.'; render(); return; }
             S.depAmt = '';
             run([depositAct(sym, x)], 'deposited ' + n(x, TOKENS[sym].dp) + ' ' + sym + ' to your in-game balance');
+        };
+        var sa = el.querySelector('#pdd-swapamt');
+        if (sa) {
+            sa.oninput = function () { SWAP.amt = sa.value; clearTimeout(SWAP.timer); SWAP.timer = setTimeout(swapQuote, 450); };
+            if (SWAP.quote || SWAP.err) swapPaint(); else if (parseFloat(SWAP.amt) > 0) swapQuote(); else swapPaint();
+        }
+        el.querySelectorAll('[data-swappay]').forEach(function (b) {
+            b.onclick = function () { SWAP.pay = b.getAttribute('data-swappay'); SWAP.quote = null; render(); };
+        });
+        var sl = el.querySelector('#pdd-swapslip'); if (sl) sl.onchange = function () { SWAP.slip = Number(sl.value); swapQuote(); };
+        var sg = el.querySelector('#pdd-swapgo');
+        if (sg) sg.onclick = function () {
+            var q = SWAP.quote; if (!q) return;
+            var t = PAY[SWAP.pay];
+            var quantity = q.pay + ' ' + SWAP.pay;
+            SWAP.quote = null; SWAP.amt = '';
+            run([act(t.contract, 'transfer', { from: S.wallet, to: 'swap.alcor', quantity: quantity, memo: q.memo })],
+                'swapped ' + quantity + ' for at least ' + n(parseFloat(q.minReceived), 4) + ' DEF on Alcor');
         };
         var all = el.querySelector('#pdd-all');
         if (all) all.onclick = function () {

@@ -287,67 +287,76 @@
         #pd-divs { padding: 16px 18px 14px; }
         #pd-divs:empty { display: none; }
         .pdd-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-        .pdd-title { color: var(--strong); font-weight: 700; font-size: 1.05em; margin-right: 8px; }
-        #pdd-wallet { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: var(--radius-sm); font-size: 0.86em; width: 200px; outline: none; }
+        .pdd-title { color: var(--strong); font-weight: 700; font-size: 1.2em; margin-right: 8px; }
+        #pdd-wallet { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 13px; border-radius: 10px; font-size: 0.95em; width: 200px; outline: none; }
         #pdd-wallet:focus { border-color: var(--accent); }
-        .pdd-btn { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: var(--radius-sm);
-            font-size: 0.82em; font-weight: 600; cursor: pointer; transition: border-color .15s, background .15s, color .15s; white-space: nowrap; }
+        .pdd-btn { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 15px; border-radius: 10px;
+            font-size: 0.92em; font-weight: 600; cursor: pointer; transition: border-color .15s, background .15s, color .15s; white-space: nowrap; }
         .pdd-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
         .pdd-btn:disabled { opacity: 0.4; cursor: default; }
         .pdd-btn small { font-weight: 500; opacity: 0.8; }
         .pdd-btn.pdd-danger { color: var(--loss); border-color: color-mix(in srgb, var(--loss) 40%, transparent); }
         .pdd-btn.pdd-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--loss) 10%, transparent); color: var(--loss); border-color: var(--loss); }
-        .pdd-go { background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); padding: 8px 16px; border-radius: var(--radius-sm);
-            font-weight: 700; font-size: 0.86em; cursor: pointer; transition: filter .15s; white-space: nowrap; }
+        .pdd-go { background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); padding: 10px 18px; border-radius: 10px;
+            font-weight: 700; font-size: 0.95em; cursor: pointer; transition: filter .15s; white-space: nowrap; }
         .pdd-go:hover:not(:disabled) { filter: brightness(1.08); }
         .pdd-go:disabled { background: var(--surface2); border-color: var(--border); color: var(--text-dim); cursor: default; }
-        .pdd-mode { margin-left: auto; font-size: 0.8em; color: var(--text-muted); }
-        .pdd-msg { font-size: 0.86em; padding: 9px 12px; margin-bottom: 12px; border-radius: var(--radius-sm);
+        .pdd-mode { margin-left: auto; font-size: 0.9em; color: var(--text-muted); }
+        .pdd-msg { font-size: 0.95em; padding: 9px 12px; margin-bottom: 12px; border-radius: var(--radius-sm);
             border: 1px solid color-mix(in srgb, var(--profit) 40%, transparent); color: var(--profit); background: color-mix(in srgb, var(--profit) 8%, transparent); }
         .pdd-msg.bad { border-color: color-mix(in srgb, var(--loss) 45%, transparent); color: var(--loss); background: color-mix(in srgb, var(--loss) 8%, transparent); }
         .pdd-empty { padding: 18px 0; color: var(--text-muted); font-size: 0.9em; }
         .pdd-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-        .pdd-chip { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 7px 12px; min-width: 100px; }
-        .pdd-chip span { display: block; font-size: 0.72em; color: var(--text-muted); }
-        .pdd-chip b { font-size: 0.98em; color: var(--strong); font-variant-numeric: tabular-nums; }
+        .pdd-chip { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 9px 14px; min-width: 110px; }
+        .pdd-chip span { display: block; font-size: 0.8em; color: var(--text-muted); }
+        .pdd-chip b { font-size: 1.1em; color: var(--strong); font-variant-numeric: tabular-nums; }
         .pdd-chip small { color: var(--text-muted); font-weight: normal; }
         .pdd-bundle { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
         .pdd-deposit { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
-        .pdd-deposit input { width: 120px; background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: var(--radius-sm); }
-        .pdd-chk { font-size: 0.84em; color: var(--text); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+        .pdd-deposit input { width: 130px; background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 11px; border-radius: 10px; font-size: 0.95em; }
+        .pdd-swap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 14px; padding: 10px 12px;
+            border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); }
+        .pdd-swap-t { font-weight: 700; color: var(--strong); font-size: 1em; margin-right: 4px; }
+        .pdd-swap input { width: 120px; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 11px; border-radius: 10px; font-size: 0.95em; }
+        .pdd-swap a.pdd-btn { text-decoration: none; }
+        .pdd-swapq { flex-basis: 100%; font-size: 0.92em; color: var(--text-muted); }
+        .pdd-swapq b { color: var(--strong); }
+        .pdd-chk { font-size: 0.93em; color: var(--text); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
         .pdd-chk input { accent-color: var(--accent); }
-        .pdd-hint { font-size: 0.8em; color: var(--text-muted); }
+        .pdd-hint { font-size: 0.9em; color: var(--text-muted); }
         .pdd-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
-        .pdd-table { width: 100%; border-collapse: collapse; font-size: 0.86em; }
-        .pdd-table th { text-align: left; color: var(--text-dim); font-weight: 600; font-size: 0.86em; padding: 9px 10px; background: var(--bg2);
+        .pdd-table { width: 100%; border-collapse: collapse; font-size: 0.97em; }
+        .pdd-table th { text-align: left; color: var(--text-dim); font-weight: 600; font-size: 0.84em; padding: 11px 12px; background: var(--bg2);
             border-bottom: 1px solid var(--border); white-space: nowrap; }
-        .pdd-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .pdd-table td { padding: 11px 12px; border-bottom: 1px solid var(--line); color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
         .pdd-table tr:last-child td { border-bottom: none; }
+        .pdd-table td.pdd-onm { white-space: normal; min-width: 170px; max-width: 240px; }
+        .pdd-table .pdd-sel { max-width: 250px; }
         .pdd-table .num, .pdd-table th.num { text-align: right; }
         .pdd-table small { color: var(--text-muted); }
         .pdd-table tr.pdd-ready td { background: color-mix(in srgb, var(--profit) 6%, transparent); }
         span.pdd-ready { color: var(--profit); font-weight: 700; }
         .pdd-run { color: var(--warn); font-weight: 600; }
         .pdd-idle, .pdd-dim { color: var(--text-muted); }
-        .pdd-sel { background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: 0.92em; padding: 5px 8px; max-width: 300px; }
-        .pdd-seg { display: inline-flex; align-items: center; font-size: 0.82em; background: var(--bg2); border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
+        .pdd-sel { background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95em; padding: 7px 10px; max-width: 320px; }
+        .pdd-seg { display: inline-flex; align-items: center; font-size: 0.92em; background: var(--bg2); border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
         .pdd-seg > span { color: var(--text-muted); margin: 0 6px 0 8px; }
-        .pdd-segb { background: transparent; border: none; color: var(--text-muted); padding: 4px 11px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 1em; }
+        .pdd-segb { background: transparent; border: none; color: var(--text-muted); padding: 6px 13px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 1em; }
         .pdd-segb.on { background: var(--surface2); color: var(--strong); box-shadow: 0 0 0 1px var(--border); }
         .pdd-better { color: var(--profit); font-weight: 700; }
         .pdd-same { color: var(--text); }
-        .pdd-note { font-size: 0.8em; color: var(--text-muted); line-height: 1.6; margin: 12px 0 2px; max-width: 110ch; }
-        .pdd-acts { display: inline-flex; gap: 6px; align-items: center; }
+        .pdd-note { font-size: 0.9em; color: var(--text-muted); line-height: 1.6; margin: 12px 0 2px; max-width: 110ch; }
+        .pdd-acts { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 200px; max-width: 300px; white-space: normal; }
 
         .pdd-tabs { display: flex; gap: 2px; margin: 0 0 14px; border-bottom: 1px solid var(--border); }
         .pdd-tab { background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; color: var(--text-muted);
-            font-size: 0.9em; font-weight: 600; padding: 9px 14px; cursor: pointer; }
+            font-size: 1em; font-weight: 600; padding: 9px 14px; cursor: pointer; }
         .pdd-tab:hover { color: var(--strong); }
         .pdd-tab.on { color: var(--accent); border-bottom-color: var(--accent); }
         .pdd-row { cursor: pointer; }
         .pdd-row:hover td { background: var(--accent-dim); }
         .pdd-caret { display: inline-block; width: 14px; color: var(--text-dim); }
-        .pdd-thumb { width: 28px; height: 28px; object-fit: cover; border-radius: 6px; vertical-align: middle; margin-right: 8px; }
+        .pdd-thumb { width: 34px; height: 34px; object-fit: cover; border-radius: 6px; vertical-align: middle; margin-right: 8px; }
         .pdd-deckrow td { background: var(--bg2); padding: 16px 14px 18px; white-space: normal; }
         .pdd-deck { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
         .pdd-face { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; }
@@ -370,7 +379,7 @@
         .pdc-meta { font-size: 0.7em; color: var(--text-muted); padding: 0 6px 7px; }
         .pdc-forge { color: var(--profit); } .pdc-forge.locked { color: var(--loss); font-weight: 700; }
         .pdc-rm { margin: 0 6px 8px; background: transparent; border: 1px solid color-mix(in srgb, var(--loss) 45%, transparent); color: var(--loss);
-            font-size: 0.7em; font-weight: 600; padding: 3px 9px; border-radius: 6px; cursor: pointer; }
+            font-size: 0.78em; font-weight: 600; padding: 5px 11px; border-radius: 8px; cursor: pointer; }
         .pdc-rm[data-creatediv] { border-color: color-mix(in srgb, var(--accent) 50%, transparent); color: var(--accent); }
         .pdc-rm:hover { background: var(--accent-dim); }
         .pdc-x { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; line-height: 14px; border-radius: 50%; border: none;
@@ -394,15 +403,15 @@
         .pdd-cats { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; }
         .pdd-cats .pdd-segb { border: 1px solid var(--border); }
         .pdd-sec { margin: 0 0 20px; }
-        .pdd-sech { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.92em; flex-wrap: wrap; }
+        .pdd-sech { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 1em; flex-wrap: wrap; }
         .pdd-sech b { color: var(--strong); }
         .pdd-sech small { color: var(--text-muted); }
         .pdd-sech .pdd-go, .pdd-sech .pdd-btn { margin-left: auto; }
         .pdd-sech :is(.pdd-go, .pdd-btn) ~ :is(.pdd-go, .pdd-btn) { margin-left: 0; }
         .pdd-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-        .pdd-sm { padding: 6px 12px; font-size: 0.8em; }
+        .pdd-sm { padding: 7px 13px; font-size: 0.88em; }
         .pdd-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
-        .pdd-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.78em; color: var(--text-muted); font-weight: 600; }
+        .pdd-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.88em; color: var(--text-muted); font-weight: 600; }
         .pdd-done td { color: var(--text-muted); }
         #lore-divs { margin-top: 16px; clear: both; }
         #lore-divs .pdd-deck { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
@@ -1802,6 +1811,6 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchPrices();
 });
 </script>
-<script src="pd_divisions.js?v=1.2.59"></script>
+<script src="pd_divisions.js?v=1.2.60"></script>
 </body>
 </html>
