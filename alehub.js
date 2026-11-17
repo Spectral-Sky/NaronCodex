@@ -155,7 +155,7 @@
     /* ── fighter art (from the game's own assets: new.alienlegends.io) ── */
     var ART = 'https://new.alienlegends.io/assets/';
     var ELEMENTS = ['air', 'fire', 'gem', 'metal', 'nature', 'neutral'];
-    var RIM = { metal: '#d9e4ff', air: '#9fe6ff', nature: '#7dffb0', gem: '#c8b4ff', fire: '#ffb070', neutral: '#dfe3ee' };
+    var RIM = { metal: '#c8733a', air: '#9fe6ff', nature: '#7dffb0', gem: '#ff7fc8', fire: '#ffb070', neutral: '#5b7fd6' };
     function el(e) { return ELEMENTS.indexOf(e) >= 0 ? e : 'neutral'; }
     function portrait(cls, race, element, size) {
         var e = el(element), k = String(cls || 'unknown') + '_' + String(race || 'unknown');
@@ -166,6 +166,8 @@
     }
     function top(m) { var b = '', v = -1; Object.keys(m).forEach(function (k) { if (m[k] > v) { v = m[k]; b = k; } }); return b; }
 
+    var HARD = 12;   // dungeon difficulty from which a win is worth counting
+
     /* ── render ── */
     async function render() {
         if (!H.fights) return;
@@ -174,6 +176,7 @@
         var newest = H.fights.length ? H.fights.reduce(function (m, r) { return r[0] > m ? r[0] : m; }, 0) : 0;
 
         var arena = f.filter(function (r) { return r[2] === 'a'; }), dung = f.filter(function (r) { return r[2] === 'd'; });
+        var hard = dung.filter(function (r) { return r[3] >= HARD; });
         var wins = f.filter(function (r) { return r[4]; }).length, players = {};
         f.forEach(function (r) { players[r[1]] = 1; });
         var hires = null;
@@ -203,46 +206,57 @@
         var asRows = function (l) { return l.map(function (x) { return { k: x.k, cells: '<td class="num"><b>' + n(x.w) + '</b></td><td class="num wr">' + pct(x.w, x.f).toFixed(0) + '%</td>' }; }); };
         var hireRows = hires ? Object.keys(hires.cnt).sort(function (a, b) { return hires.cnt[b] - hires.cnt[a]; }).slice(0, 10)
             .map(function (k) { return { k: k, cells: '<td class="num"><b>' + n(hires.cnt[k]) + '</b></td>' }; }) : [];
-        $('tops').innerHTML = table('Arena wins', asRows(tally(arena)), ['Wins', 'Rate']) + table('Dungeon wins', asRows(tally(dung)), ['Wins', 'Rate']) +
+        $('tops').innerHTML = table('Arena wins', asRows(tally(arena)), ['Wins', 'Rate']) + table('Dungeon wins, difficulty ' + HARD + '+', asRows(tally(hard)), ['Wins', 'Rate']) +
             table('Tavern hires', hireRows, ['Hires']);
 
-        // classes
+        // classes: arena wins and dungeon wins at difficulty 12+, each fighter in a winning team once
         var cls = {};
         f.forEach(function (r) {
+            var counts = r[2] === 'a' || r[3] >= HARD;
+            if (!counts) return;
             var rc = r[7].split('|'), ec = (r[8] || '').split('|');
             r[5].split('|').forEach(function (c, i) {
                 if (!c) return;
-                var x = cls[c] = cls[c] || { w: 0, f: 0, race: {}, el: {} };
+                var x = cls[c] = cls[c] || { w: 0, f: 0, aw: 0, dw: 0, race: {}, el: {} };
                 x.f++;
-                if (r[4]) { x.w++; if (rc[i]) x.race[rc[i]] = (x.race[rc[i]] || 0) + 1; if (ec[i]) x.el[ec[i]] = (x.el[ec[i]] || 0) + 1; }
+                if (r[4]) {
+                    x.w++; if (r[2] === 'a') x.aw++; else x.dw++;
+                    if (rc[i]) x.race[rc[i]] = (x.race[rc[i]] || 0) + 1; if (ec[i]) x.el[ec[i]] = (x.el[ec[i]] || 0) + 1;
+                }
             });
         });
         var ck = Object.keys(cls).sort(function (a, b) { return cls[b].w - cls[a].w; });
         var cmax = ck.length ? cls[ck[0]].w : 1;
         $('classes').innerHTML = ck.length ? ck.map(function (c) {
-            return '<div class="bar" title="' + esc(c + ': ' + n(cls[c].w) + ' wins of ' + n(cls[c].f) + ' fights') + '"><span class="lab">' + portrait(c, top(cls[c].race), top(cls[c].el), 's') + esc(c) + '</span>' +
-                '<span class="trk"><i style="width:' + (cls[c].w / cmax * 100).toFixed(1) + '%"></i></span>' +
-                '<span class="val"><b>' + n(cls[c].w) + '</b> · ' + pct(cls[c].w, cls[c].f).toFixed(0) + '%</span></div>';
-        }).join('') : '<div class="empty">No fights in this period.</div>';
+            var x = cls[c];
+            return '<div class="bar" title="' + esc(c + ': ' + n(x.aw) + ' arena wins, ' + n(x.dw) + ' dungeon ' + HARD + '+ wins, of ' + n(x.f) + ' fights') + '"><span class="lab">' + portrait(c, top(x.race), top(x.el), 's') + esc(c) + '</span>' +
+                '<span class="trk trk2"><i class="ia" style="width:' + (x.aw / cmax * 100).toFixed(1) + '%"></i><i class="id" style="width:' + (x.dw / cmax * 100).toFixed(1) + '%"></i></span>' +
+                '<span class="val"><b>' + n(x.w) + '</b> \u00b7 ' + pct(x.w, x.f).toFixed(0) + '%</span></div>';
+        }).join('') + '<div class="legend2"><span><i class="ia"></i>Arena wins</span><span><i class="id"></i>Dungeon ' + HARD + '+ wins</span></div>' : '<div class="empty">No arena or dungeon ' + HARD + '+ fights in this period.</div>';
 
-        // top fighters
+        // top fighters: arena and dungeon 12+ kept apart, ranked on the two together
         var fx = {};
         f.forEach(function (r) {
+            var isA = r[2] === 'a', isH = !isA && r[3] >= HARD;
+            if (!isA && !isH) return;
             var ids = r[6].split('|'), cl = r[5].split('|'), rc = r[7].split('|'), ec = (r[8] || '').split('|');
             ids.forEach(function (id, i) {
                 if (!id) return;
-                var x = fx[id] = fx[id] || { w: 0, f: 0, cls: cl[i] || '', race: rc[i] || '', el: ec[i] || '', owner: r[1] };
-                x.f++; if (r[4]) x.w++;
+                var x = fx[id] = fx[id] || { aw: 0, af: 0, dw: 0, df: 0, cls: cl[i] || '', race: rc[i] || '', el: ec[i] || '', owner: r[1] };
+                if (isA) { x.af++; if (r[4]) x.aw++; } else { x.df++; if (r[4]) x.dw++; }
             });
         });
-        var fk = Object.keys(fx).sort(function (a, b) { return fx[b].w - fx[a].w || fx[a].f - fx[b].f; }).slice(0, 15);
-        $('fighters').innerHTML = fk.length ? '<table><thead><tr><th class="rk">#</th><th></th><th>Fighter</th><th>Class</th><th>Race</th><th>Element</th><th>Owner</th><th class="num">Wins</th><th class="num">Fights</th><th class="num">Rate</th></tr></thead><tbody>' +
+        var fk = Object.keys(fx).sort(function (a, b) { var A = fx[a], B = fx[b]; return (B.aw + B.dw) - (A.aw + A.dw) || (A.af + A.df) - (B.af + B.df); }).slice(0, 15);
+        $('fighters').innerHTML = fk.length ? '<table><thead><tr><th class="rk">#</th><th></th><th>Fighter</th><th>Class</th><th>Race</th><th>Element</th><th>Owner</th>' +
+            '<th class="num">Arena wins</th><th class="num">Dungeon ' + HARD + '+ wins</th><th class="num">Rate</th></tr></thead><tbody>' +
             fk.map(function (id, i) {
-                var x = fx[id];
-                return '<tr><td class="rk">' + (i + 1) + '</td><td class="pic">' + portrait(x.cls, x.race, x.el, 'm') + '</td><td>#' + esc(id) + '</td><td style="text-transform:capitalize">' + esc(x.cls) + '</td>' +
+                var x = fx[id], w = x.aw + x.dw, fs = x.af + x.df;
+                return '<tr class="fr" data-fid="' + esc(id) + '"><td class="rk">' + (i + 1) + '</td><td class="pic">' + portrait(x.cls, x.race, x.el, 'm') + '</td><td>#' + esc(id) + '</td><td style="text-transform:capitalize">' + esc(x.cls) + '</td>' +
                     '<td style="text-transform:capitalize">' + esc(x.race) + '</td><td style="text-transform:capitalize;color:' + RIM[el(x.el)] + '">' + esc(x.el || '\u2013') + '</td><td class="who">' + esc(H.tags[x.owner] || x.owner) + '</td>' +
-                    '<td class="num"><b>' + n(x.w) + '</b></td><td class="num">' + n(x.f) + '</td><td class="num wr">' + pct(x.w, x.f).toFixed(0) + '%</td></tr>';
-            }).join('') + '</tbody></table>' : '<div class="empty">No fights in this period.</div>';
+                    '<td class="num"><b>' + n(x.aw) + '</b> <small class="wr">/ ' + n(x.af) + '</small></td><td class="num"><b>' + n(x.dw) + '</b> <small class="wr">/ ' + n(x.df) + '</small></td>' +
+                    '<td class="num wr">' + pct(w, fs).toFixed(0) + '%</td></tr>';
+            }).join('') + '</tbody></table><p class="sub" style="margin:8px 0 0">Hover a fighter for its stats.</p>' : '<div class="empty">No arena or dungeon ' + HARD + '+ fights in this period.</div>';
+        bindFighterTips();
 
         // heatmap: weekday x hour, UTC
         var grid = [], mx = 1, DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -261,16 +275,92 @@
         $('heat').innerHTML = hh + '</div><div class="heat-key">fewer <i style="background:rgba(232,160,32,0.15)"></i><i style="background:rgba(232,160,32,0.5)"></i><i style="background:rgba(232,160,32,1)"></i> more · busiest hour: ' +
             (function () { var b = [0, 0, 0]; grid.forEach(function (row, d4) { row.forEach(function (v, h4) { if (v > b[0]) b = [v, d4, h4]; }); }); return b[0] ? DAYS[b[1]] + ' ' + String(b[2]).padStart(2, '0') + ':00 (' + n(b[0]) + ' fights)' : 'none'; })() + '</div>';
 
-        // dungeon clear rate by difficulty
-        var dd = {};
-        dung.forEach(function (r) { var x = dd[r[3]] = dd[r[3]] || { w: 0, f: 0 }; x.f++; if (r[4]) x.w++; });
-        var dk = Object.keys(dd).map(Number).sort(function (a, b) { return a - b; });
-        $('clears').innerHTML = dk.length ? dk.map(function (k) {
-            var x = dd[k];
-            return '<div class="bar" title="' + esc('Difficulty ' + k + ': ' + n(x.w) + ' won of ' + n(x.f)) + '"><span class="lab">Difficulty ' + k + '</span>' +
-                '<span class="trk"><i style="width:' + pct(x.w, x.f).toFixed(1) + '%"></i></span>' +
-                '<span class="val"><b>' + pct(x.w, x.f).toFixed(0) + '%</b> · ' + n(x.w) + ' / ' + n(x.f) + '</span></div>';
-        }).join('') : '<div class="empty">No dungeon runs in this period.</div>';
+        // dungeon podium: players by wins at difficulty 10+, each difficulty won shown as a pin (x count)
+        var pod = {};
+        dung.forEach(function (r) {
+            if (!r[4] || r[3] < PODMIN) return;
+            var x = pod[r[1]] = pod[r[1]] || { w: 0, top: 0, by: {} };
+            x.w++; x.top = Math.max(x.top, r[3]); x.by[r[3]] = (x.by[r[3]] || 0) + 1;
+        });
+        var pk = Object.keys(pod).sort(function (a, b) { return pod[b].w - pod[a].w || pod[b].top - pod[a].top; });
+        var pins = function (x) {
+            return Object.keys(x.by).map(Number).sort(function (a, b) { return b - a; }).map(function (d) {
+                return '<span class="pin" style="--pc:' + pinCol(d) + '" title="' + esc(n(x.by[d]) + ' win' + (x.by[d] === 1 ? '' : 's') + ' at difficulty ' + d) + '"><b>' + d + '</b>' + (x.by[d] > 1 ? '<i>\u00d7' + x.by[d] + '</i>' : '') + '</span>';
+            }).join('');
+        };
+        var who = function (w) { return esc(H.tags[w] || w); };
+        var step = function (i) {
+            var w = pk[i]; if (!w) return '<div class="pod-col p' + (i + 1) + ' empty-step"></div>';
+            var x = pod[w];
+            return '<div class="pod-col p' + (i + 1) + '"><div class="pod-who" title="' + esc(w) + '"><span class="medal">' + (i + 1) + '</span>' + who(w) + '</div>' +
+                '<div class="pins">' + pins(x) + '</div>' +
+                '<div class="pod-step"><b>' + n(x.w) + '</b><small>win' + (x.w === 1 ? '' : 's') + '</small></div></div>';
+        };
+        $('podium').innerHTML = pk.length ? '<div class="pod">' + step(1) + step(0) + step(2) + '</div>' +
+            (pk.length > 3 ? '<ol class="pod-rest" start="4">' + pk.slice(3, 10).map(function (w) {
+                return '<li><span class="who" title="' + esc(w) + '">' + who(w) + '</span><span class="pins">' + pins(pod[w]) + '</span><b>' + n(pod[w].w) + '</b></li>';
+            }).join('') + '</ol>' : '')
+            : '<div class="empty">No dungeon wins at difficulty ' + PODMIN + '+ in this period.</div>';
+    }
+
+    var PODMIN = 10;
+    function pinCol(d) { return ['#4fb3cf', '#6c8bff', '#b06cff', '#ff5fa8', '#ff7a3d', '#ffd04a'][Math.min(Math.max(d - PODMIN, 0), 5)]; }
+
+    /* ── fighter stat card (hover) ──
+       fighters.ale::fighters.stats holds every stat at ten times its shown value; the game
+       shows each as its midpoint and swing, "73 (\u00b111)". Cooldown (attackspeed) and Wind-up
+       (initiative) are timings, so lower is better. */
+    var FCACHE = {}, TIP = null;
+    var STATS = [['health', 'Health'], ['damage', 'Damage'], ['taunt', 'Taunt'], ['attackspeed', 'Cooldown'], ['initiative', 'Wind-up']];
+    var RES = ['gem', 'metal', 'air', 'fire', 'nature', 'neutral'];
+    async function fighter(id) {
+        if (FCACHE[id]) return FCACHE[id];
+        var d = await rows({ json: true, code: 'fighters.ale', scope: 'fighters.ale', table: 'fighters', lower_bound: id, upper_bound: id, limit: 1 });
+        FCACHE[id] = (d.rows || [])[0] || null;
+        return FCACHE[id];
+    }
+    function statText(lo, hi) {
+        var v = Math.floor((lo + hi) / 2 / 10), sp = Math.floor(Math.abs(hi - lo) / 2 / 10);
+        return sp > 0 ? v + ' <small>(\u00b1' + sp + ')</small>' : String(v);
+    }
+    function tipHtml(f) {
+        var st = f.stats || {}, e = el(f.element);
+        var abil = (st.abilities || []).map(function (a) {
+            var m = /\[(\w+)\]\s*$/.exec(a.displayname || ''), rar = m ? m[1] : '';
+            return '<li><b class="r-' + esc(rar) + '">' + esc(String(a.displayname || a.ability).replace(/\s*\[\w+\]\s*$/, '')) + '</b>' + (rar ? ' <small>' + esc(rar) + '</small>' : '') + '</li>';
+        }).join('');
+        return '<div class="tip-h">' + portrait(f.classname, f.racename, f.element, 'm') + '<div><b style="text-transform:capitalize">' + esc(f.classname + ' ' + f.racename) + '</b>' +
+            '<small>#' + esc(f.fighter_id) + ' \u00b7 level ' + (st.level || '?') + (Number(f.ascension_level) ? ' \u00b7 ascension ' + f.ascension_level : '') + ' \u00b7 <span style="color:' + RIM[e] + ';text-transform:capitalize">' + e + '</span></small>' +
+            '<small>' + esc(H.tags[f.owner] || f.owner) + '</small></div></div>' +
+            '<table class="tip-s">' + STATS.map(function (x) {
+                return '<tr><td>' + x[1] + (x[0] === 'attackspeed' || x[0] === 'initiative' ? ' <small>lower is better</small>' : '') + '</td><td class="num">' + statText(Number(st[x[0] + '_min']) || 0, Number(st[x[0] + '_max']) || 0) + '</td></tr>';
+            }).join('') + '</table>' +
+            '<div class="tip-r">' + RES.map(function (r) {
+                return '<span title="' + r + ' resistance"><img src="' + ART + 'icons/elements/' + r + '.svg" alt="">' + Math.round((Number(st['res_' + r]) || 0) / 10) + '%</span>';
+            }).join('') + '</div>' + (abil ? '<ul class="tip-a">' + abil + '</ul>' : '');
+    }
+    function bindFighterTips() {
+        if (!TIP) { TIP = document.createElement('div'); TIP.className = 'ftip'; TIP.hidden = true; document.body.appendChild(TIP); }
+        document.querySelectorAll('#fighters tr.fr').forEach(function (tr) {
+            var id = tr.getAttribute('data-fid');
+            var place = function (ev) {
+                var w = TIP.offsetWidth || 300, h = TIP.offsetHeight || 300;
+                var x = ev.clientX + 18, y = ev.clientY + 12;
+                if (x + w > window.innerWidth - 8) x = ev.clientX - w - 18;
+                if (y + h > window.innerHeight - 8) y = Math.max(8, window.innerHeight - h - 8);
+                TIP.style.left = x + 'px'; TIP.style.top = y + 'px';
+            };
+            tr.onmouseenter = async function (ev) {
+                TIP.innerHTML = '<p class="sub" style="margin:0">Reading fighter #' + esc(id) + '\u2026</p>'; TIP.hidden = false; place(ev);
+                var f = await fighter(id);
+                if (TIP.hidden || tr.getAttribute('data-hover') !== '1') return;
+                TIP.innerHTML = f ? tipHtml(f) : '<p class="sub" style="margin:0">Fighter #' + esc(id) + ' isn\u2019t on chain any more (sold or burned).</p>';
+                place(ev);
+            };
+            tr.onmousemove = place;
+            tr.addEventListener('mouseenter', function () { tr.setAttribute('data-hover', '1'); });
+            tr.onmouseleave = function () { tr.removeAttribute('data-hover'); TIP.hidden = true; };
+        });
     }
 
     /* ── live tavern draw ── */
