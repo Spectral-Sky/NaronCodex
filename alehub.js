@@ -473,7 +473,7 @@
                 (await allRows('lands.ale', pl, 'lands')).forEach(function (l) { l._p = pl; lands.push(l); });
             }
             var players = await allRows('players.ale', 'players.ale', 'players');
-            var inLists = {}, inActive = {}, active = 0, since = Date.now() - DAY;
+            var inLists = {}, inActive = {}, active = 0, since = Date.now() - 3 * DAY;
             players.forEach(function (p) {
                 if (p.playertag) H.tags[p.wallet] = p.playertag;
                 var on = utcMs(p.last_action) >= since; if (on) active++;
@@ -508,7 +508,7 @@
         TV.busy = false;
         paintTaverns();
     }
-    // which lists count: 'act' = players who did anything in the last 24 h, 'all' = every list
+    // which lists count: 'act' = players who did anything in the last 72 h, 'all' = every list
     TV.mode = 'act';
     function tvSorted(list, m) {
         return list.slice().sort(function (a, b) { return ((a.boost <= 0) - (b.boost <= 0)) || b[m] - a[m] || a.draw - b.draw; });
@@ -520,8 +520,8 @@
         var max = Math.max.apply(null, list.map(function (t) { return t[m]; }).concat([1]));
         el.innerHTML = '<div class="feed-h"><b>Tavern draw</b><span class="live"></span><small>' + (A ? TV.active + ' active of ' : '') + TV.players + ' players · ' +
             new Date(TV.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
-            '<div class="tvmode" role="group" aria-label="Which lists count"><button type="button" data-m="act"' + (A ? ' class="on"' : '') + '>Active 24 h</button><button type="button" data-m="all"' + (A ? '' : ' class="on"') + '>All lists</button></div>' +
-            '<p class="feed-note">' + (A ? 'How many players who played in the last 24 hours have each tavern in their list. Lists of players who stopped playing are left out.'
+            '<div class="tvmode" role="group" aria-label="Which lists count"><button type="button" data-m="act"' + (A ? ' class="on"' : '') + '>Active 72 h</button><button type="button" data-m="all"' + (A ? '' : ' class="on"') + '>All lists</button></div>' +
+            '<p class="feed-note">' + (A ? 'How many players who played in the last 72 hours have each tavern in their list. Lists of players who stopped playing are left out.'
                 : 'How many players have each tavern in their list right now, including players who may have stopped playing.') +
             ' Draw is its place in the queue for the next tavern the game hands out (1 = next). Updates every minute.</p>' +
             '<ol class="tv">' + list.map(function (t, i) {
