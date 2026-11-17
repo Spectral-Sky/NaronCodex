@@ -503,6 +503,76 @@
         FS.sales = out; FS.busy = false;
         if (_view === 'forsale') render();
     }
+
+    /* ── Tavern draw feed (hidden view) ──────────────────────────────────────
+       Every tavern ranked by how many players currently have it in their
+       players.ale active_taverns (10 each). Each travel or hire draws one new
+       tavern per player: the lowest lands.ale tavern_score, which then gets +10,
+       so "draw" is a tavern's place in that queue. Re-read every minute. */
+    var TV = { list: null, prev: {}, at: 0, timer: null, busy: false };
+    async function loadTavernFeed() {
+        if (TV.busy) return;
+        TV.busy = true;
+        try {
+            var lands = [];
+            for (var i = 0; i < PLANETS.length; i++) {
+                var pl = PLANETS[i];
+                (await allRows('lands.ale', pl, 'lands')).forEach(function (l) { l._planet = pl; lands.push(l); });
+            }
+            var players = await allRows('players.ale', 'players.ale', 'players');
+            var inLists = {};
+            players.forEach(function (p) {
+                (p.active_taverns || []).forEach(function (t) { var k = String(t.planet).replace(/[^a-z]/g, '') + '|' + t.x + '|' + t.y; inLists[k] = (inLists[k] || 0) + 1; });
+            });
+            var owners = {}, byKey = {};
+            (_rows || []).forEach(function (r) { if (r.type === 'tavern') byKey[r.planet + '|' + r.x + '|' + r.y] = r; });
+            var list = [];
+            lands.forEach(function (l) {
+                (l.buildings || []).forEach(function (b) {
+                    if (b.building_name !== 'tavern') return;
+                    var k = l._planet + '|' + l.x + '|' + l.y, upd = utcMs(b.boost_score_update);
+                    var hours = isNaN(upd) ? 0 : Math.max(0, (Date.now() - upd) / HOUR);
+                    var r = byKey[k] || {};
+                    list.push({ k: k, planet: l._planet, x: Number(l.x), y: Number(l.y), score: Number(l.tavern_score) || 0,
+                        boost: Math.max(0, Number(b.boost_score || 0) - hours * DECAY_PER_HOUR) / 100000,
+                        n: inLists[k] || 0, owner: r.owner || '', tag: r.tag || '' });
+                });
+            });
+            list.sort(function (a, b) { return a.score - b.score; });
+            list.forEach(function (t, i) { t.draw = i + 1; });
+            list.sort(function (a, b) { return b.n - a.n || a.draw - b.draw; });
+            if (TV.list) { TV.prev = {}; TV.list.forEach(function (t, i) { TV.prev[t.k] = { pos: i, n: t.n }; }); }
+            TV.list = list; TV.at = Date.now(); TV.players = players.length;
+        } catch (e) {}
+        TV.busy = false;
+        if (_view === 'forsale') paintTavernFeed();
+    }
+    function paintTavernFeed() {
+        var el = document.getElementById('tv-feed');
+        if (!el) return;
+        if (!TV.list) { el.innerHTML = '<div class="tv-h"><b>Tavern draw</b><span class="tv-live"></span></div><p class="tv-note">Reading players\u2019 tavern lists\u2026</p>'; return; }
+        var max = Math.max.apply(null, TV.list.map(function (t) { return t.n; }).concat([1]));
+        el.innerHTML = '<div class="tv-h"><b>Tavern draw</b><span class="tv-live"></span><small>' + (TV.players || 0) + ' players \u00b7 updated ' +
+            new Date(TV.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
+            '<p class="tv-note">How many players have each tavern in their list right now. Draw is its place in the game\u2019s queue for the next tavern handed out (1 = next).</p>' +
+            '<ol class="tv-list">' + TV.list.map(function (t, i) {
+                var pv = TV.prev[t.k], mv = pv ? pv.pos - i : 0, dn = pv ? t.n - pv.n : 0;
+                return '<li class="' + (mv > 0 ? 'tv-up' : mv < 0 ? 'tv-down' : '') + '"><span class="tv-pos">' + (i + 1) + '</span>' +
+                    '<div class="tv-main"><div class="tv-top"><b>' + esc(t.planet.charAt(0).toUpperCase() + t.planet.slice(1)) + ' ' + t.x + ':' + t.y + '</b>' +
+                    '<span class="tv-x">' + t.boost.toFixed(1) + 'x</span>' + (mv ? '<span class="tv-mv">' + (mv > 0 ? '\u25b2' : '\u25bc') + Math.abs(mv) + '</span>' : '') + '</div>' +
+                    '<div class="tv-bar"><i style="width:' + (t.n / max * 100).toFixed(1) + '%"></i></div>' +
+                    '<small>in <b>' + t.n + '</b> list' + (t.n === 1 ? '' : 's') + (dn ? ' (' + (dn > 0 ? '+' : '') + dn + ')' : '') + ' \u00b7 draw #' + t.draw +
+                    (t.owner ? ' \u00b7 ' + esc(t.tag || t.owner) : '') + '</small></div></li>';
+            }).join('') + '</ol>';
+    }
+    function startTavernFeed() {
+        loadTavernFeed();
+        clearInterval(TV.timer);
+        TV.timer = setInterval(function () {
+            if (_view !== 'forsale' || document.hidden) return;
+            loadTavernFeed();
+        }, 60000);
+    }
     function renderForSale() {
         var lands = {}, list = [];
         visible().forEach(function (r) {
@@ -542,7 +612,10 @@
             'when they are claimed, so a buyer would likely receive it, but that is not confirmed on chain: check before you buy. Listings are live AtomicHub sales of the land NFT.</p></section>';
         return h;
     }
-    window.aleBuildingsSecret = function () { _view = _view === 'forsale' ? 'table' : 'forsale'; FS.sales = null; render(); };
+    window.aleBuildingsSecret = function () {
+        _view = _view === 'forsale' ? 'table' : 'forsale'; FS.sales = null; render();
+        if (_view === 'forsale') startTavernFeed(); else clearInterval(TV.timer);
+    };
 
     function render() {
         var el = document.getElementById('bld-view');
@@ -582,7 +655,10 @@
             return;
         }
         if (_view === 'split') { el.innerHTML = h + renderSplit(); bind(el); return; }
-        if (_view === 'forsale') { el.innerHTML = h + renderForSale(); bind(el); return; }
+        if (_view === 'forsale') {
+            el.innerHTML = h + '<div class="tv-layout"><div class="tv-mainc">' + renderForSale() + '</div><aside class="tv-feed" id="tv-feed"></aside></div>';
+            bind(el); paintTavernFeed(); return;
+        }
         var list = visible();
         h += '<div class="bld-wrap"><table class="bld-table"><thead><tr>' +
             COLS.map(function (c) {
