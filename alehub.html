@@ -190,6 +190,17 @@
         .tvmode button:hover { color: var(--ink); } .tvmode button:focus-visible { outline: 2px solid var(--gold); }
         .tvmode button.on { background: var(--gold); color: #1a1206; }
         .tv .of { color: var(--dim); }
+        .pl-stage { position: relative; margin-top: 4px; }
+        #pl-canvas { display: block; width: 100%; height: 130px; }
+        .pl-cols { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; text-align: center; }
+        .pl-col { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .pl-name { display: flex; align-items: center; gap: 5px; font-weight: 700; color: var(--ink); }
+        .pl-rk { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 0.72em; font-weight: 800; background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+        .pl-col.top .pl-rk { background: var(--gold); color: #1a1206; border-color: var(--gold); }
+        .pl-tot { font-size: 1.15em; color: var(--ink); font-variant-numeric: tabular-nums; }
+        .pl-col.top .pl-tot { color: var(--gold); }
+        .pl-col small { color: var(--dim); font-size: 0.74em; line-height: 1.35; font-variant-numeric: tabular-nums; }
+        @media (max-width: 560px) { .pl-col small { display: none; } .pl-name { font-size: 0.8em; } .pl-rk { display: none; } }
         .clear .bar { grid-template-columns: 90px 1fr 150px; }
         .clear .trk i { background: var(--win); }
 
@@ -259,6 +270,7 @@
                     <p class="sub">NFT stats, mining power tables, fighter abilities and more on ALE Stats →</p>
                 </a>
             </div>
+            <section class="card planets" id="planets"></section>
             <section class="card">
                 <h2>Top players</h2>
                 <p class="sub">Fights won by the player's team, and tavern hires, in this period.</p>
@@ -296,6 +308,7 @@
 </main>
 <footer>Fights from Naron Codex's fight log (Alien Legends battle.ale), tavern hires and the draw read live from the WAX chain. A community tool, not an official Alien Legends page.</footer>
 <script src="img_fallback.js"></script>
-<script src="alehub.js?v=1.2.89"></script>
+<script src="alehub.js?v=1.2.90"></script>
+<script type="module" src="alehub_planets.js?v=1.2.90"></script>
 </body>
 </html>

@@ -193,7 +193,7 @@
         });
     }
     document.addEventListener('click', function (e) {
-        var b = e.target.closest('.sper button'); if (!b) return;
+        var b = e.target.closest('.sper[data-sec] button'); if (!b) return;
         var sec = b.parentNode.getAttribute('data-sec');
         SECS[sec] = b.getAttribute('data-p');
         b.parentNode.innerHTML = perButtons(sec);
