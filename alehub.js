@@ -473,10 +473,14 @@
                 (await allRows('lands.ale', pl, 'lands')).forEach(function (l) { l._p = pl; lands.push(l); });
             }
             var players = await allRows('players.ale', 'players.ale', 'players');
-            var inLists = {};
+            var inLists = {}, inActive = {}, active = 0, since = Date.now() - DAY;
             players.forEach(function (p) {
                 if (p.playertag) H.tags[p.wallet] = p.playertag;
-                (p.active_taverns || []).forEach(function (t) { var k = String(t.planet).replace(/[^a-z]/g, '') + '|' + t.x + '|' + t.y; inLists[k] = (inLists[k] || 0) + 1; });
+                var on = utcMs(p.last_action) >= since; if (on) active++;
+                (p.active_taverns || []).forEach(function (t) {
+                    var k = String(t.planet).replace(/[^a-z]/g, '') + '|' + t.x + '|' + t.y;
+                    inLists[k] = (inLists[k] || 0) + 1; if (on) inActive[k] = (inActive[k] || 0) + 1;
+                });
             });
             var assets = {}, list = [];
             lands.forEach(function (l) {
@@ -484,7 +488,7 @@
                     if (b.building_name !== 'tavern') return;
                     var k = l._p + '|' + l.x + '|' + l.y, u = utcMs(b.boost_score_update), hrs = isNaN(u) ? 0 : Math.max(0, (Date.now() - u) / HOUR);
                     list.push({ k: k, p: l._p, x: Number(l.x), y: Number(l.y), score: Number(l.tavern_score) || 0, asset: String(l.asset_id || ''),
-                        boost: Math.max(0, Number(b.boost_score || 0) - hrs * DECAY_PER_HOUR) / 100000, n: inLists[k] || 0 });
+                        boost: Math.max(0, Number(b.boost_score || 0) - hrs * DECAY_PER_HOUR) / 100000, all: inLists[k] || 0, act: inActive[k] || 0 });
                     if (l.asset_id && String(l.asset_id) !== '0') assets[l.asset_id] = 1;
                 });
             });
@@ -498,30 +502,40 @@
             }
             list.sort(function (a, b) { return a.score - b.score; });
             list.forEach(function (t, i) { t.draw = i + 1; });
-            list.sort(function (a, b) { return ((a.boost <= 0) - (b.boost <= 0)) || b.n - a.n || a.draw - b.draw; });
-            if (TV.list) { TV.prev = {}; TV.list.forEach(function (t, i) { TV.prev[t.k] = { pos: i, n: t.n }; }); }
-            TV.list = list; TV.at = Date.now(); TV.players = players.length;
+            if (TV.list) { TV.prev = { act: {}, all: {} }; ['act', 'all'].forEach(function (m) { tvSorted(TV.list, m).forEach(function (t, i) { TV.prev[m][t.k] = { pos: i, n: t[m] }; }); }); }
+            TV.list = list; TV.at = Date.now(); TV.players = players.length; TV.active = active;
         } catch (e) {}
         TV.busy = false;
         paintTaverns();
     }
+    // which lists count: 'act' = players who did anything in the last 24 h, 'all' = every list
+    TV.mode = 'act';
+    function tvSorted(list, m) {
+        return list.slice().sort(function (a, b) { return ((a.boost <= 0) - (b.boost <= 0)) || b[m] - a[m] || a.draw - b.draw; });
+    }
     function paintTaverns() {
         var el = $('feed');
         if (!TV.list) { el.innerHTML = '<div class="feed-h"><b>Tavern draw</b><span class="live"></span></div><p class="feed-note">Reading players’ tavern lists…</p>'; return; }
-        var max = Math.max.apply(null, TV.list.map(function (t) { return t.n; }).concat([1]));
-        el.innerHTML = '<div class="feed-h"><b>Tavern draw</b><span class="live"></span><small>' + TV.players + ' players · ' +
+        var m = TV.mode, A = m === 'act', list = tvSorted(TV.list, m), prev = (TV.prev || {})[m] || {};
+        var max = Math.max.apply(null, list.map(function (t) { return t[m]; }).concat([1]));
+        el.innerHTML = '<div class="feed-h"><b>Tavern draw</b><span class="live"></span><small>' + (A ? TV.active + ' active of ' : '') + TV.players + ' players · ' +
             new Date(TV.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
-            '<p class="feed-note">How many players have each tavern in their list right now. Draw is its place in the queue for the next tavern the game hands out (1 = next). Updates every minute.</p>' +
-            '<ol class="tv">' + TV.list.map(function (t, i) {
-                var pv = TV.prev[t.k], mv = pv ? pv.pos - i : 0, dn = pv ? t.n - pv.n : 0, zero = t.boost <= 0, own = TV.owner && TV.owner[t.asset];
+            '<div class="tvmode" role="group" aria-label="Which lists count"><button type="button" data-m="act"' + (A ? ' class="on"' : '') + '>Active 24 h</button><button type="button" data-m="all"' + (A ? '' : ' class="on"') + '>All lists</button></div>' +
+            '<p class="feed-note">' + (A ? 'How many players who played in the last 24 hours have each tavern in their list. Lists of players who stopped playing are left out.'
+                : 'How many players have each tavern in their list right now, including players who may have stopped playing.') +
+            ' Draw is its place in the queue for the next tavern the game hands out (1 = next). Updates every minute.</p>' +
+            '<ol class="tv">' + list.map(function (t, i) {
+                t.n = t[m];
+                var pv = prev[t.k], mv = pv ? pv.pos - i : 0, dn = pv ? t.n - pv.n : 0, zero = t.boost <= 0, own = TV.owner && TV.owner[t.asset];
                 return '<li class="' + (zero ? 'zero' : mv > 0 ? 'up' : mv < 0 ? 'down' : '') + '"><span class="pos">' + (i + 1) + '</span><div class="m">' +
                     '<div class="t"><b>' + esc(t.p.charAt(0).toUpperCase() + t.p.slice(1)) + ' ' + t.x + ':' + t.y + '</b><span class="x">' + t.boost.toFixed(1) + 'x</span>' +
                     (mv ? '<span class="mv">' + (mv > 0 ? '▲' : '▼') + Math.abs(mv) + '</span>' : '') + '</div>' +
                     '<div class="tb"><i style="width:' + (t.n / max * 100).toFixed(1) + '%"></i></div>' +
-                    '<small>in <b>' + t.n + '</b> list' + (t.n === 1 ? '' : 's') + (dn ? ' (' + (dn > 0 ? '+' : '') + dn + ')' : '') + ' · draw #' + t.draw +
+                    '<small>in <b>' + t.n + '</b> ' + (A ? 'active ' : '') + 'list' + (t.n === 1 ? '' : 's') + (dn ? ' (' + (dn > 0 ? '+' : '') + dn + ')' : '') + (A ? ' <span class="of">of ' + t.all + '</span>' : '') + ' · draw #' + t.draw +
                     (own ? ' · ' + esc(H.tags[own] || own) : '') + '</small>' +
                     (zero ? '<small class="zn">0x boost: may not be drawn any more</small>' : '') + '</div></li>';
             }).join('') + '</ol>';
+        el.querySelectorAll('.tvmode button').forEach(function (b) { b.onclick = function () { TV.mode = b.getAttribute('data-m'); paintTaverns(); }; });
     }
 
 
