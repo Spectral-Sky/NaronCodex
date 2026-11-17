@@ -521,7 +521,7 @@ window.lbSetView = function (v) {
     if (v !== 'buildings') return;
     if (window.aleBuildingsOpen) { window.aleBuildingsOpen(); return; }
     var s = document.createElement('script');
-    s.src = 'ale_buildings.js?v=1.2.81';
+    s.src = 'ale_buildings.js?v=1.2.82';
     s.onload = function () { window.aleBuildingsOpen(); };
     document.body.appendChild(s);
 };
@@ -2069,6 +2069,9 @@ window.lbSetView = function (v) {
     .tv-list li { display: flex; gap: 10px; padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 1s; }
     .tv-list li.tv-up { background: rgba(80,200,120,0.08); }
     .tv-list li.tv-down { background: rgba(240,106,106,0.06); }
+    .tv-list li.tv-zero { opacity: 0.45; }
+    .tv-list li.tv-zero .tv-bar i { background: #6b7280; }
+    .tv-main small.tv-zero-note { color: #c9a227; }
     .tv-pos { flex: 0 0 22px; color: #8b94a3; font-size: 0.8em; text-align: right; padding-top: 1px; }
     .tv-main { flex: 1; min-width: 0; }
     .tv-top { display: flex; align-items: baseline; gap: 8px; font-size: 0.86em; }

@@ -540,7 +540,8 @@
             });
             list.sort(function (a, b) { return a.score - b.score; });
             list.forEach(function (t, i) { t.draw = i + 1; });
-            list.sort(function (a, b) { return b.n - a.n || a.draw - b.draw; });
+            // 0x taverns sink to the bottom: still in lists, but they may not be drawn any more
+            list.sort(function (a, b) { return ((a.boost <= 0) - (b.boost <= 0)) || b.n - a.n || a.draw - b.draw; });
             if (TV.list) { TV.prev = {}; TV.list.forEach(function (t, i) { TV.prev[t.k] = { pos: i, n: t.n }; }); }
             TV.list = list; TV.at = Date.now(); TV.players = players.length;
         } catch (e) {}
@@ -557,12 +558,14 @@
             '<p class="tv-note">How many players have each tavern in their list right now. Draw is its place in the game\u2019s queue for the next tavern handed out (1 = next).</p>' +
             '<ol class="tv-list">' + TV.list.map(function (t, i) {
                 var pv = TV.prev[t.k], mv = pv ? pv.pos - i : 0, dn = pv ? t.n - pv.n : 0;
-                return '<li class="' + (mv > 0 ? 'tv-up' : mv < 0 ? 'tv-down' : '') + '"><span class="tv-pos">' + (i + 1) + '</span>' +
+                var zero = t.boost <= 0;
+                return '<li class="' + (zero ? 'tv-zero' : mv > 0 ? 'tv-up' : mv < 0 ? 'tv-down' : '') + '"><span class="tv-pos">' + (i + 1) + '</span>' +
                     '<div class="tv-main"><div class="tv-top"><b>' + esc(t.planet.charAt(0).toUpperCase() + t.planet.slice(1)) + ' ' + t.x + ':' + t.y + '</b>' +
                     '<span class="tv-x">' + t.boost.toFixed(1) + 'x</span>' + (mv ? '<span class="tv-mv">' + (mv > 0 ? '\u25b2' : '\u25bc') + Math.abs(mv) + '</span>' : '') + '</div>' +
                     '<div class="tv-bar"><i style="width:' + (t.n / max * 100).toFixed(1) + '%"></i></div>' +
                     '<small>in <b>' + t.n + '</b> list' + (t.n === 1 ? '' : 's') + (dn ? ' (' + (dn > 0 ? '+' : '') + dn + ')' : '') + ' \u00b7 draw #' + t.draw +
-                    (t.owner ? ' \u00b7 ' + esc(t.tag || t.owner) : '') + '</small></div></li>';
+                    (t.owner ? ' \u00b7 ' + esc(t.tag || t.owner) : '') + '</small>' +
+                    (zero ? '<small class="tv-zero-note">0x boost: may not be drawn any more</small>' : '') + '</div></li>';
             }).join('') + '</ol>';
     }
     function startTavernFeed() {
