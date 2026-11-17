@@ -150,10 +150,12 @@
         .tip-a .r-common { color: #d6dbe6; } .tip-a .r-rare { color: #5aa8ff; } .tip-a .r-epic { color: #c06bff; } .tip-a .r-legendary { color: #ffb02e; } .tip-a .r-mythic { color: #ff5470; }
         .pod { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: end; margin-top: 6px; }
         .pod-col { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
-        .pod-who { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .medal { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75em; font-weight: 800; color: #1a1205;
-            background: radial-gradient(circle at 35% 30%, #fff6c8, var(--mc) 55%, #0006 130%); box-shadow: 0 0 0 2px #0008, 0 2px 6px #0008; }
-        .p1 .medal { --mc: #f2c230; } .p2 .medal { --mc: #c9d1dc; } .p3 .medal { --mc: #d08a4a; }
+        .pod-who { display: flex; align-items: center; gap: 8px; max-width: 100%; padding: 4px 12px 4px 4px; border-radius: 8px;
+            border: 1.5px solid var(--mc); background: linear-gradient(90deg, color-mix(in srgb, var(--mc) 22%, transparent), var(--panel2)); }
+        .pod-who .nm { font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .medal { flex: none; padding: 3px 7px; border-radius: 5px; font-size: 0.72em; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #1a1205;
+            background: linear-gradient(180deg, color-mix(in srgb, var(--mc) 55%, #fff), var(--mc)); box-shadow: 0 1px 3px #0008; }
+        .p1 { --mc: #f2c230; } .p2 { --mc: #c9d1dc; } .p3 { --mc: #d08a4a; }
         .pins { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
         .pin { position: relative; display: inline-flex; align-items: center; gap: 2px; }
         .pin b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 0.78em; font-weight: 800; color: #fff;
@@ -171,6 +173,9 @@
         .pod-rest .pins { display: inline-flex; justify-content: flex-start; margin-right: 8px; }
         .pod-rest .pin b { width: 22px; height: 22px; }
         .pod-rest li > b { float: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+        .fswap { margin-left: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--gold); background: transparent; color: var(--gold);
+            font: inherit; font-size: 0.85em; font-weight: 700; cursor: pointer; vertical-align: 2px; }
+        .fswap:hover, .fswap:focus-visible { background: var(--gold); color: #1a1205; outline: none; }
         .clear .bar { grid-template-columns: 90px 1fr 150px; }
         .clear .trk i { background: var(--win); }
 
@@ -256,8 +261,8 @@
                 <div class="bars" id="classes"></div>
             </section>
             <section class="card">
-                <h2>Top fighters</h2>
-                <p class="sub">The fighters with the most arena wins and dungeon wins at difficulty 12+, shown apart (wins / fights).</p>
+                <h2>Top fighters <small id="fmode">Arena wins</small></h2>
+                <p class="sub">The fighters with the most wins in this period. Swap between arena and dungeon difficulty 12+.</p>
                 <div class="wrap" id="fighters"></div>
             </section>
             <section class="card">
@@ -282,6 +287,6 @@
 </main>
 <footer>Fights from Naron Codex's fight log (Alien Legends battle.ale), tavern hires and the draw read live from the WAX chain. A community tool, not an official Alien Legends page.</footer>
 <script src="img_fallback.js"></script>
-<script src="alehub.js?v=1.2.85"></script>
+<script src="alehub.js?v=1.2.86"></script>
 </body>
 </html>

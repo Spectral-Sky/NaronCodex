@@ -246,17 +246,8 @@
                 if (isA) { x.af++; if (r[4]) x.aw++; } else { x.df++; if (r[4]) x.dw++; }
             });
         });
-        var fk = Object.keys(fx).sort(function (a, b) { var A = fx[a], B = fx[b]; return (B.aw + B.dw) - (A.aw + A.dw) || (A.af + A.df) - (B.af + B.df); }).slice(0, 15);
-        $('fighters').innerHTML = fk.length ? '<table><thead><tr><th class="rk">#</th><th></th><th>Fighter</th><th>Class</th><th>Race</th><th>Element</th><th>Owner</th>' +
-            '<th class="num">Arena wins</th><th class="num">Dungeon ' + HARD + '+ wins</th><th class="num">Rate</th></tr></thead><tbody>' +
-            fk.map(function (id, i) {
-                var x = fx[id], w = x.aw + x.dw, fs = x.af + x.df;
-                return '<tr class="fr" data-fid="' + esc(id) + '"><td class="rk">' + (i + 1) + '</td><td class="pic">' + portrait(x.cls, x.race, x.el, 'm') + '</td><td>#' + esc(id) + '</td><td style="text-transform:capitalize">' + esc(x.cls) + '</td>' +
-                    '<td style="text-transform:capitalize">' + esc(x.race) + '</td><td style="text-transform:capitalize;color:' + RIM[el(x.el)] + '">' + esc(x.el || '\u2013') + '</td><td class="who">' + esc(H.tags[x.owner] || x.owner) + '</td>' +
-                    '<td class="num"><b>' + n(x.aw) + '</b> <small class="wr">/ ' + n(x.af) + '</small></td><td class="num"><b>' + n(x.dw) + '</b> <small class="wr">/ ' + n(x.df) + '</small></td>' +
-                    '<td class="num wr">' + pct(w, fs).toFixed(0) + '%</td></tr>';
-            }).join('') + '</tbody></table><p class="sub" style="margin:8px 0 0">Hover a fighter for its stats.</p>' : '<div class="empty">No arena or dungeon ' + HARD + '+ fights in this period.</div>';
-        bindFighterTips();
+        H.fx = fx;
+        drawFighters();
 
         // heatmap: weekday x hour, UTC
         var grid = [], mx = 1, DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -292,7 +283,7 @@
         var step = function (i) {
             var w = pk[i]; if (!w) return '<div class="pod-col p' + (i + 1) + ' empty-step"></div>';
             var x = pod[w];
-            return '<div class="pod-col p' + (i + 1) + '"><div class="pod-who" title="' + esc(w) + '"><span class="medal">' + (i + 1) + '</span>' + who(w) + '</div>' +
+            return '<div class="pod-col p' + (i + 1) + '"><div class="pod-who" title="' + esc(w) + '"><span class="medal">' + ['1st', '2nd', '3rd'][i] + '</span><span class="nm">' + who(w) + '</span></div>' +
                 '<div class="pins">' + pins(x) + '</div>' +
                 '<div class="pod-step"><b>' + n(x.w) + '</b><small>win' + (x.w === 1 ? '' : 's') + '</small></div></div>';
         };
@@ -301,6 +292,27 @@
                 return '<li><span class="who" title="' + esc(w) + '">' + who(w) + '</span><span class="pins">' + pins(pod[w]) + '</span><b>' + n(pod[w].w) + '</b></li>';
             }).join('') + '</ol>' : '')
             : '<div class="empty">No dungeon wins at difficulty ' + PODMIN + '+ in this period.</div>';
+    }
+
+    // top fighters show one mode at a time: arena, or dungeon 12+ (the swap button flips it)
+    var FMODE = 'a';
+    function drawFighters() {
+        var fx = H.fx || {}, A = FMODE === 'a', wk = A ? 'aw' : 'dw', fk2 = A ? 'af' : 'df';
+        var label = A ? 'Arena' : 'Dungeon ' + HARD + '+';
+        var fk = Object.keys(fx).filter(function (id) { return fx[id][wk] > 0; })
+            .sort(function (a, b) { return fx[b][wk] - fx[a][wk] || fx[a][fk2] - fx[b][fk2]; }).slice(0, 15);
+        var sw = '<button type="button" class="fswap" id="fswap" title="Swap to ' + (A ? 'dungeon ' + HARD + '+' : 'arena') + '">⇄ ' + (A ? 'Dungeon ' + HARD + '+' : 'Arena') + '</button>';
+        $('fmode').innerHTML = label + ' wins' + sw;
+        $('fswap').onclick = function () { FMODE = A ? 'd' : 'a'; drawFighters(); };
+        $('fighters').innerHTML = fk.length ? '<table><thead><tr><th class="rk">#</th><th></th><th>Fighter</th><th>Class</th><th>Race</th><th>Element</th><th>Owner</th>' +
+            '<th class="num">' + label + ' wins</th><th class="num">Rate</th></tr></thead><tbody>' +
+            fk.map(function (id, i) {
+                var x = fx[id];
+                return '<tr class="fr" data-fid="' + esc(id) + '"><td class="rk">' + (i + 1) + '</td><td class="pic">' + portrait(x.cls, x.race, x.el, 'm') + '</td><td>#' + esc(id) + '</td><td style="text-transform:capitalize">' + esc(x.cls) + '</td>' +
+                    '<td style="text-transform:capitalize">' + esc(x.race) + '</td><td style="text-transform:capitalize;color:' + RIM[el(x.el)] + '">' + esc(x.el || '–') + '</td><td class="who">' + esc(H.tags[x.owner] || x.owner) + '</td>' +
+                    '<td class="num"><b>' + n(x[wk]) + '</b></td><td class="num wr">' + pct(x[wk], x[fk2]).toFixed(0) + '%</td></tr>';
+            }).join('') + '</tbody></table><p class="sub" style="margin:8px 0 0">Hover a fighter for its stats.</p>' : '<div class="empty">No ' + label.toLowerCase() + ' wins in this period.</div>';
+        bindFighterTips();
     }
 
     var PODMIN = 10;
