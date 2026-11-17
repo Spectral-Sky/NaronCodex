@@ -131,25 +131,28 @@
         var now = Date.now();
         if (p === '24h') return { from: now - DAY, to: now, label: 'last 24 hours' };
         if (p === '7d') return { from: now - 7 * DAY, to: now, label: 'last 7 days' };
+        if (p === '30d') return { from: now - 30 * DAY, to: now, label: 'last 30 days' };
         return weekendWindow();
     }
 
     /* ── tavern hires from chain history ── */
-    async function loadHires(w) {
-        var key = H.period + '|' + Math.floor(w.from / 600e3);
-        if (H.hires[key]) return H.hires[key];
+    function loadHires(w, per) {
+        var key = per + '|' + Math.floor(w.from / 600e3);
+        if (!H.hires[key]) H.hires[key] = scanHires(w).catch(function (e) { delete H.hires[key]; throw e; });
+        return H.hires[key];
+    }
+    async function scanHires(w) {
         var cnt = {}, before = new Date(w.to).toISOString(), seen = {}, total = 0;
         for (var i = 0; i < 120; i++) {
             var j = await hist('/v2/history/get_actions?account=players.ale&filter=players.ale:hire&limit=100&sort=desc&after=' +
                 new Date(w.from).toISOString() + '&before=' + before);
             var a = (j.actions || []).filter(function (x) { if (seen[x.global_sequence]) return false; seen[x.global_sequence] = 1; return true; });
             a.forEach(function (x) { var p = x.act.data.wallet; cnt[p] = (cnt[p] || 0) + 1; total++; });
-            status('Reading tavern hires… ' + total);
+            document.querySelectorAll('.hire-prog').forEach(function (x) { x.textContent = n(total); });
             if ((j.actions || []).length < 100 || !a.length) break;
             before = new Date(utcMs(a[a.length - 1]['@timestamp']) + 1000).toISOString();
         }
-        H.hires[key] = { cnt: cnt, total: total };
-        return H.hires[key];
+        return { cnt: cnt, total: total };
     }
 
     /* ── fighter art (from the game's own assets: new.alienlegends.io) ── */
@@ -168,47 +171,102 @@
 
     var HARD = 12;   // dungeon difficulty from which a win is worth counting
 
-    /* ── render ── */
+    /* ── render ──
+       Every section has its own period (24 h, 7 days, 30 days or the Weekend Challenge) and
+       draws on its own, so a slow tavern-hire scan never holds the rest of the page back. */
+    var SECS = { chips: '24h', tops: '24h', classes: '24h', fighters: '30d', heat: '7d', podium: '24h' };
+    var PERIODS = [['24h', '24 h'], ['7d', '7 days'], ['30d', '30 days'], ['wk', 'Weekend']];
+    var SEC_EL = { chips: 'chips', tops: 'tops', classes: 'classes', fighters: 'fighters', heat: 'heat', podium: 'podium' };
+    function perButtons(sec) {
+        return PERIODS.map(function (x) { return '<button type="button" data-p="' + x[0] + '"' + (SECS[sec] === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('');
+    }
+    function placeToggles() {
+        Object.keys(SEC_EL).forEach(function (sec) {
+            var card = $(SEC_EL[sec]).closest('section'), bar = card.querySelector('.sper');
+            if (!bar) {
+                bar = document.createElement('div'); bar.className = 'sper'; bar.setAttribute('data-sec', sec); bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Period');
+                var hd = card.querySelector('h2');
+                if (hd) { var row = document.createElement('div'); row.className = 'sec-head'; hd.parentNode.insertBefore(row, hd); row.appendChild(hd); row.appendChild(bar); }
+                else card.insertBefore(bar, card.firstChild);
+            }
+            bar.innerHTML = perButtons(sec);
+        });
+    }
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest('.sper button'); if (!b) return;
+        var sec = b.parentNode.getAttribute('data-sec');
+        SECS[sec] = b.getAttribute('data-p');
+        b.parentNode.innerHTML = perButtons(sec);
+        drawSection(sec);
+    });
+    async function sectionData(sec) {
+        var w = await windowOf(SECS[sec]);
+        return { w: w, f: H.fights.filter(function (r) { return r[0] >= w.from && r[0] <= w.to; }) };
+    }
     async function render() {
         if (!H.fights) return;
-        var w = await windowOf(H.period);
-        var f = H.fights.filter(function (r) { return r[0] >= w.from && r[0] <= w.to; });
         var newest = H.fights.length ? H.fights.reduce(function (m, r) { return r[0] > m ? r[0] : m; }, 0) : 0;
-
+        status('Fight log up to ' + fmtD(newest) + ' · <a href="#" id="reload">refresh</a>');
+        var rl = $('reload'); if (rl) rl.onclick = function (e) { e.preventDefault(); boot(true); };
+        placeToggles();
+        Object.keys(SECS).forEach(drawSection);
+    }
+    async function drawSection(sec) {
+        var per = SECS[sec], d = await sectionData(sec);
+        if (SECS[sec] !== per) return;   // clicked again while this was loading
+        var f = d.f, w = d.w;
         var arena = f.filter(function (r) { return r[2] === 'a'; }), dung = f.filter(function (r) { return r[2] === 'd'; });
         var hard = dung.filter(function (r) { return r[3] >= HARD; });
+        var card = $(SEC_EL[sec]).closest('section');
+        card.querySelector('.sper').title = w.label;
+        if (sec === 'chips') drawChips(f, arena, dung, w, per);
+        else if (sec === 'tops') drawTops(arena, hard, w, per);
+        else if (sec === 'classes') drawClasses(f);
+        else if (sec === 'fighters') drawFx(f);
+        else if (sec === 'heat') drawHeat(f);
+        else if (sec === 'podium') drawPodium(dung);
+    }
+    function hiresInto(w, per, sec, paint) {
+        loadHires(w, per).then(function (h) { if (SECS[sec] === per) paint(h); }).catch(function () { if (SECS[sec] === per) paint(null, true); });
+    }
+    function drawChips(f, arena, dung, w, per) {
         var wins = f.filter(function (r) { return r[4]; }).length, players = {};
         f.forEach(function (r) { players[r[1]] = 1; });
-        var hires = null;
-        try { hires = await loadHires(w); } catch (e) {}
-        status('<b>' + esc(w.label) + '</b> · ' + n(f.length) + ' fights · fight log up to ' + fmtD(newest) +
-            ' · <a href="#" id="reload">refresh</a>');
-        var rl = $('reload'); if (rl) rl.onclick = function (e) { e.preventDefault(); boot(true); };
-        $('chips').innerHTML = [
-            ['Fights', n(f.length)], ['Arena', n(arena.length)], ['Dungeon', n(dung.length)],
-            ['Won', pct(wins, f.length).toFixed(0) + '%'], ['Players fighting', n(Object.keys(players).length)],
-            ['Tavern hires', hires ? n(hires.total) : '…']
-        ].map(function (c) { return '<div class="chip"><span>' + c[0] + '</span><b>' + c[1] + '</b></div>'; }).join('');
-
-        // top players
+        var paint = function (hires, failed) {
+            $('chips').innerHTML = [
+                ['Fights', n(f.length)], ['Arena', n(arena.length)], ['Dungeon', n(dung.length)],
+                ['Won', pct(wins, f.length).toFixed(0) + '%'], ['Players fighting', n(Object.keys(players).length)],
+                ['Tavern hires', hires ? n(hires.total) : failed ? '\u2013' : '<small class="hire-prog">\u2026</small>']
+            ].map(function (c) { return '<div class="chip"><span>' + c[0] + '</span><b>' + c[1] + '</b></div>'; }).join('');
+        };
+        paint(null);
+        hiresInto(w, per, 'chips', paint);
+    }
+    function drawTops(arena, hard, w, per) {
         var tally = function (list) {
             var t = {};
             list.forEach(function (r) { var x = t[r[1]] = t[r[1]] || { w: 0, f: 0 }; x.f++; if (r[4]) x.w++; });
             return Object.keys(t).map(function (k) { return { k: k, w: t[k].w, f: t[k].f }; }).sort(function (a, b) { return b.w - a.w || a.f - b.f; }).slice(0, 10);
         };
-        var table = function (title, list, cols) {
+        var table = function (title, list, cols, empty) {
             return '<div><h3 style="margin:0 0 6px;font-size:0.92em;color:var(--gold)">' + title + '</h3><table><thead><tr><th class="rk">#</th><th>Player</th>' +
                 cols.map(function (c) { return '<th class="num">' + c + '</th>'; }).join('') + '</tr></thead><tbody>' +
                 (list.length ? list.map(function (r, i) {
                     return '<tr><td class="rk">' + (i + 1) + '</td><td class="who" title="' + esc(r.k) + '">' + esc(H.tags[r.k] || r.k) + (H.tags[r.k] ? ' <small>' + esc(r.k) + '</small>' : '') + '</td>' + r.cells + '</tr>';
-                }).join('') : '<tr><td colspan="4" class="empty">None in this period.</td></tr>') + '</tbody></table></div>';
+                }).join('') : '<tr><td colspan="4" class="empty">' + (empty || 'None in this period.') + '</td></tr>') + '</tbody></table></div>';
         };
         var asRows = function (l) { return l.map(function (x) { return { k: x.k, cells: '<td class="num"><b>' + n(x.w) + '</b></td><td class="num wr">' + pct(x.w, x.f).toFixed(0) + '%</td>' }; }); };
-        var hireRows = hires ? Object.keys(hires.cnt).sort(function (a, b) { return hires.cnt[b] - hires.cnt[a]; }).slice(0, 10)
-            .map(function (k) { return { k: k, cells: '<td class="num"><b>' + n(hires.cnt[k]) + '</b></td>' }; }) : [];
-        $('tops').innerHTML = table('Arena wins', asRows(tally(arena)), ['Wins', 'Rate']) + table('Dungeon wins, difficulty ' + HARD + '+', asRows(tally(hard)), ['Wins', 'Rate']) +
-            table('Tavern hires', hireRows, ['Hires']);
-
+        var fights = table('Arena wins', asRows(tally(arena)), ['Wins', 'Rate']) + table('Dungeon wins, difficulty ' + HARD + '+', asRows(tally(hard)), ['Wins', 'Rate']);
+        var paint = function (hires, failed) {
+            var hireRows = hires ? Object.keys(hires.cnt).sort(function (a, b) { return hires.cnt[b] - hires.cnt[a]; }).slice(0, 10)
+                .map(function (k) { return { k: k, cells: '<td class="num"><b>' + n(hires.cnt[k]) + '</b></td>' }; }) : [];
+            $('tops').innerHTML = fights + table('Tavern hires', hireRows, ['Hires'],
+                hires ? '' : failed ? 'Hire history unavailable right now.' : 'Reading hires\u2026 <span class="hire-prog"></span>');
+        };
+        paint(null);
+        hiresInto(w, per, 'tops', paint);
+    }
+    function drawClasses(f) {
         // classes: arena wins and dungeon wins at difficulty 12+, each fighter in a winning team once
         var cls = {};
         f.forEach(function (r) {
@@ -234,6 +292,8 @@
                 '<span class="val"><b>' + n(x.w) + '</b> \u00b7 ' + pct(x.w, x.f).toFixed(0) + '%</span></div>';
         }).join('') + '<div class="legend2"><span><i class="ia"></i>Arena wins</span><span><i class="id"></i>Dungeon ' + HARD + '+ wins</span></div>' : '<div class="empty">No arena or dungeon ' + HARD + '+ fights in this period.</div>';
 
+    }
+    function drawFx(f) {
         // top fighters: arena and dungeon 12+ kept apart, ranked on the two together
         var fx = {};
         f.forEach(function (r) {
@@ -249,6 +309,8 @@
         H.fx = fx;
         drawFighters();
 
+    }
+    function drawHeat(f) {
         // heatmap: weekday x hour, UTC
         var grid = [], mx = 1, DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         for (var d = 0; d < 7; d++) { grid.push([]); for (var h = 0; h < 24; h++) grid[d].push(0); }
@@ -266,6 +328,8 @@
         $('heat').innerHTML = hh + '</div><div class="heat-key">fewer <i style="background:rgba(232,160,32,0.15)"></i><i style="background:rgba(232,160,32,0.5)"></i><i style="background:rgba(232,160,32,1)"></i> more · busiest hour: ' +
             (function () { var b = [0, 0, 0]; grid.forEach(function (row, d4) { row.forEach(function (v, h4) { if (v > b[0]) b = [v, d4, h4]; }); }); return b[0] ? DAYS[b[1]] + ' ' + String(b[2]).padStart(2, '0') + ':00 (' + n(b[0]) + ' fights)' : 'none'; })() + '</div>';
 
+    }
+    function drawPodium(dung) {
         // dungeon podium: players by wins at difficulty 10+, each difficulty won shown as a pin (x count)
         var pod = {};
         dung.forEach(function (r) {
@@ -305,14 +369,36 @@
         $('fmode').innerHTML = label + ' wins' + sw;
         $('fswap').onclick = function () { FMODE = A ? 'd' : 'a'; drawFighters(); };
         $('fighters').innerHTML = fk.length ? '<table><thead><tr><th class="rk">#</th><th></th><th>Fighter</th><th>Class</th><th>Race</th><th>Element</th><th>Owner</th>' +
-            '<th class="num">' + label + ' wins</th><th class="num">Rate</th></tr></thead><tbody>' +
+            '<th class="num">' + label + ' wins</th><th class="num">Rate</th><th class="num" title="Days since the fighter was hired, and the share of its health and damage it still fights with">Age</th></tr></thead><tbody>' +
             fk.map(function (id, i) {
                 var x = fx[id];
                 return '<tr class="fr" data-fid="' + esc(id) + '"><td class="rk">' + (i + 1) + '</td><td class="pic">' + portrait(x.cls, x.race, x.el, 'm') + '</td><td>#' + esc(id) + '</td><td style="text-transform:capitalize">' + esc(x.cls) + '</td>' +
                     '<td style="text-transform:capitalize">' + esc(x.race) + '</td><td style="text-transform:capitalize;color:' + RIM[el(x.el)] + '">' + esc(x.el || '–') + '</td><td class="who">' + esc(H.tags[x.owner] || x.owner) + '</td>' +
-                    '<td class="num"><b>' + n(x[wk]) + '</b></td><td class="num wr">' + pct(x[wk], x[fk2]).toFixed(0) + '%</td></tr>';
-            }).join('') + '</tbody></table><p class="sub" style="margin:8px 0 0">Hover a fighter for its stats.</p>' : '<div class="empty">No ' + label.toLowerCase() + ' wins in this period.</div>';
+                    '<td class="num"><b>' + n(x[wk]) + '</b></td><td class="num wr">' + pct(x[wk], x[fk2]).toFixed(0) + '%</td><td class="num age" data-age="' + esc(id) + '">\u2026</td></tr>';
+            }).join('') + '</tbody></table><p class="sub" style="margin:8px 0 0">Hover a fighter for its stats. Age is days since it was hired; the % is how much of its health and damage it still fights with, ' +
+            'since the game shrinks both by age_decay<sup>days\u00b2</sup>: barely felt for weeks, then falling fast (about 92% at 60 days, 82% at 100, 45% at 200).</p>' : '<div class="empty">No ' + label.toLowerCase() + ' wins in this period.</div>';
         bindFighterTips();
+        fk.forEach(function (id) {
+            fighter(id).then(function (r) {
+                var td = document.querySelector('#fighters td[data-age="' + id + '"]'); if (!td) return;
+                td.innerHTML = r ? ageHtml(r.creation_date) : '<small class="wr">gone</small>';
+            }).catch(function () {});
+        });
+    }
+
+    /* fighter age: whole days since creation, and age_decay ^ days^2 (the contract's apply_weather_and_age) */
+    var AGE_DECAY = 0.99997997283935547;
+    rows({ json: true, code: 'battle.ale', scope: 'battle.ale', table: 'config', limit: 1 })
+        .then(function (d) { var v = Number(((d.rows || [])[0] || {}).age_decay); if (v > 0 && v < 1) AGE_DECAY = v; }).catch(function () {});
+    function ageOf(created) {
+        var t = Date.parse(String(created || '') + 'Z'); if (!isFinite(t)) return null;
+        var days = Math.max(0, Math.floor((Date.now() - t) / DAY));
+        return { days: days, f: Math.pow(AGE_DECAY, days * days) };
+    }
+    function ageHtml(created) {
+        var a = ageOf(created); if (!a) return '\u2013';
+        var p = a.f * 100, c = p >= 90 ? 'var(--win)' : p >= 70 ? 'var(--gold)' : '#ff6b6b';
+        return '<span title="' + esc(a.days + ' days old: fights at ' + p.toFixed(1) + '% health and damage') + '">' + a.days + 'd <b style="color:' + c + '">' + p.toFixed(0) + '%</b></span>';
     }
 
     var PODMIN = 10;
@@ -342,7 +428,7 @@
             return '<li><b class="r-' + esc(rar) + '">' + esc(String(a.displayname || a.ability).replace(/\s*\[\w+\]\s*$/, '')) + '</b>' + (rar ? ' <small>' + esc(rar) + '</small>' : '') + '</li>';
         }).join('');
         return '<div class="tip-h">' + portrait(f.classname, f.racename, f.element, 'm') + '<div><b style="text-transform:capitalize">' + esc(f.classname + ' ' + f.racename) + '</b>' +
-            '<small>#' + esc(f.fighter_id) + ' \u00b7 level ' + (st.level || '?') + (Number(f.ascension_level) ? ' \u00b7 ascension ' + f.ascension_level : '') + ' \u00b7 <span style="color:' + RIM[e] + ';text-transform:capitalize">' + e + '</span></small>' +
+            '<small>#' + esc(f.fighter_id) + ' \u00b7 level ' + (st.level || '?') + (Number(f.ascension_level) ? ' \u00b7 ascension ' + f.ascension_level : '') + ' \u00b7 age ' + ageHtml(f.creation_date) + ' \u00b7 <span style="color:' + RIM[e] + ';text-transform:capitalize">' + e + '</span></small>' +
             '<small>' + esc(H.tags[f.owner] || f.owner) + '</small></div></div>' +
             '<table class="tip-s">' + STATS.map(function (x) {
                 return '<tr><td>' + x[1] + (x[0] === 'attackspeed' || x[0] === 'initiative' ? ' <small>lower is better</small>' : '') + '</td><td class="num">' + statText(Number(st[x[0] + '_min']) || 0, Number(st[x[0] + '_max']) || 0) + '</td></tr>';
@@ -786,7 +872,6 @@
     function setTab(t) {
         document.querySelectorAll('.tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === t); });
         document.querySelectorAll('[data-panel]').forEach(function (p2) { p2.hidden = p2.getAttribute('data-panel') !== t; });
-        document.querySelector('.periods').style.visibility = t === 'activity' ? '' : 'hidden';
         if (t === 'profit') openProfit(); else render();
     }
     document.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { setTab(b.getAttribute('data-tab')); }; });
@@ -797,13 +882,6 @@
         try { await loadFights(force); } catch (e) { status('Could not load the fight log: ' + esc(e.message)); return; }
         render();
     }
-    document.querySelectorAll('.periods button').forEach(function (b) {
-        b.onclick = function () {
-            H.period = b.getAttribute('data-p');
-            document.querySelectorAll('.periods button').forEach(function (x) { x.classList.toggle('on', x === b); });
-            render();
-        };
-    });
     paintTaverns();
     loadTaverns().then(function () { if (H.fights) render(); });
     setInterval(function () { if (!document.hidden) loadTaverns(); }, 60000);

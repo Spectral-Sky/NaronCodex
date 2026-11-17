@@ -176,6 +176,15 @@
         .fswap { margin-left: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--gold); background: transparent; color: var(--gold);
             font: inherit; font-size: 0.85em; font-weight: 700; cursor: pointer; vertical-align: 2px; }
         .fswap:hover, .fswap:focus-visible { background: var(--gold); color: #1a1205; outline: none; }
+        .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .sec-head h2 { margin-bottom: 0; }
+        .sper { display: inline-flex; background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 2px; flex: none; }
+        .sper button { background: transparent; border: 0; color: var(--muted); padding: 4px 10px; border-radius: 999px; font: inherit; font-size: 0.78em; font-weight: 600; cursor: pointer; }
+        .sper button:hover { color: var(--ink); }
+        .sper button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+        .sper button.on { background: var(--gold); color: #1a1206; }
+        #chips + .sper, .card > .sper:first-child { margin-bottom: 10px; }
+        td.age { white-space: nowrap; font-variant-numeric: tabular-nums; }
         .clear .bar { grid-template-columns: 90px 1fr 150px; }
         .clear .trk i { background: var(--win); }
 
@@ -224,11 +233,6 @@
         <div>
             <h1>Alien Legends <em>Hub</em></h1>
             <p>Who is winning, with what, and when: arena and dungeon fights, tavern hires, classes and fighters, plus the live tavern draw.</p>
-        </div>
-        <div class="periods" role="tablist" aria-label="Period">
-            <button data-p="24h" class="on">24 h</button>
-            <button data-p="7d">7 days</button>
-            <button data-p="wk">Weekend Challenge</button>
         </div>
     </div>
     <nav class="tabs" role="tablist" aria-label="ALE Hub">
@@ -287,6 +291,6 @@
 </main>
 <footer>Fights from Naron Codex's fight log (Alien Legends battle.ale), tavern hires and the draw read live from the WAX chain. A community tool, not an official Alien Legends page.</footer>
 <script src="img_fallback.js"></script>
-<script src="alehub.js?v=1.2.86"></script>
+<script src="alehub.js?v=1.2.87"></script>
 </body>
 </html>
