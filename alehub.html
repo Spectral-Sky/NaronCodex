@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>ALE Hub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="NCico.png">
+    <style>
+        :root {
+            --bg: #07080d;
+            --panel: #0d1018;
+            --panel2: #121621;
+            --line: rgba(232,160,32,0.18);
+            --line-soft: rgba(255,255,255,0.06);
+            --gold: #e8a020;
+            --gold-soft: rgba(232,160,32,0.14);
+            --ink: #e9e2d0;
+            --muted: #9aa3b2;
+            --dim: #6b7383;
+            --win: #4fcf8a;
+            --loss: #ef6b6b;
+            --radius: 12px;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; background: var(--bg); color: var(--ink); }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif; font-size: 15px; line-height: 1.45; }
+        a { color: var(--gold); }
+        button { font-family: inherit; }
+        :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+        header.top { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 12px 20px; border-bottom: 1px solid var(--line);
+            position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(8px); }
+        .brand { font-weight: 700; color: var(--ink); text-decoration: none; letter-spacing: 0.3px; }
+        .brand span { color: var(--gold); margin-right: 6px; }
+        nav.site { display: flex; gap: 2px; flex-wrap: wrap; }
+        nav.site a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 0.88em; padding: 7px 12px; border-radius: 8px; }
+        nav.site a:hover { color: var(--ink); background: var(--gold-soft); }
+        nav.site a.on { color: var(--gold); background: var(--gold-soft); }
+
+        .page { max-width: 1500px; margin: 0 auto; padding: 22px 20px 50px; }
+        .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+        .hero h1 { margin: 0; font-size: 1.7em; letter-spacing: 0.5px; text-wrap: balance; }
+        .hero h1 em { font-style: normal; color: var(--gold); }
+        .hero p { margin: 4px 0 0; color: var(--muted); font-size: 0.92em; max-width: 70ch; }
+        .periods { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+        .periods button { background: transparent; border: none; color: var(--muted); padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 0.9em; cursor: pointer; }
+        .periods button.on { background: var(--gold); color: #1a1206; }
+        .status { font-size: 0.82em; color: var(--muted); margin: -6px 0 16px; min-height: 1.3em; }
+        .status b { color: var(--ink); }
+
+        .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+        .col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+        .card { background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 16px 18px; }
+        .card h2 { margin: 0 0 4px; font-size: 1.02em; letter-spacing: 0.4px; }
+        .card h2 small { color: var(--dim); font-weight: 500; margin-left: 6px; font-size: 0.82em; }
+        .card .sub { margin: 0 0 12px; color: var(--muted); font-size: 0.82em; }
+
+        .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+        .chip { background: var(--panel2); border: 1px solid var(--line-soft); border-radius: 10px; padding: 10px 14px; }
+        .chip span { display: block; font-size: 0.76em; color: var(--muted); }
+        .chip b { font-size: 1.35em; font-variant-numeric: tabular-nums; }
+
+        .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88em; font-variant-numeric: tabular-nums; }
+        th { text-align: left; color: var(--dim); font-weight: 600; font-size: 0.82em; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+        td { padding: 7px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        .num { text-align: right; }
+        .rk { color: var(--dim); width: 28px; }
+        .who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+        .who small { color: var(--dim); }
+        .wr { color: var(--muted); }
+        .wrap { overflow-x: auto; }
+
+        .bars { display: flex; flex-direction: column; gap: 7px; }
+        .bar { display: grid; grid-template-columns: 120px 1fr 120px; gap: 10px; align-items: center; font-size: 0.86em; }
+        .bar .lab { color: var(--ink); text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bar .trk { height: 14px; background: var(--panel2); border-radius: 0 4px 4px 0; overflow: hidden; }
+        .bar .trk i { display: block; height: 100%; background: var(--gold); border-radius: 0 4px 4px 0; }
+        .bar .val { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .bar .val b { color: var(--ink); }
+
+        .heat { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 2px; font-size: 0.68em; }
+        .heat .hl { color: var(--dim); display: flex; align-items: center; }
+        .heat .hh { color: var(--dim); text-align: center; }
+        .heat .c { aspect-ratio: 1.4; border-radius: 3px; background: var(--panel2); }
+        .heat-key { display: flex; align-items: center; gap: 6px; font-size: 0.74em; color: var(--dim); margin-top: 8px; }
+        .heat-key i { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
+
+        /* fighter portraits: the game's art over its element backdrop, rimmed in the element's colour */
+        .art { position: relative; display: inline-block; flex-shrink: 0; background-size: cover; background-position: center;
+            border: 2px solid var(--rim); border-radius: 8px; overflow: hidden; vertical-align: middle; }
+        .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+        .art .art-el { inset: auto 2px 2px auto; width: 14px; height: 14px; object-fit: contain; filter: drop-shadow(0 0 2px #000); }
+        .art-s { width: 30px; height: 30px; border-radius: 50%; margin-right: 8px; }
+        .art-s .art-el { width: 11px; height: 11px; inset: auto 0 0 auto; }
+        .art-m { width: 46px; height: 64px; }
+        .bar .lab { display: flex; align-items: center; }
+        .bar { grid-template-columns: 150px 1fr 120px; }
+        td.pic { width: 54px; padding: 4px 8px; }
+        .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 0 14px; }
+        .tabs button { background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; color: var(--muted);
+            font-weight: 700; font-size: 0.95em; padding: 10px 16px; cursor: pointer; }
+        .tabs button.on { color: var(--gold); border-bottom-color: var(--gold); }
+        [data-panel][hidden] { display: none !important; }
+        .duo { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .teaser { text-align: left; cursor: pointer; color: var(--ink); font: inherit; border: 1px solid var(--line); }
+        .teaser:hover, .more:hover { border-color: var(--gold); }
+        .more { text-decoration: none; color: var(--ink); background: linear-gradient(135deg, rgba(232,160,32,0.16), var(--panel) 70%); border: 1px solid var(--line); }
+        .more h2 { color: var(--gold); }
+        .pl { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+        .pl .chip b.pos { color: var(--win); } .pl .chip b.neg { color: var(--loss); }
+        .board-row { cursor: pointer; } .board-row:hover td { background: var(--gold-soft); } .board-row.sel td { background: rgba(232,160,32,0.2); }
+        .pos { color: var(--win); } .neg { color: var(--loss); }
+        .search { display: flex; gap: 8px; margin: 0 0 12px; }
+        .search input { flex: 1; background: var(--panel2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 12px; font: inherit; }
+        .search button, .btn { background: var(--gold); color: #1a1206; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+        .packs { display: flex; flex-wrap: wrap; gap: 8px; }
+        .packs span { background: var(--panel2); border: 1px solid var(--line-soft); border-radius: 8px; padding: 6px 10px; font-size: 0.86em; }
+        .flow { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 0.92em; }
+        .flow dt { color: var(--muted); } .flow dd { margin: 0; font-variant-numeric: tabular-nums; }
+        .nfts { display: flex; flex-wrap: wrap; gap: 8px; }
+        .nft { width: 92px; text-align: center; font-size: 0.72em; color: var(--muted); }
+        .nft img { width: 92px; height: 128px; object-fit: cover; border-radius: 8px; background: var(--panel2); display: block; margin-bottom: 3px; }
+        @media (max-width: 760px) { .duo { grid-template-columns: 1fr; } }
+        .tk { width: 1.1em; height: 1.1em; border-radius: 50%; object-fit: contain; vertical-align: -0.2em; margin-right: 4px; }
+        .shd { color: #b47cff; font-weight: 600; }
+        abbr.est { color: var(--gold); text-decoration: none; cursor: help; margin-left: 2px; font-weight: 700; }
+        .clear .bar { grid-template-columns: 90px 1fr 150px; }
+        .clear .trk i { background: var(--win); }
+
+        aside.feed { position: sticky; top: 74px; max-height: calc(100vh - 92px); overflow-y: auto; background: var(--panel);
+            border: 1px solid var(--line); border-radius: var(--radius); }
+        .feed-h { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+            background: var(--panel); border-bottom: 1px solid var(--line); }
+        .feed-h b { color: var(--gold); }
+        .feed-h small { margin-left: auto; color: var(--dim); font-size: 0.74em; }
+        .live { width: 8px; height: 8px; border-radius: 50%; background: var(--win); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
+        .feed-note { margin: 8px 14px; font-size: 0.74em; color: var(--dim); line-height: 1.5; }
+        .tv { list-style: none; margin: 0; padding: 0; }
+        .tv li { display: flex; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line-soft); transition: background 1s; }
+        .tv li.up { background: rgba(79,207,138,0.08); } .tv li.down { background: rgba(239,107,107,0.06); } .tv li.zero { opacity: 0.45; }
+        .tv .pos { flex: 0 0 22px; color: var(--dim); font-size: 0.8em; text-align: right; }
+        .tv .m { flex: 1; min-width: 0; }
+        .tv .t { display: flex; gap: 8px; align-items: baseline; font-size: 0.86em; }
+        .tv .t b { color: var(--ink); } .tv .x { color: var(--gold); font-size: 0.9em; }
+        .tv .mv { margin-left: auto; font-size: 0.8em; font-weight: 700; } .tv li.up .mv { color: var(--win); } .tv li.down .mv { color: var(--loss); }
+        .tv .tb { height: 5px; background: var(--panel2); border-radius: 3px; overflow: hidden; margin: 4px 0 3px; }
+        .tv .tb i { display: block; height: 100%; background: var(--gold); border-radius: 3px; }
+        .tv small { display: block; color: var(--dim); font-size: 0.74em; } .tv small b { color: var(--ink); }
+        .tv .zn { color: #c9a227; }
+
+        .empty { color: var(--dim); font-size: 0.88em; padding: 10px 0; }
+        footer { color: var(--dim); font-size: 0.78em; text-align: center; padding: 20px; border-top: 1px solid var(--line-soft); }
+        @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } aside.feed { position: static; max-height: 560px; } }
+        @media (max-width: 640px) { .page { padding: 16px 16px 40px; } .bar { grid-template-columns: 90px 1fr 96px; } .heat { font-size: 0.56em; } }
+    </style>
+</head>
+<body>
+<header class="top">
+    <a class="brand" href="index.html"><span>◈</span>Naron Codex</a>
+    <nav class="site" aria-label="Naron Codex">
+        <a href="index.html">Hub</a>
+        <a href="miss.pdef.html">PD</a>
+        <a href="ale.html">ALE Stats</a>
+        <a href="aleleaders.html">Leaderboard</a>
+        <a href="alehub.html" class="on" aria-current="page">ALE Hub</a>
+    </nav>
+</header>
+
+<main class="page">
+    <div class="hero">
+        <div>
+            <h1>Alien Legends <em>Hub</em></h1>
+            <p>Who is winning, with what, and when: arena and dungeon fights, tavern hires, classes and fighters, plus the live tavern draw.</p>
+        </div>
+        <div class="periods" role="tablist" aria-label="Period">
+            <button data-p="24h" class="on">24 h</button>
+            <button data-p="7d">7 days</button>
+            <button data-p="wk">Weekend Challenge</button>
+        </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="ALE Hub">
+        <button role="tab" data-tab="activity" class="on">Activity</button>
+        <button role="tab" data-tab="profit">Profitability</button>
+    </nav>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <div class="layout" data-panel="activity">
+        <div class="col">
+            <section class="card"><div class="chips" id="chips"></div></section>
+            <div class="duo">
+                <button class="card teaser" id="prof-teaser" type="button">
+                    <h2>Profitability <small>lifetime, every player</small></h2>
+                    <div id="prof-mini" class="sub">WAX spent on gems against TLM, WAX and shards earned. Open the breakdown →</div>
+                </button>
+                <a class="card more" href="ale.html">
+                    <h2>More Stats!</h2>
+                    <p class="sub">NFT stats, mining power tables, fighter abilities and more on ALE Stats →</p>
+                </a>
+            </div>
+            <section class="card">
+                <h2>Top players</h2>
+                <p class="sub">Fights won by the player's team, and tavern hires, in this period.</p>
+                <div class="three" id="tops"></div>
+            </section>
+            <section class="card">
+                <h2>Classes by wins <small>arena and dungeon</small></h2>
+                <p class="sub">Each fighter in a winning team counts once. Win rate is wins over every fight that class took part in.</p>
+                <div class="bars" id="classes"></div>
+            </section>
+            <section class="card">
+                <h2>Top fighters</h2>
+                <p class="sub">The individual fighters with the most wins in this period.</p>
+                <div class="wrap" id="fighters"></div>
+            </section>
+            <section class="card">
+                <h2>When people fight <small>UTC</small></h2>
+                <p class="sub">Arena and dungeon fights by day and hour. Darker is busier.</p>
+                <div id="heat"></div>
+            </section>
+            <section class="card clear">
+                <h2>Dungeon clear rates <small>by difficulty</small></h2>
+                <p class="sub">How often dungeon runs are won at each difficulty.</p>
+                <div class="bars" id="clears"></div>
+            </section>
+        </div>
+        <aside class="feed" id="feed" aria-label="Live tavern draw"></aside>
+    </div>
+    <div data-panel="profit" hidden>
+        <div class="layout">
+            <div class="col" id="prof-main"></div>
+            <aside class="feed" id="prof-board" aria-label="Profitability leaderboard"></aside>
+        </div>
+    </div>
+</main>
+<footer>Fights from Naron Codex's fight log (Alien Legends battle.ale), tavern hires and the draw read live from the WAX chain. A community tool, not an official Alien Legends page.</footer>
+<script src="img_fallback.js"></script>
+<script src="alehub.js?v=1.2.84"></script>
+</body>
+</html>
