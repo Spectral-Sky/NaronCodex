@@ -573,6 +573,11 @@
         .txq-item-del { background:transparent; border:none; color:#332; font-size:0.9em;
             cursor:pointer; padding:0 3px; line-height:1; transition:color 0.1s; }
         .txq-item-del:hover { color:#ff6666; }
+        /* the wallet's own taverns: where they sit in the game's draw */
+        #txq-mine { padding: 6px 12px; font-size: 0.72em; letter-spacing: 1px; color: #c8b070; border-bottom: 1px solid rgba(255,200,80,0.15);
+            background: rgba(255,200,80,0.05); }
+        #txq-mine b { color: #ffd27a; }
+        .txq-mine-on { color: #50c878; }
         /* compact fight result, sits under its queue row */
         .txq-fight-sum { padding:4px 8px 6px 26px; border-bottom:1px solid rgba(192,144,96,0.06);
             background:rgba(96,200,255,0.02); font-size:0.56em; letter-spacing:1px; line-height:1.7; }
@@ -4576,6 +4581,7 @@
         <span class="txq-ap-total" id="txq-ap-total">0 AP</span>
         <button class="txq-close-btn" id="txq-close-btn" onclick="closeTxQueuePanel()">▼</button>
     </div>
+    <div id="txq-mine" style="display:none"></div>
     <div id="txq-list"></div>
     <div class="txq-footer">
         <div id="txq-prog-wrap">
@@ -5004,6 +5010,7 @@ function openTxQueuePanel() {
     var panel = document.getElementById('txq-panel');
     if (panel) { panel.style.display = 'flex'; setTimeout(function(){ panel.classList.add('open'); }, 10); }
     renderTxQueue();
+    loadMyTaverns(getWallet()).catch(function(){});
     // Also reveal auto-reroll panel (both unlocked by the same code)
     var ar = document.getElementById('ar-panel');
     if (ar && ar.style.display === 'none') { ar.style.display = ''; renderArSlots(); }
@@ -5138,6 +5145,65 @@ function txqAddCell(x, y) {
 }
 window.txqAddCell = txqAddCell;
 
+// ── MY TAVERNS: prioritise taverns on land the wallet owns ──────────────────
+// Which taverns a player may hire at is the game's choice (players.ale
+// active_taverns, 10 at a time). Each travel or hire draws one new tavern for the
+// player: the tavern with the lowest lands.ale tavern_score, which then gets +10
+// (lands.ale::addtavernscr), so draws rotate through every tavern; low-boost
+// taverns sit at the top of the range and come round least. A tavern can't be
+// forced into the list, so the recruit run puts owned taverns first, and while it
+// runs it re-reads the list after each hire and adds an owned tavern the moment
+// one is drawn. Ownership is read from the land NFTs; the two below are the
+// fallback for this page's owner.
+var MY_TAVERNS_FALLBACK = { '1x1ci.wam': ['kavian.31.9', 'naron.33.6'] };
+var _myTaverns = { wallet: '', keys: [], rank: {}, total: 0, at: 0 };
+async function loadMyTaverns(wallet) {
+    if (!wallet) return _myTaverns;
+    if (_myTaverns.wallet === wallet && Date.now() - _myTaverns.at < 5 * 60e3) return _myTaverns;
+    var planets = Object.keys(ALE_LOCATIONS), tav = [];
+    for (var i = 0; i < planets.length; i++) {
+        try {
+            var d = await fetchRows({ code: 'lands.ale', scope: planets[i], table: 'lands', limit: 1000, json: true });
+            ((d && d.rows) || []).forEach(function (l) {
+                if ((l.buildings || []).some(function (b) { return b.building_name === 'tavern'; }))
+                    tav.push({ key: planets[i] + '.' + l.x + '.' + l.y, asset: String(l.asset_id || ''), score: Number(l.tavern_score) || 0 });
+            });
+        } catch (e) {}
+    }
+    // draw order: lowest tavern_score first
+    tav.sort(function (a, b) { return a.score - b.score; });
+    var rank = {};
+    tav.forEach(function (t, i) { rank[t.key] = i + 1; });
+    var keys = [];
+    try {
+        var ids = tav.map(function (t) { return t.asset; }).filter(function (a) { return a && a !== '0'; });
+        var r = await fetch('https://wax.api.atomicassets.io/atomicassets/v1/assets?ids=' + ids.join(',') + '&limit=100');
+        var j = await r.json();
+        var owned = {};
+        (j.data || []).forEach(function (a) { if (a.owner === wallet) owned[a.asset_id] = 1; });
+        keys = tav.filter(function (t) { return owned[t.asset]; }).map(function (t) { return t.key; });
+    } catch (e) {}
+    if (!keys.length && MY_TAVERNS_FALLBACK[wallet]) keys = MY_TAVERNS_FALLBACK[wallet].slice();
+    _myTaverns = { wallet: wallet, keys: keys, rank: rank, total: tav.length, at: Date.now() };
+    renderMyTaverns();
+    return _myTaverns;
+}
+function _isMyTavern(planet, x, y) { return _myTaverns.keys.indexOf(planet + '.' + x + '.' + y) >= 0; }
+function _myTavernLabel(k) { var p = k.split('.'); return p[0].charAt(0).toUpperCase() + p[0].slice(1) + ' ' + p[1] + ':' + p[2]; }
+function renderMyTaverns() {
+    var el = document.getElementById('txq-mine');
+    if (!el) return;
+    if (!_myTaverns.keys.length) { el.style.display = 'none'; return; }
+    var active = {};
+    Object.keys(ALE_LOCATIONS).forEach(function (pl) { (ALE_LOCATIONS[pl].taverns || []).forEach(function (t) { active[pl + '.' + t.x + '.' + t.y] = 1; }); });
+    el.style.display = '';
+    el.innerHTML = '★ YOUR TAVERNS · ' + _myTaverns.keys.map(function (k) {
+        var r = _myTaverns.rank[k];
+        return '<b>' + _myTavernLabel(k) + '</b> ' + (active[k] ? '<span class="txq-mine-on">in your list now</span>'
+            : r ? (r === 1 ? 'drawn next' : '#' + r + ' of ' + _myTaverns.total + ' in the draw') : '');
+    }).join(' &nbsp;·&nbsp; ');
+}
+
 async function txqAddAllTaverns() {
     var wallet = getWallet();
     var btn = document.getElementById('txq-recruit-btn');
@@ -5154,10 +5220,16 @@ async function txqAddAllTaverns() {
     });
     if (!Object.keys(byPlanet).length) return;
 
-    // Current planet first, then the rest
-    var order = [_activePlanet].concat(
-        Object.keys(byPlanet).filter(function(p){ return p !== _activePlanet; })
-    ).filter(function(p){ return byPlanet[p]; });
+    // Owned taverns first: their planets lead (the current one first if it has one),
+    // then the current planet, then the rest; within a planet, owned taverns first
+    try { await loadMyTaverns(wallet); } catch(e) {}
+    var _hasMine = function(p){ return (byPlanet[p] || []).some(function(t){ return _isMyTavern(p, t.x, t.y); }); };
+    Object.keys(byPlanet).forEach(function(p){
+        byPlanet[p] = byPlanet[p].slice().sort(function(a, b){ return (_isMyTavern(p, b.x, b.y) ? 1 : 0) - (_isMyTavern(p, a.x, a.y) ? 1 : 0); });
+    });
+    var _rest = [_activePlanet].concat(Object.keys(byPlanet).filter(function(p){ return p !== _activePlanet; }));
+    var order = _rest.filter(_hasMine).concat(_rest.filter(function(p){ return !_hasMine(p); }))
+        .filter(function(p, i, a){ return byPlanet[p] && a.indexOf(p) === i; });
 
     var fromPlanet = _activePlanet;
     order.forEach(function(planet) {
@@ -5170,10 +5242,45 @@ async function txqAddAllTaverns() {
         }
         byPlanet[planet].forEach(function(tv) {
             _txQueue.push({ type:'travel+hire', x:tv.x, y:tv.y, planet:planet,
-                land_id: tv.land_id, objectives: tv.objectives||[] });
+                land_id: tv.land_id, objectives: tv.objectives||[], mine: _isMyTavern(planet, tv.x, tv.y) });
         });
     });
     renderTxQueue();
+    renderMyTaverns();
+}
+
+// During a run: after a hire, re-read the player's taverns; an owned tavern that has just
+// been drawn is added straight after this step (same planet), or after the run's last
+// stop on its planet; failing that it is queued for after the run.
+var _chaseLater = [];
+async function _chaseMyTaverns(wallet, plan, j) {
+    if (!_myTaverns.keys.length) return;
+    var res;
+    try { res = await fetchRows({code:'players.ale', scope:'players.ale', table:'players', lower_bound:wallet, upper_bound:wallet, limit:1, json:true}); } catch(e) { return; }
+    var row = res && res.rows && res.rows[0];
+    if (!row || row.wallet !== wallet) return;
+    var progLbl = document.getElementById('txq-prog-lbl');
+    (row.active_taverns || []).forEach(function(t){
+        var planet = normalizePlanet(t.planet);
+        if (!planet || !_isMyTavern(planet, t.x, t.y)) return;
+        var queued = plan.slice(j + 1).some(function(st){
+            var q = _txQueue[st.qIdx];
+            return st.isTravelAndHire && q && q.planet === planet && Number(q.x) === Number(t.x) && Number(q.y) === Number(t.y);
+        });
+        if (queued) return;
+        var item = { type:'travel+hire', x:t.x, y:t.y, planet:planet, land_id:t.land_id, objectives:t.objectives||[], mine:true, chased:true };
+        var at = -1;
+        if (planet === _activePlanet) at = j;
+        else for (var k = plan.length - 1; k > j; k--) { var q2 = _txQueue[plan[k].qIdx]; if (q2 && q2.planet === planet && !plan[k].isPortal) { at = k; break; } }
+        if (at < 0) {
+            if (!_chaseLater.some(function(c){ return c.planet === planet && c.x === t.x && c.y === t.y; })) _chaseLater.push(item);
+            return;
+        }
+        _txQueue.push(item);
+        plan.splice(at + 1, 0, { label: '★ YOUR TAVERN ' + _myTavernLabel(planet + '.' + t.x + '.' + t.y), qIdx: _txQueue.length - 1,
+            tavern: item, isTravelAndHire: true, objectives: item.objectives, travelData: {wallet:wallet, x:t.x, y:t.y}, actions: null });
+        if (progLbl) progLbl.textContent = '★ ' + _myTavernLabel(planet + '.' + t.x + '.' + t.y) + ' was just drawn for you: added to this run';
+    });
 }
 
 var _drunPickerDiff = 5;
@@ -6015,6 +6122,8 @@ async function runTxQueue() {
                 step.actions.forEach(function(a){
                     if (a.name === 'hire') (a.data.asset_ids || []).forEach(function(id){ _usedHireNFTs.add(id); });
                 });
+                // each hire draws a new tavern for the player: chase it if it's one of theirs
+                try { await _chaseMyTaverns(wallet, plan, j); } catch(e) {}
             }
 
             // Dungeon: check win/loss. On a loss, retry once at one difficulty lower; if that
@@ -6309,6 +6418,23 @@ async function runTxQueue() {
     _playerNFTCache = null;
     _playerNFTCacheTime = 0;
     try { await fetchPlayerTaverns(wallet); } catch(e) {}
+    if (_chaseLater.length) {
+        var _cl = _chaseLater.splice(0);
+        _txQueue = window._txQueue = [];
+        var _from = _activePlanet;
+        _cl.forEach(function(it){
+            if (it.planet !== _from) {
+                var pt = (ALE_PORTALS[_from] || []).find(function(p){ return p.to === it.planet; });
+                if (pt) _txQueue.push({ type:'portal', x:pt.x, y:pt.y, planet:_from, to:it.planet });
+                _from = it.planet;
+            }
+            _txQueue.push(it);
+        });
+        renderTxQueue();
+        _runSummary += '  ·  ★ ' + _cl.length + ' of your taverns came up on another planet: queued, press RUN';
+    }
+    _myTaverns.at = 0;
+    loadMyTaverns(wallet).catch(function(){});
     _refreshAllMaps();
     updateTabCounts();
     loadPlayerHireNFTs(wallet, []).catch(function(){});
