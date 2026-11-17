@@ -185,6 +185,7 @@
     }
     function placeToggles() {
         Object.keys(SEC_EL).forEach(function (sec) {
+            if (sec === 'heat') return;   // a weekday x hour grid: always the last 7 days
             var card = $(SEC_EL[sec]).closest('section'), bar = card.querySelector('.sper');
             if (!bar) {
                 bar = document.createElement('div'); bar.className = 'sper'; bar.setAttribute('data-sec', sec); bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Period');
@@ -221,7 +222,7 @@
         var arena = f.filter(function (r) { return r[2] === 'a'; }), dung = f.filter(function (r) { return r[2] === 'd'; });
         var hard = dung.filter(function (r) { return r[3] >= HARD; });
         var card = $(SEC_EL[sec]).closest('section');
-        card.querySelector('.sper').title = w.label;
+        var bar = card.querySelector('.sper'); if (bar) bar.title = w.label;
         if (sec === 'chips') drawChips(f, arena, dung, w, per);
         else if (sec === 'tops') drawTops(arena, hard, w, per);
         else if (sec === 'classes') drawClasses(f);
