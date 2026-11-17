@@ -7,6 +7,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 const NAMES = ['eyeke', 'kavian', 'magor', 'naron', 'neri', 'veles'];
 const HIST = ['https://wax.eosusa.io', 'https://wax-history.eosdac.io', 'https://hyperion.wax.detroitledger.tech', 'https://history.waxsweden.org'];
 const DAY = 86400e3, CACHE_MS = 15 * 60e3;
+const IC = {};
+[['arena', 'Arena'], ['dungeon', 'dungeon'], ['tavern', 'tavern']].forEach(([k, f]) => IC[k] = '<img class="bi" alt="" src="Ale%20images/' + f + '.svg">');
 const box = document.getElementById('planets');
 if (box) start();
 
@@ -15,7 +17,7 @@ function start() {
     box.innerHTML = '<div class="sec-head"><h2>Most active planets <small id="pl-sub"></small></h2>' +
         '<div class="sper" data-own="1" role="group" aria-label="Period"><button type="button" data-p="24h" class="on">24 h</button><button type="button" data-p="7d">7 days</button></div></div>' +
         '<div class="pl-stage"><canvas id="pl-canvas" aria-hidden="true"></canvas><div class="pl-cols" id="pl-cols"></div></div>' +
-        '<p class="sub" id="pl-note" style="margin:6px 0 0">Every arena and dungeon fight on the planet, plus every tavern hire drawn there.</p>';
+        '<p class="sub" id="pl-note" style="margin:6px 0 0">' + IC.arena + 'Arena and ' + IC.dungeon + 'dungeon fights on the planet, plus ' + IC.tavern + 'tavern hires drawn there.</p>';
     box.querySelectorAll('.sper button').forEach(b => b.onclick = () => {
         S.per = b.getAttribute('data-p');
         box.querySelectorAll('.sper button').forEach(x => x.classList.toggle('on', x === b));
@@ -133,7 +135,7 @@ function start() {
             return '<div class="pl-col' + (i === 0 ? ' top' : '') + '" title="' + n + ': ' + fmt(x.arena) + ' arena fights, ' + fmt(x.dungeon) + ' dungeon fights, ' + fmt(x.hires) + ' tavern hires">' +
                 '<div class="pl-name"><span class="pl-rk">' + (i + 1) + '</span>' + n.charAt(0).toUpperCase() + n.slice(1) + '</div>' +
                 '<b class="pl-tot">' + fmt(tot(n)) + '</b>' +
-                '<small>' + fmt(x.arena) + ' arena · ' + fmt(x.dungeon) + ' dungeon<br>' + fmt(x.hires) + ' hires</small></div>';
+                '<small><span title="arena fights">' + IC.arena + fmt(x.arena) + '</span><span title="dungeon fights">' + IC.dungeon + fmt(x.dungeon) + '</span><span title="tavern hires">' + IC.tavern + fmt(x.hires) + '</span></small></div>';
         }).join('');
     }
     load();

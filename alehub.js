@@ -169,6 +169,9 @@
     }
     function top(m) { var b = '', v = -1; Object.keys(m).forEach(function (k) { if (m[k] > v) { v = m[k]; b = k; } }); return b; }
 
+    // the game's building icons, wherever an arena, dungeon or tavern is named
+    function ic(k) { return '<img class="bi" alt="" src="Ale%20images/' + { arena: 'Arena', dungeon: 'dungeon', tavern: 'tavern' }[k] + '.svg">'; }
+
     var HARD = 12;   // dungeon difficulty from which a win is worth counting
 
     /* ── render ──
@@ -234,9 +237,9 @@
         f.forEach(function (r) { players[r[1]] = 1; });
         var paint = function (hires, failed) {
             $('chips').innerHTML = [
-                ['Fights', n(f.length)], ['Arena', n(arena.length)], ['Dungeon', n(dung.length)],
+                ['Fights', n(f.length)], [ic('arena') + 'Arena', n(arena.length)], [ic('dungeon') + 'Dungeon', n(dung.length)],
                 ['Won', pct(wins, f.length).toFixed(0) + '%'], ['Players fighting', n(Object.keys(players).length)],
-                ['Tavern hires', hires ? n(hires.total) : failed ? '\u2013' : '<small class="hire-prog">\u2026</small>']
+                [ic('tavern') + 'Tavern hires', hires ? n(hires.total) : failed ? '\u2013' : '<small class="hire-prog">\u2026</small>']
             ].map(function (c) { return '<div class="chip"><span>' + c[0] + '</span><b>' + c[1] + '</b></div>'; }).join('');
         };
         paint(null);
@@ -256,11 +259,11 @@
                 }).join('') : '<tr><td colspan="4" class="empty">' + (empty || 'None in this period.') + '</td></tr>') + '</tbody></table></div>';
         };
         var asRows = function (l) { return l.map(function (x) { return { k: x.k, cells: '<td class="num"><b>' + n(x.w) + '</b></td><td class="num wr">' + pct(x.w, x.f).toFixed(0) + '%</td>' }; }); };
-        var fights = table('Arena wins', asRows(tally(arena)), ['Wins', 'Rate']) + table('Dungeon wins, difficulty ' + HARD + '+', asRows(tally(hard)), ['Wins', 'Rate']);
+        var fights = table(ic('arena') + 'Arena wins', asRows(tally(arena)), ['Wins', 'Rate']) + table(ic('dungeon') + 'Dungeon wins, difficulty ' + HARD + '+', asRows(tally(hard)), ['Wins', 'Rate']);
         var paint = function (hires, failed) {
             var hireRows = hires ? Object.keys(hires.cnt).sort(function (a, b) { return hires.cnt[b] - hires.cnt[a]; }).slice(0, 10)
                 .map(function (k) { return { k: k, cells: '<td class="num"><b>' + n(hires.cnt[k]) + '</b></td>' }; }) : [];
-            $('tops').innerHTML = fights + table('Tavern hires', hireRows, ['Hires'],
+            $('tops').innerHTML = fights + table(ic('tavern') + 'Tavern hires', hireRows, ['Hires'],
                 hires ? '' : failed ? 'Hire history unavailable right now.' : 'Reading hires\u2026 <span class="hire-prog"></span>');
         };
         paint(null);
@@ -290,7 +293,7 @@
             return '<div class="bar" title="' + esc(c + ': ' + n(x.aw) + ' arena wins, ' + n(x.dw) + ' dungeon ' + HARD + '+ wins, of ' + n(x.f) + ' fights') + '"><span class="lab">' + portrait(c, top(x.race), top(x.el), 's') + esc(c) + '</span>' +
                 '<span class="trk trk2"><i class="ia" style="width:' + (x.aw / cmax * 100).toFixed(1) + '%"></i><i class="id" style="width:' + (x.dw / cmax * 100).toFixed(1) + '%"></i></span>' +
                 '<span class="val"><b>' + n(x.w) + '</b> \u00b7 ' + pct(x.w, x.f).toFixed(0) + '%</span></div>';
-        }).join('') + '<div class="legend2"><span><i class="ia"></i>Arena wins</span><span><i class="id"></i>Dungeon ' + HARD + '+ wins</span></div>' : '<div class="empty">No arena or dungeon ' + HARD + '+ fights in this period.</div>';
+        }).join('') + '<div class="legend2"><span><i class="ia"></i>' + ic('arena') + 'Arena wins</span><span><i class="id"></i>' + ic('dungeon') + 'Dungeon ' + HARD + '+ wins</span></div>' : '<div class="empty">No arena or dungeon ' + HARD + '+ fights in this period.</div>';
 
     }
     function drawFx(f) {
@@ -334,8 +337,8 @@
         var pod = {};
         dung.forEach(function (r) {
             if (!r[4] || r[3] < PODMIN) return;
-            var x = pod[r[1]] = pod[r[1]] || { w: 0, top: 0, by: {} };
-            x.w++; x.top = Math.max(x.top, r[3]); x.by[r[3]] = (x.by[r[3]] || 0) + 1;
+            var x = pod[r[1]] = pod[r[1]] || { w: 0, top: 0, sum: 0, by: {} };
+            x.w++; x.sum += r[3]; x.top = Math.max(x.top, r[3]); x.by[r[3]] = (x.by[r[3]] || 0) + 1;
         });
         var pk = Object.keys(pod).sort(function (a, b) { return pod[b].w - pod[a].w || pod[b].top - pod[a].top; });
         var pins = function (x) {
@@ -344,16 +347,18 @@
             }).join('');
         };
         var who = function (w) { return esc(H.tags[w] || w); };
+        // score: the difficulties of every 10+ win added up, over those wins (the average difficulty beaten)
+        var score = function (x) { return '<span class="pscore" title="' + esc('Score: ' + n(x.sum) + ' difficulty levels over ' + n(x.w) + ' wins') + '">Score <b>' + (x.sum / x.w).toFixed(2) + '</b></span>'; };
         var step = function (i) {
             var w = pk[i]; if (!w) return '<div class="pod-col p' + (i + 1) + ' empty-step"></div>';
             var x = pod[w];
             return '<div class="pod-col p' + (i + 1) + '"><div class="pod-who" title="' + esc(w) + '"><span class="medal">' + ['1st', '2nd', '3rd'][i] + '</span><span class="nm">' + who(w) + '</span></div>' +
                 '<div class="pins">' + pins(x) + '</div>' +
-                '<div class="pod-step"><b>' + n(x.w) + '</b><small>win' + (x.w === 1 ? '' : 's') + '</small></div></div>';
+                '<div class="pod-step"><b>' + n(x.w) + '</b><small>win' + (x.w === 1 ? '' : 's') + '</small>' + score(x) + '</div></div>';
         };
         $('podium').innerHTML = pk.length ? '<div class="pod">' + step(1) + step(0) + step(2) + '</div>' +
             (pk.length > 3 ? '<ol class="pod-rest" start="4">' + pk.slice(3, 10).map(function (w) {
-                return '<li><span class="who" title="' + esc(w) + '">' + who(w) + '</span><span class="pins">' + pins(pod[w]) + '</span><b>' + n(pod[w].w) + '</b></li>';
+                return '<li><span class="who" title="' + esc(w) + '">' + who(w) + '</span><span class="pins">' + pins(pod[w]) + '</span><b>' + n(pod[w].w) + '</b>' + score(pod[w]) + '</li>';
             }).join('') + '</ol>' : '')
             : '<div class="empty">No dungeon wins at difficulty ' + PODMIN + '+ in this period.</div>';
     }
@@ -365,8 +370,8 @@
         var label = A ? 'Arena' : 'Dungeon ' + HARD + '+';
         var fk = Object.keys(fx).filter(function (id) { return fx[id][wk] > 0; })
             .sort(function (a, b) { return fx[b][wk] - fx[a][wk] || fx[a][fk2] - fx[b][fk2]; }).slice(0, 15);
-        var sw = '<button type="button" class="fswap" id="fswap" title="Swap to ' + (A ? 'dungeon ' + HARD + '+' : 'arena') + '">⇄ ' + (A ? 'Dungeon ' + HARD + '+' : 'Arena') + '</button>';
-        $('fmode').innerHTML = label + ' wins' + sw;
+        var sw = '<button type="button" class="fswap" id="fswap" title="Swap to ' + (A ? 'dungeon ' + HARD + '+' : 'arena') + '">⇄ ' + (A ? ic('dungeon') + 'Dungeon ' + HARD + '+' : ic('arena') + 'Arena') + '</button>';
+        $('fmode').innerHTML = ic(A ? 'arena' : 'dungeon') + label + ' wins' + sw;
         $('fswap').onclick = function () { FMODE = A ? 'd' : 'a'; drawFighters(); };
         $('fighters').innerHTML = fk.length ? '<table><thead><tr><th class="rk">#</th><th></th><th>Fighter</th><th>Class</th><th>Race</th><th>Element</th><th>Owner</th>' +
             '<th class="num">' + label + ' wins</th><th class="num">Rate</th><th class="num" title="Days since the fighter was hired, and the share of its health and damage it still fights with">Age</th></tr></thead><tbody>' +
@@ -515,10 +520,10 @@
     }
     function paintTaverns() {
         var el = $('feed');
-        if (!TV.list) { el.innerHTML = '<div class="feed-h"><b>Tavern draw</b><span class="live"></span></div><p class="feed-note">Reading players’ tavern lists…</p>'; return; }
+        if (!TV.list) { el.innerHTML = '<div class="feed-h"><b>' + ic('tavern') + 'Tavern draw</b><span class="live"></span></div><p class="feed-note">Reading players’ tavern lists…</p>'; return; }
         var m = TV.mode, A = m === 'act', list = tvSorted(TV.list, m), prev = (TV.prev || {})[m] || {};
         var max = Math.max.apply(null, list.map(function (t) { return t[m]; }).concat([1]));
-        el.innerHTML = '<div class="feed-h"><b>Tavern draw</b><span class="live"></span><small>' + (A ? TV.active + ' active of ' : '') + TV.players + ' players · ' +
+        el.innerHTML = '<div class="feed-h"><b>' + ic('tavern') + 'Tavern draw</b><span class="live"></span><small>' + (A ? TV.active + ' active of ' : '') + TV.players + ' players · ' +
             new Date(TV.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
             '<div class="tvmode" role="group" aria-label="Which lists count"><button type="button" data-m="act"' + (A ? ' class="on"' : '') + '>Active 72 h</button><button type="button" data-m="all"' + (A ? '' : ' class="on"') + '>All lists</button></div>' +
             '<p class="feed-note">' + (A ? 'How many players who played in the last 72 hours have each tavern in their list. Lists of players who stopped playing are left out.'

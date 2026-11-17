@@ -201,6 +201,17 @@
         .pl-col.top .pl-tot { color: var(--gold); }
         .pl-col small { color: var(--dim); font-size: 0.74em; line-height: 1.35; font-variant-numeric: tabular-nums; }
         @media (max-width: 560px) { .pl-col small { display: none; } .pl-name { font-size: 0.8em; } .pl-rk { display: none; } }
+        .feed-h b { white-space: nowrap; }
+        img.bi { width: 1.05em; height: 1.05em; vertical-align: -0.17em; margin-right: 0.3em; opacity: 0.9; }
+        h2 img.bi { width: 0.95em; height: 0.95em; }
+        .pl-col small { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 9px; }
+        .pl-col small span { white-space: nowrap; }
+        .pl-col small img.bi { margin-right: 0.2em; opacity: 0.75; }
+        .pscore { font-size: 0.74em; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .pscore b { color: var(--gold); font-size: 1em; }
+        .pod-step .pscore { margin-top: 2px; }
+        .pod-step .pscore b { font-size: 1em; color: var(--gold); }
+        .pod-rest li > .pscore { float: right; margin-right: 14px; line-height: 1.9; }
         .clear .bar { grid-template-columns: 90px 1fr 150px; }
         .clear .trk i { background: var(--win); }
 
@@ -292,8 +303,8 @@
                 <div id="heat"></div>
             </section>
             <section class="card">
-                <h2>Dungeon podium <small>difficulty 10+</small></h2>
-                <p class="sub">Players with the most dungeon wins at difficulty 10 or more. Each pin is a difficulty they beat, with how many times.</p>
+                <h2><img class="bi" alt="" src="Ale%20images/dungeon.svg">Dungeon podium <small>difficulty 10+</small></h2>
+                <p class="sub">Players with the most dungeon wins at difficulty 10 or more. Each pin is a difficulty they beat, with how many times. Score is the difficulties of those wins added up and divided by the wins, so the average difficulty beaten.</p>
                 <div id="podium"></div>
             </section>
         </div>
@@ -308,7 +319,7 @@
 </main>
 <footer>Fights from Naron Codex's fight log (Alien Legends battle.ale), tavern hires and the draw read live from the WAX chain. A community tool, not an official Alien Legends page.</footer>
 <script src="img_fallback.js"></script>
-<script src="alehub.js?v=1.2.90"></script>
-<script type="module" src="alehub_planets.js?v=1.2.90"></script>
+<script src="alehub.js?v=1.2.91"></script>
+<script type="module" src="alehub_planets.js?v=1.2.91"></script>
 </body>
 </html>
