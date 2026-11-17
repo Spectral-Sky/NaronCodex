@@ -620,6 +620,7 @@
             .ptick-manual-wrap { margin-left: 0; }
         }
     </style>
+<script src="img_fallback.js"></script>
 </head>
 <body>
 
@@ -1917,7 +1918,7 @@ function openLore(id) {
 
     if (m.image) {
         var img = document.getElementById('lore-img');
-        img.src = 'https://wsrv.nl/?url=ipfs.io/ipfs/' + m.image + '&w=240&output=webp';
+        img.src = 'https://wsrv.nl/?url=ipfs.alienworlds.io/ipfs/' + m.image + '&w=240&output=webp';
         img.style.display = 'block';
     } else {
         document.getElementById('lore-img').style.display = 'none';

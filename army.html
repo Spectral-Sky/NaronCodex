@@ -727,6 +727,7 @@
         .sk-gem-bal { color:#70d0a0; font-size:0.9em; margin-left:4px; }
     </style>
     <script>(function(){ var s=localStorage.getItem('nc_font_size'); if(s) document.documentElement.style.fontSize=s+'px'; })();</script>
+<script src="img_fallback.js"></script>
 </head>
 <body>
 <div id="star-hud" style="display:none;position:fixed;bottom:15px;left:15px;z-index:50000;font-family:'Courier New',monospace;font-size:0.75em;color:#ffe066;opacity:0.6;letter-spacing:1px;pointer-events:none;">&#9733; <span id="star-score-num">0</span></div>
@@ -1811,7 +1812,7 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
                     const crAtk = cr.atk ? `<span style="color:#ff4444">⚔ +${Math.floor(cr.atk)}</span>` : '';
                     const crDef = cr.def ? `<span style="color:#4488ff">🛡 +${Math.floor(cr.def)}</span>` : '';
                     const crStat = [crAtk, crDef].filter(Boolean).join(' ');
-                    const crImgSrc = cr.img ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + cr.img)}&w=68&h=68&output=webp&fit=contain` : '';
+                    const crImgSrc = cr.img ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.alienworlds.io/ipfs/' + cr.img)}&w=68&h=68&output=webp&fit=contain` : '';
                     buffParts.push(`<div class="ubuff-mini">${crImgSrc ? `<img class="ubuff-mini-img" src="${crImgSrc}" alt="">` : ''}<div class="ubuff-mini-text"><div class="ubuff-mini-name" style="color:${crRar}">🐾 ${cr.name}</div>${crStat ? `<div class="ubuff-mini-stat">${crStat}</div>` : ''}</div></div>`);
                 }
                 if (unit.supply) {
@@ -1821,12 +1822,12 @@ function buildDivisions(divisions, root, forgeEnabled, creatures, supplies, serv
                     const suAtk  = su.atk ? `<span style="color:#ff4444">⚔ +${Math.floor(su.atk)}</span>` : '';
                     const suDef  = su.def ? `<span style="color:#4488ff">🛡 +${Math.floor(su.def)}</span>` : '';
                     const suStat = [suMove, suAtk, suDef].filter(Boolean).join(' ');
-                    const suImgSrc = su.img ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + su.img)}&w=68&h=68&output=webp&fit=contain` : '';
+                    const suImgSrc = su.img ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.alienworlds.io/ipfs/' + su.img)}&w=68&h=68&output=webp&fit=contain` : '';
                     buffParts.push(`<div class="ubuff-mini">${suImgSrc ? `<img class="ubuff-mini-img" src="${suImgSrc}" alt="">` : ''}<div class="ubuff-mini-text"><div class="ubuff-mini-name" style="color:${suRar}">${su.name}</div>${suStat ? `<div class="ubuff-mini-stat">${suStat}</div>` : ''}</div></div>`);
                 }
                 if (unit.service) {
                     const svc = unit.service;
-                    const svcImgSrc = svc.img ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + svc.img)}&w=68&h=68&output=webp&fit=contain` : '';
+                    const svcImgSrc = svc.img ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.alienworlds.io/ipfs/' + svc.img)}&w=68&h=68&output=webp&fit=contain` : '';
                     const svcStats = [
                         svc.atkMult > 1 ? `<span style="color:#ff4444">⚔ ×${svc.atkMult.toFixed(2)}</span>` : '',
                         svc.defMult > 1 ? `<span style="color:#4488ff">🛡 ×${svc.defMult.toFixed(2)}</span>` : '',
@@ -1894,11 +1895,11 @@ function buildEquipmentSection(equipment, root, forgeEnabled) {
         card.style.borderTopWidth = '4px';
 
         const imgHash = item.img;
-        const imgFb   = imgHash ? `https://ipfs.io/ipfs/${imgHash}` : null;
+        const imgFb   = imgHash ? `https://ipfs.alienworlds.io/ipfs/${imgHash}` : null;
         const imgSrc  = imgHash
             ? (IS_MOBILE
-                ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=160&h=160&output=webp&fit=contain`
-                : `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=320&h=320&fit=contain&n=-1`)
+                ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.alienworlds.io/ipfs/' + imgHash)}&w=160&h=160&output=webp&fit=contain`
+                : `https://wsrv.nl/?url=${encodeURIComponent('ipfs.alienworlds.io/ipfs/' + imgHash)}&w=320&h=320&fit=contain&n=-1`)
             : null;
 
         card.innerHTML = `
@@ -1971,11 +1972,11 @@ function makeNFTCard(item, activeMode, type, showStatus) {
         if (item.atkMult > 1) subText += `<br><span style="color:#ff8800">×${item.atkMult.toFixed(2)} ⚔ &nbsp;|&nbsp; ×${item.defMult.toFixed(2)} 🛡 &nbsp;|&nbsp; ×${item.moveCostMult.toFixed(2)} >></span>`;
     } else { subText = "ITEM"; }
     const imgHash = item.img;
-    const imgFallback = imgHash ? `https://ipfs.io/ipfs/${imgHash}` : null;
+    const imgFallback = imgHash ? `https://ipfs.alienworlds.io/ipfs/${imgHash}` : null;
     const imgSrc = imgHash
         ? (IS_MOBILE
-            ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=160&h=160&output=webp&fit=contain`
-            : `https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=320&h=320&fit=contain&n=-1`)
+            ? `https://wsrv.nl/?url=${encodeURIComponent('ipfs.alienworlds.io/ipfs/' + imgHash)}&w=160&h=160&output=webp&fit=contain`
+            : `https://wsrv.nl/?url=${encodeURIComponent('ipfs.alienworlds.io/ipfs/' + imgHash)}&w=320&h=320&fit=contain&n=-1`)
         : null;
     const card = document.createElement('div');
     card.className = `nft-card${!isActive ? ' inactive' : ''}`;
@@ -2012,7 +2013,7 @@ function makeNFTCard(item, activeMode, type, showStatus) {
             imgEl.style.cursor = 'zoom-in';
             imgEl.addEventListener('click', e => {
                 e.stopPropagation();
-                openImgZoom(`https://wsrv.nl/?url=${encodeURIComponent('ipfs.io/ipfs/' + imgHash)}&w=512&h=512&fit=contain`);
+                openImgZoom(`https://wsrv.nl/?url=${encodeURIComponent('ipfs.alienworlds.io/ipfs/' + imgHash)}&w=512&h=512&fit=contain`);
             });
         }
     }

@@ -367,6 +367,7 @@
         .nav-dropdown-item:hover { color:var(--theme-color); background:rgba(255,255,255,0.04); }
         .nav-dropdown-item.active { color:var(--theme-color); font-weight:bold; background:rgba(255,255,255,0.03); }
     </style>
+<script src="img_fallback.js"></script>
 </head>
 <body>
 <div id="star-hud" style="display:none;position:fixed;bottom:15px;left:15px;z-index:50000;font-family:'Courier New',monospace;font-size:0.75em;color:#ffe066;opacity:0.6;letter-spacing:1px;pointer-events:none;">&#9733; <span id="star-score-num">0</span></div>
@@ -676,8 +677,8 @@
             const existingImg = imgCell.querySelector("img");
             if(existingImg) {
                 imgSrc = existingImg.getAttribute("src") || "";
-                if(imgSrc.includes("ipfs.io/ipfs/")) {
-                    const safeUrl = encodeURIComponent(imgSrc.replace("https://ipfs.io/ipfs/","ipfs.io/ipfs/"));
+                if(imgSrc.includes("ipfs.alienworlds.io/ipfs/")) {
+                    const safeUrl = encodeURIComponent(imgSrc.replace("https://ipfs.alienworlds.io/ipfs/","ipfs.alienworlds.io/ipfs/"));
                     const proxied = `https://wsrv.nl/?url=${safeUrl}&w=40&h=60&output=webp&fit=cover`;
                     existingImg.setAttribute("data-hires", imgSrc);
                     existingImg.src = proxied;
