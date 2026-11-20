@@ -303,7 +303,9 @@
             div: div, lock: lock, until: until,
             status: !lock ? 'idle' : until <= Date.now() ? 'ready' : 'running',
             units: d.units.filter(function (u) { return String(u.division_id) === String(div.division_id); }),
-            cur: cur, opts: opts, best: opts[0] || null
+            // NFT-reward missions are valued at the market floor, a guess, so they're never picked as
+            // best; they stay in each division's list for choosing by hand
+            cur: cur, opts: opts, best: opts.filter(function (o) { return !(o.reward && o.reward.est); })[0] || null
         };
     }
     function target(st) {
@@ -682,7 +684,7 @@
         h += '<div class="pdd-wrap"><table class="pdd-table"><thead><tr>' +
             '<th class="txt">Division</th><th class="num">Units</th><th class="num">' + atkLabel() + '</th><th class="num">' + defLabel() + '</th><th class="num">Move</th>' +
             '<th class="txt">On mission</th><th class="txt">Status</th><th class="txt">Next mission (best / h first)</th><th class="txt"></th>' +
-            '<th class="num" title="What the mission it is on now earns per hour">Earning now</th><th class="txt" title="The live mission that pays this division the most per hour">Best mission for it</th></tr></thead><tbody>';
+            '<th class="num" title="What the mission it is on now earns per hour">Earning now</th><th class="txt" title="The live mission that pays this division the most per hour in tokens (missions that pay NFTs are left out, since their value is only an estimate)">Best mission for it</th></tr></thead><tbody>';
         all.forEach(function (st) {
             var x = st.div, to = target(st), p = plan(st);
             var curM = st.lock ? d.missions[st.lock.mission_id] : null;
