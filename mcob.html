@@ -92,7 +92,7 @@ const B = {
    15-24, rank 4 for 25+. Files are mcob/<id>-hi.glb for rank 1 and mcob/<id>-r<rank>-hi.glb
    above it (plus -lo copies). A rank without a model yet uses the highest rank below it that
    has one. */
-const MODEL_RANKS = { prodone: [1], prodtwo: [1], prodthree: [1, 2, 3, 4], prodfour: [1], prodfive: [1] };
+const MODEL_RANKS = { prodone: [1], prodtwo: [1], prodthree: [1, 2, 3, 4], prodfour: [1], prodfive: [1], prodsix: [1] };
 const rankOfLevel = lvl => lvl >= 25 ? 4 : lvl >= 15 ? 3 : lvl >= 5 ? 2 : 1;
 function modelRank(id, lvl) {
     const have = MODEL_RANKS[id] || [], want = rankOfLevel(lvl);
