@@ -84,6 +84,9 @@ const B = {
     storage:   { name: 'Storage',          col: '#475569', x: 2, y: 2 }
 };
 const MODELS = ['prodone', 'prodtwo', 'prodthree'];   // the ones with a 3D model so far
+// per-model turn, baked into the model so its square base lines up with the grid
+// (degrees, anticlockwise seen from above)
+const MODEL_YAW = { prodone: 17 };
 const RPC = ['https://wax.greymass.com', 'https://api.wax.alohaeos.com', 'https://wax.eosusa.io'];
 
 /* ── chain ── */
@@ -278,6 +281,7 @@ async function build(rows, me) {
     LOD.types = [];
     for (const id of MODELS) {
         const [hi, lo] = await Promise.all([model('mcob/' + id + '-hi.glb'), model('mcob/' + id + '-lo.glb')]);
+        if (MODEL_YAW[id]) { const a = MODEL_YAW[id] * Math.PI / 180; hi.geo.rotateY(a); if (lo.geo !== hi.geo) lo.geo.rotateY(a); }
         const list = [];
         BASES.forEach(r => (r.buildings || []).forEach(b => { if (b.buildingid === id) list.push([r, b]); }));
         const mine = list.find(([r]) => r === ME);
