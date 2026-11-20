@@ -227,9 +227,22 @@ function steelTexture() {
     for (let y = 0; y < 3; y++) for (let x = 0; x < 2; x++) walk([at(x), at(y)], [at(x + 1), at(y)], 46);
     for (let x = 0; x < 3; x++) for (let y = 0; y < 2; y++) walk([at(x), at(y)], [at(x), at(y + 1)], 46);
     walk([at(1), at(2)], [N * 0.5, N - 4], 54);
-    // landing pads under the buildings, with a hazard ring
+    // landing pads under the buildings, with a hazard border: round for the middle row
+    // (Laboratory, Exploder, Refinery), square for the six around them
     for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) {
         const cx = at(x), cy = at(y), R = N * 0.085;
+        if (y !== 1) {
+            const o = R + 10, b = 10;   // outer half-size, border width
+            g.save();
+            g.beginPath(); g.rect(cx - o, cy - o, 2 * o, 2 * o); g.rect(cx - o + b, cy - o + b, 2 * (o - b), 2 * (o - b)); g.clip('evenodd');
+            g.fillStyle = 'rgba(232,170,60,0.85)'; g.fillRect(cx - o, cy - o, 2 * o, 2 * o);
+            g.strokeStyle = 'rgba(30,32,38,0.9)'; g.lineWidth = 9;
+            for (let d = -2 * o; d < 2 * o; d += 22) { g.beginPath(); g.moveTo(cx - o + d, cy + o); g.lineTo(cx - o + d + 2 * o, cy - o); g.stroke(); }
+            g.restore();
+            g.fillStyle = 'rgba(110,117,128,0.95)'; g.fillRect(cx - o + b, cy - o + b, 2 * (o - b), 2 * (o - b));
+            g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 2; g.strokeRect(cx - R * 0.72, cy - R * 0.72, R * 1.44, R * 1.44);
+            continue;
+        }
         g.fillStyle = 'rgba(40,44,52,0.95)'; g.beginPath(); g.arc(cx, cy, R + 10, 0, 7); g.fill();
         for (let k = 0; k < 24; k++) {
             g.fillStyle = k % 2 ? 'rgba(232,170,60,0.85)' : 'rgba(30,32,38,0.9)';
