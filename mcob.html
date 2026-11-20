@@ -32,6 +32,11 @@
     .lbl { color: var(--ink); font-weight: 700; font-size: 12px; text-shadow: 0 1px 3px #000, 0 0 8px #000;
         white-space: nowrap; padding: 2px 6px; border-radius: 6px; background: rgba(7,10,18,0.55); }
     .lbl.me { color: var(--gold); font-size: 15px; border: 1px solid var(--gold); }
+    .lv { font: 700 11px/1 'Segoe UI', system-ui, sans-serif; color: #fff; padding: 3px 6px; border-radius: 999px;
+        background: rgba(7,10,18,0.78); border: 1.5px solid var(--bc); text-shadow: 0 1px 2px #000; white-space: nowrap; }
+    #tip .tlv { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; margin: 6px 0 2px; }
+    #tip .tlv span { color: var(--muted); border-left: 3px solid var(--bc); padding-left: 5px; font-size: 0.92em; }
+    #tip .tlv b { color: var(--ink); }
     .lbl.p1 { color: #f2c230; } .lbl.p2 { color: #c9d1dc; } .lbl.p3 { color: #d08a4a; }
     #load { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); color: var(--muted); z-index: 5; transition: opacity .5s; }
 </style>
@@ -83,9 +88,22 @@ const B = {
     prodsix:   { name: 'Hunting Cabin',    col: '#0d9488', x: 1, y: 2 },
     storage:   { name: 'Storage',          col: '#475569', x: 2, y: 2 }
 };
-const MODELS = ['prodone', 'prodtwo', 'prodthree'];   // the ones with a 3D model so far
+/* A building's look follows its level: rank 1 for levels 0-4, rank 2 for 5-14, rank 3 for
+   15-24, rank 4 for 25+. Files are mcob/<id>-hi.glb for rank 1 and mcob/<id>-r<rank>-hi.glb
+   above it (plus -lo copies). A rank without a model yet uses the highest rank below it that
+   has one. */
+const MODEL_RANKS = { prodone: [1], prodtwo: [1], prodthree: [1, 2] };
+const rankOfLevel = lvl => lvl >= 25 ? 4 : lvl >= 15 ? 3 : lvl >= 5 ? 2 : 1;
+function modelRank(id, lvl) {
+    const have = MODEL_RANKS[id] || [], want = rankOfLevel(lvl);
+    let best = have[0];
+    have.forEach(k => { if (k <= want && k > best) best = k; });
+    return best;
+}
+const DIR = 'mcob/';
+const fileKey = (id, rank) => rank > 1 ? id + '-r' + rank : id;
 // per-model turn, baked into the model so its square base lines up with the grid
-// (degrees, anticlockwise seen from above)
+// (degrees, anticlockwise seen from above), keyed by file
 const MODEL_YAW = { prodone: 17 };
 const RPC = ['https://wax.greymass.com', 'https://api.wax.alohaeos.com', 'https://wax.eosusa.io'];
 
@@ -158,34 +176,73 @@ async function model(file) {
     return { geo: mesh.geometry, mat, unit: 1.35 / w };   // unit: scale that makes it a bit over 1 wide
 }
 
-/* ── base floor: steel deck plates, drawn once on a canvas ──
-   Four panels with seams and corner rivets, diamond tread and a little grime, in greys;
-   each base's pad tints it (gold for yours). */
+/* ── base floor: a steel deck with walkways ──
+   Drawn once on a canvas and stretched over every base's pad, tinted per base (gold for
+   yours). The canvas maps straight onto the pad: x across, y = world z, so the nine
+   building spots sit at 0.5 +/- SPOT of its width. Each spot gets a landing pad, and
+   meandering walkways link neighbours and run out to an entrance on the south edge. */
+const SPOT = 0.324;   // SLOT / pad width (10 / 31.2 at 1x, 25 / 76.2 at 2.5x)
 function steelTexture() {
-    const N = 512, c = document.createElement('canvas'); c.width = c.height = N;
+    const N = 1024, c = document.createElement('canvas'); c.width = c.height = N;
     const g = c.getContext('2d');
+    let seed = 7;   // same pattern every load
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
     g.fillStyle = '#9aa1ab'; g.fillRect(0, 0, N, N);
     // grime and brushed streaks
-    for (let i = 0; i < 2600; i++) {
-        const v = 120 + Math.random() * 60 | 0;
-        g.fillStyle = 'rgba(' + v + ',' + (v + 4) + ',' + (v + 10) + ',' + (0.05 + Math.random() * 0.08) + ')';
-        g.fillRect(Math.random() * N, Math.random() * N, 2 + Math.random() * 30, 1 + Math.random() * 2);
+    for (let i = 0; i < 6000; i++) {
+        const v = 120 + rnd() * 60 | 0;
+        g.fillStyle = 'rgba(' + v + ',' + (v + 4) + ',' + (v + 10) + ',' + (0.05 + rnd() * 0.08) + ')';
+        g.fillRect(rnd() * N, rnd() * N, 3 + rnd() * 50, 1 + rnd() * 3);
     }
     // diamond tread
-    g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 2;
-    for (let y = 8; y < N; y += 18) for (let x = (y / 18 % 2) * 9 + 6; x < N; x += 18) {
-        g.beginPath(); g.moveTo(x, y + 4); g.lineTo(x + 6, y - 2); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.16)'; g.lineWidth = 2.5;
+    for (let y = 10; y < N; y += 24) for (let x = (y / 24 % 2) * 12 + 8; x < N; x += 24) {
+        g.beginPath(); g.moveTo(x, y + 5); g.lineTo(x + 8, y - 3); g.stroke();
     }
-    // panel seams and rivets
-    const P = N / 2;
-    g.strokeStyle = 'rgba(20,24,30,0.85)'; g.lineWidth = 5;
-    for (let k = 0; k <= 2; k++) { g.beginPath(); g.moveTo(k * P, 0); g.lineTo(k * P, N); g.stroke(); g.beginPath(); g.moveTo(0, k * P); g.lineTo(N, k * P); g.stroke(); }
-    g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 1.5;
-    for (let k = 0; k <= 2; k++) { g.beginPath(); g.moveTo(k * P + 3, 0); g.lineTo(k * P + 3, N); g.stroke(); g.beginPath(); g.moveTo(0, k * P + 3); g.lineTo(N, k * P + 3); g.stroke(); }
-    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) [[14, 14], [P - 14, 14], [14, P - 14], [P - 14, P - 14]].forEach(([x, y]) => {
-        const cx = i * P + x, cy = j * P + y;
-        g.fillStyle = '#5c636d'; g.beginPath(); g.arc(cx, cy, 5, 0, 7); g.fill();
-        g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.arc(cx - 1.5, cy - 1.5, 2, 0, 7); g.fill();
+    // faint plate seams on thirds, between the building rows
+    g.strokeStyle = 'rgba(20,24,30,0.35)'; g.lineWidth = 4;
+    [1, 2].forEach(k => { const q = k * N / 3; g.beginPath(); g.moveTo(q, 0); g.lineTo(q, N); g.stroke(); g.beginPath(); g.moveTo(0, q); g.lineTo(N, q); g.stroke(); });
+
+    const at = i => N * (0.5 + (i - 1) * SPOT);   // spot 0/1/2 -> pixels
+    // a walkway from p to q that wanders side to side
+    const walk = (p, q, wide) => {
+        const dx = q[0] - p[0], dy = q[1] - p[1], len = Math.hypot(dx, dy), nx = -dy / len, ny = dx / len;
+        const amp = len * (0.07 + rnd() * 0.06), waves = 1 + (rnd() * 2 | 0), ph = rnd() * Math.PI;
+        const pts = [];
+        for (let k = 0; k <= 40; k++) {
+            const t = k / 40, w = Math.sin(t * Math.PI) * amp * Math.sin(t * Math.PI * waves + ph);
+            pts.push([p[0] + dx * t + nx * w, p[1] + dy * t + ny * w]);
+        }
+        const line = (width, style, dash) => {
+            g.setLineDash(dash || []); g.lineWidth = width; g.strokeStyle = style; g.lineCap = 'round'; g.lineJoin = 'round';
+            g.beginPath(); pts.forEach((v, k) => k ? g.lineTo(v[0], v[1]) : g.moveTo(v[0], v[1])); g.stroke();
+        };
+        line(wide + 10, 'rgba(255,255,255,0.10)');        // worn edge
+        line(wide, 'rgba(58,63,72,0.92)');               // the path
+        line(wide - 14, 'rgba(78,84,94,0.9)');            // its middle, scuffed lighter
+        line(3, 'rgba(232,170,60,0.55)', [18, 16]);       // guide line
+        g.setLineDash([]);
+    };
+    // neighbours along rows and columns, plus the south entrance
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 2; x++) walk([at(x), at(y)], [at(x + 1), at(y)], 46);
+    for (let x = 0; x < 3; x++) for (let y = 0; y < 2; y++) walk([at(x), at(y)], [at(x), at(y + 1)], 46);
+    walk([at(1), at(2)], [N * 0.5, N - 4], 54);
+    // landing pads under the buildings, with a hazard ring
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) {
+        const cx = at(x), cy = at(y), R = N * 0.085;
+        g.fillStyle = 'rgba(40,44,52,0.95)'; g.beginPath(); g.arc(cx, cy, R + 10, 0, 7); g.fill();
+        for (let k = 0; k < 24; k++) {
+            g.fillStyle = k % 2 ? 'rgba(232,170,60,0.85)' : 'rgba(30,32,38,0.9)';
+            g.beginPath(); g.arc(cx, cy, R + 8, k / 24 * 2 * Math.PI, (k + 1) / 24 * 2 * Math.PI);
+            g.arc(cx, cy, R, (k + 1) / 24 * 2 * Math.PI, k / 24 * 2 * Math.PI, true); g.fill();
+        }
+        g.fillStyle = 'rgba(110,117,128,0.95)'; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, R * 0.72, 0, 7); g.stroke();
+    }
+    // rim rivets
+    for (let k = 0; k < 16; k++) [[k / 16 * N + 32, 14], [k / 16 * N + 32, N - 14], [14, k / 16 * N + 32], [N - 14, k / 16 * N + 32]].forEach(([x, y]) => {
+        g.fillStyle = '#5c636d'; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.arc(x - 2, y - 2, 2.5, 0, 7); g.fill();
     });
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
@@ -266,7 +323,7 @@ async function build(rows, me) {
     const simple = {};
     const shape = new THREE.CylinderGeometry(0.42, 0.5, 0.8, 8); shape.translate(0, 0.4, 0);
     Object.keys(B).forEach(id => {
-        if (MODELS.includes(id)) return;
+        if (MODEL_RANKS[id]) return;
         const list = [];
         BASES.forEach(r => (r.buildings || []).forEach(b => { if (b.buildingid === id) list.push([r, b]); }));
         const im = new THREE.InstancedMesh(shape, new THREE.MeshStandardMaterial({ color: B[id].col, roughness: 0.55, metalness: 0.3 }), list.length);
@@ -279,11 +336,14 @@ async function build(rows, me) {
     // in the lighter model; all the rest as blocks. Re-chosen as the camera moves.
     const block = new THREE.BoxGeometry(0.8, 0.8, 0.8); block.translate(0, 0.4, 0);
     LOD.types = [];
-    for (const id of MODELS) {
-        const [hi, lo] = await Promise.all([model('mcob/' + id + '-hi.glb'), model('mcob/' + id + '-lo.glb')]);
-        if (MODEL_YAW[id]) { const a = MODEL_YAW[id] * Math.PI / 180; hi.geo.rotateY(a); if (lo.geo !== hi.geo) lo.geo.rotateY(a); }
+    for (const [id, rank] of Object.entries(MODEL_RANKS).flatMap(([id, rs]) => rs.map(k => [id, k]))) {
+        const key = fileKey(id, rank);
+        const [hi, lo] = await Promise.all([model(DIR + key + '-hi.glb'), model(DIR + key + '-lo.glb')]);
+        if (MODEL_YAW[key]) { const a = MODEL_YAW[key] * Math.PI / 180; hi.geo.rotateY(a); if (lo.geo !== hi.geo) lo.geo.rotateY(a); }
         const list = [];
-        BASES.forEach(r => (r.buildings || []).forEach(b => { if (b.buildingid === id) list.push([r, b]); }));
+        BASES.forEach(r => (r.buildings || []).forEach(b => {
+            if (b.buildingid === id && modelRank(id, Number(b.building_level) || 0) === rank) list.push([r, b]);
+        }));
         const mine = list.find(([r]) => r === ME);
         if (mine) {
             const m = new THREE.Mesh(hi.geo, hi.mat), m4 = new THREE.Matrix4();
@@ -304,6 +364,7 @@ async function build(rows, me) {
         const o = new CSS2DObject(el); o.position.set(r._x, lift(r) + (r._s > 1 ? 30 : 9), r._z); scene.add(o);
     };
     tag(ME, 'me', 'You · ' + (ME.gamertag || ME.wallet) + ' · #' + ME._rank);
+    levelTags(ME, scene);
     BASES.filter(r => r._pod && r !== ME).forEach(r => tag(r, 'p' + r._pod, '#' + r._rank + ' ' + (r.gamertag || r.wallet)));
 
     document.getElementById('hud-sub').textContent = BASES.length + ' bases this season · you are #' + ME._rank + ' by Я/min';
@@ -335,6 +396,29 @@ const LOD = {
     }
 };
 
+/* ── level tags: always over your base, and over whichever base the pointer is on ── */
+function levelTags(r, parent) {
+    (r.buildings || []).forEach(b => {
+        const def = B[b.buildingid]; if (!def) return;
+        const lvl = Number(b.building_level) || 0;
+        const el = document.createElement('div'); el.className = 'lv';
+        el.style.setProperty('--bc', def.col);
+        el.textContent = 'Lv ' + lvl;
+        el.title = def.name + ', level ' + lvl;
+        const o = new CSS2DObject(el);
+        o.position.set(r._x + (def.x - 1) * SLOT * r._s, lift(r) + 3.2 * r._s, r._z + (def.y - 1) * SLOT * r._s);
+        parent.add(o);
+    });
+}
+const hoverTags = new THREE.Group(); scene.add(hoverTags);
+let hoverBase = null;
+function showHoverTags(r) {
+    if (r === hoverBase) return;
+    hoverBase = r;
+    hoverTags.children.slice().forEach(o => { if (o.element) o.element.remove(); hoverTags.remove(o); });
+    if (r && r !== ME) levelTags(r, hoverTags);
+}
+
 /* ── camera moves ── */
 let fly = null, idleAt = 0;
 function flyTo(r, instant) {
@@ -358,12 +442,16 @@ function pick(e) {
 }
 renderer.domElement.addEventListener('pointermove', e => {
     const r = pick(e);
+    showHoverTags(r);
     if (!r) { tip.style.display = 'none'; return; }
     tip.innerHTML = '<b>#' + r._rank + ' ' + esc(r.gamertag || r.wallet) + '</b><small>' + esc(r.wallet) + '</small>' +
-        fmt(r.gamecurrency_per_minute) + ' Я/min · ' + (r.buildings || []).length + ' buildings' +
+        fmt(r.gamecurrency_per_minute) + ' \u042f/min' +
+        '<span class="tlv">' + (r.buildings || []).filter(b => B[b.buildingid])
+            .sort((a, b) => (B[a.buildingid].y * 3 + B[a.buildingid].x) - (B[b.buildingid].y * 3 + B[b.buildingid].x))
+            .map(b => '<span style="--bc:' + B[b.buildingid].col + '">' + esc(B[b.buildingid].name) + ' <b>' + (Number(b.building_level) || 0) + '</b></span>').join('') + '</span>' +
         '<small>Double-click to fly here</small>';
     tip.style.display = 'block';
-    tip.style.left = Math.min(e.clientX + 16, innerWidth - 220) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
+    tip.style.left = Math.min(e.clientX + 16, innerWidth - 300) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
 });
 renderer.domElement.addEventListener('dblclick', e => { const r = pick(e); if (r) { controls.autoRotate = false; flyTo(r); } });
 
