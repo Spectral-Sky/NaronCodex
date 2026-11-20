@@ -134,7 +134,7 @@ scene.add(new THREE.HemisphereLight('#9fb6ff', '#1a1208', 1.1));
 const sun = new THREE.DirectionalLight('#fff1d6', 2.2); sun.position.set(80, 140, 40); scene.add(sun);
 const ground = new THREE.Mesh(new THREE.CircleGeometry(1200, 64), new THREE.MeshStandardMaterial({ color: '#0c111c', roughness: 1 }));
 ground.rotation.x = -Math.PI / 2; scene.add(ground);
-const grid = new THREE.GridHelper(1400, 100, '#1e2a40', '#121a2a'); grid.position.y = 0.02; scene.add(grid);
+const grid = new THREE.GridHelper(1400, 100, '#1e2a40', '#121a2a'); grid.position.set(PLOT / 2, 0.02, PLOT / 2); scene.add(grid);   // 14-unit cells, bases centred in them
 
 function size() {
     const w = innerWidth, h = innerHeight;
@@ -196,7 +196,7 @@ function buildingMatrix(r, b, m4) {
     const lvl = Number(b.building_level) || 1;
     const s = r._s * BLD * (0.75 + Math.min(lvl, 40) / 100);
     tmp.position.set(r._x + (def.x - 1) * SLOT * r._s, lift(r), r._z + (def.y - 1) * SLOT * r._s);
-    tmp.rotation.set(0, Math.PI / 4, 0);
+    tmp.rotation.set(0, 0, 0);   // square bases square to the grid
     tmp.scale.set(s, s, s);
     tmp.updateMatrix(); m4.copy(tmp.matrix);
     return true;
