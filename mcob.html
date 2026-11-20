@@ -65,8 +65,8 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 /* ── layout constants (world units) ── */
-const PLOT = 17;          // spacing between base centres (one grid cell)
-const SLOT = 4.0;         // spacing between the 3x3 buildings inside a base
+const PLOT = 36;          // spacing between base centres (one grid cell)
+const SLOT = 10;          // spacing between the 3x3 buildings inside a base
 const BLD = 2.6;          // a building's footprint
 const ME_SCALE = 2.5;     // the viewer's base
 const NEAR_N = 60;        // bases drawn with real models; the rest as blocks
@@ -116,15 +116,15 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#070a12');
-scene.fog = new THREE.Fog('#070a12', 180, 520);
-const cam = new THREE.PerspectiveCamera(45, 1, 0.5, 2000);
+scene.fog = new THREE.Fog('#070a12', 450, 1400);
+const cam = new THREE.PerspectiveCamera(45, 1, 0.5, 4000);
 cam.position.set(60, 55, 60);
 const labels = new CSS2DRenderer();
 labels.domElement.style.cssText = 'position:fixed;inset:0;pointer-events:none';
 document.body.appendChild(labels.domElement);
 const controls = new OrbitControls(cam, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
-controls.maxPolarAngle = Math.PI * 0.47; controls.minDistance = 12; controls.maxDistance = 420;
+controls.maxPolarAngle = Math.PI * 0.47; controls.minDistance = 20; controls.maxDistance = 1100;
 controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
 
 // soft reflections, so the generated models' metal surfaces read as metal instead of black
@@ -132,7 +132,7 @@ scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnviron
 scene.environmentIntensity = 0.55;
 scene.add(new THREE.HemisphereLight('#9fb6ff', '#1a1208', 1.1));
 const sun = new THREE.DirectionalLight('#fff1d6', 2.2); sun.position.set(80, 140, 40); scene.add(sun);
-const ground = new THREE.Mesh(new THREE.CircleGeometry(1200, 64), new THREE.MeshStandardMaterial({ color: '#0c111c', roughness: 1 }));
+const ground = new THREE.Mesh(new THREE.CircleGeometry(4000, 64), new THREE.MeshStandardMaterial({ color: '#0c111c', roughness: 1 }));
 ground.rotation.x = -Math.PI / 2; scene.add(ground);
 const grid = new THREE.GridHelper(PLOT * 100, 100, '#1e2a40', '#121a2a'); grid.position.set(PLOT / 2, 0.02, PLOT / 2); scene.add(grid);   // one cell per plot, bases centred in them
 
@@ -230,7 +230,7 @@ function buildingMatrix(r, b, m4) {
     const lvl = Number(b.building_level) || 1;
     const s = r._s * BLD * (0.75 + Math.min(lvl, 40) / 100);
     tmp.position.set(r._x + (def.x - 1) * SLOT * r._s, lift(r), r._z + (def.y - 1) * SLOT * r._s);
-    tmp.rotation.set(0, 0, 0);   // square bases square to the grid
+    tmp.rotation.set(0, Math.PI / 2, 0);   // square to the grid, turned 90 degrees left
     tmp.scale.set(s, s, s);
     tmp.updateMatrix(); m4.copy(tmp.matrix);
     return true;
@@ -297,7 +297,7 @@ async function build(rows, me) {
     // labels: you and the podium
     const tag = (r, cls, text) => {
         const el = document.createElement('div'); el.className = 'lbl ' + cls; el.textContent = text;
-        const o = new CSS2DObject(el); o.position.set(r._x, lift(r) + (r._s > 1 ? 13 : 6), r._z); scene.add(o);
+        const o = new CSS2DObject(el); o.position.set(r._x, lift(r) + (r._s > 1 ? 30 : 9), r._z); scene.add(o);
     };
     tag(ME, 'me', 'You · ' + (ME.gamertag || ME.wallet) + ' · #' + ME._rank);
     BASES.filter(r => r._pod && r !== ME).forEach(r => tag(r, 'p' + r._pod, '#' + r._rank + ' ' + (r.gamertag || r.wallet)));
@@ -335,7 +335,7 @@ const LOD = {
 let fly = null, idleAt = 0;
 function flyTo(r, instant) {
     const to = new THREE.Vector3(r._x, lift(r), r._z);
-    const dist = r._s > 1 ? 70 : 34;
+    const dist = r._s > 1 ? 150 : 70;
     const dir = cam.position.clone().sub(controls.target).normalize();
     const pos = to.clone().add(dir.multiplyScalar(dist)); pos.y = Math.max(pos.y, to.y + dist * 0.6);
     if (instant || matchMedia('(prefers-reduced-motion: reduce)').matches) { controls.target.copy(to); cam.position.copy(pos); LOD.update(true); return; }
