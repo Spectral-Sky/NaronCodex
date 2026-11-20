@@ -65,8 +65,8 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 /* ── layout constants (world units) ── */
-const PLOT = 14;          // spacing between base centres
-const SLOT = 3.2;         // spacing between the 3x3 buildings inside a base
+const PLOT = 17;          // spacing between base centres (one grid cell)
+const SLOT = 4.0;         // spacing between the 3x3 buildings inside a base
 const BLD = 2.6;          // a building's footprint
 const ME_SCALE = 2.5;     // the viewer's base
 const NEAR_N = 60;        // bases drawn with real models; the rest as blocks
@@ -134,7 +134,7 @@ scene.add(new THREE.HemisphereLight('#9fb6ff', '#1a1208', 1.1));
 const sun = new THREE.DirectionalLight('#fff1d6', 2.2); sun.position.set(80, 140, 40); scene.add(sun);
 const ground = new THREE.Mesh(new THREE.CircleGeometry(1200, 64), new THREE.MeshStandardMaterial({ color: '#0c111c', roughness: 1 }));
 ground.rotation.x = -Math.PI / 2; scene.add(ground);
-const grid = new THREE.GridHelper(1400, 100, '#1e2a40', '#121a2a'); grid.position.set(PLOT / 2, 0.02, PLOT / 2); scene.add(grid);   // 14-unit cells, bases centred in them
+const grid = new THREE.GridHelper(PLOT * 100, 100, '#1e2a40', '#121a2a'); grid.position.set(PLOT / 2, 0.02, PLOT / 2); scene.add(grid);   // one cell per plot, bases centred in them
 
 function size() {
     const w = innerWidth, h = innerHeight;
@@ -153,6 +153,40 @@ async function model(file) {
     const mat = mesh.material;
     mat.metalness = Math.min(mat.metalness ?? 0, 0.35); mat.roughness = Math.max(mat.roughness ?? 1, 0.55);
     return { geo: mesh.geometry, mat, unit: 1.35 / w };   // unit: scale that makes it a bit over 1 wide
+}
+
+/* ── base floor: steel deck plates, drawn once on a canvas ──
+   Four panels with seams and corner rivets, diamond tread and a little grime, in greys;
+   each base's pad tints it (gold for yours). */
+function steelTexture() {
+    const N = 512, c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d');
+    g.fillStyle = '#9aa1ab'; g.fillRect(0, 0, N, N);
+    // grime and brushed streaks
+    for (let i = 0; i < 2600; i++) {
+        const v = 120 + Math.random() * 60 | 0;
+        g.fillStyle = 'rgba(' + v + ',' + (v + 4) + ',' + (v + 10) + ',' + (0.05 + Math.random() * 0.08) + ')';
+        g.fillRect(Math.random() * N, Math.random() * N, 2 + Math.random() * 30, 1 + Math.random() * 2);
+    }
+    // diamond tread
+    g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 2;
+    for (let y = 8; y < N; y += 18) for (let x = (y / 18 % 2) * 9 + 6; x < N; x += 18) {
+        g.beginPath(); g.moveTo(x, y + 4); g.lineTo(x + 6, y - 2); g.stroke();
+    }
+    // panel seams and rivets
+    const P = N / 2;
+    g.strokeStyle = 'rgba(20,24,30,0.85)'; g.lineWidth = 5;
+    for (let k = 0; k <= 2; k++) { g.beginPath(); g.moveTo(k * P, 0); g.lineTo(k * P, N); g.stroke(); g.beginPath(); g.moveTo(0, k * P); g.lineTo(N, k * P); g.stroke(); }
+    g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 1.5;
+    for (let k = 0; k <= 2; k++) { g.beginPath(); g.moveTo(k * P + 3, 0); g.lineTo(k * P + 3, N); g.stroke(); g.beginPath(); g.moveTo(0, k * P + 3); g.lineTo(N, k * P + 3); g.stroke(); }
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) [[14, 14], [P - 14, 14], [14, P - 14], [P - 14, P - 14]].forEach(([x, y]) => {
+        const cx = i * P + x, cy = j * P + y;
+        g.fillStyle = '#5c636d'; g.beginPath(); g.arc(cx, cy, 5, 0, 7); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.arc(cx - 1.5, cy - 1.5, 2, 0, 7); g.fill();
+    });
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    return t;
 }
 
 /* ── world ── */
@@ -208,13 +242,13 @@ async function build(rows, me) {
 
     // pads: one per base, gold for yours
     const padGeo = new THREE.BoxGeometry(1, 0.4, 1);
-    const padMat = new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0.1 });
+    const padMat = new THREE.MeshStandardMaterial({ map: steelTexture(), roughness: 0.55, metalness: 0.6 });
     pads.mesh = new THREE.InstancedMesh(padGeo, padMat, BASES.length);
     BASES.forEach((r, i) => {
         const w = 3 * SLOT * r._s + 1.2;
         tmp.position.set(r._x, lift(r) + 0.2, r._z); tmp.rotation.set(0, 0, 0); tmp.scale.set(w, 1, w); tmp.updateMatrix();
         pads.mesh.setMatrixAt(i, tmp.matrix);
-        pads.mesh.setColorAt(i, col.set(r === ME ? '#3a2a08' : r._rank <= 10 ? '#1f2a44' : r._rank <= 50 ? '#18202f' : '#141a26'));
+        pads.mesh.setColorAt(i, col.set(r === ME ? '#d9a84e' : r._rank <= 10 ? '#8e9cb8' : r._rank <= 50 ? '#7a8496' : '#666e7c'));   // tints over the steel
     });
     scene.add(pads.mesh);
 
