@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outpost World 3D</title>
+<!-- Every base in the current Mission
+     Control season from game.mc::players, in one 3D world; the viewer's base is in the
+     middle at 2.5x, the top three on podiums, everyone else in rings by production rank. -->
+<style>
+    :root {
+        --bg: #070a12; --panel: rgba(12,16,26,0.86); --line: rgba(232,160,32,0.28);
+        --ink: #ece4d0; --muted: #9aa3b2; --gold: #e8a020;
+    }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+        font: 14px/1.4 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+    #view { position: fixed; inset: 0; display: block; }
+    .hud { position: fixed; left: 16px; top: 16px; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 12px; padding: 10px 14px; max-width: 300px; backdrop-filter: blur(4px); }
+    .hud h1 { margin: 0 0 4px; font-size: 1.05em; color: var(--gold); letter-spacing: 0.02em; }
+    .hud p { margin: 0; color: var(--muted); font-size: 0.85em; }
+    .hud .row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .hud button, .hud input { font: inherit; font-size: 0.85em; border-radius: 8px; border: 1px solid var(--line);
+        background: #121726; color: var(--ink); padding: 5px 10px; }
+    .hud button { cursor: pointer; } .hud button:hover { border-color: var(--gold); }
+    .hud button:focus-visible, .hud input:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+    .hud input { width: 130px; }
+    #tip { position: fixed; pointer-events: none; background: var(--panel); border: 1px solid var(--gold);
+        border-radius: 10px; padding: 8px 11px; font-size: 0.85em; display: none; min-width: 170px; }
+    #tip b { color: var(--gold); }
+    #tip small { color: var(--muted); display: block; }
+    .lbl { color: var(--ink); font-weight: 700; font-size: 12px; text-shadow: 0 1px 3px #000, 0 0 8px #000;
+        white-space: nowrap; padding: 2px 6px; border-radius: 6px; background: rgba(7,10,18,0.55); }
+    .lbl.me { color: var(--gold); font-size: 15px; border: 1px solid var(--gold); }
+    .lbl.p1 { color: #f2c230; } .lbl.p2 { color: #c9d1dc; } .lbl.p3 { color: #d08a4a; }
+    #load { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); color: var(--muted); z-index: 5; transition: opacity .5s; }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div class="hud">
+    <h1>Outpost World</h1>
+    <p id="hud-sub">Reading the season…</p>
+    <div class="row">
+        <input id="wal" placeholder="wallet" aria-label="Wallet to centre on">
+        <button id="go">Centre</button>
+        <button id="home" title="Fly back to your base">Home</button>
+        <button id="spin" aria-pressed="true">Orbit: on</button>
+    </div>
+</div>
+<div id="tip"></div>
+<div id="load">Reading the Mission Control season…</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ── layout constants (world units) ── */
+const PLOT = 14;          // spacing between base centres
+const SLOT = 3.2;         // spacing between the 3x3 buildings inside a base
+const BLD = 2.6;          // a building's footprint
+const ME_SCALE = 2.5;     // the viewer's base
+const NEAR_N = 60;        // bases drawn with real models; the rest as blocks
+
+// building ids → grid slot (from the 2D builder's B_MAP) and colour
+const B = {
+    market:    { name: 'Spaceport',        col: '#9333ea', x: 0, y: 0 },
+    prodone:   { name: 'Lumber Mill',      col: '#b45309', x: 1, y: 0 },
+    prodtwo:   { name: 'Foundry',          col: '#dc2626', x: 2, y: 0 },
+    prodthree: { name: 'Laboratory',       col: '#2563eb', x: 0, y: 1 },
+    faucet:    { name: 'Exploder',         col: '#f59e0b', x: 1, y: 1 },
+    prodfour:  { name: 'Refinery',         col: '#ea580c', x: 2, y: 1 },
+    prodfive:  { name: 'Upcycling Center', col: '#16a34a', x: 0, y: 2 },
+    prodsix:   { name: 'Hunting Cabin',    col: '#0d9488', x: 1, y: 2 },
+    storage:   { name: 'Storage',          col: '#475569', x: 2, y: 2 }
+};
+const MODELS = ['prodone', 'prodtwo', 'prodthree'];   // the ones with a 3D model so far
+const RPC = ['https://wax.greymass.com', 'https://api.wax.alohaeos.com', 'https://wax.eosusa.io'];
+
+/* ── chain ── */
+async function rpc(body) {
+    for (const u of RPC) {
+        try {
+            const r = await fetch(u + '/v1/chain/get_table_rows', { method: 'POST', body: JSON.stringify(body) });
+            if (r.ok) return await r.json();
+        } catch (e) {}
+    }
+    throw new Error('chain unreachable');
+}
+async function season() {
+    let rows = [], lower = '';
+    for (let i = 0; i < 40; i++) {
+        const d = await rpc({ json: true, code: 'game.mc', scope: 'game.mc', table: 'players', limit: 500, lower_bound: lower || undefined });
+        rows = rows.concat(d.rows || []);
+        if (!d.more) break;
+        lower = d.next_key;
+    }
+    return rows;
+}
+const fmt = n => { n = Number(n) || 0; return n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(Math.floor(n)); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ── scene ── */
+const canvas = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#070a12');
+scene.fog = new THREE.Fog('#070a12', 180, 520);
+const cam = new THREE.PerspectiveCamera(45, 1, 0.5, 2000);
+cam.position.set(60, 55, 60);
+const labels = new CSS2DRenderer();
+labels.domElement.style.cssText = 'position:fixed;inset:0;pointer-events:none';
+document.body.appendChild(labels.domElement);
+const controls = new OrbitControls(cam, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.47; controls.minDistance = 12; controls.maxDistance = 420;
+controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
+
+// soft reflections, so the generated models' metal surfaces read as metal instead of black
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+scene.add(new THREE.HemisphereLight('#9fb6ff', '#1a1208', 1.1));
+const sun = new THREE.DirectionalLight('#fff1d6', 2.2); sun.position.set(80, 140, 40); scene.add(sun);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(1200, 64), new THREE.MeshStandardMaterial({ color: '#0c111c', roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const grid = new THREE.GridHelper(1400, 100, '#1e2a40', '#121a2a'); grid.position.y = 0.02; scene.add(grid);
+
+function size() {
+    const w = innerWidth, h = innerHeight;
+    renderer.setSize(w, h, false); labels.setSize(w, h);
+    cam.aspect = w / h; cam.updateProjectionMatrix();
+}
+addEventListener('resize', size); size();
+
+/* ── models ── */
+const loader = new GLTFLoader();
+async function model(file) {
+    const g = await loader.loadAsync(file);
+    let mesh = null; g.scene.traverse(o => { if (o.isMesh && !mesh) mesh = o; });
+    const box = new THREE.Box3().setFromBufferAttribute(mesh.geometry.attributes.position);
+    const w = Math.max(box.max.x - box.min.x, box.max.z - box.min.z);
+    const mat = mesh.material;
+    mat.metalness = Math.min(mat.metalness ?? 0, 0.35); mat.roughness = Math.max(mat.roughness ?? 1, 0.55);
+    return { geo: mesh.geometry, mat, unit: 1.35 / w };   // unit: scale that makes it a bit over 1 wide
+}
+
+/* ── world ── */
+let BASES = [], ME = null;
+const pads = { mesh: null }, tmp = new THREE.Object3D(), col = new THREE.Color();
+
+function layout(rows, me) {
+    const key = r => Number(r.gamecurrency_per_minute) || 0;
+    const ranked = rows.slice().sort((a, b) => key(b) - key(a));
+    ranked.forEach((r, i) => r._rank = i + 1);
+    const meRow = rows.find(r => r.wallet === me) || ranked[0];
+    // the middle is the viewer; the podium sits just north of it; everyone else on rings, best rank nearest
+    meRow._x = 0; meRow._z = 0; meRow._s = ME_SCALE;
+    const spots = [];
+    for (let i = -40; i <= 40; i++) for (let j = -40; j <= 40; j++) {
+        const x = i * PLOT, z = j * PLOT, d = Math.hypot(x, z);
+        if (d < PLOT * 2.2) continue;                                   // clear ring round the big base
+        if (z < -PLOT * 1.5 && z > -PLOT * 4.5 && Math.abs(x) < PLOT * 2.5) continue;   // podium plaza
+        spots.push([x, z, d]);
+    }
+    spots.sort((a, b) => a[2] - b[2]);
+    let k = 0, pod = 0;
+    ranked.forEach(r => {
+        r._s = r === meRow ? ME_SCALE : 1;
+        if (r !== meRow && r._rank <= 3) {
+            r._pod = r._rank; pod++;
+            r._x = [0, -PLOT * 1.6, PLOT * 1.6][r._rank - 1]; r._z = -PLOT * 3;
+            return;
+        }
+        if (r === meRow) { r._pod = r._rank <= 3 ? r._rank : 0; return; }
+        const s = spots[k++]; r._x = s[0]; r._z = s[1];
+    });
+    return { ranked, meRow };
+}
+const PODH = { 1: 5, 2: 3.4, 3: 2.2 }, PODC = { 1: '#f2c230', 2: '#c9d1dc', 3: '#d08a4a' };
+const lift = r => (r._pod && r._s === 1 ? PODH[r._pod] : 0);
+
+// every building of every base, as a transform
+function buildingMatrix(r, b, m4) {
+    const def = B[b.buildingid]; if (!def) return false;
+    const lvl = Number(b.building_level) || 1;
+    const s = r._s * BLD * (0.75 + Math.min(lvl, 40) / 100);
+    tmp.position.set(r._x + (def.x - 1) * SLOT * r._s, lift(r), r._z + (def.y - 1) * SLOT * r._s);
+    tmp.rotation.set(0, Math.PI / 4, 0);
+    tmp.scale.set(s, s, s);
+    tmp.updateMatrix(); m4.copy(tmp.matrix);
+    return true;
+}
+
+async function build(rows, me) {
+    const { ranked, meRow } = layout(rows, me);
+    BASES = ranked; ME = meRow;
+
+    // pads: one per base, gold for yours
+    const padGeo = new THREE.BoxGeometry(1, 0.4, 1);
+    const padMat = new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0.1 });
+    pads.mesh = new THREE.InstancedMesh(padGeo, padMat, BASES.length);
+    BASES.forEach((r, i) => {
+        const w = 3 * SLOT * r._s + 1.2;
+        tmp.position.set(r._x, lift(r) + 0.2, r._z); tmp.rotation.set(0, 0, 0); tmp.scale.set(w, 1, w); tmp.updateMatrix();
+        pads.mesh.setMatrixAt(i, tmp.matrix);
+        pads.mesh.setColorAt(i, col.set(r === ME ? '#3a2a08' : r._rank <= 10 ? '#1f2a44' : r._rank <= 50 ? '#18202f' : '#141a26'));
+    });
+    scene.add(pads.mesh);
+
+    // podiums
+    BASES.filter(r => r._pod && r._s === 1).forEach(r => {
+        const w = 3 * SLOT + 2, h = PODH[r._pod];
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshStandardMaterial({ color: PODC[r._pod], metalness: 0.55, roughness: 0.35 }));
+        m.position.set(r._x, h / 2, r._z); scene.add(m);
+    });
+
+    // buildings without a model yet: simple shapes in the building's colour (instanced per type)
+    const simple = {};
+    const shape = new THREE.CylinderGeometry(0.42, 0.5, 0.8, 8); shape.translate(0, 0.4, 0);
+    Object.keys(B).forEach(id => {
+        if (MODELS.includes(id)) return;
+        const list = [];
+        BASES.forEach(r => (r.buildings || []).forEach(b => { if (b.buildingid === id) list.push([r, b]); }));
+        const im = new THREE.InstancedMesh(shape, new THREE.MeshStandardMaterial({ color: B[id].col, roughness: 0.55, metalness: 0.3 }), list.length);
+        const m4 = new THREE.Matrix4();
+        list.forEach(([r, b], i) => { buildingMatrix(r, b, m4); im.setMatrixAt(i, m4); });
+        scene.add(im); simple[id] = im;
+    });
+
+    // modelled buildings: your base in full detail; the NEAR_N bases nearest the camera's focus
+    // in the lighter model; all the rest as blocks. Re-chosen as the camera moves.
+    const block = new THREE.BoxGeometry(0.8, 0.8, 0.8); block.translate(0, 0.4, 0);
+    LOD.types = [];
+    for (const id of MODELS) {
+        const [hi, lo] = await Promise.all([model('mcob/' + id + '-hi.glb'), model('mcob/' + id + '-lo.glb')]);
+        const list = [];
+        BASES.forEach(r => (r.buildings || []).forEach(b => { if (b.buildingid === id) list.push([r, b]); }));
+        const mine = list.find(([r]) => r === ME);
+        if (mine) {
+            const m = new THREE.Mesh(hi.geo, hi.mat), m4 = new THREE.Matrix4();
+            buildingMatrix(mine[0], mine[1], m4); m.applyMatrix4(m4); m.scale.multiplyScalar(hi.unit); scene.add(m);
+        }
+        const others = list.filter(([r]) => r !== ME);
+        const near = new THREE.InstancedMesh(lo.geo, lo.mat, others.length);
+        const far = new THREE.InstancedMesh(block, new THREE.MeshStandardMaterial({ color: B[id].col, roughness: 0.6 }), others.length);
+        near.frustumCulled = far.frustumCulled = false;
+        scene.add(near, far);
+        LOD.types.push({ id, unit: lo.unit, others, near, far });
+    }
+    LOD.update(true);
+
+    // labels: you and the podium
+    const tag = (r, cls, text) => {
+        const el = document.createElement('div'); el.className = 'lbl ' + cls; el.textContent = text;
+        const o = new CSS2DObject(el); o.position.set(r._x, lift(r) + (r._s > 1 ? 13 : 6), r._z); scene.add(o);
+    };
+    tag(ME, 'me', 'You · ' + (ME.gamertag || ME.wallet) + ' · #' + ME._rank);
+    BASES.filter(r => r._pod && r !== ME).forEach(r => tag(r, 'p' + r._pod, '#' + r._rank + ' ' + (r.gamertag || r.wallet)));
+
+    document.getElementById('hud-sub').textContent = BASES.length + ' bases this season · you are #' + ME._rank + ' by Я/min';
+    flyTo(ME, true);
+}
+
+const LOD = {
+    types: [], last: 0,
+    update(force) {
+        const now = performance.now();
+        if (!force && now - this.last < 250) return;
+        this.last = now;
+        const t = controls.target;
+        // the NEAR_N bases closest to where the camera is looking get models
+        const near = new Set(BASES.filter(r => r !== ME).map(r => [r, Math.hypot(r._x - t.x, r._z - t.z)])
+            .sort((a, b) => a[1] - b[1]).slice(0, NEAR_N).map(x => x[0]));
+        const m4 = new THREE.Matrix4(), sc = new THREE.Matrix4();
+        this.types.forEach(T => {
+            let n = 0, f = 0;
+            sc.makeScale(T.unit, T.unit, T.unit);
+            T.others.forEach(([r, b]) => {
+                buildingMatrix(r, b, m4);
+                if (near.has(r)) T.near.setMatrixAt(n++, m4.clone().multiply(sc));
+                else T.far.setMatrixAt(f++, m4);
+            });
+            T.near.count = n; T.far.count = f;
+            T.near.instanceMatrix.needsUpdate = T.far.instanceMatrix.needsUpdate = true;
+        });
+    }
+};
+
+/* ── camera moves ── */
+let fly = null, idleAt = 0;
+function flyTo(r, instant) {
+    const to = new THREE.Vector3(r._x, lift(r), r._z);
+    const dist = r._s > 1 ? 70 : 34;
+    const dir = cam.position.clone().sub(controls.target).normalize();
+    const pos = to.clone().add(dir.multiplyScalar(dist)); pos.y = Math.max(pos.y, to.y + dist * 0.6);
+    if (instant || matchMedia('(prefers-reduced-motion: reduce)').matches) { controls.target.copy(to); cam.position.copy(pos); LOD.update(true); return; }
+    fly = { t: 0, a: controls.target.clone(), b: to, pa: cam.position.clone(), pb: pos };
+}
+controls.addEventListener('start', () => { controls.autoRotate = false; fly = null; });
+controls.addEventListener('end', () => { idleAt = performance.now(); });
+
+/* ── picking ── */
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), tip = document.getElementById('tip');
+function pick(e) {
+    ptr.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(ptr, cam);
+    const hit = pads.mesh && ray.intersectObject(pads.mesh)[0];
+    return hit ? BASES[hit.instanceId] : null;
+}
+renderer.domElement.addEventListener('pointermove', e => {
+    const r = pick(e);
+    if (!r) { tip.style.display = 'none'; return; }
+    tip.innerHTML = '<b>#' + r._rank + ' ' + esc(r.gamertag || r.wallet) + '</b><small>' + esc(r.wallet) + '</small>' +
+        fmt(r.gamecurrency_per_minute) + ' Я/min · ' + (r.buildings || []).length + ' buildings' +
+        '<small>Double-click to fly here</small>';
+    tip.style.display = 'block';
+    tip.style.left = Math.min(e.clientX + 16, innerWidth - 220) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
+});
+renderer.domElement.addEventListener('dblclick', e => { const r = pick(e); if (r) { controls.autoRotate = false; flyTo(r); } });
+
+/* ── HUD ── */
+const spinBtn = document.getElementById('spin');
+const setSpin = on => { controls.autoRotate = on; spinBtn.textContent = 'Orbit: ' + (on ? 'on' : 'off'); spinBtn.setAttribute('aria-pressed', on); };
+spinBtn.onclick = () => { idleAt = 0; setSpin(!controls.autoRotate); };
+document.getElementById('home').onclick = () => ME && flyTo(ME);
+document.getElementById('go').onclick = () => {
+    const w = document.getElementById('wal').value.trim(); if (!w) return;
+    const u = new URL(location.href); u.searchParams.set('wallet', w); location.href = u;
+};
+
+/* ── loop ── */
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+    const dt = clock.getDelta();
+    if (fly) {
+        fly.t = Math.min(1, fly.t + dt / 1.4);
+        const k = fly.t < 0.5 ? 2 * fly.t * fly.t : 1 - Math.pow(-2 * fly.t + 2, 2) / 2;
+        controls.target.lerpVectors(fly.a, fly.b, k); cam.position.lerpVectors(fly.pa, fly.pb, k);
+        if (fly.t >= 1) { fly = null; idleAt = performance.now(); }
+    }
+    // resume the slow orbit 10 s after the last touch, if it was on
+    if (!controls.autoRotate && idleAt && performance.now() - idleAt > 10000 && spinBtn.getAttribute('aria-pressed') === 'true') { controls.autoRotate = true; idleAt = 0; }
+    controls.update();
+    LOD.update();
+    renderer.render(scene, cam); labels.render(scene, cam);
+});
+
+/* ── start ── */
+(async () => {
+    const q = new URLSearchParams(location.search).get('wallet');
+    let me = q || '';
+    try { me = me || localStorage.getItem('naron_wallet') || ''; } catch (e) {}
+    document.getElementById('wal').value = me;
+    try {
+        const rows = await season();
+        await build(rows, me);
+        if (!rows.some(r => r.wallet === me)) document.getElementById('hud-sub').textContent += ' (no base for that wallet; centred on #1)';
+    } catch (e) {
+        document.getElementById('load').textContent = 'Could not load: ' + e.message;
+        return;
+    }
+    const ld = document.getElementById('load'); ld.style.opacity = 0; setTimeout(() => ld.remove(), 600);
+})();
+</script>
+</body>
+</html>
